@@ -1,0 +1,24 @@
+# dsh-tui bundle patch: interactive terminal front door over dsh-base.
+#
+# Mirrors the shape of the dsh-headless bundle: a startup provider parses the
+# app's own command line, and the runner plugin consumes that provider and
+# owns the terminal. Host-side capability (agent, session, sandbox, approval,
+# tools, projections) stays in dsh-base; this layer adds only the terminal.
+
+- id: system-prompt
+  config:
+    persona: >-
+      You are a coding agent powered by the {{model}} model. Your working directory is {{cwd}}.
+
+# The shared module-reload HMR row stays off: a terminal is owned by one
+# process and cannot be rebuilt in place when a patch layer reloads.
+- id: hmr
+  disabled: true
+
+- insert:
+    - id: tui-startup
+      name: 'dsh-tui/startup'
+
+    - id: tui-runner
+      name: 'dsh-tui'
+      inject: [tuiStartup]
