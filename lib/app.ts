@@ -84,6 +84,13 @@ function markdownTheme(p: Palette): MarkdownTheme {
   };
 }
 
+/** Printable input for the picker search field: not an escape sequence or control char. */
+function isPrintableInput(data: string): boolean {
+  if (data.startsWith("")) return false;
+  if (data === "\r" || data === "\n" || data === "\t") return false;
+  return data.codePointAt(0) !== undefined && data.codePointAt(0)! >= 0x20;
+}
+
 function selectListTheme(p: Palette): SelectListTheme {
   return {
     selectedPrefix: (s) => p.reverse(` ${s} `),
@@ -273,6 +280,109 @@ class TranscriptArea extends Container {
   }
 }
 
+/** One candidate row for the session picker. */
+export interface SessionPickItem extends SelectItem {
+  value: string;
+  label: string;
+  description?: string;
+}
+
+/**
+ * Full-viewport picker with a search field + keyboard-navigable list.
+ * Renders a `search> …` line above a SelectList; typing filters by title or
+ * id, Up/Down move, Enter resumes, Esc (or a second Esc with text) closes.
+ */
+class SessionPicker implements Component {
+  private readonly queryText: Text;
+  private readonly p: Palette;
+  private query = "";
+  private items: SessionPickItem[];
+  private select!: SelectList;
+  private index = 0;
+  private count = 0;
+
+  onPick?: (value: string) => void;
+  onCancel?: () => void;
+
+  constructor(p: Palette, items: SessionPickItem[]) {
+    this.p = p;
+    this.items = items;
+    this.queryText = new Text("", 1, 1);
+    this.applyFilter();
+  }
+
+  handleInput(data: string): void {
+    if (matchesKey(data, "escape")) {
+      if (this.query !== "") {
+        this.query = "";
+        this.applyFilter();
+      } else {
+        this.onCancel?.();
+      }
+      return;
+    }
+    if (matchesKey(data, "enter")) {
+      const item = this.select.getSelectedItem();
+      if (item !== null) this.onPick?.(item.value);
+      return;
+    }
+    if (matchesKey(data, "up")) {
+      this.move(-1);
+      return;
+    }
+    if (matchesKey(data, "down")) {
+      this.move(1);
+      return;
+    }
+    if (matchesKey(data, "backspace")) {
+      this.query = this.query.slice(0, -1);
+      this.applyFilter();
+      return;
+    }
+    if (isPrintableInput(data)) {
+      this.query += data;
+      this.applyFilter();
+    }
+  }
+
+  render(width: number): string[] {
+    return [...this.queryText.render(width), ...this.select.render(width)];
+  }
+
+  invalidate(): void {
+    this.queryText.invalidate();
+    this.select.invalidate();
+  }
+
+  private buildSelect(items: SessionPickItem[]): SelectList {
+    const select = new SelectList(items, Math.min(Math.max(items.length, 3), 12), selectListTheme(this.p));
+    return select;
+  }
+
+  private applyFilter(): void {
+    const q = this.query.toLowerCase();
+    const filtered =
+      q === ""
+        ? this.items
+        : this.items.filter(
+            (i) => i.label.toLowerCase().includes(q) || i.value.toLowerCase().includes(q),
+          );
+    this.select = this.buildSelect(filtered);
+    this.count = filtered.length;
+    this.index = 0;
+    this.refreshHeader();
+  }
+
+  private move(dir: number): void {
+    this.index = Math.max(0, Math.min(Math.max(this.count - 1, 0), this.index + dir));
+    this.select.setSelectedIndex(this.index);
+  }
+
+  private refreshHeader(): void {
+    this.queryText.setText(`search> ${this.query}${this.query === "" ? " " : ""}`);
+  }
+}
+
 export class TuiApp {
   private readonly terminal = new ProcessTerminal();
   private readonly clipboardTerminal = new ClipboardTerminal(this.terminal);
@@ -431,6 +541,23 @@ export class TuiApp {
         resolve(null);
       };
       this.tui.setFocus(select);
+    });
+  }
+
+  /** Pick one session from the list, or null on cancel. */
+  pickSession(sessions: SessionPickItem[]): Promise<string | null> {
+    return new Promise((resolve) => {
+      const picker = new SessionPicker(this.p, sessions);
+      picker.onPick = (value) => {
+        this.tui.hideOverlay();
+        resolve(value);
+      };
+      picker.onCancel = () => {
+        this.tui.hideOverlay();
+        resolve(null);
+      };
+      this.tui.showOverlay(picker, { anchor: "center", margin: 1 });
+      this.tui.setFocus(picker);
     });
   }
 

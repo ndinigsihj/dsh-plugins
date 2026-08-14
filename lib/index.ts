@@ -104,7 +104,9 @@ interface CoreServices {
     ): Promise<{ result: { kind: string; text?: string } } | undefined>;
   };
   sessionQuery?: {
-    listSessions(signal?: AbortSignal): Promise<Array<{ header: { id: string }; live: boolean; persisted: boolean }>>;
+    listSessions(
+      signal?: AbortSignal,
+    ): Promise<Array<{ header: { id: string; cwd?: string }; live: boolean; persisted: boolean }>>;
     readTitleSnapshots(
       ids: string[],
     ): Promise<Array<{ sessionId: string; status: string; title?: { title?: string } }>>;
@@ -240,32 +242,39 @@ async function run(ctx: CordisContext): Promise<void> {
     await app.stopAndExit(services.appExit);
   }
 
-  async function listSessions(): Promise<void> {
-    if (services.sessionQuery === undefined) {
-      app.showNotice("session-query is not available in this composition");
-      return;
+  /** Load persisted sessions as picker rows (id, title, live/persisted state). */
+  async function loadSessionItems(): Promise<Array<{ value: string; label: string; description: string }>> {
+    if (services.sessionQuery === undefined) return [];
+    const records = await services.sessionQuery.listSessions();
+    const titleResults = await services.sessionQuery.readTitleSnapshots(
+      records.map((r) => r.header.id),
+    );
+    const titleBySession = new Map<string, string>();
+    for (const t of titleResults) {
+      if (t.status === "fulfilled") titleBySession.set(t.sessionId, t.title?.title ?? "");
     }
+    return records.map((rec) => {
+      const state = rec.live ? "live" : rec.persisted ? "persisted" : "missing";
+      const title = titleBySession.get(rec.header.id) ?? "(untitled)";
+      const marker = rec.header.id === agent.id ? " (current)" : "";
+      return {
+        value: rec.header.id,
+        label: title,
+        description: `${state} · ${rec.header.id}${marker}`,
+      };
+    });
+  }
+
+  async function listSessions(): Promise<void> {
     try {
-      const records = await services.sessionQuery.listSessions();
-      if (records.length === 0) {
+      const items = await loadSessionItems();
+      if (items.length === 0) {
         app.appendCommandOutput("No persisted sessions found.");
         return;
       }
-      const titleResults = await services.sessionQuery.readTitleSnapshots(
-        records.map((r) => r.header.id),
-      );
-      const titleBySession = new Map<string, string>();
-      for (const t of titleResults) {
-        if (t.status === "fulfilled") titleBySession.set(t.sessionId, t.title?.title ?? "");
-      }
-      const lines = records.map((rec, i) => {
-        const state = rec.live ? "live" : rec.persisted ? "persisted" : "missing";
-        const title = titleBySession.get(rec.header.id) ?? "(untitled)";
-        const marker = rec.header.id === agent.id ? " (current)" : "";
-        return `${String(i + 1).padStart(2)}. ${title} [${state}] ${rec.header.id}${marker}`;
-      });
+      const lines = items.map((item, i) => `${String(i + 1).padStart(2)}. ${item.label} [${item.description}]`);
       app.appendCommandOutput(
-        `Sessions (${records.length}):\n${lines.join("\n")}\n/resume <session-id> to resume one.`,
+        `Sessions (${items.length}):\n${lines.join("\n")}\n/resume to pick, or /resume <session-id>.`,
       );
     } catch (error) {
       app.showNotice(`dsh-tui: session list failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -274,15 +283,30 @@ async function run(ctx: CordisContext): Promise<void> {
 
   async function doResume(line: string): Promise<void> {
     const id = line.split(/\s+/)[1];
-    if (id === undefined) {
-      app.showNotice("usage: /resume <session-id>  (see /sessions)");
+    if (id !== undefined) {
+      if (id === agent.id) {
+        app.showNotice("already in this session");
+        return;
+      }
+      await relaunchToResume(id);
       return;
     }
-    if (id === agent.id) {
-      app.showNotice("already in this session");
-      return;
+    // No id: open the interactive picker (search + Up/Down + Enter).
+    try {
+      const items = await loadSessionItems();
+      if (items.length === 0) {
+        app.showNotice("No persisted sessions to resume.");
+        return;
+      }
+      const picked = await app.pickSession(items);
+      if (picked === null) {
+        app.showNotice("Resume cancelled.");
+        return;
+      }
+      await relaunchToResume(picked);
+    } catch (error) {
+      app.showNotice(`dsh-tui: resume failed: ${error instanceof Error ? error.message : String(error)}`);
     }
-    await relaunchToResume(id);
   }
 
   /** Flush, restore the terminal, then replace the process with `--resume <id>`. */
@@ -291,6 +315,20 @@ async function run(ctx: CordisContext): Promise<void> {
       await services.sessions.flush(agent.session);
     } catch {
       /* flush failure still relaunches */
+    }
+    // The persistence backend keys sessions by workspace (cwd). chdir to the
+    // target session's original cwd so the resumed process finds its log.
+    const records = services.sessionQuery === undefined ? [] : await services.sessionQuery.listSessions();
+    const target = records.find((r) => r.header.id === id);
+    const targetCwd = target?.header.cwd;
+    if (targetCwd !== undefined) {
+      try {
+        process.chdir(targetCwd);
+      } catch (error) {
+        console.error(`dsh-tui: cannot enter ${targetCwd}: ${String(error)}`);
+        services.appExit(1);
+        return;
+      }
     }
     app.stopTerminal();
     const relaunch = [process.execPath, ...process.argv.slice(1), "--resume", id];
