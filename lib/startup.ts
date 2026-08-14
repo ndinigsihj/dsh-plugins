@@ -18,17 +18,24 @@ function tuiCommand(): Command {
   return new Command()
     .name("dsh --profile tui")
     .description("Boot the interactive terminal coding agent.")
+    .option("--resume <sessionId>", "resume a persisted session instead of creating a new one")
     .helpOption("-h, --help", "show this help");
 }
 
+interface TuiStartupValue {
+  resume?: string;
+}
+
 function apply(ctx: {
-  provide(key: string, value: Record<string, unknown>): void;
+  provide(key: string, value: TuiStartupValue): void;
 }): void {
   const program = tuiCommand();
-  program.action(() => {
-    ctx.provide(TUI_STARTUP_SERVICE, {});
+  program.action((opts: { resume?: string }) => {
+    ctx.provide(TUI_STARTUP_SERVICE, { resume: opts.resume });
   });
   parseCmdline(ctx as never, program);
 }
+
+export type { TuiStartupValue };
 
 export { TUI_STARTUP_SERVICE, apply, inject, name };

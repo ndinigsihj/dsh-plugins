@@ -50,8 +50,18 @@ The profile's `cordis.patch.yml` inserts the local plugin files by absolute path
 ## Keys
 
 - Type a prompt, `Enter` to send (steers a running turn)
-- `Esc` / `Ctrl+C` — cancel the active turn
-- `/help` `/clear` `/exit` (`/quit`)
+- `Esc` — cancel the active turn
+- `Ctrl+C` — cancel while running; exit while idle
+- `Ctrl+D` — exit
+
+## Commands
+
+- `/help` — command list
+- `/clear` — clear the transcript
+- `/exit` / `/quit` — exit (same as idle `Ctrl+C` / `Ctrl+D`)
+- `/sessions` — list persisted sessions (id, title, live/persisted)
+- `/session` — show the current session id
+- `/resume <session-id>` — flush, restore the terminal, and relaunch the process with `--resume <id>` (same execve path the original dsh host used). Also available as `dsh --profile tui --resume <id>`.
 
 ## Structure
 

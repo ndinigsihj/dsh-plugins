@@ -24,6 +24,7 @@ const inject = [
   "sessions",
   "userQuestions",
   "commands",
+  "sessionQuery",
   "tuiStartup",
 ];
 
@@ -38,6 +39,9 @@ type CordisContext = {
 const HELP_TEXT = [
   "/exit, /quit     exit the terminal front door",
   "/clear           clear the transcript",
+  "/sessions        list persisted sessions",
+  "/resume <id>     resume a persisted session",
+  "/session         show the current session id",
   "/help            show this help",
 ].join("\n");
 
@@ -72,6 +76,11 @@ function agentSurface(agent: {
 interface CoreServices {
   agents: {
     create(options: unknown): Promise<{ agent: Agent }>;
+    resume(options: {
+      resumeSessionId: unknown;
+      agentOptions?: unknown;
+      setup?: (ctx: Parameters<typeof installModelSelection>[0]) => void;
+    }): Promise<{ agent: Agent }>;
   };
   agentDefaultModel: {
     currentSelection(): { provider: string; model: string };
@@ -94,13 +103,19 @@ interface CoreServices {
       signal: AbortSignal,
     ): Promise<{ result: { kind: string; text?: string } } | undefined>;
   };
+  sessionQuery?: {
+    listSessions(signal?: AbortSignal): Promise<Array<{ header: { id: string }; live: boolean; persisted: boolean }>>;
+    readTitleSnapshots(
+      ids: string[],
+    ): Promise<Array<{ sessionId: string; status: string; title?: { title?: string } }>>;
+  };
   appExit: (code: number) => void;
 }
 
 interface Agent {
   id: string;
   status: "idle" | "running";
-  session: unknown;
+  session: { events: unknown[] };
   ctx: { get<T = unknown>(key: string): T | undefined };
   followup(message: unknown): void;
   steer(message: unknown): void;
@@ -114,6 +129,7 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
   const sessions = ctx.get<CoreServices["sessions"]>("sessions");
   const userQuestions = ctx.get<CoreServices["userQuestions"]>("userQuestions");
   const commands = ctx.get<CoreServices["commands"]>("commands");
+  const sessionQuery = ctx.get<CoreServices["sessionQuery"]>("sessionQuery");
   const appExit = ctx.get<CoreServices["appExit"]>("appExit");
   if (agents === undefined || agentDefaultModel === undefined || sessions === undefined) return undefined;
   if (appExit === undefined) {
@@ -125,6 +141,7 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
     sessions,
     userQuestions,
     commands,
+    sessionQuery,
     appExit,
   };
 }
@@ -152,19 +169,30 @@ async function run(ctx: CordisContext): Promise<void> {
   if (resolved === undefined) return;
   const services = resolved; // narrowed copy, visible inside closures
 
-  // Create the root agent through the core registry (same shape as headless).
+  // Create (or resume) the root agent through the core registry. Resume is a
+  // launcher-level decision: `dsh --profile tui --resume <id>` arrives through
+  // tuiStartup and reconstructs the persisted session instead of a new one.
   const selection = services.agentDefaultModel.currentSelection();
-  const created = await services.agents.create({
-    sessionId: SessionId(`session-${randomUUID()}`),
-    meta: { cwd: process.cwd() },
-    agentOptions: { provider: selection.provider, model: selection.model },
-    setup: (agentCtx: Parameters<typeof installModelSelection>[0]) => {
-      installModelSelection(agentCtx, { current: selection, assembled: undefined });
-    },
-  });
+  const resumeId = ctx.get<{ resume?: string }>("tuiStartup")?.resume;
+  const agentOptions = { provider: selection.provider, model: selection.model };
+  const setup = (agentCtx: Parameters<typeof installModelSelection>[0]): void => {
+    installModelSelection(agentCtx, { current: selection, assembled: undefined });
+  };
+  const created = resumeId !== undefined
+    ? await services.agents.resume({
+        resumeSessionId: SessionId(resumeId),
+        agentOptions,
+        setup,
+      })
+    : await services.agents.create({
+        sessionId: SessionId(`session-${randomUUID()}`),
+        meta: { cwd: process.cwd() },
+        agentOptions,
+        setup,
+      });
   const agent: Agent = created.agent;
   await agent.whenIdle();
-  
+
   const tools = agent.ctx.get<{
     get(n: string):
       | {
@@ -196,6 +224,13 @@ async function run(ctx: CordisContext): Promise<void> {
     onExit: () => stopAndExit(),
   });
 
+  // On resume, rebuild the transcript from the persisted log before live events.
+  if (resumeId !== undefined) {
+    app.model.rebuild(agent.session.events as never, presenters);
+    app.onSessionEvent();
+    app.appendCommandOutput(`Resumed session ${agent.id}.`);
+  }
+
   async function stopAndExit(): Promise<void> {
     try {
       await services.sessions.flush(agent.session);
@@ -203,6 +238,73 @@ async function run(ctx: CordisContext): Promise<void> {
       /* flush failure still exits */
     }
     await app.stopAndExit(services.appExit);
+  }
+
+  async function listSessions(): Promise<void> {
+    if (services.sessionQuery === undefined) {
+      app.showNotice("session-query is not available in this composition");
+      return;
+    }
+    try {
+      const records = await services.sessionQuery.listSessions();
+      if (records.length === 0) {
+        app.appendCommandOutput("No persisted sessions found.");
+        return;
+      }
+      const titleResults = await services.sessionQuery.readTitleSnapshots(
+        records.map((r) => r.header.id),
+      );
+      const titleBySession = new Map<string, string>();
+      for (const t of titleResults) {
+        if (t.status === "fulfilled") titleBySession.set(t.sessionId, t.title?.title ?? "");
+      }
+      const lines = records.map((rec, i) => {
+        const state = rec.live ? "live" : rec.persisted ? "persisted" : "missing";
+        const title = titleBySession.get(rec.header.id) ?? "(untitled)";
+        const marker = rec.header.id === agent.id ? " (current)" : "";
+        return `${String(i + 1).padStart(2)}. ${title} [${state}] ${rec.header.id}${marker}`;
+      });
+      app.appendCommandOutput(
+        `Sessions (${records.length}):\n${lines.join("\n")}\n/resume <session-id> to resume one.`,
+      );
+    } catch (error) {
+      app.showNotice(`dsh-tui: session list failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async function doResume(line: string): Promise<void> {
+    const id = line.split(/\s+/)[1];
+    if (id === undefined) {
+      app.showNotice("usage: /resume <session-id>  (see /sessions)");
+      return;
+    }
+    if (id === agent.id) {
+      app.showNotice("already in this session");
+      return;
+    }
+    await relaunchToResume(id);
+  }
+
+  /** Flush, restore the terminal, then replace the process with `--resume <id>`. */
+  async function relaunchToResume(id: string): Promise<void> {
+    try {
+      await services.sessions.flush(agent.session);
+    } catch {
+      /* flush failure still relaunches */
+    }
+    app.stopTerminal();
+    const relaunch = [process.execPath, ...process.argv.slice(1), "--resume", id];
+    if (process.execve === undefined) {
+      console.error("dsh-tui: process.execve is unavailable on this platform");
+      services.appExit(1);
+      return;
+    }
+    try {
+      process.execve(process.execPath, relaunch, process.env);
+    } catch (error) {
+      console.error(`dsh-tui: relaunch failed: ${String(error)}`);
+      services.appExit(1);
+    }
   }
 
   async function runCommand(line: string): Promise<void> {
@@ -217,6 +319,18 @@ async function run(ctx: CordisContext): Promise<void> {
     }
     if (line === "/help") {
       app.showNotice(HELP_TEXT);
+      return;
+    }
+    if (line === "/session") {
+      app.showNotice(`Current session: ${agent.id}`);
+      return;
+    }
+    if (line === "/sessions") {
+      await listSessions();
+      return;
+    }
+    if (line === "/resume" || line.startsWith("/resume ")) {
+      await doResume(line);
       return;
     }
     if (services.commands !== undefined) {
@@ -290,6 +404,22 @@ async function run(ctx: CordisContext): Promise<void> {
       name: "help",
       description: "Show dsh-tui help",
       handler: () => ({ kind: "success", text: HELP_TEXT }),
+    });
+    services.commands.register({
+      name: "sessions",
+      description: "List persisted sessions",
+      handler: () => {
+        void listSessions();
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "resume",
+      description: "Resume a persisted session: /resume <session-id>",
+      handler: ({ rawInput }) => {
+        void doResume(`/resume ${rawInput}`);
+        return { kind: "success" };
+      },
     });
   }
 

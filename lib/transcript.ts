@@ -74,6 +74,7 @@ export class TranscriptModel {
   private openAssistant: Extract<TranscriptRow, { kind: "assistant" }> | null = null;
   private toolByCall = new Map<string, Extract<TranscriptRow, { kind: "tool" }>>();
   private lastSeq = -1;
+  private noticeSeq = -1;
 
   get snapshot(): ReadonlyArray<TranscriptRow> {
     return this.rows;
@@ -85,6 +86,13 @@ export class TranscriptModel {
 
   private bump(): void {
     this.revision += 1;
+  }
+
+  /** Append a non-session row (command output). */
+  addNotice(text: string): void {
+    this.rows.push({ kind: "notice", text, seq: this.noticeSeq });
+    this.noticeSeq -= 1;
+    this.bump();
   }
 
   clear(): void {

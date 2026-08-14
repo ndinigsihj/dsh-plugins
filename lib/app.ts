@@ -374,6 +374,18 @@ export class TuiApp {
     this.render();
   }
 
+  /** Restore the terminal and stop rendering, without exiting the process. */
+  stopTerminal(): void {
+    this.tui.stop();
+  }
+
+  /** Append multi-line command output as a notice row. */
+  appendCommandOutput(text: string): void {
+    this.transcript.addNotice(text);
+    this.transcriptArea.sync();
+    this.render();
+  }
+
   setStatus(status: "idle" | "running"): void {
     this.statusValue = status;
     this.updateStatus();
