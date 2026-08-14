@@ -27,6 +27,8 @@ const inject = [
   "sessionQuery",
   "sessionProjections",
   "tokenMeter",
+  "subagents",
+  "timer",
   "tuiStartup",
 ];
 
@@ -36,6 +38,7 @@ type CordisContext = {
   get<T = unknown>(key: string): T | undefined;
   on(event: string, listener: (...args: any[]) => void): () => void;
   effect(disposer: () => void | (() => void)): void;
+  interval(callback: () => void, ms: number): () => void;
 };
 
 const HELP_TEXT = [
@@ -170,6 +173,14 @@ interface CoreServices {
   tokenMeter?: {
     measure(session: unknown): { totalTokens: number };
   };
+  subagents?: {
+    listChildren(
+      parentSessionId: string,
+      signal?: AbortSignal,
+    ): Promise<
+      Array<{ id: string; activity: "running" | "inactive"; mode: "one-shot" | "continuable"; label?: string }>
+    >;
+  };
   appExit: (code: number) => void;
 }
 
@@ -193,6 +204,7 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
   const sessionQuery = ctx.get<CoreServices["sessionQuery"]>("sessionQuery");
   const sessionProjections = ctx.get<CoreServices["sessionProjections"]>("sessionProjections");
   const tokenMeter = ctx.get<CoreServices["tokenMeter"]>("tokenMeter");
+  const subagents = ctx.get<CoreServices["subagents"]>("subagents");
   const appExit = ctx.get<CoreServices["appExit"]>("appExit");
   if (agents === undefined || agentDefaultModel === undefined || sessions === undefined) return undefined;
   if (appExit === undefined) {
@@ -207,6 +219,7 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
     sessionQuery,
     sessionProjections,
     tokenMeter,
+    subagents,
     appExit,
   };
 }
@@ -296,6 +309,7 @@ async function run(ctx: CordisContext): Promise<void> {
     app.appendCommandOutput(`Resumed session ${agent.id}.`);
   }
   updateContextPressure();
+  refreshSubagents();
 
   async function stopAndExit(): Promise<void> {
     try {
@@ -549,6 +563,33 @@ async function run(ctx: CordisContext): Promise<void> {
     }
   }
 
+  // Running-subagent summary under the status line. Poll on a timer: child
+  // sessions emit their own events (which the root sees but filters), so a
+  // direct list call is the reliable "live" signal.
+  function refreshSubagents(): void {
+    const subs = services.subagents;
+    if (subs === undefined) return;
+    void subs
+      .listChildren(agent.id)
+      .then((children) => {
+        const running = children.filter((c) => c.activity === "running");
+        if (running.length === 0) {
+          app.setSubagentSummary("");
+          return;
+        }
+        const parts = running.map((c) => {
+          const name = c.label ?? c.id.slice(0, 20);
+          return c.mode === "continuable" ? `⤷ ${name} (bg)` : `⤷ ${name}`;
+        });
+        const joined = parts.join("  ");
+        app.setSubagentSummary(joined.length > 72 ? `${joined.slice(0, 71)}…` : joined);
+      })
+      .catch(() => {
+        /* transient — leave the previous summary */
+      });
+  }
+  const disposeSubagentPoll = ctx.interval(refreshSubagents, 5000);
+
   // Session event feed → transcript.
   const disposeSessionFeed = ctx.on(
     "session/event",
@@ -569,6 +610,7 @@ async function run(ctx: CordisContext): Promise<void> {
     disposeApproval();
     disposeSessionFeed();
     disposeStatus();
+    disposeSubagentPoll();
   });
 
     app.start();

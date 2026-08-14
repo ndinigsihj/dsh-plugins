@@ -393,6 +393,7 @@ export class TuiApp {
   private readonly transcriptScroll: ScrollView;
   private readonly editor: Editor;
   private readonly status: Text;
+  private readonly subagentsLine: Text;
   private agent: AgentSurface;
   private modelLabel: string;
   private statusValue: "idle" | "running" = "idle";
@@ -417,12 +418,14 @@ export class TuiApp {
     });
 
     this.status = new Text("", 1, 1);
+    this.subagentsLine = new Text("", 1, 1);
     this.editor = new Editor(this.tui, editorTheme(this.p));
     this.editor.onSubmit = (text) => this.handleSubmit(text);
 
     const dock = new VStack([
       { component: this.editor, basis: "auto", grow: 0, shrink: 1, minSize: 3 },
       { component: this.status, shrink: 1, minSize: 1 },
+      { component: this.subagentsLine, shrink: 1, minSize: 0 },
     ]);
     const root = new VStack([
       { component: this.transcriptScroll, basis: 0, grow: 1, shrink: 1, minSize: 1 },
@@ -460,6 +463,12 @@ export class TuiApp {
   setContextOccupancy(pct: number | null): void {
     this.contextPct = pct;
     this.updateStatus();
+    this.render();
+  }
+
+  /** Running-subagent summary under the status line (empty hides the row). */
+  setSubagentSummary(text: string): void {
+    this.subagentsLine.setText(text);
     this.render();
   }
 
