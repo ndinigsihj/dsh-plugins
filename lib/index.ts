@@ -25,6 +25,8 @@ const inject = [
   "userQuestions",
   "commands",
   "sessionQuery",
+  "sessionProjections",
+  "tokenMeter",
   "tuiStartup",
 ];
 
@@ -160,6 +162,14 @@ interface CoreServices {
       sessionId: string,
     ): Promise<{ events: Array<{ type: string; data: Record<string, unknown> }> }>;
   };
+  sessionProjections?: {
+    snapshot(
+      session: unknown,
+    ): { values: { contextPressure?: { projectedTokens?: number; contextWindow?: number } } };
+  };
+  tokenMeter?: {
+    measure(session: unknown): { totalTokens: number };
+  };
   appExit: (code: number) => void;
 }
 
@@ -181,6 +191,8 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
   const userQuestions = ctx.get<CoreServices["userQuestions"]>("userQuestions");
   const commands = ctx.get<CoreServices["commands"]>("commands");
   const sessionQuery = ctx.get<CoreServices["sessionQuery"]>("sessionQuery");
+  const sessionProjections = ctx.get<CoreServices["sessionProjections"]>("sessionProjections");
+  const tokenMeter = ctx.get<CoreServices["tokenMeter"]>("tokenMeter");
   const appExit = ctx.get<CoreServices["appExit"]>("appExit");
   if (agents === undefined || agentDefaultModel === undefined || sessions === undefined) return undefined;
   if (appExit === undefined) {
@@ -193,6 +205,8 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
     userQuestions,
     commands,
     sessionQuery,
+    sessionProjections,
+    tokenMeter,
     appExit,
   };
 }
@@ -281,6 +295,7 @@ async function run(ctx: CordisContext): Promise<void> {
     app.onSessionEvent();
     app.appendCommandOutput(`Resumed session ${agent.id}.`);
   }
+  updateContextPressure();
 
   async function stopAndExit(): Promise<void> {
     try {
@@ -507,6 +522,33 @@ async function run(ctx: CordisContext): Promise<void> {
     });
   }
 
+  // Context-window occupancy from the token-meter projection (projected
+  // tokens / route capacity). Null until the provider reports usage.
+  function updateContextPressure(): void {
+    const proj = services.sessionProjections;
+    if (proj === undefined) return;
+    try {
+      const pressure = proj.snapshot(agent.session).values.contextPressure;
+      const windowTokens = pressure?.contextWindow;
+      if (windowTokens === undefined || windowTokens <= 0) return;
+      // Prefer the projection's next-request estimate; fall back to the meter's
+      // heuristic total when the provider has not reported usage yet.
+      let used: number | undefined = pressure?.projectedTokens;
+      if (used === undefined && services.tokenMeter !== undefined) {
+        try {
+          used = services.tokenMeter.measure(agent.session).totalTokens;
+        } catch {
+          used = undefined;
+        }
+      }
+      if (used === undefined) return;
+      const pct = Math.round((used / windowTokens) * 100);
+      app.setContextOccupancy(Math.max(0, Math.min(100, pct)));
+    } catch {
+      /* projection not ready — leave the previous reading */
+    }
+  }
+
   // Session event feed → transcript.
   const disposeSessionFeed = ctx.on(
     "session/event",
@@ -514,6 +556,7 @@ async function run(ctx: CordisContext): Promise<void> {
       if (session.id !== agent.id) return;
       app.model.apply(event as never, presenters);
       app.onSessionEvent();
+      updateContextPressure();
     },
   );
 

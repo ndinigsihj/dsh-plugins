@@ -396,6 +396,7 @@ export class TuiApp {
   private agent: AgentSurface;
   private modelLabel: string;
   private statusValue: "idle" | "running" = "idle";
+  private contextPct: number | null = null;
   private stopping = false;
   private readonly options: TuiAppOptions;
 
@@ -453,6 +454,13 @@ export class TuiApp {
   setModelLabel(label: string): void {
     this.modelLabel = label;
     this.updateStatus();
+  }
+
+  /** Context-window occupancy percentage (null when not measurable yet). */
+  setContextOccupancy(pct: number | null): void {
+    this.contextPct = pct;
+    this.updateStatus();
+    this.render();
   }
 
   start(): void {
@@ -515,8 +523,14 @@ export class TuiApp {
   private updateStatus(): void {
     const running = this.statusValue === "running";
     const dot = running ? this.p.fg("● running", "yellow") : this.p.fg("● idle", "green");
+    const ctx =
+      this.contextPct === null
+        ? ""
+        : this.contextPct >= 80
+          ? `  ${this.p.fg(`ctx ${this.contextPct}%`, "yellow")}`
+          : `  ${this.p.dim(`ctx ${this.contextPct}%`)}`;
     const hint = running ? "Enter=steer · Esc=cancel" : "Enter=send · Ctrl+C=exit";
-    this.status.setText(`${dot}  ${this.p.dim(this.modelLabel)}   ${this.p.dim(hint)}`);
+    this.status.setText(`${dot}  ${this.p.dim(this.modelLabel)}${ctx}   ${this.p.dim(hint)}`);
   }
 
   /** Prompt the human for one question, returning the chosen label or null on cancel. */
