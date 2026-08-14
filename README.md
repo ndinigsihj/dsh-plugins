@@ -54,6 +54,11 @@ The profile's `cordis.patch.yml` inserts the local plugin files by absolute path
 - `Ctrl+C` — cancel while running; exit while idle
 - `Ctrl+D` — exit
 
+The status line shows `ctx N%` — context-window occupancy from the token-meter
+projection (`projected / route capacity`, heuristic before the provider reports
+usage). It turns yellow at `>=80%`, which is also the `thresholdRatio` where
+`compaction-basic` auto-compacts.
+
 ## Commands
 
 - `/help` — command list
