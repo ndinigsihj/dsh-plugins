@@ -113,6 +113,24 @@ export class TranscriptModel {
     if (event.seq <= this.lastSeq) return; // ignore out-of-order / replayed feed
     this.lastSeq = event.seq;
 
+    // Plugin-merged events (compaction) are not part of the core SessionEvent
+    // type union; handle them by string discriminant before the typed switch.
+    const typeName = (event as { type: string }).type;
+    if (typeName === "compaction/end") {
+      const data = (event as unknown as { data: { error?: string } }).data;
+      if (data.error !== undefined) {
+        this.rows.push({ kind: "error", text: `Compaction failed: ${data.error}`, seq: event.seq });
+      } else {
+        this.rows.push({
+          kind: "notice",
+          text: "… earlier context was compacted …",
+          seq: event.seq,
+        });
+      }
+      this.bump();
+      return;
+    }
+
     switch (event.type) {
       case "user/message": {
         const data = event.data as {
