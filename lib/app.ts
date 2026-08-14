@@ -393,7 +393,7 @@ export class TuiApp {
   private updateStatus(): void {
     const running = this.statusValue === "running";
     const dot = running ? this.p.fg("● running", "yellow") : this.p.fg("● idle", "green");
-    const hint = running ? "Enter=steer · Esc=cancel" : "Enter=send";
+    const hint = running ? "Enter=steer · Esc=cancel" : "Enter=send · Ctrl+C=exit";
     this.status.setText(`${dot}  ${this.p.dim(this.modelLabel)}   ${this.p.dim(hint)}`);
   }
 
@@ -444,7 +444,19 @@ export class TuiApp {
   }
 
   private handleGlobalInput(data: string): { consume?: boolean } | undefined {
-    if (matchesKey(data, "escape") || matchesKey(data, "ctrl+c")) {
+    if (matchesKey(data, "ctrl+c")) {
+      if (this.agent.status === "running") {
+        this.options.onCancel();
+      } else {
+        void this.options.onExit();
+      }
+      return { consume: true };
+    }
+    if (matchesKey(data, "ctrl+d")) {
+      void this.options.onExit();
+      return { consume: true };
+    }
+    if (matchesKey(data, "escape")) {
       if (this.agent.status === "running") this.options.onCancel();
       return { consume: true };
     }
