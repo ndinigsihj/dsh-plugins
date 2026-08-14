@@ -61,7 +61,8 @@ The profile's `cordis.patch.yml` inserts the local plugin files by absolute path
 - `/exit` / `/quit` — exit (same as idle `Ctrl+C` / `Ctrl+D`)
 - `/sessions` — list persisted sessions (id, title, live/persisted)
 - `/session` — show the current session id
-- `/resume <session-id>` — flush, restore the terminal, and relaunch the process with `--resume <id>` (same execve path the original dsh host used). Also available as `dsh --profile tui --resume <id>`.
+- `/resume` — full-viewport picker: type to filter by title or id, `↑`/`↓` navigate, `Enter` resumes, `Esc` clears then cancels
+- `/resume <session-id>` — resume directly (same as `dsh --profile tui --resume <id>`). Both flush the current session, chdir to the target workspace, restore the terminal, and `execve`-relaunch — the same handoff path the original dsh host used.
 
 ## Structure
 
