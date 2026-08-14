@@ -572,17 +572,10 @@ async function run(ctx: CordisContext): Promise<void> {
     void subs
       .listChildren(agent.id)
       .then((children) => {
-        const running = children.filter((c) => c.activity === "running");
-        if (running.length === 0) {
-          app.setSubagentSummary("");
-          return;
-        }
-        const parts = running.map((c) => {
-          const name = c.label ?? c.id.slice(0, 20);
-          return c.mode === "continuable" ? `⤷ ${name} (bg)` : `⤷ ${name}`;
-        });
-        const joined = parts.join("  ");
-        app.setSubagentSummary(joined.length > 72 ? `${joined.slice(0, 71)}…` : joined);
+        const running = children
+          .filter((c) => c.activity === "running")
+          .map((c) => ({ id: c.id, mode: c.mode, label: c.label }));
+        app.setSubagents(running);
       })
       .catch(() => {
         /* transient — leave the previous summary */

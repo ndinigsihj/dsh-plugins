@@ -53,6 +53,12 @@ export interface ApprovalRequest {
   reason?: string;
 }
 
+export interface RunningSubagent {
+  id: string;
+  mode: "one-shot" | "continuable";
+  label?: string;
+}
+
 export interface TuiAppOptions {
   agent: AgentSurface;
   modelLabel: string;
@@ -467,8 +473,19 @@ export class TuiApp {
   }
 
   /** Running-subagent summary under the status line (empty hides the row). */
-  setSubagentSummary(text: string): void {
-    this.subagentsLine.setText(text);
+  setSubagents(running: RunningSubagent[]): void {
+    if (running.length === 0) {
+      this.subagentsLine.setText("");
+      this.render();
+      return;
+    }
+    const parts = running.map((c) => {
+      const name = c.label ?? c.id.slice(0, 20);
+      const dot = this.p.fg("●", "green");
+      return c.mode === "continuable" ? `${dot} ${name} (bg)` : `${dot} ${name}`;
+    });
+    const joined = parts.join("  ");
+    this.subagentsLine.setText(joined.length > 72 ? `${joined.slice(0, 71)}…` : joined);
     this.render();
   }
 
