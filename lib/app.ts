@@ -583,7 +583,11 @@ export class TuiApp {
   }
 
   private handleGlobalInput(data: string): { consume?: boolean } | undefined {
+    // While an overlay (picker / question / approval) is open, let it handle
+    // Escape / Ctrl+C instead of the global cancel-or-exit actions.
+    const overlayOpen = this.tui.hasOverlay();
     if (matchesKey(data, "ctrl+c")) {
+      if (overlayOpen) return undefined;
       if (this.agent.status === "running") {
         this.options.onCancel();
       } else {
@@ -592,10 +596,12 @@ export class TuiApp {
       return { consume: true };
     }
     if (matchesKey(data, "ctrl+d")) {
+      if (overlayOpen) return undefined;
       void this.options.onExit();
       return { consume: true };
     }
     if (matchesKey(data, "escape")) {
+      if (overlayOpen) return undefined;
       if (this.agent.status === "running") this.options.onCancel();
       return { consume: true };
     }

@@ -52,6 +52,50 @@ function userMessage(text: string): unknown {
   });
 }
 
+/** Truncate a label to a display width. */
+function truncate(text: string, max: number): string {
+  return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
+}
+
+/** Relative "…ago" label for a timestamp. */
+function relativeTime(ms?: number): string {
+  if (ms === undefined) return "";
+  const seconds = Math.floor((Date.now() - ms) / 1000);
+  if (seconds < 60) return "just now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  return `${Math.floor(seconds / 86400)}d ago`;
+}
+
+/** Extract plain text from message content blocks. */
+function contentText(content: unknown): string {
+  if (!Array.isArray(content)) return "";
+  return content
+    .filter((b): b is { type: string; text?: unknown } => typeof b === "object" && b !== null && (b as { type?: string }).type === "text")
+    .map((b) => String(b.text ?? ""))
+    .join("");
+}
+
+/** First real (non-injected) user message of a session, truncated. */
+async function firstUserMessage(
+  query: NonNullable<CoreServices["sessionQuery"]>,
+  id: string,
+): Promise<string> {
+  try {
+    const snap = await query.readSession(id);
+    for (const event of snap.events) {
+      if (event.type !== "user/message") continue;
+      const source = event.data.source as { kind?: string } | undefined;
+      if (source?.kind === "plugin") continue; // injected context, not a human prompt
+      const text = contentText(event.data.content);
+      if (text.trim() !== "") return truncate(text.trim(), 60);
+    }
+    return "";
+  } catch {
+    return "";
+  }
+}
+
 /** Narrow the real Agent handle to the surface the app drives. */
 function agentSurface(agent: {
   id: string;
@@ -106,10 +150,15 @@ interface CoreServices {
   sessionQuery?: {
     listSessions(
       signal?: AbortSignal,
-    ): Promise<Array<{ header: { id: string; cwd?: string }; live: boolean; persisted: boolean }>>;
+    ): Promise<
+      Array<{ header: { id: string; cwd?: string; createdAt?: number }; live: boolean; persisted: boolean }>
+    >;
     readTitleSnapshots(
       ids: string[],
     ): Promise<Array<{ sessionId: string; status: string; title?: { title?: string } }>>;
+    readSession(
+      sessionId: string,
+    ): Promise<{ events: Array<{ type: string; data: Record<string, unknown> }> }>;
   };
   appExit: (code: number) => void;
 }
@@ -242,25 +291,22 @@ async function run(ctx: CordisContext): Promise<void> {
     await app.stopAndExit(services.appExit);
   }
 
-  /** Load persisted sessions as picker rows (id, title, live/persisted state). */
+  /** Load persisted sessions as picker rows (first-message label + state). */
   async function loadSessionItems(): Promise<Array<{ value: string; label: string; description: string }>> {
-    if (services.sessionQuery === undefined) return [];
-    const records = await services.sessionQuery.listSessions();
-    const titleResults = await services.sessionQuery.readTitleSnapshots(
-      records.map((r) => r.header.id),
-    );
-    const titleBySession = new Map<string, string>();
-    for (const t of titleResults) {
-      if (t.status === "fulfilled") titleBySession.set(t.sessionId, t.title?.title ?? "");
-    }
-    return records.map((rec) => {
+    const query = services.sessionQuery;
+    if (query === undefined) return [];
+    const records = await query.listSessions();
+    // Bound the read cost: latest sessions only, first-message reads in parallel.
+    const recent = records.slice(0, 50);
+    const labels = await Promise.all(recent.map((rec) => firstUserMessage(query, rec.header.id)));
+    return recent.map((rec, i) => {
       const state = rec.live ? "live" : rec.persisted ? "persisted" : "missing";
-      const title = titleBySession.get(rec.header.id) ?? "(untitled)";
+      const when = relativeTime(rec.header.createdAt);
       const marker = rec.header.id === agent.id ? " (current)" : "";
       return {
         value: rec.header.id,
-        label: title,
-        description: `${state} · ${rec.header.id}${marker}`,
+        label: labels[i] || "(empty session)",
+        description: `${when} · ${state}${marker}`,
       };
     });
   }
