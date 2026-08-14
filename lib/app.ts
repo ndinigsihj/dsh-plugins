@@ -421,8 +421,8 @@ export class TuiApp {
     this.editor.onSubmit = (text) => this.handleSubmit(text);
 
     const dock = new VStack([
-      { component: this.status, shrink: 1, minSize: 1 },
       { component: this.editor, basis: "auto", grow: 0, shrink: 1, minSize: 3 },
+      { component: this.status, shrink: 1, minSize: 1 },
     ]);
     const root = new VStack([
       { component: this.transcriptScroll, basis: 0, grow: 1, shrink: 1, minSize: 1 },
