@@ -479,13 +479,13 @@ export class TuiApp {
       this.render();
       return;
     }
-    const parts = running.map((c) => {
+    const lines = running.map((c) => {
       const name = c.label ?? c.id.slice(0, 20);
       const dot = this.p.fg("●", "green");
-      return c.mode === "continuable" ? `${dot} ${name} (bg)` : `${dot} ${name}`;
+      const line = c.mode === "continuable" ? `${dot} ${name} (bg)` : `${dot} ${name}`;
+      return line.length > 72 ? `${line.slice(0, 71)}…` : line;
     });
-    const joined = parts.join("  ");
-    this.subagentsLine.setText(joined.length > 72 ? `${joined.slice(0, 71)}…` : joined);
+    this.subagentsLine.setText(lines.join("\n"));
     this.render();
   }
 
