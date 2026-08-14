@@ -26,6 +26,7 @@ import {
 } from "@earendil-works/pi-tui";
 import { createPalette, type Palette } from "./palette.ts";
 import { sanitizeDisplay } from "./sanitize.ts";
+import { ClipboardTerminal } from "./terminal.ts";
 import { TranscriptModel, type ToolPresenters, type TranscriptRow } from "./transcript.ts";
 
 /** The live agent surface the app drives. Narrow enough to be testable. */
@@ -274,6 +275,7 @@ class TranscriptArea extends Container {
 
 export class TuiApp {
   private readonly terminal = new ProcessTerminal();
+  private readonly clipboardTerminal = new ClipboardTerminal(this.terminal);
   private readonly tui: TUI;
   private readonly p: Palette;
   private readonly transcript = new TranscriptModel();
@@ -293,7 +295,7 @@ export class TuiApp {
     this.agent = options.agent;
     this.modelLabel = options.modelLabel;
 
-    this.tui = new TuiAltScreen(this.terminal, true);
+    this.tui = new TuiAltScreen(this.clipboardTerminal, true);
 
     this.transcriptArea = new TranscriptArea(this.transcript, this.p);
     this.transcriptScroll = new ScrollView(this.transcriptArea, {
