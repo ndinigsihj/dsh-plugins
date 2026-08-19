@@ -81,6 +81,17 @@ usage). It turns yellow at `>=80%`, which is also the `thresholdRatio` where
 | `lib/palette.ts` | 16-color SGR palette |
 | `lib/sanitize.ts` | ANSI hygiene (strip escapes, escape stray C0/C1) |
 
+## Extension plugins
+
+Thin Cordis plugins (no dsh-tui modification) mounted into a profile's
+`cordis.patch.yml` via absolute-path `insert`:
+
+| File | Purpose |
+|---|---|
+| `plugins/rename-session.ts` | `/rename <title>` — set session title (pins against auto-retitle) |
+| `plugins/rewind-dsh.ts` | `/rewind [<seq>]` — **standalone rewind**: fork + file-restore + relaunch, overriding the built-in rewind (see `docs/rewind-file-restore-plugin.md`) |
+| `approval-tui.ts` | Route `approval/request` to the TUI question panel |
+
 ## Tested
 
 Boot, fullscreen takeover, prompt submit, streaming assistant rendering, reasoning (dim), injected-context dimming, error cards, status line, `/help` `/clear` `/exit`, clean exit (code 0). Approval dialogs, question panels, and tool cards are wired to the documented service APIs but need a tool-capable model route to exercise end to end.

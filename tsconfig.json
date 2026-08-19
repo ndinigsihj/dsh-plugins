@@ -10,5 +10,8 @@
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true
   },
-  "include": ["lib/**/*.ts"]
+  "include": [
+    "lib/**/*.ts",
+    "plugins/**/*.ts"
+  ]
 }
