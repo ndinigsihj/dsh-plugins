@@ -28,7 +28,7 @@
 | 注册是可逆的——`register()` 返回**exact disposer**，可注销后重注册同名工具 | `@deepseek-ai/dsh-tools` `lib/index.js` 2760、2770 行 |
 | 沙箱 bash 的 schema 带 `sandbox_permissions` + `justification`（当沙箱 executor 挂载时） | `@deepseek-ai/dsh-tool-bash@0.1.0-rc.8_*/lib/index.js` 285-295 行；提权枚举来自 `@deepseek-ai/dsh-sandbox` `ESCALATION_TARGETS = ["workspace-write", "danger-full-access"]`（index.js 41 行） |
 
-**→ 方案核心**：复用 liangshen 首轮（persistent bash + `str_replace_editor` + 首轮抑制注入），在 **promotion 事件**里注销 persistent bash、调用 `dsh-tool-bash` 的 `apply()` 重新注册同名 `bash`（沙箱 + 提权）。第二轮起目录即 complete，注入与提权同时恢复。
+**→ 方案核心（M2 实证修订）**：复用 liangshen 首轮（persistent bash + `str_replace_editor` + 首轮抑制注入），在 **promotion 事件**里对该 agent 的 ctx 调用 `dsh-tool-bash` 的 `apply()`——注册进该 agent 自己的 scope layer，**shadow 掉**共享的 persistent bash（沙箱 + 提权），无需 dispose 任何共享实例。第二轮起该 agent 目录即 complete，注入与提权同时恢复。
 
 ---
 
@@ -82,39 +82,65 @@
 
 ### 3.2 新插件：`presets/liangshen-plus/phase-swap-bash.mjs`
 
-**职责**：首个 durable tool/call 发生时，把 `bash` 的实现从 persistent 实例切换为沙箱 `dsh-tool-bash`。
+**职责**：首个 durable tool/call 发生时，把该 agent 可见的 `bash` 从 persistent 实例切换为沙箱 `dsh-tool-bash`。
+
+**M2 spike 实证结论（2026-08-20，rc.8 运行时）**：原设计稿的 dispose+register 路径（下方"关键点"）
+**不成立也不需要**——实测定案为 **per-agent shadow**：
+
+1. `dsh-tool-bash-persistent.apply()` 与 `dsh-tool-bash.apply()` **都不返回 register() 的 disposer**
+   （两者都只调 `ctx.tools.register(...)` 不返回），路径 (a) 的"插件自持 disposer"无法直接从
+   包 API 获得；`ctx.tools` rc.8 **也没有 remove-by-name 接口**（NamedEntries 只有 insert 的
+   undo，无按名删除）。
+2. 实证（rc.8 真实包）：`agent.ctx.tools.register()` 会注册进**该 agent 自己的 scope layer**，
+   `view(scopeOf(agent.ctx))` 对该 agent 显示 shadow 后的工具，**其他 agent 仍看到全局层**的
+   persistent bash。所以 swap 只需对该 agent 的 ctx 调 `dsh-tool-bash.apply()`，**无需 dispose
+   任何共享实例**，天然 per-session/per-subagent 隔离（S3 成立），同层同名冲突根本不会发生
+   （不同层，S2 成立）。
+3. 实现细节（踩坑记录）：
+   - 插件 `inject = []` 纪律下**不能用属性访问** `ctx.agents`（cordis 抛 `cannot get property
+     "agents" without inject`）——用 `ctx.get('agents')` 显式解析（同 dsh-tui `rosterOf`）。
+   - `dsh-tool-bash.apply(agent.ctx, ...)` 内部属性访问 `ctx.shell` 同样会被 inject 检查拦截——
+     需 `await agent.ctx.inject(['tools','shell','systemPrompt','shellEnv'], (injectedCtx) =>
+     sandboxBash.apply(injectedCtx, config))` 建立注入子 ctx。
+   - 整个 swap 逻辑包进 try/catch：任何一步抛错 → warn once + 保持 persistent bash，绝不 brick。
 
 ```
 export const name = 'phase-swap-bash'
 export const inject = []          // 同 tool-bootstrap：事件时取服务，不静态 inject
 export function apply(ctx, config) {
-  const promotion = createEpochPromotion({ 'tool-call': ['tool/call'] }, { includeSubagents: true })
+  const promotion = createEpochPromotion(['tool/call'], { includeSubagents: true })
   ctx.on('session/event', (session, event) => promotion.observe(session, event))
 
   ctx.on('session/event', async (session, event) => {
-    if (swapped.has(session.id) || !promotion.status(session.agent).promoted) return
-    swapped.add(session.id)        // 幂等：每次 promotion 只 swap 一次
-    // 1. 注销 persistent bash（dsh-tools register 的返回 disposer）
-    disposePersistentBash(ctx, session.agent)
-    // 2. 注册沙箱 bash：直接调用 dsh-tool-bash 的 apply，保证 schema/执行/审批与 standard 完全一致
-    await import('@deepseek-ai/dsh-tool-bash').then(m => m.apply(ctx, {
-      enableRunInBackground: config.enableRunInBackground ?? true,
-      // 其余配置沿用 standard preset 的 tool-bash 行
-    }))
+    if (event.type !== 'tool/call') return
+    if (swapped.has(session.id)) return
+    try {
+      const agent = ctx.get('agents')?.get(session.id)   // 显式 get，非属性访问
+      if (agent === undefined) return
+      if (!promotion.status(agent).promoted) return
+      swapped.add(session.id)                            // 幂等：每次 promotion 只 swap 一次
+      // per-agent shadow：对 agent.ctx 注册沙箱 bash → 该 agent 的 layer 覆盖全局 persistent
+      await agent.ctx.inject(['tools', 'shell', 'systemPrompt', 'shellEnv'], (injectedCtx) => {
+        sandboxBash.apply(injectedCtx, { enableRunInBackground: config.enableRunInBackground ?? true })
+      })
+    } catch (error) {
+      warnOnce(`${name}: swap failed, keeping persistent bash: ${String((error && error.message) || error)}`)
+    }
   })
 }
 ```
 
-关键点（每个都是要 spike 验证的）：
+关键点（原设计稿的 spike 验证项 → 实证结果）：
 
-- **注销方式**：persistent bash 由 `persistent-shell` 组内的 `dsh-tool-bash-persistent` 行注册，其 `register()` 返回的 disposer 需要**在注册时被捕获**。插件无法触及 preset 行内部的返回值——spike 需确认两种可行路径之一：
-  - (a) 本插件的 apply 不依赖 preset 行，而是**自行注册 persistent bash**（把 `persistent-shell` 组的工具注册逻辑收进插件，preset 只留 terminals 服务）；disposer 直接持有；
-  - (b) 通过 `ctx.tools` 的视图/层 API 按名移除后重注册（需确认 rc.8 是否暴露 remove-by-name 接口）。
-  - 默认选 (a)：语义最干净，插件完全自持生命周期。
-- **顺序**：先 dispose 后 register，避免同层同名冲突（2758 行）。
-- **执行路径**：promotion 判定复用 `compaction-epoch.mjs` 的 `createEpochPromotion`（与 tool-bootstrap 同源），保证 session 维度幂等、compaction/epoch 行为一致。
-- **失败降级**：swap 抛错 → warn once + 保持 persistent bash（目录全开但无提权），**绝不 brick 会话**（照抄 tool-bootstrap 的 degrade 哲学）。
-- **subagents**：`includeSubagents` 的 swap 语义——子代理首轮同锚定，promotion 后是否也 swap？默认 yes（与 tool-bootstrap 同步），spike 验证 spawned 上下文里 dispose/register 是否并发安全。
+- ~~注销方式 (a)/(b)~~：**都不需要**——per-agent shadow 不 dispose 共享 persistent bash；
+  disposer 无处可拿（apply 不返回）、remove-by-name 不存在（rc.8 无此接口），恰好都不是问题。
+- ~~顺序（先 dispose 后 register）~~：**不需要**——不同层同名不冲突（S2 实证）。
+- **执行路径**：promotion 判定复用 `compaction-epoch.mjs` 的 `createEpochPromotion`
+  （与 tool-bootstrap 同源），session 维度幂等、compaction/epoch 行为一致（单测覆盖幂等）。
+- **失败降级**：swap 抛错 → warn once + 保持 persistent bash（目录全开但无提权），绝不 brick
+  会话（单测覆盖：缺 sandboxPolicy 时 swap 抛错被吞 + persistent 保留）。
+- **subagents**：`includeSubagents: true` 下子代理首轮同锚定（全局 persistent bash 仍在），
+  各自 promotion 后独立 swap（per-agent layer 隔离，单测覆盖父子独立 swap）。
 
 ### 3.3 状态机
 
@@ -122,15 +148,15 @@ export function apply(ctx, config) {
 [首轮] 目录={bash(persistent), str_replace_editor}, 注入=off
    │  首个 durable tool/call（promotion）
    ▼
-[promoted] swap: dispose persistent bash → register dsh-tool-bash
+[promoted] swap: 对该 agent 的 ctx 注册沙箱 bash（per-agent shadow，全局 persistent 不动）
    │
    ▼
-[二轮起] 目录=complete, AGENTS.md 注入=on, bash=沙箱(提权=on)
+[二轮起] 该 agent 目录=complete, AGENTS.md 注入=on, bash=沙箱(提权=on)
 ```
 
 ### 3.4 设计决策点（落定前需用户拍板）
 
-> **决策状态（2026-08-20 用户确认）**：D1 不回滚 ✓ · D2 放回 ✓ · D3 开启 ✓ · D4 第二优先级(w32 二期) ✓ · **D5 待 M2 spike 验证**。
+> **决策状态（2026-08-20 用户确认）**：D1 不回滚 ✓ · D2 放回 ✓ · D3 开启 ✓ · D4 第二优先级(w32 二期) ✓ · **D5 M2 spike 已答（2026-08-20）：shadow 方案不销毁后台任务**。
 
 | # | 决策 | 默认建议 | 理由 |
 |---|---|---|---|
@@ -138,18 +164,19 @@ export function apply(ctx, config) {
 | D2 | 二轮起 skill-catalog 是否放回？ | **放回**（挂 `tool-skill`） | 用户只要求 AGENTS.md；但「二轮完整面」更贴 standard 语义；若 5/5 实验发现二轮目录扰动，再降级为 liangshen 的 `skill-search` |
 | D3 | `enableRunInBackground` 是否开启 | 开启（standard 默认） | 与 standard-bootstrap 一致 |
 | D4 | win32 是否首期支持 | **第二优先级** | custom-bash + windows-acl 沙箱的 swap 另有窗口，不影响 darwin 主线 |
-| D5 | 首轮 persistent shell 起的后台任务在 swap 时的销毁语义 | 需 spike 确认 terminal 组 dispose 行为 | 见 §4.3 |
+| D5 | 首轮 persistent shell 起的后台任务在 swap 时的销毁语义 | **不销毁**（shadow 不 dispose PTY） | M2 spike 实证：per-agent shadow 不动共享 persistent bash/PTY，首轮 `sleep 10 &` 等后台任务继续运行；PTY 随 preset 卸载才回收（见 §4.3） |
 
 ---
 
 ## 4. 边界与风险
 
-1. **同名工具同层冲突（系统性死结）**——swap 顺序与层次必须 spike 验证；选 3.2(a) 的插件自持生命周期路线。
-2. **PTY 状态丢失**：首轮 persistent shell 的 `cd`/export/后台任务随 dispose 销毁。沙箱 bash 每次 `bash -c` 全新进程，行为天然一致；首轮是锚定轮、活少，影响可接受——写入 preset 注释与 README。
-3. **首轮后台任务销毁语义**：若首轮在 persistent shell 里起了 `sleep 10 &` 这类进程，swap 时 terminal 组的 dispose 会不会杀进程？spike 验证（D5）。
+1. **同名工具同层冲突（系统性死结）**——M2 实证：per-agent shadow 在不同 layer 注册同名 `bash`，**冲突不发生**（S2 通过）；无需 dispose/remove-by-name（rc.8 两者都不可用）。
+2. **PTY 状态丢失**：shadow 方案 **不 dispose** persistent shell，首轮的 `cd`/export/后台任务**不随 swap 丢失**；沙箱 bash 每次 `bash -c` 全新进程，二轮起无状态行为与 standard 一致。
+3. **首轮后台任务销毁语义（D5）**：swap 不动共享 persistent bash/PTY → 首轮起的 `sleep 10 &` 等后台任务**继续运行**（M2 结论）。资源回收路径（源码证据，dsh-tool-bash-persistent lib）：插件级 `ctx.effect` cleanup 在 **preset 卸载**时 kill 所有 live shells（174-182 行）；per-agent 的 `owner.ctx.effect` 只清缓存 map 不杀 PTY（201-207 行）——即 **session 结束 PTY 可能残留到 preset 卸载**（进程内一次性），属可接受资源语义，写入 preset 注释。
 4. **二轮注入/目录扰动无实测**：0/9 只覆盖「首步带目录」。二轮放回 AGENTS.md + skill-catalog 的扰动只能靠 §5 实验 A/B 组实测。
 5. **`dsh-agent-instructions` 注入体积**：`maxBytes: 65536` 上限照抄 standard-bootstrap；用户若在 `~/.dsh/AGENTS.md` 放了超大内容，二轮第一条 user 消息会很大——可接受，与 standard 行为一致。
 6. **锚定敏感度**：persona 从 liangshen 的 `complete: true` 改为 standard 版，系统提示词更长/有 runtime context——**首轮 schema 才是锚定自变量，persona 文案差异是否扰动锚定没有数据**，必须进 §5 实验（组 A 即验证此点）。
+7. **inject=[] 纪律的 cordis 服务访问**：事件时取服务必须用 `ctx.get()`（属性访问抛 "without inject"，M2 踩坑实证）；对 agent.ctx 调第三方 apply 需 `ctx.inject([...])` 建立注入子 ctx（§3.2）。
 
 ---
 
@@ -205,27 +232,67 @@ export function apply(ctx, config) {
 | 步骤 | 内容 | 验证 |
 |---|---|---|
 | M1 | 本文档定稿（含用户拍板 §3.4 决策） | 审阅通过 |
-| M2 | spike：`phase-swap-bash.mjs` 最小实现（路径 a）+ 单测（dispose/register 顺序、同名冲突、promotion 判定幂等、失败降级） | 单测绿 + 手工会话首轮/二轮目录观察 |
-| M3 | 组合 preset 装配 + 手工会话冒烟（首轮目录=bash+str_replace_editor；二轮 AGENTS.md 注入 + bash 带提权参数） | 冒烟通过 |
+| ~~M2~~ | ~~spike：`phase-swap-bash.mjs` 最小实现（路径 a）+ 单测（dispose/register 顺序、同名冲突、promotion 判定幂等、失败降级）~~ | **✅ 完成（2026-08-20）**：per-agent shadow 定案；7 单测 + 24 存量全绿；无 LLM 组合冒烟通过（下节记录） |
+| M3 | 组合 preset 装配 + 手工会话冒烟（首轮目录=bash+str_replace_editor；二轮 AGENTS.md 注入 + bash 带提权参数） | 冒烟通过（M2 已用 headless 组合 + assemble/pre-step 瀑布完成等价验证；真实 TUI 手工会话待用户跑） |
 | M4 | §5 实验 A/B/C/D 全部组别执行并记录 | 数据表 + 判定 |
 | M5 | 结果回写本文档；决策 merge 进 standard-bootstrap 还是独立 preset；README/索引更新；收尾 commit | merge 定稿 |
+
+### 6.1 M2 spike 记录（2026-08-20）
+
+**单测**（`node --test presets/liangshen-plus/phase-swap-bash.test.mjs`，7 项全绿，用部署包 rc.8 真实包）：
+
+| 用例 | 验证点 |
+|---|---|
+| 首轮 agent 看到 persistent bash（仅 command 参数） | 锚定对 schema |
+| tool/call 后 swap：agent view 含 sandbox_permissions/justification/run_in_background | S2 顺序正确性 |
+| swap 幂等：二次 tool/call 不重复注册 | promotion 判定幂等 |
+| per-agent 隔离：agent A swap 后 agent B 仍 persistent | S3 隔离 |
+| includeSubagents：父子独立 swap | S3 子代理 |
+| 失败降级：缺 sandboxPolicy → warn + 不 rethrow + persistent 保留 | S6 降级 |
+| 配置校验：未知 key/非布尔值 apply 时抛错 | 配置纪律 |
+
+**组合冒烟**（`node presets/liangshen-plus/smoke-boot.mjs`，headless profile 完整 bundle 组合 +
+agent-presets 挂载 liangshen-plus，无 LLM 只走 assemble/pre-step 瀑布）：
+
+```
+ROUND1 catalog:   {"tools":["bash","str_replace_editor"],"bashParams":["command"]}          ← 首轮锚定对 ✓
+ROUND1 pre-step:  []                                                                        ← 首轮零注入 ✓
+ROUND2 catalog:   27 工具全量目录                                                           ← promotion 后 complete ✓
+ROUND2 bashParams:["command","description","timeoutMs","workdir","run_in_background",
+                   "sandbox_permissions","justification"]                                   ← 二轮 bash 沙箱提权 ✓
+ROUND2 pre-step:  ["agent-instructions"]                                                    ← 二轮 AGENTS.md 注入恢复 ✓
+WARNINGS:         []                                                                        ← swap 无失败 ✓
+```
+
+**踩坑记录（写回 §3.2/§4）**：`inject=[]` 纪律下 `ctx.agents` 属性访问抛 "without inject"
+→ 用 `ctx.get('agents')`；对 agent.ctx 调 `dsh-tool-bash.apply()` 内部属性访问同样被拦 →
+`agent.ctx.inject([...])` 建立注入子 ctx。
+
+**部署位（S7 定案）**：插件 + preset + 冒烟脚本版本化在 repo `presets/liangshen-plus/`；
+`~/.dsh/.agent-presets/liangshen-plus/` 只放 agent.cordis.yml + preset.yml（agent.cordis.yml
+用绝对路径引用 repo 插件 + 部署包复用物）。取舍：复用物（tool-bootstrap/compaction-epoch）
+**走部署包绝对路径**（随 @deepseek-harness-tui/dsh-tui 升级流动，无第二份拷贝，一致性风险=零
+拷贝漂移）；代价是 repo 文件与 endless-tui profile 路径耦合——与 profile 现有绝对路径引用
+（standard-bootstrap 引用部署包 tool-bootstrap）一致，可接受。
 
 ---
 
 ## 7. 未决问题（open questions）
 
 1. issues #6/#11 的复现实验 **runner 与任务 prompt 原文**在哪（tracker 上的 issue 记录；本仓库无存档）——§5 需复用同一任务模板才能对齐口径。
-2. `ctx.tools` rc.8 是否暴露 **remove-by-name** 接口（3.2 路径 b 的可行性）。
-3. `persistent-shell` 组 terminal dispose 对**运行中后台进程**的语义（D5）。
+2. ~~`ctx.tools` rc.8 是否暴露 **remove-by-name** 接口~~ —— **M2 已答**：NamedEntries 无按名删除，只有 insert 的 undo；且 per-agent shadow 方案不需要 remove（§3.2）。
+3. ~~`persistent-shell` 组 terminal dispose 对**运行中后台进程**的语义（D5）~~ —— **M2 已答**：shadow 不 dispose PTY，后台任务不因 swap 被销毁；PTY 随 preset 卸载回收（§4 风险 3）。
 4. swap 后 `str_replace_editor`（本地裸 fs）**是否保留**在目录里——保留则二轮起同时有沙箱 fs 与本地编辑器（liangshen 现状即保留），需确认无歧义。
 5. 首轮 persona 差异（standard 版 vs liangshen 的 `complete: true`）是否会扰动锚定——由 §5 组 A 直接回答，但结果未知。
-6. 二轮起 `dsh-agent-instructions` 注入的**时间点**：promotion 事件发生在第一个 tool/call 的**结果返回后**还是调用瞬间——决定第二轮请求是否一定能带上注入（需确认事件序）。
+6. ~~二轮起 `dsh-agent-instructions` 注入的**时间点**~~ —— **M2 已答（组合冒烟）**：promotion 在 tool/call 的 `session/event`（调用瞬间）即生效，二轮 assembly/pre-step 一定带上注入（ROUND2 pre-step sources: `["agent-instructions"]`）。
+7. 真实 TUI 手工会话（`CC_TUI_PRESET=liangshen-plus dsh --profile endless-tui`）的二轮 schema/注入肉眼验证——M2 用 headless 组合等价验证，TUI 面留待 M3 手工会话。
 
 ---
 
 ## 8. 相关文件索引
 
-- 设计：`presets/liangshen-plus/agent.cordis.yml`（待建）、`presets/liangshen-plus/phase-swap-bash.mjs`（待建）
-- 复用：`presets/liangshen/tool-bootstrap.mjs`、`presets/liangshen/compaction-epoch.mjs`、`presets/liangshen/custom-bash.mjs`、`presets/liangshen/agent.cordis.yml`
-- 包依赖：`@deepseek-ai/dsh-tool-bash`（沙箱 bash）、`@deepseek-ai/dsh-tool-bash-persistent`（持久 bash）、`@deepseek-ai/dsh-tools`（注册/disposer）、`@deepseek-ai/dsh-agent-instructions`（注入）、`@deepseek-ai/dsh-sandbox`（`ESCALATION_TARGETS`）
-- 部署位：`~/.dsh/.agent-presets/liangshen-plus/` + `~/.dsh/profiles/endless-tui/cordis.patch.yml` 里 `preset` 指向或 CC_TUI_PRESET 切换
+- 设计：`presets/liangshen-plus/agent.cordis.yml`（repo 版本化 + 部署 `~/.dsh/.agent-presets/liangshen-plus/`）、`presets/liangshen-plus/phase-swap-bash.mjs`（repo 版本化）
+- 冒烟：`presets/liangshen-plus/smoke-driver.mjs`（无 LLM 两轮目录驱动）、`presets/liangshen-plus/smoke-boot.mjs`（headless 组合 + patches 启动）、`presets/liangshen-plus/phase-swap-bash.test.mjs`（7 单测）
+- 复用（部署包绝对路径，S7 定案）：`@deepseek-harness-tui/dsh-tui/presets/liangshen/tool-bootstrap.mjs`、`.../compaction-epoch.mjs`、`.../custom-bash.mjs`
+- 包依赖：`@deepseek-ai/dsh-tool-bash`（沙箱 bash，rc.8）、`@deepseek-ai/dsh-tool-bash-persistent`（持久 bash，rc.7）、`@deepseek-ai/dsh-tools`（scope layer 注册）、`@deepseek-ai/dsh-agent-instructions`（注入）、`@deepseek-ai/dsh-sandbox`（`ESCALATION_TARGETS`）
+- 部署位：`~/.dsh/.agent-presets/liangshen-plus/`（agent.cordis.yml 绝对路径引用 repo）+ `CC_TUI_PRESET=liangshen-plus dsh --profile endless-tui` 切换
