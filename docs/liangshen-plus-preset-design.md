@@ -292,7 +292,7 @@ WARNINGS:         []                                                            
 ## 8. 相关文件索引
 
 - 设计：`presets/liangshen-plus/agent.cordis.yml`（repo 版本化 + 部署 `~/.dsh/.agent-presets/liangshen-plus/`）、`presets/liangshen-plus/phase-swap-bash.mjs`（repo 版本化）
-- 冒烟：`presets/liangshen-plus/smoke-driver.mjs`（无 LLM 两轮目录驱动）、`presets/liangshen-plus/smoke-boot.mjs`（headless 组合 + patches 启动）、`presets/liangshen-plus/phase-swap-bash.test.mjs`（7 单测）
+- 冒烟：`presets/liangshen-plus/smoke-driver.mjs`（无 LLM 两轮目录驱动）、`presets/liangshen-plus/smoke-boot.mjs`（headless 组合 + patches 启动）、`presets/liangshen-plus/phase-swap-bash.test.mjs`（7 单测）、`docs/liangshen-plus-manual-smoke.md`（TUI 手工会话步骤）
 - 复用（部署包绝对路径，S7 定案）：`@deepseek-harness-tui/dsh-tui/presets/liangshen/tool-bootstrap.mjs`、`.../compaction-epoch.mjs`、`.../custom-bash.mjs`
 - 包依赖：`@deepseek-ai/dsh-tool-bash`（沙箱 bash，rc.8）、`@deepseek-ai/dsh-tool-bash-persistent`（持久 bash，rc.7）、`@deepseek-ai/dsh-tools`（scope layer 注册）、`@deepseek-ai/dsh-agent-instructions`（注入）、`@deepseek-ai/dsh-sandbox`（`ESCALATION_TARGETS`）
 - 部署位：`~/.dsh/.agent-presets/liangshen-plus/`（agent.cordis.yml 绝对路径引用 repo）+ `CC_TUI_PRESET=liangshen-plus dsh --profile endless-tui` 切换
