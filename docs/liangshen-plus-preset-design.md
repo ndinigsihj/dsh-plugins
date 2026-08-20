@@ -191,6 +191,7 @@ export function apply(ctx, config) {
 - **指标**：首行模式分类（`let me` / `We need` 类 / 直接 tool call）；锚定 = 该组跑次中「零 `let me` 首行」的比例。
 - **基线参照**：Minimal 对 5/5 锚定（81% 口径）；标准系 11/11 标准行为；带 skill-catalog 首步 0/9。
 - **每跑环境**：全新 session（避免 promotion memo 与 tool seed 串扰）、`maxTokens` = adapter default（256000）、同一模型（与复现实验同款 V4 系，当前部署 `deepseek-v4-flash`）、同一任务 prompt 模板。
+- **任务 prompt 模板**：issues #6/#11 复现实验的模板原文在 tracker 上（见 §7 未决问题 #1），本仓库无存档。M4 runner（`m4-driver.mjs`）内置默认模板（`DEFAULT_TASK`，可用 `M4_TASK` 覆盖），**A/B/C/D 四组同一模板**——组间比较有效，绝对值口径以 C 组基线校准。
 
 ### 5.2 实验组
 
@@ -225,6 +226,47 @@ export function apply(ctx, config) {
 | A 组锚定但二轮提权不可用 | 检查 swap 注册路径（3.2 路径 a/b），spike 层修复，不进 5/5 复测 |
 | B 组扰动显著 | skill-catalog 换 skill-search（liangshen 方案）、AGENTS.md 延迟到第二轮稳定后注入，数据回写 |
 
+### 5.6 实验结果（M4，2026-08-20）
+
+**环境**：headless profile 完整组合 + agent-presets 挂载（runner：`m4-runner.mjs` / `m4-driver.mjs`），
+每跑全新 session，模型 `opencode-go/deepseek-v4-flash`（agentDefaultModel 当前 selection），adapter
+default maxTokens，任务模板 = runner 内置默认（issues #6/#11 原文不可得，§7#1）。原始数据：
+`experiments/m4/results-2026-08-20T15-38-29-565Z.jsonl`（A/C/D 批次）、
+`results-2026-08-20T16-38-15-920Z.jsonl`（B 组补跑，超时修复后）。
+
+**首行分类**（含 `我来` 类前导修正，离线重算；锚定 = 零 `let me` 首行）：
+
+| 组 | n | 直接 tool call | we need 类 | let me | 锚定率 | 二轮注入（check3） | 二轮沙箱 bash（check4） |
+|---|---|---|---|---|---|---|---|
+| **A** liangshen+ | 9 | 4 | 3 | 2 | 78% | 9/9 | **9/9** |
+| **B** liangshen+ + 工作区 AGENTS.md | 9 | 9 | 0 | 0 | 100% | 9/9（marker 注入 9/9） | **9/9** |
+| **C** liangshen（基线） | 9 | 6 | 0 | 3 | 67% | 9/9 | 0/9（persistent，预期） |
+| **D** standard-bootstrap（基线） | 9 | 2 | 3 | 4 | 56% | 9/9 | 9/9 |
+
+**B 组二轮起 5 轮工具序列**（9/9 跑）：R2 全为 bash；R3-R5 为 glob/grep/str_replace_editor/
+read/ask_user_question 的常规任务序列；R6 回到 bash。未观察到注入导致的异常循环或工具乱序。
+
+**判定（按 §5.4）**：
+
+- **A 组：通过。** 锚定率 78%（let me 2/9）与 C 组基线 67%（let me 3/9）差 1 跑（≤1 跑阈值）；二轮
+  检查 3、4 全过（9/9）。三合一组合（standard persona + 二轮注入 + 二轮提权）没有破坏首轮锚定。
+- **B 组：通过（探索性）。** 9/9 锚定 + 9/9 marker 注入 + 工具序列正常 → 二轮注入未显著扰动轨迹，
+  无需走 5.5 降级路径。
+- **C 组（runner 校验）**：liangshen 原样 67% 锚定（3/9 `我来` 前导）——绝对量级低于原复现的 5/5，
+  归因于任务模板不同（原文不可得）；A≈C 梯度成立，runner 有效性以 A/C 对比为准。
+- **D 组**：7/9 散文前导（we need/let me），仅 2/9 直接 tool call——标准行为基线方向成立但未复现
+  "11/11 全标准"（本模板下直接执行的模型也会直接调工具），与本实验口径（同模板 A/B/C/D 对比）一致。
+
+**备注**：
+
+1. 观测方法定案：注入检查以会话 `user/message` 事件为准（真实请求的 pre-step 决策消息会落进
+   session，含 `source.kind=agent-instructions`）；**手动重跑 pre-step 瀑布不可靠**——真实回合后
+   基线已可见，compose 去重返回 undefined（探针实证，2026-08-20）。
+2. B 组首跑 4/9 超时（每跑 240s 上限，6 轮 LLM 不够），补跑用 `M4_TIMEOUT_MS=480000` 9/9 完成。
+3. 首轮锚定对（persistent bash + str_replace_editor）下模型首行几乎全为直接 tool call（A/B/C 共
+   27 跑中 19 跑零文字直接调工具）；出现的前导均为单句承诺（"I'll complete..." / "我来…"），
+   未见原 0/9 场景的目录式规划长文。
+
 ---
 
 ## 6. 里程碑与任务拆解
@@ -234,7 +276,7 @@ export function apply(ctx, config) {
 | M1 | 本文档定稿（含用户拍板 §3.4 决策） | 审阅通过 |
 | ~~M2~~ | ~~spike：`phase-swap-bash.mjs` 最小实现（路径 a）+ 单测（dispose/register 顺序、同名冲突、promotion 判定幂等、失败降级）~~ | **✅ 完成（2026-08-20）**：per-agent shadow 定案；7 单测 + 24 存量全绿；无 LLM 组合冒烟通过（下节记录） |
 | M3 | 组合 preset 装配 + 手工会话冒烟（首轮目录=bash+str_replace_editor；二轮 AGENTS.md 注入 + bash 带提权参数） | 冒烟通过（M2 已用 headless 组合 + assemble/pre-step 瀑布完成等价验证；真实 TUI 手工会话待用户跑） |
-| M4 | §5 实验 A/B/C/D 全部组别执行并记录 | 数据表 + 判定 |
+| M4 | §5 实验 A/B/C/D 全部组别执行并记录 | **✅ 完成（2026-08-20）**：数据表 + 判定见 §5.6；A 组通过，B 组无扰动，无需降级 |
 | M5 | 结果回写本文档；决策 merge 进 standard-bootstrap 还是独立 preset；README/索引更新；收尾 commit | merge 定稿 |
 
 ### 6.1 M2 spike 记录（2026-08-20）
@@ -312,7 +354,7 @@ WARNINGS:         []                                                            
 
 ## 7. 未决问题（open questions）
 
-1. issues #6/#11 的复现实验 **runner 与任务 prompt 原文**在哪（tracker 上的 issue 记录；本仓库无存档）——§5 需复用同一任务模板才能对齐口径。
+1. issues #6/#11 的复现实验 **runner 与任务 prompt 原文**在哪（tracker 上的 issue 记录；本仓库无存档）——M4 已用 runner 内置模板（`m4-driver.mjs` `DEFAULT_TASK`）执行，组间比较有效（§5.6 备注）；若拿到原文模板可重跑校准绝对值。
 2. ~~`ctx.tools` rc.8 是否暴露 **remove-by-name** 接口~~ —— **M2 已答**：NamedEntries 无按名删除，只有 insert 的 undo；且 per-agent shadow 方案不需要 remove（§3.2）。
 3. ~~`persistent-shell` 组 terminal dispose 对**运行中后台进程**的语义（D5）~~ —— **M2 已答**：shadow 不 dispose PTY，后台任务不因 swap 被销毁；PTY 随 preset 卸载回收（§4 风险 3）。
 4. swap 后 `str_replace_editor`（本地裸 fs）**是否保留**在目录里——保留则二轮起同时有沙箱 fs 与本地编辑器（liangshen 现状即保留），需确认无歧义。
@@ -326,6 +368,7 @@ WARNINGS:         []                                                            
 
 - 设计：`presets/liangshen-plus/agent.cordis.yml`（repo 版本化 + 部署 `~/.dsh/.agent-presets/liangshen-plus/`）、`presets/liangshen-plus/phase-swap-bash.mjs`（repo 版本化）
 - 冒烟：`presets/liangshen-plus/smoke-driver.mjs`（无 LLM 两轮目录驱动）、`presets/liangshen-plus/smoke-boot.mjs`（headless 组合 + patches 启动）、`presets/liangshen-plus/phase-swap-bash.test.mjs`（7 单测）、`docs/liangshen-plus-manual-smoke.md`（TUI 手工会话步骤）
+- M4 实验：`presets/liangshen-plus/m4-runner.mjs`（headless 组合 boot + patches，env 配置见 driver）、`presets/liangshen-plus/m4-driver.mjs`（A/B/C/D 逐跑驱动 + JSONL 记录 + 汇总）、`experiments/m4/results-*.jsonl`（原始数据）
 - 复用（部署包绝对路径，S7 定案）：`@deepseek-harness-tui/dsh-tui/presets/liangshen/tool-bootstrap.mjs`、`.../compaction-epoch.mjs`、`.../custom-bash.mjs`
 - 包依赖：`@deepseek-ai/dsh-tool-bash`（沙箱 bash，rc.8）、`@deepseek-ai/dsh-tool-bash-persistent`（持久 bash，rc.7）、`@deepseek-ai/dsh-tools`（scope layer 注册）、`@deepseek-ai/dsh-agent-instructions`（注入）、`@deepseek-ai/dsh-sandbox`（`ESCALATION_TARGETS`）
 - 部署位：`~/.dsh/.agent-presets/liangshen-plus/`（agent.cordis.yml 绝对路径引用 repo）+ `CC_TUI_PRESET=liangshen-plus dsh --profile endless-tui` 切换
