@@ -268,6 +268,31 @@ WARNINGS:         []                                                            
 → 用 `ctx.get('agents')`；对 agent.ctx 调 `dsh-tool-bash.apply()` 内部属性访问同样被拦 →
 `agent.ctx.inject([...])` 建立注入子 ctx。
 
+**TUI 手工会话验证（2026-08-20，三次真实会话）**：probe 插件（临时挂载）记录每次
+`system-prompt/assemble` 的 status/nTools + 会话 `request/header` 事件，确认：
+
+| 观测点 | turn 1 | turn 2 首个 tool/call 后 | turn 3 |
+|---|---|---|---|
+| probe: nTools | 2（bash, str_replace_editor） | 31 | 31 |
+| probe: status | promoted=false | promoted=true | promoted=true |
+| request/header: tools | 2 | **31**（reason: change） | 31（header 未变沿用） |
+| request/header: bash 参数 | [command] | 含 sandbox_permissions/justification | 同左 |
+
+**结论**：三合一机制在真实 TUI 会话验证通过；目录放行与 bash swap 均按设计发生。
+两个实测经验（写入本节，避免未来误判）：
+
+1. **「你有哪些工具」类提问的模型自我报告不可靠**：模型会把系统提示里工具说明
+   sections（prompt 文本）提到的工具名混入回答，也会被前几轮对话印象锚定（turn 3 曾
+   误报"只有 2 个工具"，而 request/header 铁证当时 tools=31）。**验证目录必须以
+   session 的 `request/header` 事件或实际工具调用（能否调用新工具）为准，不能信模型
+   的自述。**
+2. **首个 tool/call 的一次性参数报错是 swap 时序的固有行为**：turn 2 请求 assembly 时
+   未 promote → 模型按 persistent schema（仅 command）调用 → tool/call 事件瞬间
+   promotion+swap 生效 → 同一次调用的 execute 用沙箱 schema 校验 → 报
+   `missing required property "description"` → 模型自动重试（补 description）成功。
+   headless 与 TUI 一致复现，无功能损失；可选优化（延迟 swap 到 execute 后）复杂度
+   不值当，保持现状并记录。
+
 **部署位（S7 定案）**：插件 + preset + 冒烟脚本版本化在 repo `presets/liangshen-plus/`；
 `~/.dsh/.agent-presets/liangshen-plus/` 只放 agent.cordis.yml + preset.yml（agent.cordis.yml
 用绝对路径引用 repo 插件 + 部署包复用物）。取舍：复用物（tool-bootstrap/compaction-epoch）
