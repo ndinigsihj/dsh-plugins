@@ -78,10 +78,17 @@ CC_TUI_PRESET=liangshen-plus dsh --profile endless-tui 2>/tmp/liangshen-plus-tui
 
 | # | 检查点 | 操作 | 通过标准 |
 |---|---|---|---|
-| ① | 首轮锚定对 | 第 1 步 | 工具仅 `{bash, str_replace_editor}` |
+| ① | 首轮锚定对 | 第 1 步 | 工具仅 `{bash, str_replace_editor}`；且 system 文本无 `Use the X tool` 指引（tool:* 已净化，见 §6.1 经验 3） |
 | ② | 首轮零注入 | 第 1 步 | 无 AGENTS.md/CLAUDE.md 摘要 |
 | ③ | 二轮完整目录 | 第 3 步 | 20+ 工具；bash 带提权参数描述 |
 | ④ | 二轮注入 + 提权 | 第 4 步 | 能复述 AGENTS.md；读 ~/.dsh 触发审批弹窗 |
+
+> **注意：模型的自我报告不可靠**（会把提示文本/前轮印象混入回答，2026-08-20 三次会话实证）。
+> 判定以**客观证据**为准：
+> - **首轮/二轮实际 tools**：查 session 日志 `request/header` 事件的 `tools` 数量与 bash 参数
+>   （`~/.dsh/sessions/--Users-vito-data-dev-dsh-tui--/<session-id>/session.jsonl.zstd`，zstd 解压）
+> - **二轮新工具可用**：让模型实际调用（如 glob），能调用成功即证明 schema 存在
+> - 模型口头回答仅作参考，不作判定依据
 
 全部通过 → M3 冒烟通过，可进入 M4（§5 实验 A/B/C/D）。
 
