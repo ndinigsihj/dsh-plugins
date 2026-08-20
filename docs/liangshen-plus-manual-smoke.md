@@ -13,7 +13,7 @@
 |---|---|---|
 | preset 已部署 | `ls ~/.dsh/.agent-presets/liangshen-plus/` | `agent.cordis.yml` + `preset.yml` 存在 |
 | preset 可发现 | `dsh --profile endless-tui --dump-config`（或 M2 冒烟） | 组合正常，无报错 |
-| 单测绿（可选） | `cd ~/dev/dsh-tui && node --test presets/liangshen-plus/phase-swap-bash.test.mjs` | 7/7 通过 |
+| 单测绿（可选） | `cd ~/dev/dsh-tui && node --test presets/liangshen-plus/phase-swap-bash.test.mjs` | 9/9 通过 |
 
 ## 1. 启动（stderr 重定向，避免 TUI 吞错误）
 
@@ -22,8 +22,10 @@ cd /Users/vito/data/dev/dsh-tui
 CC_TUI_PRESET=liangshen-plus dsh --profile endless-tui 2>/tmp/liangshen-plus-tui.err
 ```
 
-- 若之前用别的 preset 开过会话：先 `/new` 开全新会话（promotion 状态按 session 记，
-  旧会话可能已 promoted）。
+- **必须先 `/new` 开全新会话**（2026-08-20 实证）：TUI 会恢复最近会话
+  （`~/.dsh-tui/resume.txt`），而 **preset 在会话创建时挂载、promotion 按会话持久化**——
+  恢复的旧会话保留旧 preset 与已 promote 状态（全量目录 + 注入 + 沙箱 bash），
+  `CC_TUI_PRESET` 只决定**新创建**的会话。冷启动想免 `/new`：删 `~/.dsh-tui/resume.txt`。
 - 若想确认当前 preset：TUI 标题栏/状态区应显示预设名，或 `/preset` 查看。
 - 出错时看 `/tmp/liangshen-plus-tui.err`（本仓库调试偏好：stderr 落文件再读）。
 
