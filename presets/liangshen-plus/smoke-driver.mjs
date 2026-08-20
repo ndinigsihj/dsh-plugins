@@ -25,6 +25,7 @@ function summary(assembly) {
       (assembly.tools ?? []).find((t) => t.name === "bash")?.parameters?.properties ?? {},
     ),
     contexts: (assembly.contexts ?? []).map((c) => c.name),
+    sections: (assembly.sections ?? []).map((s) => s.name),
   };
 }
 

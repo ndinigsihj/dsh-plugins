@@ -292,6 +292,14 @@ WARNINGS:         []                                                            
    `missing required property "description"` → 模型自动重试（补 description）成功。
    headless 与 TUI 一致复现，无功能损失；可选优化（延迟 swap 到 execute 后）复杂度
    不值当，保持现状并记录。
+3. **tool:* 指引 sections 的文本泄漏（已修复）**：tool-bootstrap 只裁剪
+   `assembled.tools`（函数清单），但各工具插件注册的 `tool:*` prompt sections
+   （"Use the read tool..."等）仍渲染进 system 文本——TUI 实证首轮问"有哪些工具"时
+   模型据此列出 7-8 个工具（而 request/header 铁证 tools 数组只有 2 个）。修复：
+   phase-swap-bash 增加与 tool-bootstrap 同源的 assemble 变换，**未 promote 时过滤
+   `tool:*` sections、promote 后放行**（单测 2 项 + 无 LLM 冒烟验证：ROUND1 sections
+   无 tool:*，ROUND2 完整放行）。liangshen 原版同样有此文本泄漏（同机制），可选用
+   相同插件补丁。
 
 **部署位（S7 定案）**：插件 + preset + 冒烟脚本版本化在 repo `presets/liangshen-plus/`；
 `~/.dsh/.agent-presets/liangshen-plus/` 只放 agent.cordis.yml + preset.yml（agent.cordis.yml

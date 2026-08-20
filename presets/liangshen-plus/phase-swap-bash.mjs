@@ -63,6 +63,19 @@ export function apply(ctx, config) {
   const promotion = createEpochPromotion(['tool/call'], { includeSubagents: true })
   ctx.on('session/event', (session, event) => promotion.observe(session, event))
 
+  // 首轮净化：tool-bootstrap 只裁剪 assembled.tools（函数清单），但各工具插件注册的
+  // `tool:*` 指引 sections（"Use the read tool..."等）仍渲染进 system 文本，模型会据此
+  // 误以为拥有全部工具（TUI 手工会话实证：首轮问"有哪些工具"时模型列出 7-8 个，而
+  // request/header 铁证 tools 数组只有 2 个）。与 tool-bootstrap 同源 promotion 状态：
+  // 未 promote 时过滤 tool:* sections，promote 后放行。
+  ctx.on('system-prompt/assemble', async (_assembly, context, next) => {
+    const assembled = await next()
+    if (promotion.status(context.agent).promoted) return assembled
+    const sections = assembled.sections ?? []
+    const kept = sections.filter((section) => !(section.name ?? '').startsWith('tool:'))
+    return kept.length === sections.length ? assembled : { ...assembled, sections: kept }
+  })
+
   /** Per-session swap memo: each promoted session swaps exactly once. */
   const swapped = new Set()
   let warned = false

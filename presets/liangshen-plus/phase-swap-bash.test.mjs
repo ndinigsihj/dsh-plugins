@@ -57,9 +57,11 @@ function boot(sandboxPolicyMode = "workspace-write", withSandboxPolicy = true) {
   // 捕获插件注册的 session/event 监听器（真实 harness 用 invokeContainedSessionObservers
   // 以 (session, event) 直接调用，不经 cordis 的 ctx.emit——后者会把事件名当第一个参数）。
   const sessionListeners = [];
+  const assembleListeners = [];
   const origOn = root.on.bind(root);
   root.on = (name, listener) => {
     if (name === "session/event") sessionListeners.push(listener);
+    if (name === "system-prompt/assemble") assembleListeners.push(listener);
     return origOn(name, listener);
   };
 
@@ -74,7 +76,7 @@ function boot(sandboxPolicyMode = "workspace-write", withSandboxPolicy = true) {
   // 挂载插件
   plugin.apply(root, {});
 
-  return { root, tools, warnings, agentStore, sessionListeners };
+  return { root, tools, warnings, agentStore, sessionListeners, assembleListeners };
 }
 
 /** 造一个 agent：scoped ctx + session + 注册进 store。 */
@@ -188,4 +190,56 @@ test("配置校验：未知 key / 非布尔 enableRunInBackground 在 apply 时�
   const bootState = boot();
   assert.throws(() => plugin.apply(bootState.root, { bogus: 1 }), /unknown config key/);
   assert.throws(() => plugin.apply(bootState.root, { enableRunInBackground: "yes" }), /must be a boolean/);
+});
+
+/* ---------------- 首轮净化：tool:* 指引 sections 过滤 ---------------- */
+
+function assembledWithSections() {
+  return {
+    tools: [{ name: "bash" }],
+    sections: [
+      { name: "tool:read", text: "Use the read tool..." },
+      { name: "tool:web_search", text: "Use the web_search tool..." },
+      { name: "tool:goal", text: "Use goal tools..." },
+      { name: "dsh-tui:status", text: "状态栏提示..." },
+      { name: "persona", text: "You are a coding agent..." },
+    ],
+  };
+}
+
+async function runAssemble(bootState, agent) {
+  const chain = [...bootState.assembleListeners];
+  const next = async () => {
+    const listener = chain.shift();
+    return listener ? listener({}, { agent }, next) : assembledWithSections();
+  };
+  return next();
+}
+
+test("首轮净化：未 promote 时过滤 tool:* 指引 sections，promote 后放行", async () => {
+  const bootState = boot();
+  const agent = makeAgent(bootState, "sess-1");
+
+  // 未 promote：tool:* 被过滤，非工具 sections 保留
+  const before = await runAssemble(bootState, agent);
+  const names = before.sections.map((s) => s.name);
+  assert.ok(!names.some((n) => n.startsWith("tool:")), `未 promote 应过滤 tool:*，实际: ${names.join(",")}`);
+  assert.ok(names.includes("dsh-tui:status"), "非 tool:* sections 应保留");
+  assert.ok(names.includes("persona"), "persona section 应保留");
+
+  // promote 后：tool:* 放行
+  await fireToolCall(bootState, agent.session);
+  const after = await runAssemble(bootState, agent);
+  const namesAfter = after.sections.map((s) => s.name);
+  assert.ok(namesAfter.includes("tool:read"), "promote 后应放行 tool:* sections");
+  assert.ok(namesAfter.includes("tool:web_search"));
+});
+
+test("首轮净化：无 sections 的 assembly 原样返回", async () => {
+  const bootState = boot();
+  const agent = makeAgent(bootState, "sess-1");
+  const chain = [...bootState.assembleListeners];
+  const next = async () => ({ tools: [{ name: "bash" }], sections: [] });
+  const out = await chain[0]({}, { agent }, next);
+  assert.deepEqual(out.sections, []);
 });
