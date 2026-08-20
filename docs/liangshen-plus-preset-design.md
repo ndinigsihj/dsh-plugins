@@ -130,6 +130,8 @@ export function apply(ctx, config) {
 
 ### 3.4 设计决策点（落定前需用户拍板）
 
+> **决策状态（2026-08-20 用户确认）**：D1 不回滚 ✓ · D2 放回 ✓ · D3 开启 ✓ · D4 第二优先级(w32 二期) ✓ · **D5 待 M2 spike 验证**。
+
 | # | 决策 | 默认建议 | 理由 |
 |---|---|---|---|
 | D1 | compaction 后 fallback 到 bootstrap 对时，bash 是否**回滚**为 persistent？ | **不回滚**（保持沙箱 bash） | standard-bootstrap 语义如此；回滚需二次 swap，增加复杂度与风险 |
