@@ -277,7 +277,7 @@ read/ask_user_question 的常规任务序列；R6 回到 bash。未观察到注�
 | ~~M2~~ | ~~spike：`phase-swap-bash.mjs` 最小实现（路径 a）+ 单测（dispose/register 顺序、同名冲突、promotion 判定幂等、失败降级）~~ | **✅ 完成（2026-08-20）**：per-agent shadow 定案；7 单测 + 24 存量全绿；无 LLM 组合冒烟通过（下节记录） |
 | M3 | 组合 preset 装配 + 手工会话冒烟（首轮目录=bash+str_replace_editor；二轮 AGENTS.md 注入 + bash 带提权参数） | 冒烟通过（M2 已用 headless 组合 + assemble/pre-step 瀑布完成等价验证；真实 TUI 手工会话待用户跑） |
 | M4 | §5 实验 A/B/C/D 全部组别执行并记录 | **✅ 完成（2026-08-20）**：数据表 + 判定见 §5.6；A 组通过，B 组无扰动，无需降级 |
-| M5 | 结果回写本文档；决策 merge 进 standard-bootstrap 还是独立 preset；README/索引更新；收尾 commit | merge 定稿 |
+| M5 | 结果回写本文档；决策 merge 进 standard-bootstrap 还是独立 preset；README/索引更新；收尾 commit | **✅ 完成（2026-08-20）**：决策=**保持独立 preset**（§6.2）；README 加 liangshen-plus 小节；收尾 commit |
 
 ### 6.1 M2 spike 记录（2026-08-20）
 
@@ -349,6 +349,17 @@ WARNINGS:         []                                                            
 **走部署包绝对路径**（随 @deepseek-harness-tui/dsh-tui 升级流动，无第二份拷贝，一致性风险=零
 拷贝漂移）；代价是 repo 文件与 endless-tui profile 路径耦合——与 profile 现有绝对路径引用
 （standard-bootstrap 引用部署包 tool-bootstrap）一致，可接受。
+
+### 6.2 M5 merge 决策（2026-08-20，用户拍板）
+
+**liangshen-plus 保持独立 preset，不 merge 进 standard-bootstrap**。理由：
+
+1. **零污染**：现有用户（默认 liangshen / standard-bootstrap）行为不变；merge 会让
+   standard-bootstrap 语义突变（首轮 bash 从沙箱变 persistent、多一个 phase-swap-bash
+   插件），风险不可预期。
+2. **复用物已解耦**：agent.cordis.yml 的复用行（tool-bootstrap/compaction-epoch）走部署包
+   绝对路径，独立 preset 的维护成本 = 258 行 yml + 一个插件文件，无重复拷贝。
+3. M4 数据没有出现需要 merge 的理由（A 组通过、B 组无扰动、无降级路径触发）。
 
 ---
 

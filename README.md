@@ -92,6 +92,35 @@ Thin Cordis plugins (no dsh-tui modification) mounted into a profile's
 | `plugins/rewind-dsh.ts` | `/rewind [<seq>]` — **standalone rewind**: fork + file-restore + relaunch, overriding the built-in rewind (see `docs/rewind-file-restore-plugin.md`) |
 | `approval-tui.ts` | Route `approval/request` to the TUI question panel |
 
+## Agent presets (liangshen-plus)
+
+`presets/liangshen-plus/` is a combination agent preset that merges three
+behaviors into one composition (design: `docs/liangshen-plus-preset-design.md`):
+
+1. **Round-1 anchoring** — the first request only exposes the Minimal tool pair
+   (`persistent bash` + `str_replace_editor`), free of injected workspace/skill
+   context, so the session anchors on direct tool use (verified 5/5-style
+   behavior; M4 replication §5.6).
+2. **Round-2+ AGENTS.md injection** — `dsh-agent-instructions` is restored after
+   the first durable tool call, so workspace/`~/.dsh/AGENTS.md` instructions
+   reach the model from round 2 on.
+3. **Round-2+ bash privilege swap** — `phase-swap-bash.mjs` shadows the shared
+   persistent bash with the sandboxed `dsh-tool-bash` (per-agent scope layer),
+   re-adding `sandbox_permissions`/`justification` escalation after anchoring.
+
+| File | Purpose |
+|---|---|
+| `agent.cordis.yml` | The preset composition (source of truth; deployed to `~/.dsh/.agent-presets/liangshen-plus/`) |
+| `phase-swap-bash.mjs` | The swap plugin (per-agent shadow, rc.8 verified) |
+| `phase-swap-bash.test.mjs` | 9 unit tests (node --test) |
+| `smoke-boot.mjs` / `smoke-driver.mjs` | No-LLM composition smoke (round-1 catalog, round-2 swap+injection) |
+| `smoke-live.mjs` / `smoke-live-driver.mjs` | Real-LLM 3-round live smoke |
+| `m4-runner.mjs` / `m4-driver.mjs` | M4 anchoring replication runner (A/B/C/D, results in `experiments/m4/`) |
+
+Use: `CC_TUI_PRESET=liangshen-plus dsh --profile endless-tui` then `/new`
+(preset mounts at session creation; resumed sessions keep their old preset).
+Manual smoke checklist: `docs/liangshen-plus-manual-smoke.md`.
+
 ## Tested
 
 Boot, fullscreen takeover, prompt submit, streaming assistant rendering, reasoning (dim), injected-context dimming, error cards, status line, `/help` `/clear` `/exit`, clean exit (code 0). Approval dialogs, question panels, and tool cards are wired to the documented service APIs but need a tool-capable model route to exercise end to end.
