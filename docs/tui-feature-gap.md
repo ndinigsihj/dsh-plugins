@@ -78,7 +78,8 @@
 
 | 阶段 | 内容 | 验收 |
 |---|---|---|
-| M0 圈清单 | 在 §4 上勾选本期范围（"常用"边界由使用者拍板） | 本文档标注勾选结果 |
+| M0 圈清单 | 已定（2026-08-22）：本期范围 = /preset /new /resume 的会话生命周期，见 M1a | 本文档标注勾选结果 |
+| M1a ✅ 会话生命周期 | 已落地（2026-08-22）：`lib/presets.ts` 结构化接入 `agentPresets`（零新依赖）；语义对齐官方——blank 判定走 recompose + `agent-preset/selected` 日志事实，非 blank 仅存默认；prefs 与官方共用 `~/.dsh-tui/agent-preset.json`；boot/new 取值链 CC_TUI_PRESET > prefs > roster default，resume 以会话日志记录优先；/new 为 in-process 建 agent + 全量重绑定，/resume 保持 execve 重启（跨 cwd 持久化正确性） | tsc 通过；presets 纯函数冒烟通过 |
 | S1 补全 spike（半天） | Editor 接 CombinedAutocompleteProvider：命令源 = services.commands 注册表，文件源 = cwd | 输入 `/` 出命令菜单、`@` 出文件列表、Tab/Enter 正确回填 |
 | M1 白送档 | `/new` `/compact` `/cost` `/tokens` + 思考折叠；并入 rename/rewind 插件 | 各命令在真实会话可用；compact 转发行为若不通则改走 sessions 服务并记录 |
 | M2 小活档 | 会话浏览器预览、`/export`、多选问卷、状态行增强（TPS/token） | 导出 markdown 可读；问卷 Space 多选提交正确 |
