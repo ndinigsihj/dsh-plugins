@@ -1,20 +1,19 @@
-# `liangshen-plus` 组合 preset：首轮锚定 + 二轮 AGENTS.md 注入 + 二轮 bash 提权。
+# `liangshen-bash` 组合 preset：liangshen 全量基底 + 二轮 bash 提权 + 二轮 AGENTS.md 注入。
 #
-# 以部署包 @deepseek-harness-tui/dsh-tui 内置 liangshen preset 为基底做四处改动
-# （设计文档 docs/liangshen-plus-preset-design.md §3.1）：
-#   1. tool-bootstrap 保持 liangshen 原样（首轮 Minimal 双工具、promoteOn: tool-call、
-#      includeSubagents、抑制首轮注入），并且仍是 FIRST 行。
-#   2. instruction-hint 替换为 dsh-agent-instructions：二轮起 AGENTS.md/CLAUDE.md
-#      自动进上下文（standard 语义）。
-#   3. 新增 phase-swap-bash 行：首轮 tool/call（promotion）后把该 agent 的 bash 从
+# 以部署包 @deepseek-harness-tui/dsh-tui 内置 liangshen preset 为基底做 6 处改动
+# （设计文档 docs/liangshen-bash-preset-design.md §1）：
+#   1-4. 本地复用物路径改部署包绝对路径（tool-bootstrap / instruction-hint /
+#        custom-bash / skill-search，S7 部署位决策，零语义变化）。
+#   5. 新增 phase-swap-bash 行：首轮 tool/call（promotion）后把该 agent 的 bash 从
 #      persistent 换成沙箱 dsh-tool-bash（sandbox_permissions 提权）。
-#   4. persona 用 standard 版（不带 liangshen 的 complete/includeRuntimeContext:false），
-#      保证二轮上下文完整。
+#   6. 新增 agent-instructions 行：二轮起 AGENTS.md/CLAUDE.md 自动进上下文
+#      （部署栈 host 层本就注册同名源，此行让意图显式、与 liangshen-plus 对齐）。
+# persona 保持 liangshen 的 Minimal 版（complete:true + includeRuntimeContext:false），
+# 其余行与 liangshen 逐字一致。
 #
-# S7 部署位决策：工具/注入逻辑的复用物（tool-bootstrap、compaction-epoch）走部署包
-# 绝对路径（对齐 standard-bootstrap，版本随 @deepseek-harness-tui/dsh-tui 升级流动）；
-# 新增 phase-swap-bash 插件放本仓库 presets/liangshen-plus/（版本化），preset 用
-# 绝对路径引用。取舍与升级风险见设计文档 §3.2/S7 回写。
+# 已知取舍：includeRuntimeContext:false 剥掉 runtime context 快照（cwd/文件策略/审批
+# 策略），模型知道 bash schema 有 sandbox_permissions 但看不到策略状态——liangshen
+# 语义的固有属性，见设计文档 §2。
 
 # ── bootstrap (must stay FIRST) ─────────────────────────────────────────────
 # 与 liangshen 完全一致：首轮只对模型暴露 Minimal 锚定对（persistent bash +
@@ -30,21 +29,25 @@
 
 # ── phase-swap-bash ─────────────────────────────────────────────────────────
 # 首轮 tool/call 后（promotion）把该 agent 的 bash 从 persistent 换成沙箱
-# dsh-tool-bash（rc.8）。用 per-agent shadow 语义：对该 agent 的 ctx 调
-# dsh-tool-bash.apply()，注册进该 agent 的 scope layer，shadow 掉全局 persistent
-# bash，其他 session/子代理不受影响；swap 失败 warn once + 保持 persistent bash。
+# dsh-tool-bash。per-agent shadow 语义：对该 agent 的 ctx 调 dsh-tool-bash.apply()，
+# 注册进该 agent 的 scope layer，shadow 掉全局 persistent bash，其他 session/子代理
+# 不受影响；swap 失败 warn once + 保持 persistent bash。插件单一来源：repo
+# presets/liangshen-plus/phase-swap-bash.mjs（liangshen-plus 与本 preset 共用）。
 - id: phase-swap-bash
   name: '/Users/vito/data/dev/dsh-plugins/presets/liangshen-plus/phase-swap-bash.mjs'
   config:
     enableRunInBackground: true
 
 # ── identity ────────────────────────────────────────────────────────────────
-# Standard 版 persona：二轮上下文完整（cwd、身份等）进 system prompt。
+# Minimal persona（照抄 liangshen，byte-identical to Minimal preset）：`complete`
+# 防止 Harness identity 与 per-tool 指引改写 system prompt；includeRuntimeContext:false
+# 让任务与仓库规则只走 user message 与显式文件读取（固有取舍见文件头）。
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
-    text: >-
-      You are a coding agent powered by the {{model}} model. Your working directory is {{cwd}}.
+    text: You are a helpful software engineer assistant.
+    complete: true
+    includeRuntimeContext: false
 
 # 二轮起自动注入工作区 AGENTS.md/CLAUDE.md + ~/.dsh/AGENTS.md（standard 语义）。
 # 首轮被 tool-bootstrap 剥掉，promotion 后自动恢复。
@@ -52,6 +55,15 @@
   name: '@deepseek-ai/dsh-agent-instructions'
   config:
     maxBytes: 65536
+
+# liangshen 的 instruction-hint（保留）：promotion 后每会话注入一次短提示——
+# "这些指令文件存在；行动前先读它们"——模型按需自行用 fs 工具读取。
+# 与上方 agent-instructions 的 digest 并存（C 组实测双源无冲突；hint 略冗余但无害）。
+- id: instruction-hint
+  name: '/Users/vito/.dsh/profiles/endless-tui/node_modules/@deepseek-harness-tui/dsh-tui/presets/liangshen/instruction-hint.mjs'
+  config:
+    promoteOn: tool-call
+    includeSubagents: true
 
 # ── shell ───────────────────────────────────────────────────────────────────
 - id: tool-bash
@@ -131,9 +143,14 @@
   name: '@deepseek-ai/dsh-tool-jobs'
 
 # ── skills ──────────────────────────────────────────────────────────────────
-# D2：二轮起放回完整 skill-catalog（挂 tool-skill），贴 standard「二轮完整面」语义。
+# liangshen 的按需技能工具（保留）：skill_search / skill_load，替代首轮全量
+# skill-catalog 注入对轨迹的扰动（issue #6）；skill-catalog 注入 promotion 后
+# 仍由 host 层照常恢复。
 - id: skill-filesystem
   name: '@deepseek-ai/dsh-skill-filesystem'
+
+- id: skill-search
+  name: '/Users/vito/.dsh/profiles/endless-tui/node_modules/@deepseek-harness-tui/dsh-tui/presets/liangshen/skill-search.mjs'
 
 # ── goals ───────────────────────────────────────────────────────────────────
 - id: tool-goal

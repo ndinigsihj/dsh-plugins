@@ -92,7 +92,7 @@ Thin Cordis plugins (no dsh-tui modification) mounted into a profile's
 | `plugins/rewind-dsh.ts` | `/rewind [<seq>]` — **standalone rewind**: fork + file-restore + relaunch, overriding the built-in rewind (see `docs/rewind-file-restore-plugin.md`) |
 | `approval-tui.ts` | Route `approval/request` to the TUI question panel |
 
-## Agent presets (liangshen-plus)
+## Agent presets (liangshen-plus / liangshen-bash)
 
 `presets/liangshen-plus/` is a combination agent preset that merges three
 behaviors into one composition (design: `docs/liangshen-plus-preset-design.md`):
@@ -115,11 +115,35 @@ behaviors into one composition (design: `docs/liangshen-plus-preset-design.md`):
 | `phase-swap-bash.test.mjs` | 9 unit tests (node --test) |
 | `smoke-boot.mjs` / `smoke-driver.mjs` | No-LLM composition smoke (round-1 catalog, round-2 swap+injection) |
 | `smoke-live.mjs` / `smoke-live-driver.mjs` | Real-LLM 3-round live smoke |
-| `m4-runner.mjs` / `m4-driver.mjs` | M4 anchoring replication runner (A/B/C/D, results in `experiments/m4/`) |
+| `m4-runner.mjs` / `m4-driver.mjs` | M4 anchoring replication runner (A/B/C/D/E, results in `experiments/m4/`) |
 
 Use: `CC_TUI_PRESET=liangshen-plus dsh --profile endless-tui` then `/new`
 (preset mounts at session creation; resumed sessions keep their old preset).
 Manual smoke checklist: `docs/liangshen-plus-manual-smoke.md`.
+
+### liangshen-bash
+
+`presets/liangshen-bash/` keeps the liangshen preset **verbatim** (Minimal
+persona with `includeRuntimeContext: false`, `instruction-hint`, `skill-search`)
+and adds only two rows (design: `docs/liangshen-bash-preset-design.md`):
+
+1. **Round-2+ bash privilege swap** — the shared `phase-swap-bash.mjs` plugin
+   (same single source as liangshen-plus).
+2. **Explicit round-2 AGENTS.md injection** — an `dsh-agent-instructions` row
+   (the host layer already provides this source, so the row makes the intent
+   explicit and self-contained).
+
+Known tradeoff: with `includeRuntimeContext: false` the model sees the
+`sandbox_permissions` schema but not the current file-policy snapshot.
+
+| File | Purpose |
+|---|---|
+| `agent.cordis.yml` | Preset composition (liangshen base + 2 rows; deployed to `~/.dsh/.agent-presets/liangshen-bash/`) |
+| `preset.yml` | Display name/description for `/preset` |
+| `smoke-boot.mjs` | No-LLM smoke boot (reuses `presets/liangshen-plus/smoke-driver.mjs`) |
+
+Use: `CC_TUI_PRESET=liangshen-bash dsh --profile endless-tui` then `/new`.
+M4 comparison (groups E/C/A) via `M4_GROUPS=E,C,A node presets/liangshen-plus/m4-runner.mjs`.
 
 ## Tested
 

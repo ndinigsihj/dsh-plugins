@@ -23,7 +23,7 @@ try {
 } catch {}
 
 const INSTALL_ANCHOR = "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/package.json";
-const M4_DRIVER = process.env.M4_DRIVER_PATH ?? "/Users/vito/data/dev/dsh-tui/presets/liangshen-plus/m4-driver.mjs";
+const M4_DRIVER = process.env.M4_DRIVER_PATH ?? "/Users/vito/data/dev/dsh-plugins/presets/liangshen-plus/m4-driver.mjs";
 
 const groups = (process.env.M4_GROUPS ?? "A,B,C,D").split(",").map((s) => s.trim()).filter(Boolean);
 const runs = Number(process.env.M4_RUNS ?? 9);

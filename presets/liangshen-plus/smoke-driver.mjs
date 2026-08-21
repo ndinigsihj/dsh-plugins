@@ -45,13 +45,15 @@ async function run(ctx) {
     throw new Error("smoke: missing agents/agentPresets/agentDefaultModel services");
   }
   const selection = defaultModel.currentSelection();
+  const presetName = process.env.SMOKE_PRESET ?? "liangshen-plus";
+  console.log(`SMOKE preset: ${presetName}`);
   const { agent } = await agents.create({
     sessionId: SessionId(`session-smoke-${randomUUID()}`),
     meta: { cwd: process.cwd() },
     agentOptions: { provider: selection.provider, model: selection.model },
     setup: async (agentCtx) => {
       installModelSelection(agentCtx, { current: selection, assembled: undefined });
-      await agentPresets.mount(agentCtx, "liangshen-plus");
+      await agentPresets.mount(agentCtx, presetName);
     },
   });
   await agent.whenIdle();

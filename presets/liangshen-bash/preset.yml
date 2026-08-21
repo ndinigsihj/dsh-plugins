@@ -1,0 +1,3 @@
+name: 梁神+提权+注入
+description: liangshen 全量基底（Minimal persona + instruction-hint + skill-search）+ 二轮沙箱 bash 提权 + 二轮 AGENTS.md 注入。
+order: 6
