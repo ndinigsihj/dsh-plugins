@@ -1,0 +1,97 @@
+# 自研 TUI 吸收官方 dsh-TUI 常用功能 — 差距分析与路线
+
+> 背景：对 `@deepseek-harness-tui/dsh-tui` 的使用体验持续不满意，评估将其常用功能吸收进本仓库的 pi-tui 版 TUI（`lib/app.ts` 等，约 1,900 行 TS）的成本。
+>
+> 对照基线：官方 npm 包 **0.8.1** 编译产物（本机全局 node_modules 一手核对，305 个 JS 文件 ≈ 51k 行）+ 其 README 快捷键/命令表；pi-tui `^0.84.1`（`node_modules/@earendil-works/pi-tui/dist/*.d.ts` 类型声明一手核对）。
+>
+> 关联文档：[`rc8-capability-assessment.md`](rc8-capability-assessment.md)（官方对 rc.8 的适配现状）、[`rewind-file-restore-plugin.md`](rewind-file-restore-plugin.md)（/rewind 插件方案）。
+
+---
+
+## 1. 结论先行
+
+| 问题 | 结论 |
+|---|---|
+| 能否直接搬官方代码 | ❌ 渲染器不同（自移植 Ink core/React reconciler vs pi-tui），只能照交互逻辑重写 UI 层 |
+| 数据/服务层是否同构 | ✅ 两边都是 cordis 插件、消费同一批 `@deepseek-ai/dsh-*` 标准服务；官方命令自称"均走 DSH 官方链路"，意味着其能力在本 TUI 同样可取 |
+| 吸收常用功能的成本 | 第一二档（白送 + 小活）合计约 **2–4 人日**，日常体验可达官方七八成 |
+| 原 biggest risk（@ 文件补全） | 已排除：pi-tui Editor 内置完整 AutocompleteProvider 框架（见 §5） |
+| 建议 | 按 §7 分档推进；先花半天做补全接线 spike 消掉最后一处不确定性 |
+
+## 2. 两边基本盘
+
+| | 本仓库 TUI | 官方 `@deepseek-harness-tui/dsh-tui` 0.8.1 |
+|---|---|---|
+| 渲染器 | pi-tui（第三方成熟库，命令式组件） | 自移植 Ink core（React 19 + react-reconciler） |
+| 规模 | ~1,900 行 TS（`lib/` + `approval-tui.ts`） | 305 个编译后 JS 文件，~51,000 行（另有 vendor/dsh-std workspace 包） |
+| 挂载方式 | cordis 插件 patch-insert 进 profile | cordis 插件 bundle.patch + plugin-host/extensions 平台 |
+| 已有能力 | 流式 markdown、思考折叠行、工具卡（presenter 视图）、`/resume` 搜索选择器、ask_user_question 单选 overlay、审批对话框、ctx% 占用、子代理状态行（5s 轮询）、execve 重启式 resume、OSC52→原生剪贴板 | 下表全集 |
+
+## 3. 官方功能面盘点
+
+来源：README 快捷键/本地命令表 + `lib/types/components/` 组件清单。
+
+| 分组 | 内容 |
+|---|---|
+| 输入体验 | `@` 文件引用补全（任意位置、目录递归深入、图片持久附件）、命令补全菜单、Ctrl+R 历史、Ctrl+X `$EDITOR` 编辑、Ctrl+V 粘贴文本/图片、vim 模式 |
+| 浏览导航 | `/` 会话全文搜索（n/N）、Shift+↑ 消息选择模式、Ctrl+O 展开/收起思考与工具详情、双击 Esc 时间回溯（rewind/fork） |
+| 命令全集 | 会话：`/new` `/resume`（浏览器）/`/rename` `/workspace` `/clear` `/compact` `/export` `/trace`；状态：`/context` `/status` `/cost` `/doctor` `/config` `/init`；模型：`/model` `/thinking` `/tokens` `/theme` `/lang`；账号策略：`/provider` `/login` `/permissions` `/add-dir` `/hooks` `/mcp`；技能组：`/audit` `/bug` `/review` …；其它：`/agents` `/update` `/connect` |
+| 状态展示 | 实时工作状态行、上下文分段进度条、TPS 仪表、缓存命中率、token in/out、git/会话信息、鲸鱼顶栏大字 |
+| 渲染工程 | 流式 markdown、split diff 工具卡、消息虚拟化、差分终端输出、inline/altscreen 双模式、鼠标选区复制滚轮 |
+| 产品化外壳 | 主题系统、i18n、自动更新 `/update`、VS Code companion 扩展、plugin-host/extensions/scenes/settings-sections |
+
+## 4. 差距分级
+
+| 档位 | 功能 | 预估 | 依据 |
+|---|---|---|---|
+| 白送 | `/new` `/compact` `/cost` `/tokens` | 每项 1–2h | 纯服务接线；compact 可先试经 `services.commands.execute(agent, "/compact")` 转发核心注册表；tokenMeter 已注入 |
+| 白送 | `/rename` `/rewind` | ≈0 | `plugins/rename-session.ts`、`plugins/rewind-dsh.ts`（631 行含单测）已实现，并入 profile 即可 |
+| 白送 | Ctrl+O 思考/工具详情折叠 | 半天 | `AssistantRow.reasoning` 字段已在，加折叠态即可 |
+| 小活 | `/resume` 升级会话浏览器（预览面板、跨项目） | 0.5–1d | 搜索选择器已有；预览 = 读 session events 渲染前几条；`listSessions()` 已返回 cwd |
+| 小活 | `/export` 导出 Markdown | 半天 | 从 TranscriptRow 序列化，纯函数可单测 |
+| 小活 | 多选问卷（Space 勾选）、TPS/token 明细状态行 | 各半天 | SelectList 换自绘 checkbox list；TPS 从 chunk 流现算 |
+| 中活 | `/` + `@` 命令与文件补全菜单 | ~1d | pi-tui 原生框架（§5）；主要工作是接 commands 注册表数据源 + 样式 |
+| 中活 | 双击 Esc 时间回溯 UI | ~1d | fork/回滚逻辑 rewind-dsh 已有，缺触发方式 + 选择器 UI |
+| 大活 | 会话全文搜索、消息选择模式、鼠标选区复制、图片粘贴附件 | 每项 1–3d | 依赖 pi-tui 能力边界，需逐个验证后再排 |
+| 不做 | 鲸鱼顶栏/主题/i18n//update/VS Code companion/plugin-host 扩展平台 | — | 官方包的产品化外壳，非常用功能，与本 TUI 轻量定位冲突 |
+
+## 5. 关键发现：pi-tui 自带补全框架
+
+原以为 `@` 文件补全是最大风险（需 Editor 光标感知 + 补全下拉 + 插入回调）。一手核对 `dist/editor-component.d.ts` 与 `dist/autocomplete.d.ts` 后确认：
+
+- `Editor.setAutocompleteProvider(provider)` / `setAutocompleteMaxVisible(n)` 原生暴露；
+- `CombinedAutocompleteProvider` 开箱支持 slash 命令补全（`SlashCommand` 含 argumentHint、参数级 `getArgumentCompletions`）与文件补全（basePath + 可选 fd/rg 快速路径）；
+- Provider 协议自带 triggerCharacters、光标行列感知（`cursorLine/cursorCol`）与 `applyCompletion` 回填。
+
+官方是在 Ink 上手搓了这一整套；本 TUI 侧近乎白送，剩余工作只有两件：把 commands 注册表喂给 provider、调整补全下拉样式。降级为半天 spike（S1）。
+
+## 6. 可直接复用的既有资产
+
+| 资产 | 说明 |
+|---|---|
+| `plugins/rename-session.ts` | `/rename <title>`，走 `sessionTitle.rename()` 标准服务，注册表 handler 优先于 TUI 本地名 |
+| `plugins/rewind-dsh.ts` + `.test.ts` | `/rewind <seq>`：sessions.fork 回退对话 + 工具日志逆向恢复文件 + execve 重启 resume；纯函数已单测 |
+| `approval-tui.ts` | 独立审批面板（官方 PR #383 未合部分的本地覆盖） |
+| `lib/index.ts#relaunchToResume` | flush → chdir → execve 重启带 `--resume`，`/new` 与回溯类功能可直接复用该机制 |
+
+## 7. 建议路线
+
+| 阶段 | 内容 | 验收 |
+|---|---|---|
+| M0 圈清单 | 在 §4 上勾选本期范围（"常用"边界由使用者拍板） | 本文档标注勾选结果 |
+| S1 补全 spike（半天） | Editor 接 CombinedAutocompleteProvider：命令源 = services.commands 注册表，文件源 = cwd | 输入 `/` 出命令菜单、`@` 出文件列表、Tab/Enter 正确回填 |
+| M1 白送档 | `/new` `/compact` `/cost` `/tokens` + 思考折叠；并入 rename/rewind 插件 | 各命令在真实会话可用；compact 转发行为若不通则改走 sessions 服务并记录 |
+| M2 小活档 | 会话浏览器预览、`/export`、多选问卷、状态行增强（TPS/token） | 导出 markdown 可读；问卷 Space 多选提交正确 |
+| M3 中活档（按需） | 双击 Esc 回溯 UI、`@` 图片附件 | rewind 全流程不丢文件变更 |
+| 不做 | §4 "不做" 行所列产品化外壳 | — |
+
+排序原则：先白送后小活，中活仅在 spike 通过后进入；每阶段独立 commit。
+
+## 8. 风险
+
+| 风险 | 影响 | 缓解 |
+|---|---|---|
+| pi-tui Editor 光标 API 与 provider 签名的实际匹配度未经运行验证 | S1 可能超时 | S1 就是为此设的 spike，半天封顶 |
+| `/compact` 经 commands 注册表转发的行为未知（可能要求特定 agent 状态） | M1 排期偏差 | 先手动验证，不通改走 sessions 服务直连 |
+| 官方 0.8.x 迭代快，差距清单会漂移 | 追不全 | 只追"常用功能"档位，不追全集；版本差异在本文档记录基线 |
+| rc.7→rc.8 peer 契约 drift（启动警告等） | 与官方包共用时的已知问题 | 见 [`rc8-capability-assessment.md`](rc8-capability-assessment.md) §4；本 TUI 直连 rc.8 服务不受影响 |
