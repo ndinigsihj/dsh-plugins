@@ -396,12 +396,16 @@ async function run(
   // both halves — and fall back when the recorded model no longer exists.
   let requestedPreset = own.preset;
   let resumeRouteOverride = pinnedRoute;
+  // The route a resumed session ACTUALLY rides (records win over defaults) —
+  // drives the status-bar label so it doesn't show a default that isn't real.
+  let resumeActualRoute: { provider: string; model: string } | undefined;
   if (resumeId !== undefined) {
     const facts = await bootResumeFacts(resumeId);
     requestedPreset = facts.presetId ?? own.preset;
     if (pinnedRoute === undefined) {
       if (facts.recordedRoute === undefined) resumeRouteOverride = agentOptions;
       else if (!(await routeExists(facts.recordedRoute))) resumeRouteOverride = agentOptions;
+      else resumeActualRoute = facts.recordedRoute;
     }
   }
   const composed = await composePreset(services.agentPresets, requestedPreset, warnPreset);
@@ -530,7 +534,10 @@ async function run(
 
   const app = new TuiApp({
     agent: agentSurface(agent),
-    modelLabel: `${agentOptions.provider}/${agentOptions.model}`,
+    modelLabel:
+      resumeId !== undefined
+        ? `${(resumeActualRoute ?? agentOptions).provider}/${(resumeActualRoute ?? agentOptions).model}`
+        : `${agentOptions.provider}/${agentOptions.model}`,
     presenters,
     onPrompt: (text) => {
       if (text.startsWith("/")) {
@@ -722,6 +729,7 @@ async function run(
       await next.whenIdle();
       presenters = presentersFor(next);
       app.setAgent(agentSurface(next));
+      app.setModelLabel(`${provider}/${model}`);
       app.setCacheRate(lastCacheRate(next.session.events) ?? null);
       app.model.clear();
       app.model.rebuild(next.session.events as never, presenters);
