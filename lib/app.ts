@@ -711,6 +711,63 @@ class ApprovalCard implements Component {
   }
 }
 
+/** SGR mouse event as pi-tui's parser produces it; the button byte carries
+ * xterm modifier bits (bit2 = shift, bit5 = motion, bit6 = wheel). */
+interface ParsedMouseEvent {
+  button: number;
+  x: number;
+  y: number;
+  release: boolean;
+}
+
+/** The selection state pi-tui keeps private (and stable across 0.84.x) that
+ * shift-extend needs: the anchor survives scrolling, so extending it across a
+ * scrolled viewport resolves into absolute content coordinates. */
+interface SelectionInternals {
+  handleSelectionMouseEvent(event: ParsedMouseEvent): void;
+  selectionAnchor?: { scrollView?: object };
+  selectionPressActive: boolean;
+  selectionDragged: boolean;
+  getSelectionPoint(
+    event: ParsedMouseEvent,
+    scrollView?: object,
+  ): { scrollView?: object; row: number; col: number } | undefined;
+  updateSelectionFocus(point: object): void;
+  copySelectionToClipboard(): void;
+}
+
+/**
+ * Shift+click extends the live selection instead of starting a new one —
+ * the large-block copy flow: drag-select the start, release, scroll to the
+ * end, shift+click, and the whole span is copied. Upstream pi-tui has no
+ * modifier handling at all (checked through 0.84.2), so this wraps the
+ * instance's mouse handler; everything without shift passes through
+ * untouched.
+ */
+function enableShiftClickExtend(tui: TuiAltScreen): void {
+  const t = tui as unknown as SelectionInternals & { requestRender(): void };
+  const original = t.handleSelectionMouseEvent.bind(t);
+  t.handleSelectionMouseEvent = (event: ParsedMouseEvent) => {
+    const isPress = !event.release && (event.button & (32 | 64)) === 0;
+    const shiftPress = isPress && (event.button & 4) !== 0;
+    if (!shiftPress || t.selectionAnchor === undefined) {
+      original(event);
+      return;
+    }
+    const point = t.getSelectionPoint(event, t.selectionAnchor.scrollView);
+    if (point === undefined) {
+      original(event);
+      return;
+    }
+    // Not "press active": the next release must not re-run the drag path.
+    t.selectionPressActive = false;
+    t.selectionDragged = true;
+    t.updateSelectionFocus(point);
+    t.requestRender();
+    t.copySelectionToClipboard();
+  };
+}
+
 export class TuiApp {
   private readonly terminal = new ProcessTerminal();
   private readonly clipboardTerminal = new ClipboardTerminal(this.terminal);
@@ -742,6 +799,7 @@ export class TuiApp {
     this.workspaceName = basename(process.cwd());
 
     this.tui = new TuiAltScreen(this.clipboardTerminal, true);
+    enableShiftClickExtend(this.tui as TuiAltScreen);
 
     this.transcriptArea = new TranscriptArea(this.transcript, this.p, () => this.detailsExpanded);
     this.transcriptScroll = new ScrollView(this.transcriptArea, {
