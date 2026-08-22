@@ -86,7 +86,7 @@
 | M1c ✅ /model 会话中切换 | 已落地（2026-08-22，官方 switchModel 同构）：running 否决 → `sessions.fork(agent.session)` 全量日志做种子 → 新 sessionId `agents.create`（同 preset、新路由）→ 回放种子事件 + adoptAgent 式全量重绑定；`saveSelection` best-effort 同步默认。路由真值 = 最后一条 `request/context` 记录（activeRoute()），选择器 current 标记据此显示 | tsc 通过；待活体复测 |
 | S1 ✅ 补全（2026-08-22 落地，原定半天 spike） | Editor 接 `CombinedAutocompleteProvider`：命令源 = `services.commands.list(agent)` 全量注册表 + 本地别名（resume/preset 带参数补全，走既有 picker 数据），文件源 = cwd（pi-tui 原生 `@`/`#` 自动触发 + Tab 上下文分支：斜杠上下文→命令菜单，否则→文件补全；列表打开时 ↑/↓ 选、Tab 应用、Enter 应用并提交斜杠命令、Esc 取消）。顺带修两处全局按键交互：空闲 Esc 放行给编辑器（补全菜单可用 Esc 关闭，此前被全局 handler 吞掉）、空闲 Ctrl+C 改为双击退出（此前单按即退出，会误伤关菜单） | 冒烟通过（/前缀模糊过滤、/resume 参数补全、@ 不抛错）；待活体验证 |
 | M1 ✅ 白送档（2026-08-22 落地） | `/new`（M1a）；`/compact` 转发核心注册表 command-compact（dsh-base 已挂，compaction/end 事件进 transcript；顺带修正 execute 调用签名 images/signal 位）；`/cost` = projections `tokenUsage.totals` 四桶 + billed/grand 汇总（无定价数据，token 口径），无投影时回退 tokenMeter 估算；`/tokens` = `contextPressure` 的 window/next-request/pct/last-reported + meter total；Ctrl+O 全局折叠思考与工具详情（默认收起，错误行保持可见，redrawAll 重绘）；rename/rewind 已随 tui profile 迁移并入 | tsc 通过；待活体复测 |
-| M2 小活档 | 会话浏览器预览、`/export`、多选问卷、状态行增强（TPS/token） | 导出 markdown 可读；问卷 Space 多选提交正确 |
+| M2 小活档 ✅ | 已落地（2026-08-22）：会话浏览器预览（/resume 选中即显 turns/route/时间范围/首问；300ms 防抖 + 按会话缓存 + 代际防竞态）、`/export` Markdown（lib/export.ts 纯序列化，工具卡有界渲染）、多选问卷（接通 multiSelect 线字段 → CheckboxList，space/a/enter/esc）、状态行增强（流式 ~t/s 滑窗粗估 + out token 明细；可牺牲前缀语义，ctx gauge 永不截断） | 导出 markdown 可读；问卷 Space 多选提交正确；待活体复测 |
 | M3 中活档（按需） | 双击 Esc 回溯 UI、`@` 图片附件 | rewind 全流程不丢文件变更 |
 | 不做 | §4 "不做" 行所列产品化外壳 | — |
 
