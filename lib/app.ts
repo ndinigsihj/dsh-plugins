@@ -202,13 +202,15 @@ interface RowComponent extends Component {
 class UserRow implements RowComponent {
   private readonly box = new Container();
   private readonly text: Text;
+  private readonly p: Palette;
   constructor(p: Palette, row: Extract<TranscriptRow, { kind: "user" }>) {
+    this.p = p;
     this.text = new Text("", 1, 1);
     this.box.addChild(this.text);
     this.update(row);
   }
   update(row: Extract<TranscriptRow, { kind: "user" }>): void {
-    this.text.setText(this.boxPrefix() + row.text);
+    this.text.setText(this.p.fg(this.boxPrefix() + row.text, "yellow"));
   }
   private boxPrefix(): string {
     return "> ";
@@ -289,22 +291,24 @@ class AssistantRow implements RowComponent {
       this.reasoning.setText(reasoning === "" ? "" : this.p.dim(`⏤ ${reasoning}`));
       return;
     }
-    // Collapsed: light-blue spinner while streaming (frozen glyph once done),
+    // Collapsed: white spinner while streaming (frozen glyph once done),
     // size + expand hint, then the newest three lines as a live preview.
+    // The preview always reserves three rows — padding with blanks while the
+    // reasoning is short — so the block height never changes mid-stream and
+    // the transcript below does not jump around.
     const icon = row.done
-      ? this.p.fg("✻", "brightCyan")
+      ? this.p.fg("✻", "brightWhite")
       : this.p.fg(
           SPINNER_FRAMES[Math.floor(Date.now() / 110) % SPINNER_FRAMES.length] ?? "✻",
-          "brightCyan",
+          "brightWhite",
         );
-    const head = `${icon} ${this.p.dim(`thinking · ${reasoning.length} chars · Ctrl+O expands`)}`;
-    const preview = reasoning
-      .split("\n")
-      .filter((line) => line.trim() !== "")
-      .slice(-3)
-      .map((line) =>
-        this.p.dim(line.length > 160 ? `  ${line.slice(0, 159)}…` : `  ${line}`),
-      );
+    const head = `${icon} ${this.p.fg(`thinking · ${reasoning.length} chars · Ctrl+O expands`, "brightWhite")}`;
+    const recent = reasoning.split("\n").filter((line) => line.trim() !== "").slice(-3);
+    const preview = [0, 1, 2].map((i) => {
+      const line = recent[i];
+      if (line === undefined) return "";
+      return this.p.dim(line.length > 160 ? `  ${line.slice(0, 159)}…` : `  ${line}`);
+    });
     this.reasoning.setText([head, ...preview].join("\n"));
   }
   render(width: number): string[] {
