@@ -93,6 +93,8 @@ export interface TuiAppOptions {
   onExit(): Promise<void>;
   /** Editor slash-command + @-file completion catalog (optional). */
   autocomplete?: { commands: AutocompleteCommand[] };
+  /** Async preview text for the highlighted session in the /resume picker. */
+  sessionPreview?: SessionPreviewLoader;
 }
 
 function markdownTheme(p: Palette): MarkdownTheme {
@@ -534,6 +536,9 @@ export interface SessionPickItem extends SelectItem {
   description?: string;
 }
 
+/** Async preview text for the highlighted session (null/throw = unavailable). */
+export type SessionPreviewLoader = (sessionId: string) => Promise<string | null>;
+
 /**
  * Full-viewport picker with a search field + keyboard-navigable list.
  * Renders a `search> …` line above a SelectList; typing filters by title or
@@ -541,7 +546,15 @@ export interface SessionPickItem extends SelectItem {
  */
 class SessionPicker implements Component {
   private readonly queryText: Text;
+  private readonly previewText: Text;
   private readonly p: Palette;
+  private readonly previewLoader: SessionPreviewLoader | undefined;
+  /** Decoded previews by session id; sessions are read more than once while
+   * the user arrows around, and each read is a full log decode. */
+  private readonly previewCache = new Map<string, string>();
+  private previewGeneration = 0;
+  private previewDebounce: ReturnType<typeof setTimeout> | undefined;
+  private previewValue = "";
   private query = "";
   private items: SessionPickItem[];
   private select!: SelectList;
@@ -551,10 +564,12 @@ class SessionPicker implements Component {
   onPick?: (value: string) => void;
   onCancel?: () => void;
 
-  constructor(p: Palette, items: SessionPickItem[]) {
+  constructor(p: Palette, items: SessionPickItem[], previewLoader?: SessionPreviewLoader) {
     this.p = p;
     this.items = items;
+    this.previewLoader = previewLoader;
     this.queryText = new Text("", 1, 1);
+    this.previewText = new Text("", 0, 0);
     this.applyFilter();
   }
 
@@ -593,12 +608,18 @@ class SessionPicker implements Component {
   }
 
   render(width: number): string[] {
-    return [...this.queryText.render(width), ...this.select.render(width)];
+    const lines = [...this.queryText.render(width), ...this.select.render(width)];
+    if (this.previewValue !== "") {
+      lines.push("");
+      lines.push(...this.previewText.render(width));
+    }
+    return lines;
   }
 
   invalidate(): void {
     this.queryText.invalidate();
     this.select.invalidate();
+    this.previewText.invalidate();
   }
 
   private buildSelect(items: SessionPickItem[]): SelectList {
@@ -618,11 +639,57 @@ class SessionPicker implements Component {
     this.count = filtered.length;
     this.index = 0;
     this.refreshHeader();
+    this.schedulePreview();
   }
 
   private move(dir: number): void {
     this.index = Math.max(0, Math.min(Math.max(this.count - 1, 0), this.index + dir));
     this.select.setSelectedIndex(this.index);
+    this.schedulePreview();
+  }
+
+  /** Load the preview for the highlighted session: cached values render at
+   * once; misses debounce briefly (a read decodes the whole log) and stale
+   * results are discarded via a generation counter. */
+  private schedulePreview(): void {
+    if (this.previewLoader === undefined) return;
+    const item = this.select.getSelectedItem();
+    if (item === null) {
+      this.previewValue = "";
+      return;
+    }
+    const sessionId = item.value;
+    const cached = this.previewCache.get(sessionId);
+    if (cached !== undefined) {
+      this.setPreview(cached);
+      return;
+    }
+    this.setPreview("  loading preview…");
+    const generation = ++this.previewGeneration;
+    if (this.previewDebounce !== undefined) clearTimeout(this.previewDebounce);
+    this.previewDebounce = setTimeout(() => {
+      this.previewDebounce = undefined;
+      void this.previewLoader?.(sessionId)
+        .then((text) => {
+          if (generation !== this.previewGeneration) return;
+          const value =
+            text === null || text.trim() === "" ? "  (preview unavailable)" : text;
+          this.previewCache.set(sessionId, value);
+          if (this.select.getSelectedItem()?.value === sessionId) this.setPreview(value);
+        })
+        .catch(() => {
+          if (generation !== this.previewGeneration) return;
+          this.previewCache.set(sessionId, "  (preview unavailable)");
+          if (this.select.getSelectedItem()?.value === sessionId) {
+            this.setPreview("  (preview unavailable)");
+          }
+        });
+    }, 300);
+  }
+
+  private setPreview(text: string): void {
+    this.previewValue = text;
+    this.previewText.setText(text.replace(/\n/g, "\n"));
   }
 
   private refreshHeader(): void {
@@ -1212,7 +1279,7 @@ export class TuiApp {
   /** Pick one session from the list, or null on cancel. */
   pickSession(sessions: SessionPickItem[]): Promise<string | null> {
     return new Promise((resolve) => {
-      const picker = new SessionPicker(this.p, sessions);
+      const picker = new SessionPicker(this.p, sessions, this.options.sessionPreview);
       picker.onPick = (value) => {
         this.tui.hideOverlay();
         resolve(value);

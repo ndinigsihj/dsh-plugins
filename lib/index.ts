@@ -79,6 +79,88 @@ function userMessage(text: string): unknown {
   });
 }
 
+interface PreviewEvent {
+  type?: string;
+  time?: number;
+  data?: {
+    content?: Array<{ type?: string; text?: unknown }>;
+    usage?: UsageLike;
+    provider?: unknown;
+    model?: unknown;
+    contextWindow?: unknown;
+  };
+}
+
+/** Extract the visible text of a message-content block array. */
+function messageText(event: PreviewEvent): string {
+  const blocks = event.data?.content ?? [];
+  return blocks
+    .filter((b) => b.type === "text")
+    .map((b) => (typeof b.text === "string" ? b.text : ""))
+    .join("")
+    .trim();
+}
+
+function formatStamp(ms: number): string {
+  const d = new Date(ms);
+  const pad = (n: number): string => String(n).padStart(2, "0");
+  return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** /resume preview for one session: shape of the conversation, the route it
+ * rode, and its first prompt. Pure — the caller decodes the log. */
+function buildPreviewFromEvents(events: ReadonlyArray<PreviewEvent>): string | null {
+  if (events.length === 0) return null;
+
+  let prompts = 0;
+  let replies = 0;
+  let tools = 0;
+  let firstPrompt = "";
+  let firstTime: number | undefined;
+  let lastTime: number | undefined;
+  let route = "";
+  for (const event of events) {
+    if (typeof event.time === "number") {
+      if (firstTime === undefined || event.time < firstTime) firstTime = event.time;
+      if (lastTime === undefined || event.time > lastTime) lastTime = event.time;
+    }
+    switch (event.type) {
+      case "user/message": {
+        prompts += 1;
+        if (firstPrompt === "") {
+          const text = messageText(event).replace(/\s+/g, " ");
+          if (text !== "") firstPrompt = text.length > 160 ? `${text.slice(0, 159)}…` : text;
+        }
+        break;
+      }
+      case "assistant/message":
+        replies += 1;
+        break;
+      case "tool/call":
+        tools += 1;
+        break;
+      case "request/context": {
+        const { provider, model } = event.data ?? {};
+        if (typeof provider === "string" && typeof model === "string") {
+          route = `${provider}/${model}`;
+        }
+        break;
+      }
+    }
+  }
+
+  const lines = [
+    `turns ~${prompts} · replies ${replies} · tool calls ${tools}`,
+    route !== "" ? `route ${route}` : "",
+    firstTime !== undefined && lastTime !== undefined
+      ? `${formatStamp(firstTime)} → ${formatStamp(lastTime)}`
+      : "",
+    "",
+    firstPrompt !== "" ? `❝ ${firstPrompt}` : "(no user prompt)",
+  ].filter((l) => l !== "");
+  return lines.map((l) => `  ${l}`).join("\n");
+}
+
 /** Truncate a label to a display width. */
 function truncate(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
@@ -619,6 +701,14 @@ async function run(
     onCancel: () => agent.cancel({ kind: "user" }),
     onExit: () => stopAndExit(),
     autocomplete: { commands: autocompleteCommands() },
+    sessionPreview: (sessionId) => {
+      const query = services.sessionQuery;
+      if (query === undefined) return Promise.resolve(null);
+      return query
+        .readSession(sessionId)
+        .then((loaded) => buildPreviewFromEvents((loaded.events ?? []) as ReadonlyArray<PreviewEvent>))
+        .catch(() => null);
+    },
   });
 
   // On resume, rebuild the transcript from the persisted log before live events.
