@@ -57,7 +57,7 @@ const HELP_TEXT = [
   "/clear           clear the transcript",
   "/new             start a fresh session on the configured/saved default preset",
   "/preset [id]     switch agent presets (blank session swaps live; otherwise saved as default)",
-  "/model           pick the default provider/model route (applies to new sessions)",
+  "/model           switch THIS session's model (history carries over; default updated too)",
   "/sessions        list persisted sessions",
   "/resume <id>     resume a persisted session",
   "/session         show the current session id",
@@ -117,6 +117,23 @@ function lastCacheRate(events: ReadonlyArray<unknown>): number | undefined {
   return undefined;
 }
 
+/**
+ * The route a session last rode: the latest `request/context` event (logged
+ * whenever the route or capacity changes). undefined when none recorded yet.
+ */
+function recordedRouteOf(
+  events: ReadonlyArray<unknown>,
+): { provider: string; model: string } | undefined {
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const event = events[i] as { type?: string; data?: { provider?: unknown; model?: unknown } } | undefined;
+    if (event?.type !== "request/context") continue;
+    const provider = event.data?.provider;
+    const model = event.data?.model;
+    if (typeof provider === "string" && typeof model === "string") return { provider, model };
+  }
+  return undefined;
+}
+
 /** Narrow the real Agent handle to the surface the app drives. */
 function agentSurface(agent: {
   id: string;
@@ -159,6 +176,8 @@ interface CoreServices {
   };
   sessions: {
     flush(session: unknown): Promise<void>;
+    /** Fork a session log; no boundary = whole log, no childId = in-memory. */
+    fork?(source: unknown): { events: unknown[] };
   };
   userQuestions?: {
     registerProvider(provider: { ask(request: unknown): Promise<unknown> }): () => void;
@@ -322,16 +341,16 @@ async function run(
 
   /**
    * Model-selection + preset mount chain installed via the factory hook.
-   * `installRoute` is false for an unpinned resume: the session's durable
-   * records drive its route, and re-asserting a default here would stamp over
-   * them (official resume installs nothing of the sort).
+   * `route` provided → install it as the agent's selection (create paths and
+   * pinned resumes); omitted → the session's durable records drive the route
+   * (unpinned resume; official installs nothing there either).
    */
   function makeSetup(
     composed: ComposedPreset,
-    installRoute = true,
+    route?: { provider: string; model: string },
   ): (agentCtx: Parameters<typeof installModelSelection>[0]) => void | Promise<void> {
     return (agentCtx) => {
-      if (installRoute) installModelSelection(agentCtx, { current: agentOptions, assembled: undefined });
+      if (route !== undefined) installModelSelection(agentCtx, { current: route, assembled: undefined });
       return composed.setup?.(agentCtx);
     };
   }
@@ -340,35 +359,60 @@ async function run(
   };
 
   /**
-   * Preset for a resumed session: its own log wins over the deployment pin.
-   * Sessions from before presets existed record none, so the patch-layer
-   * `preset` key still applies to them.
+   * Facts read once from a resumed session's log: its recorded preset and its
+   * last recorded route (the latest `request/context` event).
    */
-  async function bootResumePreset(id: string): Promise<string | undefined> {
+  async function bootResumeFacts(id: string): Promise<{
+    presetId?: string;
+    recordedRoute?: { provider: string; model: string };
+  }> {
     try {
       const snap = await services.sessionQuery?.readSession(id);
       if (snap !== undefined) {
-        const recorded = recordedPresetOf(snap.events);
-        if (recorded !== undefined) return recorded;
+        return {
+          presetId: recordedPresetOf(snap.events),
+          recordedRoute: recordedRouteOf(snap.events),
+        };
       }
     } catch {
       /* unreadable log — fall through */
     }
-    return own.preset;
+    return {};
   }
 
-  // Launch-time resolution: the deployment pin is the only override here; a
-  // saved user choice lives in the roster's settings default and resolves
-  // through defaultId when we request none (hot-reloaded document).
-  const requestedPreset =
-    resumeId !== undefined ? ((await bootResumePreset(resumeId)) ?? own.preset) : own.preset;
+  /** Whether the llm catalog still supplies this route. Uncheckable → true. */
+  async function routeExists(route: { provider: string; model: string }): Promise<boolean> {
+    const llm = services.llm;
+    if (llm === undefined) return true;
+    const providers = llm.listProviders();
+    if (!providers.some((p) => p.id === route.provider)) return false;
+    const models = await llm.listModels(route.provider).catch(() => []);
+    return models.some((m) => m.id === route.model);
+  }
+
+  // Launch-time resolution. Fresh sessions ride the deployment pin ?? the
+  // saved default; resumes let the session's own records win unless pinned on
+  // both halves — and fall back when the recorded model no longer exists.
+  let requestedPreset = own.preset;
+  let resumeRouteOverride = pinnedRoute;
+  if (resumeId !== undefined) {
+    const facts = await bootResumeFacts(resumeId);
+    requestedPreset = facts.presetId ?? own.preset;
+    if (pinnedRoute === undefined) {
+      if (facts.recordedRoute === undefined) resumeRouteOverride = agentOptions;
+      else if (!(await routeExists(facts.recordedRoute))) resumeRouteOverride = agentOptions;
+    }
+  }
   const composed = await composePreset(services.agentPresets, requestedPreset, warnPreset);
 
   const created = resumeId !== undefined
     ? await services.agents.resume({
         resumeSessionId: SessionId(resumeId),
-        ...(pinnedRoute === undefined ? {} : { agentOptions: pinnedRoute }),
-        setup: makeSetup(composed, pinnedRoute !== undefined),
+        ...(resumeRouteOverride === undefined ? {} : { agentOptions: resumeRouteOverride }),
+        setup:
+          resumeRouteOverride === undefined
+            ? makeSetup(composed)
+            : makeSetup(composed, resumeRouteOverride),
       })
     : await services.agents.create({
         sessionId: SessionId(`session-${randomUUID()}`),
@@ -377,7 +421,7 @@ async function run(
           ...(composed.agentPreset === undefined ? {} : { agentPreset: composed.agentPreset }),
         },
         agentOptions,
-        setup: makeSetup(composed),
+        setup: makeSetup(composed, agentOptions),
       });
   let agent: Agent = created.agent;
   await agent.whenIdle();
@@ -479,7 +523,7 @@ async function run(
           ...(fresh.agentPreset === undefined ? {} : { agentPreset: fresh.agentPreset }),
         },
         agentOptions,
-        setup: makeSetup(fresh),
+        setup: makeSetup(fresh, agentOptions),
       });
       await adoptAgent(result.agent);
       app.appendCommandOutput(
@@ -543,14 +587,86 @@ async function run(
     await switchToPreset(roster, arg, rows.find((p) => p.id === arg));
   }
 
-  /** /model — pick the default provider/model route from the llm catalog. */
+  /** The route the live agent is actually riding (records beat defaults). */
+  function activeRoute(): { provider: string; model: string } {
+    return recordedRouteOf(agent.session.events) ?? agentOptions;
+  }
+
+  /**
+   * /model live switch, official recipe: fork the whole log as seed, create a
+   * NEW session on the new route with the SAME preset, then replay history.
+   * The conversation continues untouched — only the request model changes.
+   */
+  async function switchModelLive(provider: string, model: string): Promise<void> {
+    const fork = services.sessions.fork;
+    if (fork === undefined) {
+      app.showNotice("Model switch unavailable: sessions service lacks fork.");
+      return;
+    }
+    let seed: unknown[];
+    try {
+      seed = fork.call(services.sessions, agent.session).events;
+    } catch (error) {
+      app.showNotice(
+        `Model switch failed at fork: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return;
+    }
+    // The forked conversation keeps the session's own preset — only the
+    // request route changes (same rule as rewind).
+    const composed = await composePreset(
+      services.agentPresets,
+      recordedPresetOf(agent.session.events as Array<{ type: string; data?: unknown }>),
+      (m) => app.showNotice(m),
+    );
+    try {
+      const result = await services.agents.create({
+        sessionId: SessionId(`session-${randomUUID()}`),
+        seed,
+        meta: {
+          cwd: process.cwd(),
+          parentSession: agent.id,
+          ...(composed.agentPreset === undefined ? {} : { agentPreset: composed.agentPreset }),
+        },
+        agentOptions: { provider, model },
+        setup: makeSetup(composed, { provider, model }),
+      });
+      const next = result.agent;
+      agent = next;
+      await next.whenIdle();
+      presenters = presentersFor(next);
+      app.setAgent(agentSurface(next));
+      app.setCacheRate(lastCacheRate(next.session.events) ?? null);
+      app.model.clear();
+      app.model.rebuild(next.session.events as never, presenters);
+      app.onSessionEvent();
+      void services.sessions.flush(next.session).catch(() => {});
+      updateContextPressure();
+      refreshSubagents();
+      // Keep the saved default in step so /new lands on the same model.
+      try {
+        await services.agentDefaultModel.saveSelection?.({ provider, model });
+      } catch {
+        /* default stays — the live switch already succeeded */
+      }
+      app.appendCommandOutput(
+        `Switched to ${provider}/${model} — history carried into ${next.id.slice(0, 13)}…`,
+      );
+    } catch (error) {
+      app.showNotice(
+        `Model switch failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  /** /model — pick a route and switch THIS session onto it (history intact). */
   async function doModel(): Promise<void> {
     const llm = services.llm;
     if (llm === undefined) {
       app.showNotice("No llm service in this deployment.");
       return;
     }
-    const current = services.agentDefaultModel.currentSelection();
+    const active = activeRoute();
     const routes: Array<{ provider: string; model: string }> = [];
     const items: Array<{ value: string; label: string; description?: string }> = [];
     const providers = llm.listProviders();
@@ -564,7 +680,7 @@ async function run(
       for (const model of models) {
         const index = routes.length;
         routes.push({ provider: provider.id, model: model.id });
-        const isCurrent = provider.id === current.provider && model.id === current.model;
+        const isCurrent = provider.id === active.provider && model.id === active.model;
         items.push({
           value: String(index),
           label: `${provider.id}/${model.id}${isCurrent ? "  ← current" : ""}`,
@@ -586,25 +702,11 @@ async function run(
     }
     const route = routes[Number(picked)];
     if (route === undefined) return;
-    if (route.provider === current.provider && route.model === current.model) {
-      app.showNotice(`Already on ${route.provider}/${route.model}.`);
+    if (route.provider === active.provider && route.model === active.model) {
+      app.showNotice(`Already riding ${active.provider}/${active.model}.`);
       return;
     }
-    if (services.agentDefaultModel.saveSelection === undefined) {
-      app.showNotice("Cannot persist: no settings-backed default-model service.");
-      return;
-    }
-    try {
-      await services.agentDefaultModel.saveSelection(route);
-      app.appendCommandOutput(
-        `Default model set to ${route.provider}/${route.model} — applies to new sessions (/new or restart). ` +
-          "The current session keeps its route.",
-      );
-    } catch (error) {
-      app.showNotice(
-        `/model failed: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
+    await switchModelLive(route.provider, route.model);
   }
 
   /** Persist a preset choice through the settings seam (`agent-presets` ns). */
