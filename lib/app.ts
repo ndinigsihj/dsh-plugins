@@ -139,7 +139,7 @@ export interface ContextOccupancy {
  * The footer status bar: left-aligned facts (model id, cache hit rate,
  * workspace directory name), right-aligned context gauge. Rendered as one
  * padded line at the live terminal width; a transient notice replaces the
- * whole bar until the next state change.
+ * whole bar until it times out or is explicitly cleared.
  */
 export class StatusLine implements Component {
   private readonly p: Palette;
@@ -151,11 +151,13 @@ export class StatusLine implements Component {
     this.p = p;
   }
 
-  /** New facts; clears any transient notice. Either side may be empty. */
+  /** New facts; either side may be empty. Leaves any transient notice up:
+   * notices retire on their own timer, an explicit clear, or a newer
+   * notice — never on a repaint, which races event bursts and would erase
+   * them before they can be read. */
   setParts(left: string, right: string): void {
     this.left = left;
     this.right = right;
-    this.notice = null;
   }
 
   showNotice(text: string): void {
@@ -772,7 +774,7 @@ export class TuiApp {
     if (timeoutMs > 0) {
       this.noticeTimer = setTimeout(() => {
         this.noticeTimer = undefined;
-        this.updateStatus(); // setParts clears the notice and repaints
+        this.updateStatus(); // restore the live parts and repaint
         this.render();
       }, timeoutMs);
     }

@@ -91,13 +91,18 @@ function relativeTime(ms?: number): string {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
-/** The projection values this TUI consumes off sessionProjections. */
+/** The projection values this TUI consumes off sessionProjections (rc.8
+ * dsh-token-meter views; `tokenUsage` exposes totals only — no live sample). */
 interface ProjectionValues {
+  /** Sample-anchored occupancy: last provider sample plus signed surface
+   * movement since it, so a compaction's shadowed tokens are already folded
+   * in and `projectedTokens` drops the moment the summary lands. */
   contextPressure?: {
     projectedTokens?: number;
-    contextWindow?: number;
     pressureTokens?: number;
+    contextWindow?: number;
   };
+  /** Cumulative disjoint buckets (/cost); rc.8's view is totals-only. */
   tokenUsage?: {
     totals?: {
       uncachedInputTokens?: number;
@@ -105,7 +110,6 @@ interface ProjectionValues {
       cacheReadTokens?: number;
       cacheWriteTokens?: number;
     };
-    last?: { turn?: number; step?: number } | null;
   };
 }
 
@@ -131,8 +135,7 @@ function cacheRateOf(usage: UsageLike | undefined): number | undefined {
 
 /**
  * Last provider-reported usage + context capacity straight from a session log
- * (used when the harness projections have no live sample — resumed/forked
- * logs carry their history only in seed events, which projections skip).
+ * (last-resort source only: bare boots without the projection/meter services).
  */
 function lastUsageReport(
   events: ReadonlyArray<unknown>,
@@ -1209,19 +1212,25 @@ async function run(
         return;
       }
       if (execution === undefined) {
+        if (line === "/compact") app.clearNotice();
         app.showNotice(`Unknown command ${line.split(/\s+/)[0]} — /help lists what's available.`);
         return;
       }
       const text = execution.result.text;
-      if (text !== undefined && text !== "") app.showNotice(text);
-      else if (line === "/compact") {
-        if (execution.result.kind === "success") {
-          app.appendCommandOutput("Compaction finished — earlier context was folded.");
-          app.clearNotice();
+      if (line === "/compact") {
+        // The outcome goes into the transcript as a durable row: a status-bar
+        // notice alone gets repainted away by the burst of session events
+        // (compaction/end, splices, status flips) that trails this command.
+        app.clearNotice();
+        if (execution.result.kind !== "success") {
+          app.appendCommandOutput(`Compaction failed: ${text ?? "unknown error"}.`);
         } else {
-          app.showNotice(`Compaction failed (${execution.result.kind}).`, 8000);
+          app.appendCommandOutput(text ?? "Compaction finished.");
+          updateContextPressure(); // surface shrank — refresh ctx immediately
         }
+        return;
       }
+      if (text !== undefined && text !== "") app.showNotice(text);
     } else {
       app.showNotice(`Unknown command ${line.split(/\s+/)[0]} — /help lists what's available.`);
     }
@@ -1373,47 +1382,47 @@ async function run(
     });
   }
 
-  // Context-window occupancy from the token-meter projection (projected
-  // tokens / route capacity). Null until the provider reports usage.
+  // Context-window occupancy. Preferred source: the contextPressure
+  // projection — its numerator is the last provider sample plus signed
+  // surface movement since that sample, so a compaction drops the figure
+  // immediately (rc.8 token-meter folds shadowed ranges). Fallbacks: the
+  // token meter's live surface estimate, then a raw log scan.
   function updateContextPressure(): void {
+    let used: number | undefined;
+    let windowTokens: number | undefined;
     const proj = services.sessionProjections;
-    if (proj === undefined) return;
-    try {
-      const values = proj.snapshot(agent.session).values as ProjectionValues;
-      const pressure = values.contextPressure;
-      let used: number | undefined;
-      let windowTokens: number | undefined = pressure?.contextWindow;
-      if (values.tokenUsage?.last == null) {
-        // No live sample (fresh session, or a resumed/forked one before its
-        // first reply). Resumed logs still carry the last provider report as
-        // seed events — read it directly; a genuinely new session stays hidden.
-        const report = lastUsageReport(agent.session.events as ReadonlyArray<unknown>);
-        if (report === undefined) {
-          app.setContextOccupancy(null);
-          return;
-        }
-        used = report.promptTokens;
-        if (windowTokens === undefined || windowTokens <= 0) windowTokens = report.contextWindow;
-      } else {
+    if (proj !== undefined) {
+      try {
+        const pressure = (proj.snapshot(agent.session).values as ProjectionValues)
+          .contextPressure;
+        windowTokens = pressure?.contextWindow;
         used = pressure?.projectedTokens;
-        if (used === undefined && services.tokenMeter !== undefined) {
-          try {
-            used = services.tokenMeter.measure(agent.session).totalTokens;
-          } catch {
-            used = undefined;
-          }
-        }
+      } catch {
+        /* projection not ready — fall through to the meter */
       }
-      if (windowTokens === undefined || windowTokens <= 0) {
+    }
+    if (used === undefined && services.tokenMeter !== undefined) {
+      try {
+        used = services.tokenMeter.measure(agent.session).totalTokens;
+      } catch {
+        /* meter unavailable — fall through to the log scan */
+      }
+    }
+    if (used === undefined || windowTokens === undefined || windowTokens <= 0) {
+      const report = lastUsageReport(agent.session.events as ReadonlyArray<unknown>);
+      if (report === undefined) {
         app.setContextOccupancy(null);
         return;
       }
-      if (used === undefined) return;
-      const pct = Math.max(0, Math.min(100, Math.round((used / windowTokens) * 100)));
-      app.setContextOccupancy({ pct, usedTokens: used, windowTokens });
-    } catch {
-      /* projection not ready — leave the previous reading */
+      used = report.promptTokens;
+      if (windowTokens === undefined || windowTokens <= 0) windowTokens = report.contextWindow;
     }
+    if (windowTokens === undefined || windowTokens <= 0) {
+      app.setContextOccupancy(null);
+      return;
+    }
+    const pct = Math.max(0, Math.min(100, Math.round((used / windowTokens) * 100)));
+    app.setContextOccupancy({ pct, usedTokens: used, windowTokens });
   }
 
   // Running-subagent summary under the status line. Poll on a timer: child
