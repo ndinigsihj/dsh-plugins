@@ -12,7 +12,7 @@ import { randomUUID } from "node:crypto";
 import { installModelSelection } from "@deepseek-ai/dsh-agent";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import { SessionId } from "@deepseek-ai/dsh-session";
-import { TuiApp, type AgentSurface } from "./app.ts";
+import { TuiApp, type AgentSurface, type AutocompleteCommand } from "./app.ts";
 import type { ToolPresenters } from "./transcript.ts";
 import {
   AGENT_PRESETS_NS,
@@ -62,6 +62,7 @@ const HELP_TEXT = [
   "/resume <id>     resume a persisted session",
   "/session         show the current session id",
   "/help            show this help",
+  "补全：/ + Tab 出命令菜单（↑/↓ 选，Tab 应用）· @ + Tab 出文件引用",
 ].join("\n");
 
 function userMessage(text: string): unknown {
@@ -443,9 +444,93 @@ async function run(
   }
   let presenters: ToolPresenters = presentersFor(agent);
 
+  /**
+   * Slash-command catalog for the editor menu: the full commands registry
+   * (which already carries our registered commands) plus local aliases, with
+   * argument completions wired for the picker-backed commands.
+   */
+  function autocompleteCommands(): AutocompleteCommand[] {
+    const out: Array<AutocompleteCommand> = [];
+    const registry = services.commands as
+      | (CoreServices["commands"] & { list?(a: unknown): unknown[] })
+      | undefined;
+    if (registry?.list !== undefined) {
+      try {
+        for (const desc of registry.list(agent)) {
+          const d = desc as { name?: unknown; description?: unknown };
+          if (typeof d.name === "string" && d.name !== "") {
+            out.push({
+              name: d.name,
+              description: typeof d.description === "string" ? d.description : undefined,
+            });
+          }
+        }
+      } catch {
+        /* enumeration failure degrades to the local list below */
+      }
+    }
+    const locals: AutocompleteCommand[] = [
+      { name: "exit", description: "Exit the terminal front door" },
+      { name: "quit", description: "Exit the terminal front door" },
+      { name: "clear", description: "Clear the transcript" },
+      { name: "help", description: "Show dsh-tui help" },
+      { name: "session", description: "Show the current session id" },
+      { name: "new", description: "Start a fresh session on the configured/saved default preset" },
+      {
+        name: "preset",
+        description: "Switch agent presets",
+        argumentHint: "[id]",
+        getArgumentCompletions: async () => {
+          const roster = services.agentPresets;
+          if (roster === undefined) return null;
+          try {
+            const rows = await roster.list();
+            return rows.map((p) => ({
+              value: p.id,
+              label: p.name ?? p.id,
+              description: p.description,
+            }));
+          } catch {
+            return null;
+          }
+        },
+      },
+      { name: "sessions", description: "List sessions in this workspace" },
+      {
+        name: "resume",
+        description: "Resume a persisted session",
+        argumentHint: "<id>",
+        getArgumentCompletions: async () => {
+          try {
+            const { items } = await loadSessionItems();
+            return items.slice(0, 10).map((i) => ({
+              value: i.value,
+              label: i.label,
+              description: i.description,
+            }));
+          } catch {
+            return null;
+          }
+        },
+      },
+      { name: "model", description: "Switch this session's model (history carries over)" },
+    ];
+    for (const local of locals) {
+      const existing = out.find((c) => c.name === local.name);
+      if (existing !== undefined) {
+        if (existing.getArgumentCompletions === undefined && local.getArgumentCompletions !== undefined) {
+          existing.getArgumentCompletions = local.getArgumentCompletions;
+        }
+        continue;
+      }
+      out.push(local);
+    }
+    return out;
+  }
+
   const app = new TuiApp({
     agent: agentSurface(agent),
-    modelLabel: `${selection.provider}/${selection.model}`,
+    modelLabel: `${agentOptions.provider}/${agentOptions.model}`,
     presenters,
     onPrompt: (text) => {
       if (text.startsWith("/")) {
@@ -458,6 +543,7 @@ async function run(
     },
     onCancel: () => agent.cancel({ kind: "user" }),
     onExit: () => stopAndExit(),
+    autocomplete: { commands: autocompleteCommands() },
   });
 
   // On resume, rebuild the transcript from the persisted log before live events.

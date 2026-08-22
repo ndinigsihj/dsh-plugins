@@ -6,6 +6,7 @@
 
 import { basename } from "node:path";
 import {
+  CombinedAutocompleteProvider,
   Container,
   Editor,
   Markdown,
@@ -62,6 +63,19 @@ export interface RunningSubagent {
   label?: string;
 }
 
+/** One entry of the editor's slash-command menu (structural SlashCommand). */
+export interface AutocompleteCommand {
+  name: string;
+  description?: string;
+  argumentHint?: string;
+  getArgumentCompletions?(
+    argumentPrefix: string,
+  ):
+    | Array<{ value: string; label: string; description?: string }>
+    | null
+    | Promise<Array<{ value: string; label: string; description?: string }> | null>;
+}
+
 export interface TuiAppOptions {
   agent: AgentSurface;
   modelLabel: string;
@@ -72,6 +86,8 @@ export interface TuiAppOptions {
   onCancel(): void;
   /** Exit requested (e.g. /exit). */
   onExit(): Promise<void>;
+  /** Editor slash-command + @-file completion catalog (optional). */
+  autocomplete?: { commands: AutocompleteCommand[] };
 }
 
 function markdownTheme(p: Palette): MarkdownTheme {
@@ -467,6 +483,7 @@ export class TuiApp {
   private cacheRate: number | null = null;
   private readonly workspaceName: string;
   private stopping = false;
+  private lastCtrlC = 0;
   private readonly options: TuiAppOptions;
 
   constructor(options: TuiAppOptions) {
@@ -490,6 +507,14 @@ export class TuiApp {
     this.subagentsLine = new Text("", 1, 1);
     this.editor = new Editor(this.tui, editorTheme(this.p));
     this.editor.onSubmit = (text) => this.handleSubmit(text);
+    if (options.autocomplete !== undefined) {
+      const provider = new CombinedAutocompleteProvider(
+        options.autocomplete.commands as never,
+        process.cwd(),
+      );
+      this.editor.setAutocompleteProvider(provider);
+      this.editor.setAutocompleteMaxVisible?.(8);
+    }
 
     const dock = new VStack([
       { component: this.editor, basis: "auto", grow: 0, shrink: 1, minSize: 3 },
@@ -707,8 +732,17 @@ export class TuiApp {
       if (overlayOpen) return undefined;
       if (this.agent.status === "running") {
         this.options.onCancel();
-      } else {
+        return { consume: true };
+      }
+      // Double Ctrl+C exits; a single one only hints (a lone Ctrl+C elsewhere
+      // might be dismissing the editor's autocomplete menu).
+      const now = Date.now();
+      if (now - this.lastCtrlC < 600) {
+        this.lastCtrlC = 0;
         void this.options.onExit();
+      } else {
+        this.lastCtrlC = now;
+        this.showNotice("Press Ctrl+C again to exit.");
       }
       return { consume: true };
     }
@@ -719,8 +753,13 @@ export class TuiApp {
     }
     if (matchesKey(data, "escape")) {
       if (overlayOpen) return undefined;
-      if (this.agent.status === "running") this.options.onCancel();
-      return { consume: true };
+      if (this.agent.status === "running") {
+        this.options.onCancel();
+        return { consume: true };
+      }
+      // Idle: pass Esc through — the editor owns it (dismisses its
+      // autocomplete menu); a bare Esc with no menu is a harmless no-op.
+      return undefined;
     }
     return undefined;
   }

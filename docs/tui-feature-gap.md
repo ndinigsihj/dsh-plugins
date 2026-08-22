@@ -84,7 +84,7 @@
 | M1a ✅ 会话生命周期 | 已落地（2026-08-22，同日按实现原则重构）：`lib/presets.ts` 结构化接入 `agentPresets`（零新依赖）；blank 判定走 recompose + `agent-preset/selected` 日志事实，非 blank 经 `ctx.settings` 写 `agent-presets` 命名空间默认值（roster defaultId 热生效）；部署钉选 = 本插件 patch 层 `preset:` config；/new 为 in-process 建 agent + 全量重绑定，/resume 保持 execve 重启（跨 cwd 持久化正确性） | tsc 通过；presets 纯函数冒烟通过 |
 | M1b ✅ /model + /resume 收敛 | 已落地（2026-08-22）：/model 选择器走 `llm.listProviders/listModels`；/resume 与 /sessions 默认只列当前工作区（header.cwd 过滤），跨项目仍可 `/resume <id>`；未知命令不再静默无反馈；/resume 标签改用 readTitleSnapshots（去掉 50 次全量 readSession 的解码+回放校验，多 MB 日志下 30s→秒级）；resume 路由对齐官方 #67 语义——会话自身记录优先，记录模型已不存在则回退钉选??默认 | tsc 通过；待活体复测 |
 | M1c ✅ /model 会话中切换 | 已落地（2026-08-22，官方 switchModel 同构）：running 否决 → `sessions.fork(agent.session)` 全量日志做种子 → 新 sessionId `agents.create`（同 preset、新路由）→ 回放种子事件 + adoptAgent 式全量重绑定；`saveSelection` best-effort 同步默认。路由真值 = 最后一条 `request/context` 记录（activeRoute()），选择器 current 标记据此显示 | tsc 通过；待活体复测 |
-| S1 补全 spike（半天） | Editor 接 CombinedAutocompleteProvider：命令源 = services.commands 注册表，文件源 = cwd | 输入 `/` 出命令菜单、`@` 出文件列表、Tab/Enter 正确回填 |
+| S1 ✅ 补全（2026-08-22 落地，原定半天 spike） | Editor 接 `CombinedAutocompleteProvider`：命令源 = `services.commands.list(agent)` 全量注册表 + 本地别名（resume/preset 带参数补全，走既有 picker 数据），文件源 = cwd（pi-tui 原生 `@`/`#` 自动触发 + Tab 上下文分支：斜杠上下文→命令菜单，否则→文件补全；列表打开时 ↑/↓ 选、Tab 应用、Enter 应用并提交斜杠命令、Esc 取消）。顺带修两处全局按键交互：空闲 Esc 放行给编辑器（补全菜单可用 Esc 关闭，此前被全局 handler 吞掉）、空闲 Ctrl+C 改为双击退出（此前单按即退出，会误伤关菜单） | 冒烟通过（/前缀模糊过滤、/resume 参数补全、@ 不抛错）；待活体验证 |
 | M1 白送档 | `/new` `/compact` `/cost` `/tokens` + 思考折叠；并入 rename/rewind 插件 | 各命令在真实会话可用；compact 转发行为若不通则改走 sessions 服务并记录 |
 | M2 小活档 | 会话浏览器预览、`/export`、多选问卷、状态行增强（TPS/token） | 导出 markdown 可读；问卷 Space 多选提交正确 |
 | M3 中活档（按需） | 双击 Esc 回溯 UI、`@` 图片附件 | rewind 全流程不丢文件变更 |
