@@ -17,6 +17,8 @@ import {
   TuiAltScreen,
   VStack,
   isViewportTUI,
+  isKeyRelease,
+  isKeyRepeat,
   matchesKey,
   truncateToWidth,
   visibleWidth,
@@ -869,6 +871,10 @@ export class TuiApp {
   }
 
   private handleGlobalInput(data: string): { consume?: boolean } | undefined {
+    // Kitty-protocol terminals report key releases (and repeats): without this
+    // guard a single Ctrl+O press toggles twice (expand → instantly collapse)
+    // and a held Ctrl+C trips the double-press exit.
+    if (isKeyRelease(data) || isKeyRepeat(data)) return undefined;
     // While an overlay (picker / question / approval) is open, let it handle
     // Escape / Ctrl+C instead of the global cancel-or-exit actions.
     const overlayOpen = this.tui.hasOverlay();
