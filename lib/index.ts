@@ -438,7 +438,13 @@ async function run(
   const created = resumeId !== undefined
     ? await services.agents.resume({
         resumeSessionId: SessionId(resumeId),
-        ...(resumeRouteOverride === undefined ? {} : { agentOptions: resumeRouteOverride }),
+        // OFFICIAL SHAPE — always pass the object. Undefined halves mean "the
+        // session's own records supply the route"; omitting agentOptions
+        // entirely yields a routeless agent ("has no provider/model").
+        agentOptions: {
+          provider: resumeRouteOverride?.provider,
+          model: resumeRouteOverride?.model,
+        },
         setup:
           resumeRouteOverride === undefined
             ? makeSetup(composed)
@@ -1287,7 +1293,15 @@ async function run(
     const proj = services.sessionProjections;
     if (proj === undefined) return;
     try {
-      const pressure = proj.snapshot(agent.session).values.contextPressure;
+      const values = proj.snapshot(agent.session).values as ProjectionValues;
+      // No usage sample in THIS session's log yet (fresh/forked, mid-first-turn):
+      // any projected number would be a guess — hide the segment instead of
+      // showing a misleading 0%.
+      if (values.tokenUsage?.last == null) {
+        app.setContextOccupancy(null);
+        return;
+      }
+      const pressure = values.contextPressure;
       const windowTokens = pressure?.contextWindow;
       if (windowTokens === undefined || windowTokens <= 0) return;
       // Prefer the projection's next-request estimate; fall back to the meter's

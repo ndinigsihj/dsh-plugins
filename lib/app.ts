@@ -220,6 +220,45 @@ class UserRow implements RowComponent {
 /** Braille spin frames for the collapsed thinking header (time-based frame). */
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
+/** Lines of unchanged context kept around each edit hunk. */
+const DIFF_CONTEXT = 3;
+
+/** Max diff lines shown in collapsed mode before a "… N more" stub. */
+const DIFF_COLLAPSED_CAP = 24;
+
+interface DiffLine {
+  kind: "add" | "del" | "ctx";
+  text: string;
+}
+
+/**
+ * Line diff tuned for edit-shaped changes: trim the common prefix/suffix,
+ * mark the middle as del/add blocks, keep bounded context around them.
+ */
+export function lineDiff(oldText: string | null, newText: string): DiffLine[] {
+  if (oldText === null) {
+    return newText.split("\n").map((text) => ({ kind: "add", text }) as DiffLine);
+  }
+  const oldLines = oldText.split("\n");
+  const newLines = newText.split("\n");
+  let start = 0;
+  while (start < oldLines.length && start < newLines.length && oldLines[start] === newLines[start]) start += 1;
+  let oldEnd = oldLines.length;
+  let newEnd = newLines.length;
+  while (oldEnd > start && newEnd > start && oldLines[oldEnd - 1] === newLines[newEnd - 1]) {
+    oldEnd -= 1;
+    newEnd -= 1;
+  }
+  const out: DiffLine[] = [];
+  const ctxFrom = Math.max(0, start - DIFF_CONTEXT);
+  for (let i = ctxFrom; i < start; i += 1) out.push({ kind: "ctx", text: oldLines[i] ?? "" });
+  for (let i = start; i < oldEnd; i += 1) out.push({ kind: "del", text: oldLines[i] ?? "" });
+  for (let i = start; i < newEnd; i += 1) out.push({ kind: "add", text: newLines[i] ?? "" });
+  const ctxAfter = Math.min(DIFF_CONTEXT, oldLines.length - oldEnd);
+  for (let i = 0; i < ctxAfter; i += 1) out.push({ kind: "ctx", text: oldLines[oldEnd + i] ?? "" });
+  return out;
+}
+
 class AssistantRow implements RowComponent {
   private readonly box = new Container();
   private readonly reasoning: Text;
@@ -292,8 +331,38 @@ class ToolRow implements RowComponent {
     this.update(row);
   }
   update(row: Extract<TranscriptRow, { kind: "tool" }>): void {
-    const title = row.callView?.title ?? row.name;
+    const title = row.resultView?.card === "diff" && row.resultView.title !== undefined
+      ? row.resultView.title
+      : row.callView?.title ?? row.name;
     this.header.setText(this.p.fg(`Tool / ${title}`, "cyan"));
+    // File edits render as an inline diff (pending call previews the intended
+    // change; the result view shows what was applied). Collapsed caps the
+    // lines with a stub; errors always stay visible.
+    const diffDiffs =
+      row.resultView !== undefined && row.resultView.card === "diff"
+        ? row.resultView.diffs
+        : row.callView !== undefined && row.callView.card === "diff"
+          ? row.callView.diffs
+          : undefined;
+    if (diffDiffs !== undefined) {
+      const rendered: string[] = [];
+      for (const d of diffDiffs) {
+        rendered.push(this.p.bold(`${d.oldText === null ? "+ " : "~ "}${d.path}`));
+        for (const line of lineDiff(d.oldText, d.newText)) {
+          if (line.kind === "add") rendered.push(this.p.fg(`+ ${line.text}`, "green"));
+          else if (line.kind === "del") rendered.push(this.p.fg(`- ${line.text}`, "red"));
+          else rendered.push(this.p.dim(`  ${line.text}`));
+        }
+      }
+      if (!this.isExpanded() && rendered.length > DIFF_COLLAPSED_CAP) {
+        const kept = rendered.slice(0, DIFF_COLLAPSED_CAP);
+        kept.push(this.p.dim(`… ${rendered.length - DIFF_COLLAPSED_CAP} more lines · Ctrl+O expands`));
+        this.body.setText(kept.join("\n"));
+        return;
+      }
+      this.body.setText(rendered.join("\n"));
+      return;
+    }
     // Collapsed keeps only the header (errors stay visible); expanded shows
     // the full result body.
     if (!this.isExpanded() && row.error === undefined) {
