@@ -31,7 +31,9 @@ function apply(ctx: {
 }): void {
   const program = tuiCommand();
   program.action((opts: { resume?: string }) => {
-    ctx.provide(TUI_STARTUP_SERVICE, { resume: opts.resume });
+    // Env fallback keeps the rewind plugin's execve handoff and the launcher's
+    // DSH_CC_RESUME_SESSION habit working without a --resume flag.
+    ctx.provide(TUI_STARTUP_SERVICE, { resume: opts.resume ?? process.env.DSH_CC_RESUME_SESSION });
   });
   parseCmdline(ctx as never, program);
 }

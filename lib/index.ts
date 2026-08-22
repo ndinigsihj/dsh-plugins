@@ -275,11 +275,14 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
   };
 }
 
-/** Plugin config (patch layer): `preset` pins the deployment's preset. */
-function parseConfig(config: unknown): { preset?: string } {
+/** Plugin config (patch layer): `preset` pins the deployment's preset;
+ * `provider`/`model` pin the model route. All optional. */
+function parseConfig(config: unknown): { preset?: string; provider?: string; model?: string } {
   if (config === null || typeof config !== "object" || Array.isArray(config)) return {};
-  const preset = (config as { preset?: unknown }).preset;
-  return typeof preset === "string" && preset.trim() !== "" ? { preset: preset.trim() } : {};
+  const cfg = config as Record<string, unknown>;
+  const str = (v: unknown): string | undefined =>
+    typeof v === "string" && v.trim() !== "" ? v.trim() : undefined;
+  return { preset: str(cfg.preset), provider: str(cfg.provider), model: str(cfg.model) };
 }
 
 function apply(ctx: CordisContext, config?: unknown): void {
@@ -291,7 +294,10 @@ function apply(ctx: CordisContext, config?: unknown): void {
   });
 }
 
-async function run(ctx: CordisContext, own: { preset?: string }): Promise<void> {
+async function run(
+  ctx: CordisContext,
+  own: { preset?: string; provider?: string; model?: string },
+): Promise<void> {
   await ctx.get<{ await(): Promise<void> }>("loader")?.await();
 
   // Fail loud before any screen takeover when the streams are not TTYs.
@@ -308,16 +314,21 @@ async function run(ctx: CordisContext, own: { preset?: string }): Promise<void> 
   // Create (or resume) the root agent through the core registry. Resume is a
   // launcher-level decision: `dsh --profile tui --resume <id>` arrives through
   // tuiStartup and reconstructs the persisted session instead of a new one.
+  // Effective route: patch-layer config pins (provider/model) win over the
+  // harness's current default selection.
   const selection = services.agentDefaultModel.currentSelection();
   const resumeId = ctx.get<{ resume?: string }>("tuiStartup")?.resume;
-  const agentOptions = { provider: selection.provider, model: selection.model };
+  const agentOptions = {
+    provider: own.provider ?? selection.provider,
+    model: own.model ?? selection.model,
+  };
 
   /** Model-selection + preset mount chain installed via the factory hook. */
   function makeSetup(
     composed: ComposedPreset,
   ): (agentCtx: Parameters<typeof installModelSelection>[0]) => void | Promise<void> {
     return (agentCtx) => {
-      installModelSelection(agentCtx, { current: selection, assembled: undefined });
+      installModelSelection(agentCtx, { current: agentOptions, assembled: undefined });
       return composed.setup?.(agentCtx);
     };
   }
