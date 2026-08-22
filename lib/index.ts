@@ -6,6 +6,7 @@
 // runner stays alive and is driven by terminal input and the session event
 // feed instead of a single task.
 
+import { basename } from "node:path";
 import z from "@deepseek-ai/schemastery";
 import { randomUUID } from "node:crypto";
 import { installModelSelection } from "@deepseek-ai/dsh-agent";
@@ -56,6 +57,7 @@ const HELP_TEXT = [
   "/clear           clear the transcript",
   "/new             start a fresh session on the configured/saved default preset",
   "/preset [id]     switch agent presets (blank session swaps live; otherwise saved as default)",
+  "/model           pick the default provider/model route (applies to new sessions)",
   "/sessions        list persisted sessions",
   "/resume <id>     resume a persisted session",
   "/session         show the current session id",
@@ -147,6 +149,13 @@ interface CoreServices {
   };
   agentDefaultModel: {
     currentSelection(): { provider: string; model: string };
+    /** Persist the default route (settings ns `agent-default-model`). */
+    saveSelection?(next: { provider: string; model: string }): Promise<void>;
+  };
+  /** Model catalog for the /model picker (absent in bare boots). */
+  llm?: {
+    listProviders(): Array<{ id: string; name?: string }>;
+    listModels(provider: string): Promise<Array<{ id: string; name?: string; description?: string }>>;
   };
   sessions: {
     flush(session: unknown): Promise<void>;
@@ -232,6 +241,7 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
   const subagents = ctx.get<CoreServices["subagents"]>("subagents");
   const agentPresets = ctx.get<PresetRoster>("agentPresets");
   const settings = ctx.get<SettingsSeam>("settings");
+  const llm = ctx.get<CoreServices["llm"]>("llm");
   const appExit = ctx.get<CoreServices["appExit"]>("appExit");
   if (agents === undefined || agentDefaultModel === undefined || sessions === undefined) return undefined;
   if (appExit === undefined) {
@@ -249,6 +259,7 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
     subagents,
     agentPresets,
     settings,
+    llm,
     appExit,
   };
 }
@@ -518,6 +529,70 @@ async function run(
     await switchToPreset(roster, arg, rows.find((p) => p.id === arg));
   }
 
+  /** /model — pick the default provider/model route from the llm catalog. */
+  async function doModel(): Promise<void> {
+    const llm = services.llm;
+    if (llm === undefined) {
+      app.showNotice("No llm service in this deployment.");
+      return;
+    }
+    const current = services.agentDefaultModel.currentSelection();
+    const routes: Array<{ provider: string; model: string }> = [];
+    const items: Array<{ value: string; label: string; description?: string }> = [];
+    const providers = llm.listProviders();
+    const catalogs = await Promise.all(
+      providers.map(async (p) => ({
+        provider: p,
+        models: await llm.listModels(p.id).catch(() => []),
+      })),
+    );
+    for (const { provider, models } of catalogs) {
+      for (const model of models) {
+        const index = routes.length;
+        routes.push({ provider: provider.id, model: model.id });
+        const isCurrent = provider.id === current.provider && model.id === current.model;
+        items.push({
+          value: String(index),
+          label: `${provider.id}/${model.id}${isCurrent ? "  ← current" : ""}`,
+          description:
+            [provider.name !== provider.id ? provider.name : undefined, model.name !== model.id ? model.name : undefined, model.description]
+              .filter((v) => v !== undefined)
+              .join(" · ") || undefined,
+        });
+      }
+    }
+    if (items.length === 0) {
+      app.showNotice("Model catalog is empty.");
+      return;
+    }
+    const picked = await app.pickSession(items);
+    if (picked === null) {
+      app.showNotice("Model selection cancelled.");
+      return;
+    }
+    const route = routes[Number(picked)];
+    if (route === undefined) return;
+    if (route.provider === current.provider && route.model === current.model) {
+      app.showNotice(`Already on ${route.provider}/${route.model}.`);
+      return;
+    }
+    if (services.agentDefaultModel.saveSelection === undefined) {
+      app.showNotice("Cannot persist: no settings-backed default-model service.");
+      return;
+    }
+    try {
+      await services.agentDefaultModel.saveSelection(route);
+      app.appendCommandOutput(
+        `Default model set to ${route.provider}/${route.model} — applies to new sessions (/new or restart). ` +
+          "The current session keeps its route.",
+      );
+    } catch (error) {
+      app.showNotice(
+        `/model failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
   /** Persist a preset choice through the settings seam (`agent-presets` ns). */
   async function saveDefault(id: string): Promise<string | undefined> {
     const seam = services.settings;
@@ -574,19 +649,27 @@ async function run(
   }
 
   /**
-   * Load persisted sessions as picker rows. Labels come from the harness's
-   * title snapshots (readTitleSnapshots) instead of full-log reads: the old
-   * path called readSession per session (complete decode + replay validation)
-   * just to find the first user message — seconds per multi-MB log.
+   * Load picker rows for THIS workspace's sessions. Labels come from the
+   * harness's title snapshots (readTitleSnapshots) instead of full-log reads:
+   * the old path called readSession per session (complete decode + replay
+   * validation) just to find the first user message — seconds per multi-MB
+   * log. Cross-project resume stays available via `/resume <id>`.
    */
-  async function loadSessionItems(): Promise<Array<{ value: string; label: string; description: string }>> {
+  async function loadSessionItems(): Promise<{
+    items: Array<{ value: string; label: string; description: string }>;
+    totalRecords: number;
+    localRecords: number;
+  }> {
     const query = services.sessionQuery;
-    if (query === undefined) return [];
+    if (query === undefined) return { items: [], totalRecords: 0, localRecords: 0 };
     const records = await query.listSessions();
-    // Bound the read cost: latest sessions only; title reads stay cheap.
-    const recent = records.slice(0, 30);
+    // Scope to the current workspace: sessions persist keyed by cwd, and a
+    // global newest-first list mostly shows other projects' logs.
+    const cwd = process.cwd();
+    const local = records.filter((rec) => rec.header.cwd === cwd);
+    const recent = local.slice(0, 30);
     const snapshots = await query.readTitleSnapshots(recent.map((rec) => rec.header.id));
-    return recent.map((rec, i) => {
+    const items = recent.map((rec, i) => {
       const snap = snapshots[i];
       const title = snap?.status === "fulfilled" ? snap.value?.title?.title : undefined;
       const state = rec.live ? "live" : rec.persisted ? "persisted" : "missing";
@@ -598,18 +681,24 @@ async function run(
         description: `${when} · ${state}${marker}`,
       };
     });
+    return { items, totalRecords: records.length, localRecords: local.length };
   }
 
   async function listSessions(): Promise<void> {
     try {
-      const items = await loadSessionItems();
+      const { items, totalRecords, localRecords } = await loadSessionItems();
       if (items.length === 0) {
-        app.appendCommandOutput("No persisted sessions found.");
+        app.appendCommandOutput(
+          `No sessions in this workspace (${totalRecords} in other workspaces). ` +
+            "/resume <id> still works cross-project.",
+        );
         return;
       }
       const lines = items.map((item, i) => `${String(i + 1).padStart(2)}. ${item.label} [${item.description}]`);
       app.appendCommandOutput(
-        `Sessions (${items.length}):\n${lines.join("\n")}\n/resume to pick, or /resume <session-id>.`,
+        `Sessions in ${basename(process.cwd())} (${localRecords}` +
+          (totalRecords > localRecords ? ` of ${totalRecords} total` : "") + "):\n" +
+          `${lines.join("\n")}\n/resume to pick, or /resume <session-id>.`,
       );
     } catch (error) {
       app.showNotice(`dsh-tui: session list failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -629,9 +718,11 @@ async function run(
     // No id: open the interactive picker (search + Up/Down + Enter).
     try {
       app.showNotice("Loading sessions…");
-      const items = await loadSessionItems();
+      const { items, totalRecords } = await loadSessionItems();
       if (items.length === 0) {
-        app.showNotice("No persisted sessions to resume.");
+        app.showNotice(
+          `No sessions in this workspace (${totalRecords} elsewhere) — /resume <id> works cross-project.`,
+        );
         return;
       }
       const picked = await app.pickSession(items);
@@ -699,6 +790,10 @@ async function run(
       await doPreset(line);
       return;
     }
+    if (line === "/model") {
+      await doModel();
+      return;
+    }
     if (line === "/help") {
       app.showNotice(HELP_TEXT);
       return;
@@ -717,8 +812,14 @@ async function run(
     }
     if (services.commands !== undefined) {
       const execution = await services.commands.execute(agent, line, new AbortController().signal);
-      const text = execution?.result.text;
+      if (execution === undefined) {
+        app.showNotice(`Unknown command ${line.split(/\s+/)[0]} — /help lists what's available.`);
+        return;
+      }
+      const text = execution.result.text;
       if (text !== undefined && text !== "") app.showNotice(text);
+    } else {
+      app.showNotice(`Unknown command ${line.split(/\s+/)[0]} — /help lists what's available.`);
     }
   }
 
@@ -816,6 +917,14 @@ async function run(
       description: "Switch agent presets: /preset [id]",
       handler: ({ rawInput }) => {
         void doPreset(rawInput === "" ? "/preset" : `/preset ${rawInput}`);
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "model",
+      description: "Pick the default provider/model route",
+      handler: () => {
+        void doModel();
         return { kind: "success" };
       },
     });
