@@ -25,7 +25,7 @@
 | | 本仓库 TUI | 官方 `@deepseek-harness-tui/dsh-tui` 0.8.1 |
 |---|---|---|
 | 渲染器 | pi-tui（第三方成熟库，命令式组件） | 自移植 Ink core（React 19 + react-reconciler） |
-| 规模 | ~1,900 行 TS（`lib/` + `approval-tui.ts`） | 305 个编译后 JS 文件，~51,000 行（另有 vendor/dsh-std workspace 包） |
+| 规模 | ~3,200 行 TS（`lib/`） | 305 个编译后 JS 文件，~51,000 行（另有 vendor/dsh-std workspace 包） |
 | 挂载方式 | cordis 插件 patch-insert 进 profile | cordis 插件 bundle.patch + plugin-host/extensions 平台 |
 | 已有能力 | 流式 markdown、思考折叠行、工具卡（presenter 视图）、`/resume` 搜索选择器、ask_user_question 单选 overlay、审批对话框、ctx% 占用、子代理状态行（5s 轮询）、execve 重启式 resume、OSC52→原生剪贴板 | 下表全集 |
 
@@ -73,7 +73,7 @@
 |---|---|
 | `plugins/rename-session.ts` | `/rename <title>`，走 `sessionTitle.rename()` 标准服务，注册表 handler 优先于 TUI 本地名 |
 | `plugins/rewind-dsh.ts` + `.test.ts` | `/rewind <seq>`：sessions.fork 回退对话 + 工具日志逆向恢复文件 + execve 重启 resume；纯函数已单测 |
-| `approval-tui.ts` | 独立审批面板（官方 PR #383 未合部分的本地覆盖） |
+| `lib/app.ts#ApprovalCard` | 卡片式审批对话框（⚠ 标题 + tool/reason + 单键 a/r，待决调用行同步 ⚠ 高亮；allowed-once 是 seam 唯一授权项） |
 | `lib/index.ts#relaunchToResume` | flush → chdir → execve 重启带 `--resume`，`/new` 与回溯类功能可直接复用该机制 |
 
 ## 7. 建议路线
