@@ -84,15 +84,6 @@ function relativeTime(ms?: number): string {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
-/** Extract plain text from message content blocks. */
-function contentText(content: unknown): string {
-  if (!Array.isArray(content)) return "";
-  return content
-    .filter((b): b is { type: string; text?: unknown } => typeof b === "object" && b !== null && (b as { type?: string }).type === "text")
-    .map((b) => String(b.text ?? ""))
-    .join("");
-}
-
 interface UsageLike {
   inputTokens?: unknown;
   cacheReadTokens?: unknown;
@@ -122,26 +113,6 @@ function lastCacheRate(events: ReadonlyArray<unknown>): number | undefined {
     if (rate !== undefined) return rate;
   }
   return undefined;
-}
-
-/** First real (non-injected) user message of a session, truncated. */
-async function firstUserMessage(
-  query: NonNullable<CoreServices["sessionQuery"]>,
-  id: string,
-): Promise<string> {
-  try {
-    const snap = await query.readSession(id);
-    for (const event of snap.events) {
-      if (event.type !== "user/message") continue;
-      const source = event.data.source as { kind?: string } | undefined;
-      if (source?.kind === "plugin") continue; // injected context, not a human prompt
-      const text = contentText(event.data.content);
-      if (text.trim() !== "") return truncate(text.trim(), 60);
-    }
-    return "";
-  } catch {
-    return "";
-  }
 }
 
 /** Narrow the real Agent handle to the surface the app drives. */
@@ -203,7 +174,14 @@ interface CoreServices {
     >;
     readTitleSnapshots(
       ids: string[],
-    ): Promise<Array<{ sessionId: string; status: string; title?: { title?: string } }>>;
+      signal?: AbortSignal,
+    ): Promise<
+      Array<{
+        status: "fulfilled" | "rejected";
+        reason?: unknown;
+        value?: { session?: unknown; title?: { title?: string } };
+      }>
+    >;
     readSession(
       sessionId: string,
     ): Promise<{ events: Array<{ type: string; data: Record<string, unknown> }> }>;
@@ -595,21 +573,28 @@ async function run(
     }
   }
 
-  /** Load persisted sessions as picker rows (first-message label + state). */
+  /**
+   * Load persisted sessions as picker rows. Labels come from the harness's
+   * title snapshots (readTitleSnapshots) instead of full-log reads: the old
+   * path called readSession per session (complete decode + replay validation)
+   * just to find the first user message — seconds per multi-MB log.
+   */
   async function loadSessionItems(): Promise<Array<{ value: string; label: string; description: string }>> {
     const query = services.sessionQuery;
     if (query === undefined) return [];
     const records = await query.listSessions();
-    // Bound the read cost: latest sessions only, first-message reads in parallel.
-    const recent = records.slice(0, 50);
-    const labels = await Promise.all(recent.map((rec) => firstUserMessage(query, rec.header.id)));
+    // Bound the read cost: latest sessions only; title reads stay cheap.
+    const recent = records.slice(0, 30);
+    const snapshots = await query.readTitleSnapshots(recent.map((rec) => rec.header.id));
     return recent.map((rec, i) => {
+      const snap = snapshots[i];
+      const title = snap?.status === "fulfilled" ? snap.value?.title?.title : undefined;
       const state = rec.live ? "live" : rec.persisted ? "persisted" : "missing";
       const when = relativeTime(rec.header.createdAt);
       const marker = rec.header.id === agent.id ? " (current)" : "";
       return {
         value: rec.header.id,
-        label: labels[i] || "(empty session)",
+        label: title !== undefined && title !== "" ? truncate(title, 60) : "(empty session)",
         description: `${when} · ${state}${marker}`,
       };
     });
@@ -643,6 +628,7 @@ async function run(
     }
     // No id: open the interactive picker (search + Up/Down + Enter).
     try {
+      app.showNotice("Loading sessions…");
       const items = await loadSessionItems();
       if (items.length === 0) {
         app.showNotice("No persisted sessions to resume.");
