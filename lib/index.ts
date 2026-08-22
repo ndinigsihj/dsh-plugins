@@ -115,6 +115,7 @@ interface ProjectionValues {
 
 interface UsageLike {
   inputTokens?: unknown;
+  outputTokens?: unknown;
   cacheReadTokens?: unknown;
   cacheWriteTokens?: unknown;
 }
@@ -1245,6 +1246,7 @@ async function run(
             id: string;
             question: string;
             options?: Array<{ label: string; description?: string }>;
+            multiSelect?: boolean;
           }>;
         };
         const answers: Array<{ id: string; selected: string[] }> = [];
@@ -1253,6 +1255,7 @@ async function run(
             id: item.id,
             question: item.question,
             options: item.options,
+            multiSelect: item.multiSelect,
           });
           if (selected === null) return { answers: [] };
           answers.push({ id: item.id, selected });
@@ -1451,10 +1454,18 @@ async function run(
     (session: { id: string }, event: unknown) => {
       if (session.id !== agent.id) return;
       app.model.apply(event as never, presenters);
-      const evt = event as { type?: string; data?: { usage?: UsageLike } };
+      const evt = event as { type?: string; data?: Record<string, unknown> };
       if (evt.type === "assistant/message") {
-        const rate = cacheRateOf(evt.data?.usage);
+        const usage = evt.data?.usage as UsageLike | undefined;
+        const rate = cacheRateOf(usage);
         if (rate !== undefined) app.setCacheRate(rate);
+        const out = typeof usage?.outputTokens === "number" ? usage.outputTokens : null;
+        app.setLastOutputTokens(out);
+      } else if (evt.type === "assistant/chunk") {
+        const chunk = evt.data?.chunk as { type?: string; text?: string } | undefined;
+        if (chunk?.type === "text" && typeof chunk.text === "string" && chunk.text !== "") {
+          app.noteStreamText(chunk.text);
+        }
       }
       app.onSessionEvent();
       updateContextPressure();

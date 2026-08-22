@@ -52,6 +52,8 @@ export interface AskQuestionRequest {
     question: string;
     header?: string;
     options?: Array<{ label: string; description?: string }>;
+    /** Harness wire flag: more than one option may be selected. */
+    multiSelect?: boolean;
   }>;
 }
 
@@ -129,6 +131,19 @@ export function formatTokens(n: number): string {
   return String(n);
 }
 
+/** Sliding window behind the live t/s gauge. */
+const STREAM_WINDOW_MS = 3000;
+
+/** Rough live token estimate for streamed text: CJK ≈ 1 token/char, other
+ * scripts ≈ 0.25. Only feeds the transient gauge — never any accounting. */
+function estimateStreamTokens(text: string): number {
+  let tokens = 0;
+  for (const ch of text) {
+    tokens += ch.codePointAt(0)! >= 0x2e80 ? 1 : 0.25;
+  }
+  return tokens;
+}
+
 /** One context-pressure reading for the status bar's right side. */
 export interface ContextOccupancy {
   pct: number;
@@ -146,19 +161,26 @@ export class StatusLine implements Component {
   private readonly p: Palette;
   private left = "";
   private right = "";
+  /** Volatile extras (TPS gauge, last-output tokens) shown before `right`;
+   * dropped wholesale on narrow terminals so the ctx gauge stays intact. */
+  private extras: string | null = null;
   private notice: string[] | null = null;
 
   constructor(p: Palette) {
     this.p = p;
   }
 
-  /** New facts; either side may be empty. Leaves any transient notice up:
-   * notices retire on their own timer, an explicit clear, or a newer
-   * notice — never on a repaint, which races event bursts and would erase
-   * them before they can be read. */
+  /** New facts; leaves any transient notice up: notices retire on their own
+   * timer, an explicit clear, or a newer notice — never on a repaint, which
+   * races event bursts and would erase them before they can be read. */
   setParts(left: string, right: string): void {
     this.left = left;
     this.right = right;
+  }
+
+  /** Transient pre-ctx gauges; empty string clears. */
+  setExtras(text: string): void {
+    this.extras = text === "" ? null : text;
   }
 
   showNotice(text: string): void {
@@ -173,7 +195,15 @@ export class StatusLine implements Component {
   render(width: number): string[] {
     if (this.notice !== null) return this.notice.map((line) => this.p.dim(line));
     const avail = Math.max(0, width);
-    const right = truncateToWidth(this.right, Math.max(0, avail - 2));
+    const sep = " · ";
+    let right =
+      this.extras !== null && this.right !== ""
+        ? `${this.extras}${sep}${this.right}`
+        : this.extras ?? this.right;
+    // The ctx gauge is the payload; volatile extras are dropped whole on
+    // narrow terminals rather than letting the gauge get truncated.
+    if (visibleWidth(right) > Math.max(0, avail - 2)) right = this.right;
+    right = truncateToWidth(right, Math.max(0, avail - 2));
     const maxLeft = Math.max(0, avail - visibleWidth(right) - 2);
     const left = truncateToWidth(this.left, maxLeft);
     const pad = Math.max(1, avail - visibleWidth(left) - visibleWidth(right));
@@ -768,6 +798,86 @@ function enableShiftClickExtend(tui: TuiAltScreen): void {
   };
 }
 
+/** Multi-select question overlay: the harness `multiSelect` wire flag asks
+ * for several of the options at once. Space toggles, a selects/deselects
+ * all, Enter submits the checked labels (possibly empty), Esc cancels. */
+class CheckboxList implements Component {
+  private readonly palette: Palette;
+  private readonly question: string;
+  private readonly options: Array<{ label: string; description?: string }>;
+  private readonly checked: boolean[];
+  private cursor = 0;
+
+  onSubmit?: (selected: string[]) => void;
+  onCancel?: () => void;
+
+  constructor(
+    palette: Palette,
+    question: string,
+    options: Array<{ label: string; description?: string }>,
+  ) {
+    this.palette = palette;
+    this.question = question;
+    this.options = options;
+    this.checked = options.map(() => false);
+  }
+
+  handleInput(data: string): void {
+    if (matchesKey(data, "escape")) {
+      this.onCancel?.();
+      return;
+    }
+    if (matchesKey(data, "enter")) {
+      this.onSubmit?.(this.selectedLabels());
+      return;
+    }
+    if (matchesKey(data, "up")) {
+      this.move(-1);
+      return;
+    }
+    if (matchesKey(data, "down")) {
+      this.move(1);
+      return;
+    }
+    if (isPrintableInput(data)) {
+      const key = data.toLowerCase();
+      if (key === " ") {
+        const current = this.checked[this.cursor];
+        this.checked[this.cursor] = !(current ?? false);
+        return;
+      }
+      if (key === "a") {
+        const allOn = this.checked.every(Boolean);
+        for (let i = 0; i < this.checked.length; i += 1) this.checked[i] = !allOn;
+      }
+    }
+  }
+
+  render(width: number): string[] {
+    const lines = [this.palette.dim(this.question), ""];
+    this.options.forEach((option, i) => {
+      const cursor = i === this.cursor ? this.palette.fg("❯ ", "cyan") : "  ";
+      const box = this.checked[i] === true ? this.palette.fg("[x]", "green") : this.palette.dim("[ ]");
+      const desc =
+        option.description !== undefined ? this.palette.dim(` — ${option.description}`) : "";
+      lines.push(truncateToWidth(`${cursor}${box} ${option.label}${desc}`, Math.max(0, width - 2)));
+    });
+    lines.push("");
+    lines.push(this.palette.dim("space toggle · a all/none · enter submit · esc cancel"));
+    return lines;
+  }
+
+  invalidate(): void {}
+
+  private move(delta: number): void {
+    this.cursor = Math.max(0, Math.min(this.options.length - 1, this.cursor + delta));
+  }
+
+  private selectedLabels(): string[] {
+    return this.options.filter((_, i) => this.checked[i] === true).map((o) => o.label);
+  }
+}
+
 export class TuiApp {
   private readonly terminal = new ProcessTerminal();
   private readonly clipboardTerminal = new ClipboardTerminal(this.terminal);
@@ -789,6 +899,11 @@ export class TuiApp {
   private lastCtrlC = 0;
   private noticeTimer: ReturnType<typeof setTimeout> | undefined;
   private detailsExpanded = false;
+  /** Sliding samples of streamed assistant text for the live t/s gauge. */
+  private streamSamples: Array<{ at: number; tokens: number }> = [];
+  private streamTimer: ReturnType<typeof setInterval> | undefined;
+  private liveTps: number | null = null;
+  private lastOutputTokens: number | null = null;
   private readonly options: TuiAppOptions;
 
   constructor(options: TuiAppOptions) {
@@ -873,6 +988,52 @@ export class TuiApp {
     this.render();
   }
 
+  /** Output tokens of the newest provider usage sample (null hides it). */
+  setLastOutputTokens(tokens: number | null): void {
+    this.lastOutputTokens = tokens !== null && tokens > 0 ? tokens : null;
+  }
+
+  /** Feed streamed assistant text into the live token-rate window. */
+  noteStreamText(text: string): void {
+    const now = Date.now();
+    this.streamSamples.push({ at: now, tokens: estimateStreamTokens(text) });
+    const cutoff = now - STREAM_WINDOW_MS - 1000;
+    while (this.streamSamples.length > 2 && (this.streamSamples[0]?.at ?? 0) < cutoff) {
+      this.streamSamples.shift();
+    }
+  }
+
+  private startStreamSampler(): void {
+    if (this.streamTimer !== undefined) return;
+    this.streamTimer = setInterval(() => {
+      const cutoff = Date.now() - STREAM_WINDOW_MS;
+      const inWindow = this.streamSamples.filter((s) => s.at >= cutoff);
+      const first = inWindow[0];
+      const last = inWindow[inWindow.length - 1];
+      if (
+        first === undefined ||
+        last === undefined ||
+        last.at === first.at ||
+        last.tokens <= first.tokens
+      ) {
+        this.liveTps = null;
+      } else {
+        this.liveTps = Math.round((last.tokens - first.tokens) / ((last.at - first.at) / 1000));
+      }
+      this.updateStatus();
+      this.render();
+    }, 500);
+    this.streamTimer.unref?.();
+  }
+
+  private stopStreamSampler(): void {
+    if (this.streamTimer === undefined) return;
+    clearInterval(this.streamTimer);
+    this.streamTimer = undefined;
+    this.streamSamples = [];
+    this.liveTps = null;
+  }
+
   /** Running-subagent summary under the status line (empty hides the row). */
   setSubagents(running: RunningSubagent[]): void {
     if (running.length === 0) {
@@ -933,6 +1094,8 @@ export class TuiApp {
 
   setStatus(status: "idle" | "running"): void {
     this.statusValue = status;
+    if (status === "running") this.startStreamSampler();
+    else this.stopStreamSampler();
     this.updateStatus();
     this.render();
   }
@@ -997,11 +1160,32 @@ export class TuiApp {
       const text = `ctx ${pct}%${detail}`;
       right = pct >= 80 ? this.p.fg(text, "yellow") : this.p.dim(text);
     }
+    // Volatile gauges sit left of the ctx gauge and are dropped whole when
+    // the terminal is too narrow (StatusLine keeps the gauge intact).
+    const extras: string[] = [];
+    if (running && this.liveTps !== null && this.liveTps > 0) extras.push(`~${this.liveTps} t/s`);
+    if (this.lastOutputTokens !== null) extras.push(`out ${formatTokens(this.lastOutputTokens)}`);
+    this.status.setExtras(extras.join(" · "));
     this.status.setParts(left.join(sep), right);
   }
 
   /** Prompt the human for one question, returning the chosen label or null on cancel. */
   askQuestion(item: AskQuestionRequest["questions"][number]): Promise<string[] | null> {
+    if (item.multiSelect === true && (item.options?.length ?? 0) > 0) {
+      return new Promise((resolve) => {
+        const list = new CheckboxList(this.p, item.question, item.options ?? []);
+        const handle = this.tui.showOverlay(list, { anchor: "bottom-left", margin: 1 });
+        list.onSubmit = (selected) => {
+          handle.hide();
+          resolve(selected);
+        };
+        list.onCancel = () => {
+          handle.hide();
+          resolve(null);
+        };
+        this.tui.setFocus(list);
+      });
+    }
     return new Promise((resolve) => {
       const items: SelectItem[] = (item.options ?? []).map((o) => ({
         value: o.label,
