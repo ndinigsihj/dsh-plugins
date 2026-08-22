@@ -22,6 +22,7 @@ import {
   matchesKey,
   truncateToWidth,
   visibleWidth,
+  wrapTextWithAnsi,
   type Component,
   type EditorTheme,
   type MarkdownTheme,
@@ -347,7 +348,10 @@ class ToolRow implements RowComponent {
     const title = row.resultView?.card === "diff" && row.resultView.title !== undefined
       ? row.resultView.title
       : row.callView?.title ?? row.name;
-    this.header.setText(this.p.fg(`Tool / ${title}`, "cyan"));
+    // While its approval dialog is open, mark the pending call so the user
+    // can see which action the card is asking about.
+    const badge = row.awaitingApproval === true ? this.p.fg("⚠ ", "yellow") : "";
+    this.header.setText(`${badge}${this.p.fg(`Tool / ${title}`, "cyan")}`);
     // File edits render as an inline diff (pending call previews the intended
     // change; the result view shows what was applied). Collapsed caps the
     // lines with a stub; errors always stay visible.
@@ -593,6 +597,117 @@ class SessionPicker implements Component {
 
   private refreshHeader(): void {
     this.queryText.setText(`search> ${this.query}${this.query === "" ? " " : ""}`);
+  }
+}
+
+/** Width cap and label column for the approval card. */
+const APPROVAL_CARD_MAX = 76;
+const APPROVAL_LABEL_PAD = 10;
+
+/**
+ * Bordered approval card: names the tool, shows the harness-provided reason
+ * wrapped to width, and answers with Allow once / Reject. Single keys a/r,
+ * arrows + enter, Esc cancels. The pending call it refers to is flagged in
+ * the transcript behind this overlay.
+ */
+class ApprovalCard implements Component {
+  private readonly palette: Palette;
+  private readonly toolName: string;
+  private readonly reason: string | undefined;
+  private readonly select: SelectList;
+
+  onDecide?: (outcome: "allowed-once" | "rejected" | "cancelled") => void;
+
+  constructor(palette: Palette, toolName: string, reason?: string) {
+    this.palette = palette;
+    this.toolName = toolName;
+    this.reason = reason;
+    this.select = new SelectList(
+      [
+        { value: "allowed-once", label: "Allow once" },
+        { value: "rejected", label: "Reject" },
+      ],
+      2,
+      selectListTheme(palette),
+    );
+  }
+
+  handleInput(data: string): void {
+    if (matchesKey(data, "escape")) {
+      this.onDecide?.("cancelled");
+      return;
+    }
+    if (matchesKey(data, "enter")) {
+      const item = this.select.getSelectedItem();
+      if (item !== null) this.onDecide?.(item.value as "allowed-once" | "rejected");
+      return;
+    }
+    if (matchesKey(data, "up")) {
+      this.select.setSelectedIndex(0);
+      return;
+    }
+    if (matchesKey(data, "down")) {
+      this.select.setSelectedIndex(1);
+      return;
+    }
+    if (isPrintableInput(data)) {
+      const key = data.toLowerCase();
+      if (key === "a") this.onDecide?.("allowed-once");
+      else if (key === "r") this.onDecide?.("rejected");
+    }
+  }
+
+  render(width: number): string[] {
+    const cardWidth = Math.max(24, Math.min(width - 2, APPROVAL_CARD_MAX));
+    const inner = cardWidth - 4; // border pipes plus one space each side
+    const valueWidth = Math.max(16, inner - APPROVAL_LABEL_PAD);
+
+    const content: string[] = [];
+    content.push("");
+    content.push(this.padLabel("Tool", this.palette.bold(this.toolName), valueWidth));
+    const reasonLines =
+      this.reason === undefined || this.reason.trim() === ""
+        ? [this.palette.dim("(no reason provided)")]
+        : wrapTextWithAnsi(this.reason, valueWidth);
+    for (const [i, line] of reasonLines.entries()) {
+      content.push(this.padLabel(i === 0 ? "Request" : "", line, valueWidth));
+    }
+    content.push("");
+    content.push(...this.select.render(inner));
+    content.push(
+      this.palette.dim("  ↑↓ choose · enter confirm · a allow · r reject · esc cancel"),
+    );
+    content.push("");
+
+    return [this.topRule(cardWidth), ...content.map((l) => this.bodyLine(l, cardWidth)), this.bottomRule(cardWidth)];
+  }
+
+  invalidate(): void {
+    this.select.invalidate();
+  }
+
+  /** One content row padded to the card interior, flanked by dim borders. */
+  private bodyLine(text: string, cardWidth: number): string {
+    const pad = Math.max(0, cardWidth - 4 - visibleWidth(text));
+    return `${this.palette.dim("│ ")}${text}${" ".repeat(pad)}${this.palette.dim(" │")}`;
+  }
+
+  private topRule(cardWidth: number): string {
+    const title = this.palette.fg("⚠ Approval required", "yellow");
+    const left = this.palette.dim("╭─ ");
+    const right = this.palette.dim(" ─╮");
+    const fill = Math.max(0, cardWidth - visibleWidth(left) - visibleWidth(title) - visibleWidth(right));
+    return `${left}${title}${this.palette.dim("─".repeat(fill))}${right}`;
+  }
+
+  private bottomRule(cardWidth: number): string {
+    return this.palette.dim(`╰${"─".repeat(Math.max(0, cardWidth - 2))}╯`);
+  }
+
+  /** Label column + value; continuation rows pass an empty label. */
+  private padLabel(label: string, value: string, valueWidth: number): string {
+    const pad = " ".repeat(APPROVAL_LABEL_PAD - visibleWidth(label));
+    return `${this.palette.dim(label)}${pad}${truncateToWidth(value, valueWidth)}`;
   }
 }
 
@@ -869,24 +984,20 @@ export class TuiApp {
     });
   }
 
-  /** Prompt the human to approve a tool call. */
+  /** Prompt the human to approve a tool call via the approval card. */
   askApproval(req: ApprovalRequest): Promise<"allowed-once" | "rejected" | "cancelled"> {
     return new Promise((resolve) => {
-      const items: SelectItem[] = [
-        { value: "allowed-once", label: "Allow" },
-        { value: "rejected", label: "Reject" },
-      ];
-      const select = new SelectList(items, 2, selectListTheme(this.p));
-      const handle = this.tui.showOverlay(select, { anchor: "bottom-left", margin: 1 });
-      select.onSelect = (sel) => {
+      const card = new ApprovalCard(this.p, req.toolName, req.reason);
+      const finish = (outcome: "allowed-once" | "rejected" | "cancelled") => {
+        if (this.transcript.clearApprovalFlags()) this.transcriptArea.redrawAll();
         handle.hide();
-        resolve(sel.value as "allowed-once" | "rejected");
+        resolve(outcome);
       };
-      select.onCancel = () => {
-        handle.hide();
-        resolve("cancelled");
-      };
-      this.tui.setFocus(select);
+      card.onDecide = finish;
+      const handle = this.tui.showOverlay(card, { anchor: "bottom-center", margin: 1 });
+      // Point at the pending call the card is about, behind the overlay.
+      if (this.transcript.flagPendingTool(req.toolName)) this.transcriptArea.redrawAll();
+      this.tui.setFocus(card);
     });
   }
 

@@ -26,6 +26,8 @@ export type TranscriptRow =
       callView?: ToolCallView;
       resultView?: ToolResultView;
       error?: { name: string; code: string };
+      /** Set while an approval dialog is open for this still-pending call. */
+      awaitingApproval?: boolean;
     }
   | { kind: "notice"; text: string; seq: number }
   | { kind: "error"; text: string; seq: number }
@@ -93,6 +95,32 @@ export class TranscriptModel {
     this.rows.push({ kind: "notice", text, seq: this.noticeSeq });
     this.noticeSeq -= 1;
     this.bump();
+  }
+
+  /** Flag the newest still-pending call of `toolName` for the approval card
+   * to point at; false when no matching pending row exists. */
+  flagPendingTool(toolName: string): boolean {
+    for (let i = this.rows.length - 1; i >= 0; i -= 1) {
+      const row = this.rows[i];
+      if (row === undefined || row.kind !== "tool") continue;
+      if (row.resultView !== undefined || row.error !== undefined) continue;
+      if (row.name !== toolName) continue;
+      row.awaitingApproval = true;
+      return true;
+    }
+    return false;
+  }
+
+  /** Drop every approval flag; true when anything changed. */
+  clearApprovalFlags(): boolean {
+    let changed = false;
+    for (const row of this.rows) {
+      if (row.kind === "tool" && row.awaitingApproval === true) {
+        row.awaitingApproval = undefined;
+        changed = true;
+      }
+    }
+    return changed;
   }
 
   clear(): void {
