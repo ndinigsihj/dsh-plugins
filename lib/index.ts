@@ -12,7 +12,7 @@ import { randomUUID } from "node:crypto";
 import { installModelSelection } from "@deepseek-ai/dsh-agent";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import { SessionId } from "@deepseek-ai/dsh-session";
-import { TuiApp, type AgentSurface, type AutocompleteCommand } from "./app.ts";
+import { TuiApp, formatTokens, type AgentSurface, type AutocompleteCommand } from "./app.ts";
 import type { ToolPresenters } from "./transcript.ts";
 import {
   AGENT_PRESETS_NS,
@@ -58,11 +58,15 @@ const HELP_TEXT = [
   "/new             start a fresh session on the configured/saved default preset",
   "/preset [id]     switch agent presets (blank session swaps live; otherwise saved as default)",
   "/model           switch THIS session's model (history carries over; default updated too)",
+  "/compact         fold older history into a summary (core command)",
+  "/cost            cumulative provider-reported token usage",
+  "/tokens          current context-window occupancy detail",
   "/sessions        list persisted sessions",
   "/resume <id>     resume a persisted session",
   "/session         show the current session id",
   "/help            show this help",
   "补全：/ + Tab 出命令菜单（↑/↓ 选，Tab 应用）· @ + Tab 出文件引用",
+  "Ctrl+O          展开/收起思考与工具详情",
 ].join("\n");
 
 function userMessage(text: string): unknown {
@@ -85,6 +89,24 @@ function relativeTime(ms?: number): string {
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
   return `${Math.floor(seconds / 86400)}d ago`;
+}
+
+/** The projection values this TUI consumes off sessionProjections. */
+interface ProjectionValues {
+  contextPressure?: {
+    projectedTokens?: number;
+    contextWindow?: number;
+    pressureTokens?: number;
+  };
+  tokenUsage?: {
+    totals?: {
+      uncachedInputTokens?: number;
+      outputTokens?: number;
+      cacheReadTokens?: number;
+      cacheWriteTokens?: number;
+    };
+    last?: { turn?: number; step?: number } | null;
+  };
 }
 
 interface UsageLike {
@@ -192,7 +214,8 @@ interface CoreServices {
     execute(
       agent: Agent,
       line: string,
-      signal: AbortSignal,
+      images?: unknown[],
+      signal?: AbortSignal,
     ): Promise<{ result: { kind: string; text?: string } } | undefined>;
   };
   sessionQuery?: {
@@ -216,9 +239,7 @@ interface CoreServices {
     ): Promise<{ events: Array<{ type: string; data: Record<string, unknown> }> }>;
   };
   sessionProjections?: {
-    snapshot(
-      session: unknown,
-    ): { values: { contextPressure?: { projectedTokens?: number; contextWindow?: number } } };
+    snapshot(session: unknown): { values: ProjectionValues };
   };
   tokenMeter?: {
     measure(session: unknown): { totalTokens: number };
@@ -685,6 +706,95 @@ async function run(
     return recordedRouteOf(agent.session.events) ?? agentOptions;
   }
 
+  /** /cost — cumulative provider-reported usage for this session. */
+  function showCost(): void {
+    let totals: ProjectionValues["tokenUsage"] | undefined;
+    try {
+      totals = projectionValues().tokenUsage;
+    } catch {
+      /* projections not ready */
+    }
+    const t = totals?.totals;
+    const n = (v: number | undefined): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+    const hasAny =
+      t !== undefined &&
+      (t.uncachedInputTokens !== undefined ||
+        t.outputTokens !== undefined ||
+        t.cacheReadTokens !== undefined ||
+        t.cacheWriteTokens !== undefined);
+    if (!hasAny) {
+      let total: number | undefined;
+      try {
+        total = services.tokenMeter?.measure(agent.session).totalTokens;
+      } catch {
+        /* meter absent */
+      }
+      app.appendCommandOutput(
+        total === undefined
+          ? "No usage recorded yet."
+          : `Usage (meter estimate): ${formatTokens(total)} tokens.`,
+      );
+      return;
+    }
+    const billedInput = n(t?.uncachedInputTokens) + n(t?.cacheReadTokens) + n(t?.cacheWriteTokens);
+    app.appendCommandOutput(
+      [
+        "Usage (provider-reported, session totals):",
+        `  input (uncached)  ${formatTokens(n(t?.uncachedInputTokens))}`,
+        `  cache read        ${formatTokens(n(t?.cacheReadTokens))}`,
+        `  cache write       ${formatTokens(n(t?.cacheWriteTokens))}`,
+        `  output            ${formatTokens(n(t?.outputTokens))}`,
+        `  billed input ${formatTokens(billedInput)} · grand total ${formatTokens(billedInput + n(t?.outputTokens))}`,
+      ].join("\n"),
+    );
+  }
+
+  /** /tokens — current context-window occupancy detail. */
+  function showTokens(): void {
+    const lines: string[] = ["Context tokens:"];
+    let pressure:
+      | { projectedTokens?: number; contextWindow?: number; pressureTokens?: number }
+      | undefined;
+    try {
+      pressure = projectionValues().contextPressure;
+    } catch {
+      /* projections not ready */
+    }
+    if (pressure === undefined) {
+      lines.push("  projections unavailable.");
+    } else {
+      if (pressure.contextWindow !== undefined) {
+        lines.push(`  window         ${formatTokens(pressure.contextWindow)}`);
+      }
+      if (pressure.projectedTokens !== undefined) {
+        const pct =
+          pressure.contextWindow !== undefined && pressure.contextWindow > 0
+            ? Math.round((pressure.projectedTokens / pressure.contextWindow) * 100)
+            : undefined;
+        lines.push(
+          `  next request   ${formatTokens(pressure.projectedTokens)}${pct !== undefined ? ` (${pct}%)` : ""}`,
+        );
+      }
+      if (pressure.pressureTokens !== undefined) {
+        lines.push(`  last reported  ${formatTokens(pressure.pressureTokens)}`);
+      }
+    }
+    try {
+      const total = services.tokenMeter?.measure(agent.session).totalTokens;
+      if (total !== undefined) lines.push(`  meter total    ${formatTokens(total)}`);
+    } catch {
+      /* meter absent */
+    }
+    app.appendCommandOutput(lines.join("\n"));
+  }
+
+  /** Projection values of the live session (throws when unavailable). */
+  function projectionValues(): ProjectionValues {
+    const proj = services.sessionProjections;
+    if (proj === undefined) throw new Error("sessionProjections unavailable");
+    return proj.snapshot(agent.session).values as ProjectionValues;
+  }
+
   /**
    * /model live switch, official recipe: fork the whole log as seed, create a
    * NEW session on the new route with the SAME preset, then replay history.
@@ -1004,6 +1114,14 @@ async function run(
       await doModel();
       return;
     }
+    if (line === "/cost") {
+      showCost();
+      return;
+    }
+    if (line === "/tokens") {
+      showTokens();
+      return;
+    }
     if (line === "/help") {
       app.appendCommandOutput(HELP_TEXT);
       return;
@@ -1020,14 +1138,22 @@ async function run(
       await doResume(line);
       return;
     }
+    if (line === "/compact") {
+      // Core registry command (dsh-base command-compact); progress lands in
+      // the transcript via compaction/end events.
+      app.showNotice("Compacting…");
+    }
     if (services.commands !== undefined) {
-      const execution = await services.commands.execute(agent, line, new AbortController().signal);
+      const execution = await services.commands.execute(agent, line, [], new AbortController().signal);
       if (execution === undefined) {
         app.showNotice(`Unknown command ${line.split(/\s+/)[0]} — /help lists what's available.`);
         return;
       }
       const text = execution.result.text;
       if (text !== undefined && text !== "") app.showNotice(text);
+      else if (line === "/compact" && execution.result.kind === "success") {
+        app.appendCommandOutput("Compaction finished — earlier context was folded.");
+      }
     } else {
       app.showNotice(`Unknown command ${line.split(/\s+/)[0]} — /help lists what's available.`);
     }
@@ -1135,6 +1261,22 @@ async function run(
       description: "Pick the default provider/model route",
       handler: () => {
         void doModel();
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "cost",
+      description: "Show cumulative token usage",
+      handler: () => {
+        showCost();
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "tokens",
+      description: "Show context-window occupancy detail",
+      handler: () => {
+        showTokens();
         return { kind: "success" };
       },
     });

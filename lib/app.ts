@@ -222,11 +222,14 @@ class AssistantRow implements RowComponent {
   private readonly reasoning: Text;
   private readonly markdown: Markdown;
   private readonly p: Palette;
+  private readonly isExpanded: () => boolean;
   constructor(
     p: Palette,
     row: Extract<TranscriptRow, { kind: "assistant" }>,
+    isExpanded: () => boolean,
   ) {
     this.p = p;
+    this.isExpanded = isExpanded;
     this.reasoning = new Text("", 1, 0);
     this.markdown = new Markdown("", 1, 1, markdownTheme(p));
     this.box.addChild(this.reasoning);
@@ -234,8 +237,13 @@ class AssistantRow implements RowComponent {
     this.update(row);
   }
   update(row: Extract<TranscriptRow, { kind: "assistant" }>): void {
+    const reasoning = row.reasoning === "" ? "" : sanitizeDisplay(row.reasoning);
     this.reasoning.setText(
-      row.reasoning === "" ? "" : this.p.dim(`⏤ ${sanitizeDisplay(row.reasoning)}`),
+      reasoning === ""
+        ? ""
+        : this.isExpanded()
+          ? this.p.dim(`⏤ ${reasoning}`)
+          : this.p.dim(`⏤ thinking · ${reasoning.length} chars`),
     );
     this.markdown.setText(sanitizeDisplay(row.text));
   }
@@ -251,21 +259,30 @@ class ToolRow implements RowComponent {
   private readonly box = new Container();
   private readonly header: Text;
   private readonly body: Text;
+  private readonly p: Palette;
+  private readonly isExpanded: () => boolean;
   constructor(
     p: Palette,
     row: Extract<TranscriptRow, { kind: "tool" }>,
+    isExpanded: () => boolean,
   ) {
     this.header = new Text("", 1, 1);
     this.body = new Text("", 1, 0);
     this.box.addChild(this.header);
     this.box.addChild(this.body);
     this.p = p;
+    this.isExpanded = isExpanded;
     this.update(row);
   }
-  private p: Palette;
   update(row: Extract<TranscriptRow, { kind: "tool" }>): void {
     const title = row.callView?.title ?? row.name;
     this.header.setText(this.p.fg(`Tool / ${title}`, "cyan"));
+    // Collapsed keeps only the header (errors stay visible); expanded shows
+    // the full result body.
+    if (!this.isExpanded() && row.error === undefined) {
+      this.body.setText("");
+      return;
+    }
     const lines: string[] = [];
     if (row.error !== undefined) lines.push(this.p.fg(`${row.error.name}: ${row.error.code}`, "red"));
     const view = row.resultView;
@@ -310,14 +327,18 @@ class NoticeRow implements RowComponent {
   }
 }
 
-function buildRowComponent(p: Palette, row: TranscriptRow): RowComponent {
+function buildRowComponent(
+  p: Palette,
+  row: TranscriptRow,
+  isExpanded: () => boolean,
+): RowComponent {
   switch (row.kind) {
     case "user":
       return new UserRow(p, row);
     case "assistant":
-      return new AssistantRow(p, row);
+      return new AssistantRow(p, row, isExpanded);
     case "tool":
-      return new ToolRow(p, row);
+      return new ToolRow(p, row, isExpanded);
     case "notice":
     case "error":
     case "context":
@@ -331,11 +352,22 @@ class TranscriptArea extends Container {
   private lastRevision = -1;
   private readonly model: TranscriptModel;
   private readonly p: Palette;
+  private readonly isExpanded: () => boolean;
 
-  constructor(model: TranscriptModel, p: Palette) {
+  constructor(model: TranscriptModel, p: Palette, isExpanded: () => boolean) {
     super();
     this.model = model;
     this.p = p;
+    this.isExpanded = isExpanded;
+  }
+
+  /** Re-run every row's update() (details toggle changes render w/o revision). */
+  redrawAll(): void {
+    const byRowSeq = new Map(this.model.snapshot.map((r) => [r.seq, r]));
+    for (const [seq, comp] of this.bySeq) {
+      const row = byRowSeq.get(seq);
+      if (row !== undefined) comp.update(row);
+    }
   }
 
   sync(): void {
@@ -346,7 +378,7 @@ class TranscriptArea extends Container {
       seen.add(row.seq);
       let comp = this.bySeq.get(row.seq);
       if (comp === undefined) {
-        comp = buildRowComponent(this.p, row);
+        comp = buildRowComponent(this.p, row, this.isExpanded);
         this.bySeq.set(row.seq, comp);
         this.addChild(comp);
       } else {
@@ -485,6 +517,7 @@ export class TuiApp {
   private stopping = false;
   private lastCtrlC = 0;
   private noticeTimer: ReturnType<typeof setTimeout> | undefined;
+  private detailsExpanded = false;
   private readonly options: TuiAppOptions;
 
   constructor(options: TuiAppOptions) {
@@ -496,7 +529,7 @@ export class TuiApp {
 
     this.tui = new TuiAltScreen(this.clipboardTerminal, true);
 
-    this.transcriptArea = new TranscriptArea(this.transcript, this.p);
+    this.transcriptArea = new TranscriptArea(this.transcript, this.p, () => this.detailsExpanded);
     this.transcriptScroll = new ScrollView(this.transcriptArea, {
       follow: "end",
       primary: true,
@@ -636,6 +669,13 @@ export class TuiApp {
     this.tui.requestRender();
   }
 
+  /** Ctrl+O — expand/collapse reasoning + tool details across the transcript. */
+  toggleDetails(): void {
+    this.detailsExpanded = !this.detailsExpanded;
+    this.transcriptArea.redrawAll();
+    this.render();
+  }
+
   /** Surface a transient notice on the status line; the bar reverts to the
    * session state after `timeoutMs` (or at the next state change). */
   showNotice(text: string, timeoutMs = 8000): void {
@@ -762,6 +802,11 @@ export class TuiApp {
         this.lastCtrlC = now;
         this.showNotice("Press Ctrl+C again to exit.");
       }
+      return { consume: true };
+    }
+    if (matchesKey(data, "ctrl+o")) {
+      if (overlayOpen) return undefined;
+      this.toggleDetails();
       return { consume: true };
     }
     if (matchesKey(data, "ctrl+d")) {
