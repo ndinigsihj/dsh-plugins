@@ -164,6 +164,11 @@ export class StatusLine implements Component {
     this.notice = text.split("\n");
   }
 
+  /** Retire the transient text; parts underneath keep their current values. */
+  clearNotice(): void {
+    this.notice = null;
+  }
+
   render(width: number): string[] {
     if (this.notice !== null) return this.notice.map((line) => this.p.dim(line));
     const avail = Math.max(0, width);
@@ -778,7 +783,8 @@ export class TuiApp {
     if (timeoutMs > 0) {
       this.noticeTimer = setTimeout(() => {
         this.noticeTimer = undefined;
-        this.updateStatus(); // restore the live parts and repaint
+        this.status.clearNotice(); // retire the text itself — setParts no longer does
+        this.updateStatus();
         this.render();
       }, timeoutMs);
     }
@@ -788,6 +794,7 @@ export class TuiApp {
   /** Retire any pending notice immediately and restore the status bar. */
   clearNotice(): void {
     this.clearNoticeTimer();
+    this.status.clearNotice();
     this.updateStatus();
     this.render();
   }
