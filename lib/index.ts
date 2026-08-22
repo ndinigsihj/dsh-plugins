@@ -129,6 +129,39 @@ function cacheRateOf(usage: UsageLike | undefined): number | undefined {
   return Math.round((read / denom) * 1000) / 10;
 }
 
+/**
+ * Last provider-reported usage + context capacity straight from a session log
+ * (used when the harness projections have no live sample — resumed/forked
+ * logs carry their history only in seed events, which projections skip).
+ */
+function lastUsageReport(
+  events: ReadonlyArray<unknown>,
+): { promptTokens: number; contextWindow?: number } | undefined {
+  let promptTokens: number | undefined;
+  let contextWindow: number | undefined;
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const event = events[i] as { type?: string; data?: Record<string, unknown> } | undefined;
+    if (event === undefined) continue;
+    const data = event.data ?? {};
+    if (promptTokens === undefined && event.type === "assistant/message") {
+      const usage = data.usage as UsageLike | undefined;
+      if (usage !== undefined && typeof usage === "object") {
+        const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+        promptTokens = num(usage.inputTokens) + num(usage.cacheReadTokens) + num(usage.cacheWriteTokens);
+        if (promptTokens <= 0) promptTokens = undefined; // meaningless zero — keep scanning
+      }
+    }
+    if (contextWindow === undefined && event.type === "request/context") {
+      const window = data.contextWindow;
+      if (typeof window === "number" && Number.isFinite(window) && window > 0) {
+        contextWindow = window;
+      }
+    }
+    if (promptTokens !== undefined && contextWindow !== undefined) break;
+  }
+  return promptTokens === undefined ? undefined : { promptTokens, contextWindow };
+}
+
 /** Scan events backwards for the last `assistant/message` that reported usage. */
 function lastCacheRate(events: ReadonlyArray<unknown>): number | undefined {
   for (let i = events.length - 1; i >= 0; i -= 1) {
@@ -1205,6 +1238,29 @@ async function run(
     },
   );
 
+  // Route filler for agent/request (official adapter parity): a resumed agent's
+  // FIRST request cannot rely on the host's in-memory header flag — its route
+  // may legitimately live only in the persisted log, so complete an otherwise
+  // empty proposal from the live route we resolved at boot. Subagents that
+  // already carry their own concrete route stay authoritative.
+  const disposeRouteFiller = ctx.on(
+    "agent/request",
+    async (_payload: unknown, next: () => Promise<unknown>) => {
+      const resolved = (await next()) as { provider?: unknown; model?: unknown } | null;
+      if (
+        resolved !== null &&
+        typeof resolved === "object" &&
+        typeof resolved.provider === "string" &&
+        resolved.provider.length > 0 &&
+        typeof resolved.model === "string" &&
+        resolved.model.length > 0
+      ) {
+        return resolved;
+      }
+      return { ...resolved, provider: liveRoute.provider, model: liveRoute.model };
+    },
+  );
+
   // Terminal command catalog.
   if (services.commands !== undefined) {
     services.commands.register({
@@ -1294,25 +1350,33 @@ async function run(
     if (proj === undefined) return;
     try {
       const values = proj.snapshot(agent.session).values as ProjectionValues;
-      // No usage sample in THIS session's log yet (fresh/forked, mid-first-turn):
-      // any projected number would be a guess — hide the segment instead of
-      // showing a misleading 0%.
+      const pressure = values.contextPressure;
+      let used: number | undefined;
+      let windowTokens: number | undefined = pressure?.contextWindow;
       if (values.tokenUsage?.last == null) {
+        // No live sample (fresh session, or a resumed/forked one before its
+        // first reply). Resumed logs still carry the last provider report as
+        // seed events — read it directly; a genuinely new session stays hidden.
+        const report = lastUsageReport(agent.session.events as ReadonlyArray<unknown>);
+        if (report === undefined) {
+          app.setContextOccupancy(null);
+          return;
+        }
+        used = report.promptTokens;
+        if (windowTokens === undefined || windowTokens <= 0) windowTokens = report.contextWindow;
+      } else {
+        used = pressure?.projectedTokens;
+        if (used === undefined && services.tokenMeter !== undefined) {
+          try {
+            used = services.tokenMeter.measure(agent.session).totalTokens;
+          } catch {
+            used = undefined;
+          }
+        }
+      }
+      if (windowTokens === undefined || windowTokens <= 0) {
         app.setContextOccupancy(null);
         return;
-      }
-      const pressure = values.contextPressure;
-      const windowTokens = pressure?.contextWindow;
-      if (windowTokens === undefined || windowTokens <= 0) return;
-      // Prefer the projection's next-request estimate; fall back to the meter's
-      // heuristic total when the provider has not reported usage yet.
-      let used: number | undefined = pressure?.projectedTokens;
-      if (used === undefined && services.tokenMeter !== undefined) {
-        try {
-          used = services.tokenMeter.measure(agent.session).totalTokens;
-        } catch {
-          used = undefined;
-        }
       }
       if (used === undefined) return;
       const pct = Math.max(0, Math.min(100, Math.round((used / windowTokens) * 100)));
@@ -1365,6 +1429,7 @@ async function run(
 
   ctx.effect(() => () => {
     disposeApproval();
+    disposeRouteFiller();
     disposeSessionFeed();
     disposeStatus();
     disposeSubagentPoll();
