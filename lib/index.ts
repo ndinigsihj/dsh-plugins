@@ -1005,7 +1005,7 @@ async function run(
       return;
     }
     if (line === "/help") {
-      app.showNotice(HELP_TEXT);
+      app.appendCommandOutput(HELP_TEXT);
       return;
     }
     if (line === "/session") {

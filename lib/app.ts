@@ -484,6 +484,7 @@ export class TuiApp {
   private readonly workspaceName: string;
   private stopping = false;
   private lastCtrlC = 0;
+  private noticeTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly options: TuiAppOptions;
 
   constructor(options: TuiAppOptions) {
@@ -635,13 +636,30 @@ export class TuiApp {
     this.tui.requestRender();
   }
 
-  /** Surface a transient notice (command output) on the status line. */
-  showNotice(text: string): void {
+  /** Surface a transient notice on the status line; the bar reverts to the
+   * session state after `timeoutMs` (or at the next state change). */
+  showNotice(text: string, timeoutMs = 8000): void {
     this.status.showNotice(text);
+    this.clearNoticeTimer();
+    if (timeoutMs > 0) {
+      this.noticeTimer = setTimeout(() => {
+        this.noticeTimer = undefined;
+        this.updateStatus(); // setParts clears the notice and repaints
+        this.render();
+      }, timeoutMs);
+    }
     this.render();
   }
 
+  private clearNoticeTimer(): void {
+    if (this.noticeTimer !== undefined) {
+      clearTimeout(this.noticeTimer);
+      this.noticeTimer = undefined;
+    }
+  }
+
   private updateStatus(): void {
+    this.clearNoticeTimer(); // a real state change retires any pending notice
     const running = this.statusValue === "running";
     const dot = running ? this.p.fg("●", "yellow") : this.p.fg("●", "green");
     const sep = this.p.dim(" · ");
