@@ -5,6 +5,8 @@
 > 对照基线：官方 npm 包 **0.8.1** 编译产物（本机全局 node_modules 一手核对，305 个 JS 文件 ≈ 51k 行）+ 其 README 快捷键/命令表；pi-tui `^0.84.1`（`node_modules/@earendil-works/pi-tui/dist/*.d.ts` 类型声明一手核对）。
 >
 > 关联文档：[`rc8-capability-assessment.md`](rc8-capability-assessment.md)（官方对 rc.8 的适配现状）、[`rewind-file-restore-plugin.md`](rewind-file-restore-plugin.md)（/rewind 插件方案）。
+>
+> **实现原则（2026-08-22 定）**：实现首先遵循 dsh 本体 / harness 标准服务的语义与机制，**不要求**与 `@deepseek-harness-tui/dsh-tui` 保持一致。官方实现只作交互参考与语义对照；凡 dsh 有原生机制的一律走原生（如 `ctx.settings` 命名空间、agentPresets roster、会话日志事实、commands 注册表），不为"跟官方一致"引入其私有约定（数据目录、环境变量等）。
 
 ---
 
@@ -79,7 +81,7 @@
 | 阶段 | 内容 | 验收 |
 |---|---|---|
 | M0 圈清单 | 已定（2026-08-22）：本期范围 = /preset /new /resume 的会话生命周期，见 M1a | 本文档标注勾选结果 |
-| M1a ✅ 会话生命周期 | 已落地（2026-08-22）：`lib/presets.ts` 结构化接入 `agentPresets`（零新依赖）；语义对齐官方——blank 判定走 recompose + `agent-preset/selected` 日志事实，非 blank 仅存默认；prefs 与官方共用 `~/.dsh-tui/agent-preset.json`；boot/new 取值链 CC_TUI_PRESET > prefs > roster default，resume 以会话日志记录优先；/new 为 in-process 建 agent + 全量重绑定，/resume 保持 execve 重启（跨 cwd 持久化正确性） | tsc 通过；presets 纯函数冒烟通过 |
+| M1a ✅ 会话生命周期 | 已落地（2026-08-22，同日按实现原则重构）：`lib/presets.ts` 结构化接入 `agentPresets`（零新依赖）；blank 判定走 recompose + `agent-preset/selected` 日志事实，非 blank 经 `ctx.settings` 写 `agent-presets` 命名空间默认值（roster defaultId 热生效）；部署钉选 = 本插件 patch 层 `preset:` config；/new 为 in-process 建 agent + 全量重绑定，/resume 保持 execve 重启（跨 cwd 持久化正确性） | tsc 通过；presets 纯函数冒烟通过 |
 | S1 补全 spike（半天） | Editor 接 CombinedAutocompleteProvider：命令源 = services.commands 注册表，文件源 = cwd | 输入 `/` 出命令菜单、`@` 出文件列表、Tab/Enter 正确回填 |
 | M1 白送档 | `/new` `/compact` `/cost` `/tokens` + 思考折叠；并入 rename/rewind 插件 | 各命令在真实会话可用；compact 转发行为若不通则改走 sessions 服务并记录 |
 | M2 小活档 | 会话浏览器预览、`/export`、多选问卷、状态行增强（TPS/token） | 导出 markdown 可读；问卷 Space 多选提交正确 |

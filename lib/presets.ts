@@ -1,24 +1,31 @@
 // Agent-preset integration for the TUI runner.
 //
-// Mirrors the official dsh-tui adapter's semantics (dsh-adapter/presets.js)
-// against the standard `agentPresets` cordis service, without importing the
+// Built on the standard `agentPresets` cordis service, without importing the
 // package: every type here is structural, so the plugin stays loadable in
 // rosterless deployments where the service simply resolves to undefined.
 //
-// Semantics adopted from the official rulebook:
+// Principle: follow the harness's own semantics first — NOT any particular
+// front door's conventions. Concretely:
 //   - Resolution happens BEFORE create/resume; the mount runs inside the
 //     agent factory's setup hook, where a failure rolls back the creation.
 //   - Resolution failure degrades to the host composition with a loud
 //     warning — a session that cannot start is worse than one running
 //     without its preset.
 //   - Only a blank session (no turn ever ran) may recompose live; anything
-//     else persists the choice as the default for future sessions instead.
-//   - A successful switch appends `agent-preset/selected` to the session log
-//     so resumes/forks resolve the NEW composition.
+//     else persists the choice through the harness settings seam (the
+//     `agent-presets` namespace dsh-agent-presets itself registers), and the
+//     roster's hot-reloaded default picks it up on the next session.
+//   - A successful live switch appends `agent-preset/selected` to the
+//     session log so resumes/forks resolve the NEW composition.
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
+/** The settings namespace dsh-agent-presets registers (`{ default }`). */
+export const AGENT_PRESETS_NS = "agent-presets";
+
+/** Structural seam over the `settings` cordis service the runner writes. */
+export interface SettingsSeam {
+  get(ns: string): unknown;
+  update(ns: string, patch: object): Promise<void>;
+}
 
 /** One roster row (structural view of AgentPresets.list()). */
 export interface PresetRow {
@@ -52,40 +59,6 @@ export interface ComposedPreset {
 
 /** Ids a preset directory may use (dsh-agent-presets' own boundary). */
 const PRESET_ID = /^[a-z0-9][a-z0-9-]*$/;
-
-/**
- * Persisted /preset choice, shared with the official dsh-TUI (`~/.dsh-tui/
- * agent-preset.json`, `{ preset }`) so both front doors honor one preference.
- * Best effort throughout: a missing/corrupt file reads as unset.
- */
-
-function prefPath(dir: string): string {
-  return join(dir, "agent-preset.json");
-}
-
-/** The persisted preset id, or undefined when unset/invalid. */
-export function readPresetPref(dir = join(homedir(), ".dsh-tui")): string | undefined {
-  try {
-    const parsed: unknown = JSON.parse(readFileSync(prefPath(dir), "utf8"));
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return undefined;
-    const preset = (parsed as { preset?: unknown }).preset;
-    return typeof preset === "string" && PRESET_ID.test(preset) ? preset : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-/** Persist the chosen preset id; true when written. */
-export function writePresetPref(preset: string, dir = join(homedir(), ".dsh-tui")): boolean {
-  if (!PRESET_ID.test(preset)) return false;
-  try {
-    mkdirSync(dir, { recursive: true });
-    writeFileSync(prefPath(dir), `${JSON.stringify({ preset }, null, 2)}\n`);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Resolve a preset request ahead of create/resume and produce the setup

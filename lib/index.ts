@@ -14,14 +14,14 @@ import { SessionId } from "@deepseek-ai/dsh-session";
 import { TuiApp, type AgentSurface } from "./app.ts";
 import type { ToolPresenters } from "./transcript.ts";
 import {
+  AGENT_PRESETS_NS,
   composePreset,
-  readPresetPref,
   recordedPresetOf,
   sessionIsBlank,
-  writePresetPref,
   type ComposedPreset,
   type PresetRoster,
   type PresetRow,
+  type SettingsSeam,
 } from "./presets.ts";
 
 /** Stable Cordis plugin name. */
@@ -54,8 +54,8 @@ type CordisContext = {
 const HELP_TEXT = [
   "/exit, /quit     exit the terminal front door",
   "/clear           clear the transcript",
-  "/new             start a fresh session (preset: CC_TUI_PRESET > saved choice > roster default)",
-  "/preset [id]     switch agent presets (blank session swaps live; otherwise saved for /new)",
+  "/new             start a fresh session on the configured/saved default preset",
+  "/preset [id]     switch agent presets (blank session swaps live; otherwise saved as default)",
   "/sessions        list persisted sessions",
   "/resume <id>     resume a persisted session",
   "/session         show the current session id",
@@ -195,6 +195,8 @@ interface CoreServices {
   };
   /** Optional roster over ~/.dsh/.agent-presets (absent in bare boots). */
   agentPresets?: PresetRoster;
+  /** User-settings seam; the /preset default persists through its ns. */
+  settings?: SettingsSeam;
   appExit: (code: number) => void;
 }
 
@@ -220,6 +222,7 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
   const tokenMeter = ctx.get<CoreServices["tokenMeter"]>("tokenMeter");
   const subagents = ctx.get<CoreServices["subagents"]>("subagents");
   const agentPresets = ctx.get<PresetRoster>("agentPresets");
+  const settings = ctx.get<SettingsSeam>("settings");
   const appExit = ctx.get<CoreServices["appExit"]>("appExit");
   if (agents === undefined || agentDefaultModel === undefined || sessions === undefined) return undefined;
   if (appExit === undefined) {
@@ -236,20 +239,28 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
     tokenMeter,
     subagents,
     agentPresets,
+    settings,
     appExit,
   };
 }
 
-function apply(ctx: CordisContext): void {
+/** Plugin config (patch layer): `preset` pins the deployment's preset. */
+function parseConfig(config: unknown): { preset?: string } {
+  if (config === null || typeof config !== "object" || Array.isArray(config)) return {};
+  const preset = (config as { preset?: unknown }).preset;
+  return typeof preset === "string" && preset.trim() !== "" ? { preset: preset.trim() } : {};
+}
+
+function apply(ctx: CordisContext, config?: unknown): void {
   // Fire-and-forget the whole front door: apply must return so the plugin
   // settles, otherwise `loader.await()` inside run() deadlocks on us.
-  void run(ctx).catch((error: unknown) => {
+  void run(ctx, parseConfig(config)).catch((error: unknown) => {
     process.stderr.write(`dsh-tui: ${error instanceof Error ? error.message : String(error)}\n`);
     ctx.get<(code: number) => void>("appExit")?.(1);
   });
 }
 
-async function run(ctx: CordisContext): Promise<void> {
+async function run(ctx: CordisContext, own: { preset?: string }): Promise<void> {
   await ctx.get<{ await(): Promise<void> }>("loader")?.await();
 
   // Fail loud before any screen takeover when the streams are not TTYs.
@@ -284,9 +295,9 @@ async function run(ctx: CordisContext): Promise<void> {
   };
 
   /**
-   * Preset for a resumed session: its own log wins over the launch-time chain
-   * (official precedence). Sessions from before presets existed record none,
-   * so an explicit CC_TUI_PRESET / saved choice still applies to them.
+   * Preset for a resumed session: its own log wins over the deployment pin.
+   * Sessions from before presets existed record none, so the patch-layer
+   * `preset` key still applies to them.
    */
   async function bootResumePreset(id: string): Promise<string | undefined> {
     try {
@@ -298,13 +309,14 @@ async function run(ctx: CordisContext): Promise<void> {
     } catch {
       /* unreadable log — fall through */
     }
-    return process.env.CC_TUI_PRESET || readPresetPref() || undefined;
+    return own.preset;
   }
 
+  // Launch-time resolution: the deployment pin is the only override here; a
+  // saved user choice lives in the roster's settings default and resolves
+  // through defaultId when we request none (hot-reloaded document).
   const requestedPreset =
-    resumeId !== undefined
-      ? await bootResumePreset(resumeId)
-      : process.env.CC_TUI_PRESET || readPresetPref() || undefined;
+    resumeId !== undefined ? ((await bootResumePreset(resumeId)) ?? own.preset) : own.preset;
   const composed = await composePreset(services.agentPresets, requestedPreset, warnPreset);
 
   const created = resumeId !== undefined
@@ -409,7 +421,7 @@ async function run(ctx: CordisContext): Promise<void> {
     } catch {
       /* flush failure still switches */
     }
-    const requested = process.env.CC_TUI_PRESET || readPresetPref() || undefined;
+    const requested = own.preset;
     const fresh = await composePreset(services.agentPresets, requested, (m) => app.showNotice(m));
     try {
       const result = await services.agents.create({
@@ -454,12 +466,19 @@ async function run(ctx: CordisContext): Promise<void> {
     const arg = line.slice("/preset".length).trim();
     if (arg === "") {
       const current = currentPreset();
+      let defaultId: string | undefined;
+      try {
+        defaultId = roster.defaultId;
+      } catch {
+        defaultId = undefined;
+      }
       const items = rows.map((p) => ({
         value: p.id,
         label:
           (p.name ?? p.id) +
           (p.broken !== undefined ? " (broken)" : "") +
-          (p.id === current ? "  ← current" : ""),
+          (p.id === current ? "  ← current" : "") +
+          (p.id === defaultId ? "  · default" : ""),
         description:
           [p.trust, p.description]
             .filter((v) => v !== undefined)
@@ -476,11 +495,24 @@ async function run(ctx: CordisContext): Promise<void> {
     await switchToPreset(roster, arg, rows.find((p) => p.id === arg));
   }
 
+  /** Persist a preset choice through the settings seam (`agent-presets` ns). */
+  async function saveDefault(id: string): Promise<string | undefined> {
+    const seam = services.settings;
+    if (seam === undefined) return "no settings service in this deployment";
+    try {
+      await seam.update(AGENT_PRESETS_NS, { default: id });
+      return undefined;
+    } catch (error) {
+      return error instanceof Error ? error.message : String(error);
+    }
+  }
+
   /**
-   * Apply one preset choice. Official rule (dsh-agent-presets): only a blank
+   * Apply one preset choice. Harness rule (dsh-agent-presets): only a blank
    * session may recompose live — a started session's logged tool calls would
-   * strand under a different tool set, so the choice is persisted for future
-   * sessions instead.
+   * strand under a different tool set, so the choice persists through the
+   * settings default instead (the roster's hot-reloaded defaultId picks it up
+   * on the next session).
    */
   async function switchToPreset(roster: PresetRoster, id: string, row?: PresetRow): Promise<void> {
     if (row !== undefined && row.broken !== undefined) {
@@ -492,21 +524,25 @@ async function run(ctx: CordisContext): Promise<void> {
       return;
     }
     if (!sessionIsBlank(agent.session.events as Array<{ type?: string }>)) {
-      if (!writePresetPref(id)) {
-        app.showNotice(`Could not persist "${id}" as the default.`);
+      const failed = await saveDefault(id);
+      if (failed !== undefined) {
+        app.showNotice(`Could not save "${id}" as roster default: ${failed}`);
         return;
       }
       app.appendCommandOutput(
         `Session ${agent.id} already started — kept on ${currentPreset() ?? "host composition"}. ` +
-          `"${id}" saved as default for /new.`,
+          `"${id}" saved as roster default for /new.`,
       );
       return;
     }
     try {
       await roster.recompose(agent.ctx, id);
       agent.session.append?.("agent-preset/selected", { agentPreset: id });
-      writePresetPref(id);
-      app.appendCommandOutput(`Preset switched to "${id}" (blank session recomposed live).`);
+      const failed = await saveDefault(id);
+      app.appendCommandOutput(
+        `Preset switched to "${id}" (blank session recomposed live)` +
+          (failed === undefined ? "." : `; saving default failed: ${failed}`),
+      );
     } catch (error) {
       app.showNotice(
         `Preset switch failed: ${error instanceof Error ? error.message : String(error)}`,
