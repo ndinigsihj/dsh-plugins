@@ -303,21 +303,35 @@ async function run(
   // Create (or resume) the root agent through the core registry. Resume is a
   // launcher-level decision: `dsh --profile tui --resume <id>` arrives through
   // tuiStartup and reconstructs the persisted session instead of a new one.
-  // Effective route: patch-layer config pins (provider/model) win over the
-  // harness's current default selection.
+  // Effective route for NEW sessions: patch-layer config pins (provider/model)
+  // win over the harness's current default selection.
   const selection = services.agentDefaultModel.currentSelection();
   const resumeId = ctx.get<{ resume?: string }>("tuiStartup")?.resume;
   const agentOptions = {
     provider: own.provider ?? selection.provider,
     model: own.model ?? selection.model,
   };
+  // Resume route (official issue #67 semantics): only a deployment pin on BOTH
+  // halves overrides the resumed session's own recorded route; otherwise the
+  // session's request/header records win — /model's saved default must NOT
+  // rewrite history.
+  const pinnedRoute =
+    own.provider !== undefined && own.model !== undefined
+      ? { provider: own.provider, model: own.model }
+      : undefined;
 
-  /** Model-selection + preset mount chain installed via the factory hook. */
+  /**
+   * Model-selection + preset mount chain installed via the factory hook.
+   * `installRoute` is false for an unpinned resume: the session's durable
+   * records drive its route, and re-asserting a default here would stamp over
+   * them (official resume installs nothing of the sort).
+   */
   function makeSetup(
     composed: ComposedPreset,
+    installRoute = true,
   ): (agentCtx: Parameters<typeof installModelSelection>[0]) => void | Promise<void> {
     return (agentCtx) => {
-      installModelSelection(agentCtx, { current: agentOptions, assembled: undefined });
+      if (installRoute) installModelSelection(agentCtx, { current: agentOptions, assembled: undefined });
       return composed.setup?.(agentCtx);
     };
   }
@@ -353,8 +367,8 @@ async function run(
   const created = resumeId !== undefined
     ? await services.agents.resume({
         resumeSessionId: SessionId(resumeId),
-        agentOptions,
-        setup: makeSetup(composed),
+        ...(pinnedRoute === undefined ? {} : { agentOptions: pinnedRoute }),
+        setup: makeSetup(composed, pinnedRoute !== undefined),
       })
     : await services.agents.create({
         sessionId: SessionId(`session-${randomUUID()}`),
