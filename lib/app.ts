@@ -779,6 +779,13 @@ export class TuiApp {
     this.render();
   }
 
+  /** Retire any pending notice immediately and restore the status bar. */
+  clearNotice(): void {
+    this.clearNoticeTimer();
+    this.updateStatus();
+    this.render();
+  }
+
   private clearNoticeTimer(): void {
     if (this.noticeTimer !== undefined) {
       clearTimeout(this.noticeTimer);

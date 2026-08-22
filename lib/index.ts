@@ -1178,19 +1178,34 @@ async function run(
     }
     if (line === "/compact") {
       // Core registry command (dsh-base command-compact); progress lands in
-      // the transcript via compaction/end events.
-      app.showNotice("Compacting…");
+      // the transcript via compaction/end events. The indicator persists for
+      // the whole operation (timeoutMs 0) and is cleared below on completion.
+      app.showNotice("Compacting…", 0);
     }
     if (services.commands !== undefined) {
-      const execution = await services.commands.execute(agent, line, [], new AbortController().signal);
+      let execution: Awaited<ReturnType<NonNullable<CoreServices["commands"]>["execute"]>> | undefined;
+      try {
+        execution = await services.commands.execute(agent, line, [], new AbortController().signal);
+      } catch (error) {
+        if (line === "/compact") app.clearNotice();
+        app.showNotice(
+          `${line.split(/\s+/)[0]} failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        return;
+      }
       if (execution === undefined) {
         app.showNotice(`Unknown command ${line.split(/\s+/)[0]} — /help lists what's available.`);
         return;
       }
       const text = execution.result.text;
       if (text !== undefined && text !== "") app.showNotice(text);
-      else if (line === "/compact" && execution.result.kind === "success") {
-        app.appendCommandOutput("Compaction finished — earlier context was folded.");
+      else if (line === "/compact") {
+        if (execution.result.kind === "success") {
+          app.appendCommandOutput("Compaction finished — earlier context was folded.");
+          app.clearNotice();
+        } else {
+          app.showNotice(`Compaction failed (${execution.result.kind}).`, 8000);
+        }
       }
     } else {
       app.showNotice(`Unknown command ${line.split(/\s+/)[0]} — /help lists what's available.`);
