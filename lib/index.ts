@@ -1017,9 +1017,12 @@ async function run(
     items: Array<{ value: string; label: string; description: string }>;
     totalRecords: number;
     localRecords: number;
+    hiddenUntitled: number;
   }> {
     const query = services.sessionQuery;
-    if (query === undefined) return { items: [], totalRecords: 0, localRecords: 0 };
+    if (query === undefined) {
+      return { items: [], totalRecords: 0, localRecords: 0, hiddenUntitled: 0 };
+    }
     const records = await query.listSessions();
     // Scope to the current workspace: sessions persist keyed by cwd, and a
     // global newest-first list mostly shows other projects' logs.
@@ -1027,35 +1030,47 @@ async function run(
     const local = records.filter((rec) => rec.header.cwd === cwd);
     const recent = local.slice(0, 30);
     const snapshots = await query.readTitleSnapshots(recent.map((rec) => rec.header.id));
-    const items = recent.map((rec, i) => {
+    // Untitled sessions are empty shells (a boot that never got a message) —
+    // keep them out of the picker.
+    let hiddenUntitled = 0;
+    const items: Array<{ value: string; label: string; description: string }> = [];
+    for (let i = 0; i < recent.length; i += 1) {
+      const rec = recent[i];
+      if (rec === undefined) continue;
       const snap = snapshots[i];
       const title = snap?.status === "fulfilled" ? snap.value?.title?.title : undefined;
+      if (title === undefined || title.trim() === "") {
+        hiddenUntitled += 1;
+        continue;
+      }
       const state = rec.live ? "live" : rec.persisted ? "persisted" : "missing";
       const when = relativeTime(rec.header.createdAt);
       const marker = rec.header.id === agent.id ? " (current)" : "";
-      return {
+      items.push({
         value: rec.header.id,
-        label: title !== undefined && title !== "" ? truncate(title, 60) : "(empty session)",
+        label: truncate(title, 60),
         description: `${when} · ${state}${marker}`,
-      };
-    });
-    return { items, totalRecords: records.length, localRecords: local.length };
+      });
+    }
+    return { items, totalRecords: records.length, localRecords: local.length, hiddenUntitled };
   }
 
   async function listSessions(): Promise<void> {
     try {
-      const { items, totalRecords, localRecords } = await loadSessionItems();
+      const { items, totalRecords, localRecords, hiddenUntitled } = await loadSessionItems();
       if (items.length === 0) {
         app.appendCommandOutput(
-          `No sessions in this workspace (${totalRecords} in other workspaces). ` +
+          `No titled sessions in this workspace` +
+            ` (${hiddenUntitled} untitled hidden · ${totalRecords} in other workspaces). ` +
             "/resume <id> still works cross-project.",
         );
         return;
       }
+      const hiddenNote = hiddenUntitled > 0 ? ` · ${hiddenUntitled} untitled hidden` : "";
       const lines = items.map((item, i) => `${String(i + 1).padStart(2)}. ${item.label} [${item.description}]`);
       app.appendCommandOutput(
         `Sessions in ${basename(process.cwd())} (${localRecords}` +
-          (totalRecords > localRecords ? ` of ${totalRecords} total` : "") + "):\n" +
+          (totalRecords > localRecords ? ` of ${totalRecords} total` : "") + `${hiddenNote}):\n` +
           `${lines.join("\n")}\n/resume to pick, or /resume <session-id>.`,
       );
     } catch (error) {
@@ -1076,10 +1091,10 @@ async function run(
     // No id: open the interactive picker (search + Up/Down + Enter).
     try {
       app.showNotice("Loading sessions…");
-      const { items, totalRecords } = await loadSessionItems();
+      const { items, totalRecords, hiddenUntitled } = await loadSessionItems();
       if (items.length === 0) {
         app.showNotice(
-          `No sessions in this workspace (${totalRecords} elsewhere) — /resume <id> works cross-project.`,
+          `No titled sessions here (${hiddenUntitled} untitled hidden · ${totalRecords} elsewhere) — /resume <id> works cross-project.`,
         );
         return;
       }
