@@ -352,20 +352,17 @@ async function run(
     provider: own.provider ?? selection.provider,
     model: own.model ?? selection.model,
   };
-  // Resume route (official issue #67 semantics): only a deployment pin on BOTH
-  // halves overrides the resumed session's own recorded route; otherwise the
-  // session's request/header records win — /model's saved default must NOT
-  // rewrite history.
-  const pinnedRoute =
-    own.provider !== undefined && own.model !== undefined
-      ? { provider: own.provider, model: own.model }
-      : undefined;
+  // Resume route (user rule, overrides official #67): the session's own
+  // recorded route wins — a deployment pin affects NEW sessions only, never
+  // history. The recorded model missing/no longer existing falls back to the
+  // default (pin ?? saved default).
+  let resumeRouteOverride: { provider: string; model: string } | undefined;
 
   /**
    * Model-selection + preset mount chain installed via the factory hook.
    * `route` provided → install it as the agent's selection (create paths and
-   * pinned resumes); omitted → the session's durable records drive the route
-   * (unpinned resume; official installs nothing there either).
+   * resumes that must override); omitted → the session's durable records drive
+   * the route.
    */
   function makeSetup(
     composed: ComposedPreset,
@@ -413,21 +410,28 @@ async function run(
   }
 
   // Launch-time resolution. Fresh sessions ride the deployment pin ?? the
-  // saved default; resumes let the session's own records win unless pinned on
-  // both halves — and fall back when the recorded model no longer exists.
+  // saved default; resumes ride the session's own records, falling back to
+  // the default only when no record exists or the recorded model is gone.
   let requestedPreset = own.preset;
-  let resumeRouteOverride = pinnedRoute;
-  // The route a resumed session ACTUALLY rides (records win over defaults) —
-  // drives the status-bar label so it doesn't show a default that isn't real.
-  let resumeActualRoute: { provider: string; model: string } | undefined;
+  // The route the booted agent ACTUALLY rides; single source of truth for the
+  // status-bar label and the /model "current" check.
+  let liveRoute: { provider: string; model: string } = agentOptions;
+  let resumeTrace = "no-resume";
   if (resumeId !== undefined) {
     const facts = await bootResumeFacts(resumeId);
     requestedPreset = facts.presetId ?? own.preset;
-    if (pinnedRoute === undefined) {
-      if (facts.recordedRoute === undefined) resumeRouteOverride = agentOptions;
-      else if (!(await routeExists(facts.recordedRoute))) resumeRouteOverride = agentOptions;
-      else resumeActualRoute = facts.recordedRoute;
+    if (facts.recordedRoute === undefined) {
+      resumeRouteOverride = agentOptions; // no record — ride the default
+      resumeTrace = "no-record→default";
+    } else if (!(await routeExists(facts.recordedRoute))) {
+      resumeRouteOverride = agentOptions; // recorded model gone — default
+      resumeTrace = "missing-recorded→default";
+    } else {
+      resumeRouteOverride = undefined; // records win; install nothing
+      liveRoute = facts.recordedRoute;
+      resumeTrace = `records→${facts.recordedRoute.provider}/${facts.recordedRoute.model}`;
     }
+    process.stderr.write(`dsh-tui boot: resume=${resumeId} ${resumeTrace}\n`);
   }
   const composed = await composePreset(services.agentPresets, requestedPreset, warnPreset);
 
@@ -555,10 +559,7 @@ async function run(
 
   const app = new TuiApp({
     agent: agentSurface(agent),
-    modelLabel:
-      resumeId !== undefined
-        ? `${(resumeActualRoute ?? agentOptions).provider}/${(resumeActualRoute ?? agentOptions).model}`
-        : `${agentOptions.provider}/${agentOptions.model}`,
+    modelLabel: `${liveRoute.provider}/${liveRoute.model}`,
     presenters,
     onPrompt: (text) => {
       if (text.startsWith("/")) {
@@ -640,6 +641,7 @@ async function run(
         setup: makeSetup(fresh, agentOptions),
       });
       await adoptAgent(result.agent);
+      liveRoute = agentOptions; // /new rides the same default route
       app.appendCommandOutput(
         `New session ${result.agent.id}` +
           (fresh.agentPreset === undefined ? "." : ` (preset ${fresh.agentPreset}).`),
@@ -701,9 +703,9 @@ async function run(
     await switchToPreset(roster, arg, rows.find((p) => p.id === arg));
   }
 
-  /** The route the live agent is actually riding (records beat defaults). */
+  /** The route the live agent is actually riding (single source of truth). */
   function activeRoute(): { provider: string; model: string } {
-    return recordedRouteOf(agent.session.events) ?? agentOptions;
+    return liveRoute;
   }
 
   /** /cost — cumulative provider-reported usage for this session. */
@@ -839,7 +841,8 @@ async function run(
       await next.whenIdle();
       presenters = presentersFor(next);
       app.setAgent(agentSurface(next));
-      app.setModelLabel(`${provider}/${model}`);
+      liveRoute = { provider, model };
+      app.setModelLabel(`${liveRoute.provider}/${liveRoute.model}`);
       app.setCacheRate(lastCacheRate(next.session.events) ?? null);
       app.model.clear();
       app.model.rebuild(next.session.events as never, presenters);
