@@ -217,6 +217,9 @@ class UserRow implements RowComponent {
   }
 }
 
+/** Braille spin frames for the collapsed thinking header (time-based frame). */
+const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
 class AssistantRow implements RowComponent {
   private readonly box = new Container();
   private readonly reasoning: Text;
@@ -238,14 +241,28 @@ class AssistantRow implements RowComponent {
   }
   update(row: Extract<TranscriptRow, { kind: "assistant" }>): void {
     const reasoning = row.reasoning === "" ? "" : sanitizeDisplay(row.reasoning);
-    this.reasoning.setText(
-      reasoning === ""
-        ? ""
-        : this.isExpanded()
-          ? this.p.dim(`⏤ ${reasoning}`)
-          : this.p.dim(`⏤ thinking · ${reasoning.length} chars`),
-    );
     this.markdown.setText(sanitizeDisplay(row.text));
+    if (this.isExpanded() || reasoning === "") {
+      this.reasoning.setText(reasoning === "" ? "" : this.p.dim(`⏤ ${reasoning}`));
+      return;
+    }
+    // Collapsed: light-blue spinner while streaming (frozen glyph once done),
+    // size + expand hint, then the newest three lines as a live preview.
+    const icon = row.done
+      ? this.p.fg("✻", "brightCyan")
+      : this.p.fg(
+          SPINNER_FRAMES[Math.floor(Date.now() / 110) % SPINNER_FRAMES.length] ?? "✻",
+          "brightCyan",
+        );
+    const head = `${icon} ${this.p.dim(`thinking · ${reasoning.length} chars · Ctrl+O expands`)}`;
+    const preview = reasoning
+      .split("\n")
+      .filter((line) => line.trim() !== "")
+      .slice(-3)
+      .map((line) =>
+        this.p.dim(line.length > 160 ? `  ${line.slice(0, 159)}…` : `  ${line}`),
+      );
+    this.reasoning.setText([head, ...preview].join("\n"));
   }
   render(width: number): string[] {
     return this.box.render(width);

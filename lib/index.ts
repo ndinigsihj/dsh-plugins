@@ -57,7 +57,7 @@ const HELP_TEXT = [
   "/clear           clear the transcript",
   "/new             start a fresh session on the configured/saved default preset",
   "/preset [id]     switch agent presets (blank session swaps live; otherwise saved as default)",
-  "/model           switch THIS session's model (history carries over; default updated too)",
+  "/model           switch THIS session's model only (history carries over; default untouched)",
   "/compact         fold older history into a summary (core command)",
   "/cost            cumulative provider-reported token usage",
   "/tokens          current context-window occupancy detail",
@@ -850,12 +850,8 @@ async function run(
       void services.sessions.flush(next.session).catch(() => {});
       updateContextPressure();
       refreshSubagents();
-      // Keep the saved default in step so /new lands on the same model.
-      try {
-        await services.agentDefaultModel.saveSelection?.({ provider, model });
-      } catch {
-        /* default stays — the live switch already succeeded */
-      }
+      // Deliberately NOT touching the saved default: /model is session-scoped;
+      // the default changes only via dsh settings (settings.yaml).
       app.appendCommandOutput(
         `Switched to ${provider}/${model} — history carried into ${next.id.slice(0, 13)}…`,
       );
