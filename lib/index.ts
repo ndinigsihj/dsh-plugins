@@ -93,6 +93,37 @@ function contentText(content: unknown): string {
     .join("");
 }
 
+interface UsageLike {
+  inputTokens?: unknown;
+  cacheReadTokens?: unknown;
+  cacheWriteTokens?: unknown;
+}
+
+/**
+ * Cache hit rate from one usage record, in percent with one decimal.
+ * TokenUsage counts are disjoint (input is uncached only), so the hit rate
+ * reads over billed input: read / (input + read + write).
+ */
+function cacheRateOf(usage: UsageLike | undefined): number | undefined {
+  if (usage === undefined || typeof usage !== "object") return undefined;
+  const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+  const read = num(usage.cacheReadTokens);
+  const denom = num(usage.inputTokens) + read + num(usage.cacheWriteTokens);
+  if (denom <= 0) return undefined;
+  return Math.round((read / denom) * 1000) / 10;
+}
+
+/** Scan events backwards for the last `assistant/message` that reported usage. */
+function lastCacheRate(events: ReadonlyArray<unknown>): number | undefined {
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const event = events[i] as { type?: string; data?: { usage?: UsageLike } } | undefined;
+    if (event?.type !== "assistant/message") continue;
+    const rate = cacheRateOf(event.data?.usage);
+    if (rate !== undefined) return rate;
+  }
+  return undefined;
+}
+
 /** First real (non-injected) user message of a session, truncated. */
 async function firstUserMessage(
   query: NonNullable<CoreServices["sessionQuery"]>,
@@ -376,6 +407,8 @@ async function run(ctx: CordisContext, own: { preset?: string }): Promise<void> 
     app.model.rebuild(agent.session.events as never, presenters);
     app.onSessionEvent();
     app.appendCommandOutput(`Resumed session ${agent.id}.`);
+    const rate = lastCacheRate(agent.session.events);
+    if (rate !== undefined) app.setCacheRate(rate);
   }
   updateContextPressure();
   refreshSubagents();
@@ -404,6 +437,7 @@ async function run(ctx: CordisContext, own: { preset?: string }): Promise<void> 
     await next.whenIdle();
     presenters = presentersFor(next);
     app.setAgent(agentSurface(next));
+    app.setCacheRate(null); // fresh session: no usage reported yet
     app.model.clear();
     app.onSessionEvent();
     updateContextPressure();
@@ -810,8 +844,8 @@ async function run(ctx: CordisContext, own: { preset?: string }): Promise<void> 
         }
       }
       if (used === undefined) return;
-      const pct = Math.round((used / windowTokens) * 100);
-      app.setContextOccupancy(Math.max(0, Math.min(100, pct)));
+      const pct = Math.max(0, Math.min(100, Math.round((used / windowTokens) * 100)));
+      app.setContextOccupancy({ pct, usedTokens: used, windowTokens });
     } catch {
       /* projection not ready — leave the previous reading */
     }
@@ -843,6 +877,11 @@ async function run(ctx: CordisContext, own: { preset?: string }): Promise<void> 
     (session: { id: string }, event: unknown) => {
       if (session.id !== agent.id) return;
       app.model.apply(event as never, presenters);
+      const evt = event as { type?: string; data?: { usage?: UsageLike } };
+      if (evt.type === "assistant/message") {
+        const rate = cacheRateOf(evt.data?.usage);
+        if (rate !== undefined) app.setCacheRate(rate);
+      }
       app.onSessionEvent();
       updateContextPressure();
     },

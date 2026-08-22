@@ -4,6 +4,7 @@
 // persistence, tool execution, approval, and the model-facing question tool
 // stay as separate in-process services; this module consumes them.
 
+import { basename } from "node:path";
 import {
   Container,
   Editor,
@@ -16,6 +17,8 @@ import {
   VStack,
   isViewportTUI,
   matchesKey,
+  truncateToWidth,
+  visibleWidth,
   type Component,
   type EditorTheme,
   type MarkdownTheme,
@@ -95,6 +98,63 @@ function isPrintableInput(data: string): boolean {
   if (data.startsWith("")) return false;
   if (data === "\r" || data === "\n" || data === "\t") return false;
   return data.codePointAt(0) !== undefined && data.codePointAt(0)! >= 0x20;
+}
+
+/** Compact token count: 999 → "999", 120_000 → "120k", 1_048_576 → "1m". */
+export function formatTokens(n: number): string {
+  if (n >= 1_000_000) {
+    const m = n / 1_000_000;
+    return `${m < 10 ? m.toFixed(1) : String(Math.round(m))}m`;
+  }
+  if (n >= 1_000) return `${Math.round(n / 1_000)}k`;
+  return String(n);
+}
+
+/** One context-pressure reading for the status bar's right side. */
+export interface ContextOccupancy {
+  pct: number;
+  usedTokens?: number;
+  windowTokens?: number;
+}
+
+/**
+ * The footer status bar: left-aligned facts (model id, cache hit rate,
+ * workspace directory name), right-aligned context gauge. Rendered as one
+ * padded line at the live terminal width; a transient notice replaces the
+ * whole bar until the next state change.
+ */
+export class StatusLine implements Component {
+  private readonly p: Palette;
+  private left = "";
+  private right = "";
+  private notice: string[] | null = null;
+
+  constructor(p: Palette) {
+    this.p = p;
+  }
+
+  /** New facts; clears any transient notice. Either side may be empty. */
+  setParts(left: string, right: string): void {
+    this.left = left;
+    this.right = right;
+    this.notice = null;
+  }
+
+  showNotice(text: string): void {
+    this.notice = text.split("\n");
+  }
+
+  render(width: number): string[] {
+    if (this.notice !== null) return this.notice.map((line) => this.p.dim(line));
+    const avail = Math.max(0, width);
+    const right = truncateToWidth(this.right, Math.max(0, avail - 2));
+    const maxLeft = Math.max(0, avail - visibleWidth(right) - 2);
+    const left = truncateToWidth(this.left, maxLeft);
+    const pad = Math.max(1, avail - visibleWidth(left) - visibleWidth(right));
+    return [`${left}${" ".repeat(pad)}${right}`];
+  }
+
+  invalidate(): void {}
 }
 
 function selectListTheme(p: Palette): SelectListTheme {
@@ -398,12 +458,14 @@ export class TuiApp {
   private readonly transcriptArea: TranscriptArea;
   private readonly transcriptScroll: ScrollView;
   private readonly editor: Editor;
-  private readonly status: Text;
+  private readonly status: StatusLine;
   private readonly subagentsLine: Text;
   private agent: AgentSurface;
   private modelLabel: string;
   private statusValue: "idle" | "running" = "idle";
-  private contextPct: number | null = null;
+  private contextInfo: ContextOccupancy | null = null;
+  private cacheRate: number | null = null;
+  private readonly workspaceName: string;
   private stopping = false;
   private readonly options: TuiAppOptions;
 
@@ -412,6 +474,7 @@ export class TuiApp {
     this.p = createPalette(true);
     this.agent = options.agent;
     this.modelLabel = options.modelLabel;
+    this.workspaceName = basename(process.cwd());
 
     this.tui = new TuiAltScreen(this.clipboardTerminal, true);
 
@@ -423,7 +486,7 @@ export class TuiApp {
       scrollbar: "auto",
     });
 
-    this.status = new Text("", 1, 1);
+    this.status = new StatusLine(this.p);
     this.subagentsLine = new Text("", 1, 1);
     this.editor = new Editor(this.tui, editorTheme(this.p));
     this.editor.onSubmit = (text) => this.handleSubmit(text);
@@ -465,9 +528,16 @@ export class TuiApp {
     this.updateStatus();
   }
 
-  /** Context-window occupancy percentage (null when not measurable yet). */
-  setContextOccupancy(pct: number | null): void {
-    this.contextPct = pct;
+  /** Context-window occupancy (null until the provider reports usage). */
+  setContextOccupancy(info: ContextOccupancy | null): void {
+    this.contextInfo = info;
+    this.updateStatus();
+    this.render();
+  }
+
+  /** Latest cache hit rate in percent (null when no usage reported yet). */
+  setCacheRate(rate: number | null): void {
+    this.cacheRate = rate;
     this.updateStatus();
     this.render();
   }
@@ -542,21 +612,28 @@ export class TuiApp {
 
   /** Surface a transient notice (command output) on the status line. */
   showNotice(text: string): void {
-    this.status.setText(this.p.dim(text));
+    this.status.showNotice(text);
     this.render();
   }
 
   private updateStatus(): void {
     const running = this.statusValue === "running";
-    const dot = running ? this.p.fg("● running", "yellow") : this.p.fg("● idle", "green");
-    const ctx =
-      this.contextPct === null
-        ? ""
-        : this.contextPct >= 80
-          ? `  ${this.p.fg(`ctx ${this.contextPct}%`, "yellow")}`
-          : `  ${this.p.dim(`ctx ${this.contextPct}%`)}`;
-    const hint = running ? "Enter=steer · Esc=cancel" : "Enter=send · Ctrl+C=exit";
-    this.status.setText(`${dot}  ${this.p.dim(this.modelLabel)}${ctx}   ${this.p.dim(hint)}`);
+    const dot = running ? this.p.fg("●", "yellow") : this.p.fg("●", "green");
+    const sep = this.p.dim(" · ");
+    const left = [`${dot} ${this.p.dim(this.modelLabel)}`];
+    if (this.cacheRate !== null) left.push(this.p.dim(`cache ${this.cacheRate}%`));
+    left.push(this.p.dim(this.workspaceName));
+    let right = "";
+    if (this.contextInfo !== null) {
+      const { pct, usedTokens, windowTokens } = this.contextInfo;
+      const detail =
+        usedTokens !== undefined && windowTokens !== undefined
+          ? ` (${formatTokens(usedTokens)}/${formatTokens(windowTokens)})`
+          : "";
+      const text = `ctx ${pct}%${detail}`;
+      right = pct >= 80 ? this.p.fg(text, "yellow") : this.p.dim(text);
+    }
+    this.status.setParts(left.join(sep), right);
   }
 
   /** Prompt the human for one question, returning the chosen label or null on cancel. */
