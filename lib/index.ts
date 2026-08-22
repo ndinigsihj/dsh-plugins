@@ -6,13 +6,15 @@
 // runner stays alive and is driven by terminal input and the session event
 // feed instead of a single task.
 
-import { basename } from "node:path";
+import { basename, resolve } from "node:path";
+import { writeFile } from "node:fs/promises";
 import z from "@deepseek-ai/schemastery";
 import { randomUUID } from "node:crypto";
 import { installModelSelection } from "@deepseek-ai/dsh-agent";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import { SessionId } from "@deepseek-ai/dsh-session";
 import { TuiApp, formatTokens, type AgentSurface, type AutocompleteCommand } from "./app.ts";
+import { renderTranscriptMarkdown } from "./export.ts";
 import type { ToolPresenters } from "./transcript.ts";
 import {
   AGENT_PRESETS_NS,
@@ -61,6 +63,7 @@ const HELP_TEXT = [
   "/compact         fold older history into a summary (core command)",
   "/cost            cumulative provider-reported token usage",
   "/tokens          current context-window occupancy detail",
+  "/export [file]   export this conversation to a Markdown file",
   "/sessions        list persisted sessions",
   "/resume <id>     resume a persisted session",
   "/session         show the current session id",
@@ -833,6 +836,28 @@ async function run(
     app.appendCommandOutput(lines.join("\n"));
   }
 
+  /** /export [file] — serialize the transcript to Markdown on disk. */
+  async function doExport(rawPath: string): Promise<void> {
+    const rows = app.model.snapshot;
+    const markdown = renderTranscriptMarkdown(rows);
+    const arg = rawPath.trim();
+    const now = new Date();
+    const pad = (n: number): string => String(n).padStart(2, "0");
+    const stamp =
+      `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}` +
+      `-${pad(now.getHours())}${pad(now.getMinutes())}`;
+    const fallback = `dsh-export-${agent.id.slice(0, 8)}-${stamp}.md`;
+    const target = resolve(process.cwd(), arg === "" ? fallback : arg);
+    try {
+      await writeFile(target, markdown, "utf8");
+      app.appendCommandOutput(`Exported ${rows.length} rows → ${target}`);
+    } catch (error) {
+      app.showNotice(
+        `Export failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
   /** Projection values of the live session (throws when unavailable). */
   function projectionValues(): ProjectionValues {
     const proj = services.sessionProjections;
@@ -1179,6 +1204,10 @@ async function run(
       showTokens();
       return;
     }
+    if (line === "/export" || line.startsWith("/export ")) {
+      await doExport(line.slice("/export".length).trim());
+      return;
+    }
     if (line === "/help") {
       app.appendCommandOutput(HELP_TEXT);
       return;
@@ -1381,6 +1410,14 @@ async function run(
       handler: () => {
         showTokens();
         return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "export",
+      description: "Export this conversation to a Markdown file",
+      handler: (invocation: { rawInput: string }) => {
+        void doExport(invocation.rawInput);
+        return { kind: "success", text: "Export started." };
       },
     });
   }
