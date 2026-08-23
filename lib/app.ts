@@ -1022,10 +1022,10 @@ export class TuiApp {
     const dock = new VStack([
       { component: this.editor, basis: "auto", grow: 0, shrink: 1, minSize: 3 },
       { component: this.status, shrink: 1, minSize: 1 },
-      { component: this.subagentsLine, shrink: 1, minSize: 0 },
     ]);
     const root = new VStack([
       { component: this.transcriptScroll, basis: 0, grow: 1, shrink: 1, minSize: 1 },
+      { component: this.subagentsLine, shrink: 1, minSize: 0 },
       { component: this.todosLine, shrink: 1, minSize: 0 },
       { component: dock, basis: "auto", grow: 0, shrink: 1, minSize: 1 },
     ]);
