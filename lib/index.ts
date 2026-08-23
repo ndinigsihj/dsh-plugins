@@ -1572,9 +1572,10 @@ async function run(
     app.setContextOccupancy({ pct, usedTokens: used, windowTokens });
   }
 
-  // Running-subagent summary under the status line. Poll on a timer: child
-  // sessions emit their own events (which the root sees but filters), so a
-  // direct list call is the reliable "live" signal.
+  // Running-subagent summary under the status line. Event-triggered refresh:
+  // child state lives in projection-backed runtime data (listChildren), but
+  // waiting on a fixed poll lags starts/finishes by up to the interval — so
+  // every lifecycle-relevant session event triggers an immediate re-read.
   function refreshSubagents(): void {
     const subs = services.subagents;
     if (subs === undefined) return;
@@ -1590,7 +1591,6 @@ async function run(
         /* transient — leave the previous summary */
       });
   }
-  const disposeSubagentPoll = ctx.interval(refreshSubagents, 5000);
 
   // Session event feed → transcript.
   const disposeSessionFeed = ctx.on(
@@ -1614,6 +1614,16 @@ async function run(
         const todos = evt.data?.todos as TodoItem[] | undefined;
         if (Array.isArray(todos)) app.setTodos(todos);
       }
+      // Subagent lifecycle rides tool/call + tool/result (and turn bounds for
+      // background continuable children) — refresh the summary right away.
+      if (
+        evt.type === "tool/call" ||
+        evt.type === "tool/result" ||
+        evt.type === "turn/start" ||
+        evt.type === "turn/end"
+      ) {
+        refreshSubagents();
+      }
       app.onSessionEvent();
       updateContextPressure();
     },
@@ -1629,7 +1639,6 @@ async function run(
     disposeRouteFiller();
     disposeSessionFeed();
     disposeStatus();
-    disposeSubagentPoll();
   });
 
     app.start();
