@@ -1321,10 +1321,11 @@ export class TuiApp {
     this.tui.start();
   }
 
-  /** Idempotent shutdown: cancel active work, restore the terminal, exit.
+  /** Idempotent shutdown: cancel active work, restore the terminal, print any
+   * parting note (after teardown so it lands on the normal screen), exit.
    * whenIdle() is raced against a grace timeout so a wedged agent can never
    * leave the terminal in raw mode. */
-  async stopAndExit(exit: (code: number) => void): Promise<void> {
+  async stopAndExit(exit: (code: number) => void, note?: string): Promise<void> {
     if (this.stopping) return;
     this.stopping = true;
     try {
@@ -1337,6 +1338,7 @@ export class TuiApp {
         }),
       ]);
       this.tui.stop();
+      if (note !== undefined && note !== "") process.stdout.write(note);
       exit(0);
     } catch (error) {
       console.error(`dsh-tui: shutdown failed: ${String(error)}`);

@@ -964,7 +964,33 @@ async function run(
     } catch {
       /* flush failure still exits */
     }
-    await app.stopAndExit(services.appExit);
+    await app.stopAndExit(services.appExit, resumeHint());
+  }
+
+  /** Parting hint printed after the TUI tears down: the exact command that
+   * reopens this session (harness convention: `--resume <sessionId>`).
+   * Blank sessions have nothing worth reopening — skip the noise. */
+  function resumeHint(): string | undefined {
+    if (sessionIsBlank(agent.session.events as Array<{ type?: string }>)) return undefined;
+    const args = argvWithoutResume(process.argv.slice(2));
+    return `\nResume with the command below:\n  dsh ${[...args, "--resume", agent.id].join(" ")}\n`;
+  }
+
+  /** Copy of launch args with any --resume target removed (callers append
+   * their own); shared by the relaunch execve and the exit hint so a stale
+   * `--resume` from this boot can never shadow the new target. */
+  function argvWithoutResume(args: ReadonlyArray<string>): string[] {
+    const kept: string[] = [];
+    for (let i = 0; i < args.length; i += 1) {
+      const arg = args[i] ?? "";
+      if (arg === "--resume") {
+        i += 1; // skip its value too
+        continue;
+      }
+      if (arg.startsWith("--resume=")) continue;
+      kept.push(arg);
+    }
+    return kept;
   }
 
   /** The preset id the live agent currently runs, or undefined when none. */
@@ -1670,17 +1696,7 @@ async function run(
     app.stopTerminal();
     // Drop any --resume already on the command line (chained /resume): the new
     // target must win regardless of how the runtime parses duplicates.
-    const priorArgv: string[] = [];
-    const base = process.argv.slice(1);
-    for (let i = 0; i < base.length; i += 1) {
-      const arg = base[i] ?? "";
-      if (arg === "--resume") {
-        i += 1; // skip its value too
-        continue;
-      }
-      if (arg.startsWith("--resume=")) continue;
-      priorArgv.push(arg);
-    }
+    const priorArgv = argvWithoutResume(process.argv.slice(1));
     const relaunch = [process.execPath, ...priorArgv, "--resume", id];
     if (process.execve === undefined) {
       console.error("dsh-tui: process.execve is unavailable on this platform");
