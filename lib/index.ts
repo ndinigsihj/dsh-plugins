@@ -1584,11 +1584,12 @@ async function run(
   function updateContextPressure(): void {
     let used: number | undefined;
     let windowTokens: number | undefined;
+    let outTotal: number | null = null;
     const proj = services.sessionProjections;
     if (proj !== undefined) {
       try {
-        const pressure = (proj.snapshot(agent.session).values as ProjectionValues)
-          .contextPressure;
+        const values = proj.snapshot(agent.session).values as ProjectionValues;
+        const pressure = values.contextPressure;
         windowTokens = pressure?.contextWindow;
         // A failed request can log an all-zero usage chunk; the projection's
         // last-wins sample then reads 0 while the surface is intact — treat
@@ -1596,10 +1597,15 @@ async function run(
         if (pressure?.projectedTokens !== undefined && pressure.projectedTokens > 0) {
           used = pressure.projectedTokens;
         }
+        // Session-total output for the status bar (/cost's same source); one
+        // snapshot read serves both gauges. Hidden until first usage lands.
+        const t = values.tokenUsage?.totals?.outputTokens;
+        if (typeof t === "number" && t > 0) outTotal = t;
       } catch {
         /* projection not ready — fall through to the meter */
       }
     }
+    app.setOutputTotal(outTotal);
     if (used === undefined && services.tokenMeter !== undefined) {
       try {
         used = services.tokenMeter.measure(agent.session).totalTokens;
@@ -1655,8 +1661,8 @@ async function run(
         const usage = evt.data?.usage as UsageLike | undefined;
         const rate = cacheRateOf(usage);
         if (rate !== undefined) app.setCacheRate(rate);
-        const out = typeof usage?.outputTokens === "number" ? usage.outputTokens : null;
-        app.setLastOutputTokens(out);
+        // Session-total `out` rides updateContextPressure (projection-backed),
+        // so the per-event outputTokens value is no longer consumed here.
       } else if (evt.type === "assistant/chunk") {
         const chunk = evt.data?.chunk as { type?: string; text?: string } | undefined;
         if (chunk?.type === "text-delta" && typeof chunk.text === "string" && chunk.text !== "") {

@@ -172,9 +172,6 @@ export class StatusLine implements Component {
   private readonly p: Palette;
   private left = "";
   private right = "";
-  /** Volatile extras (TPS gauge, last-output tokens) shown before `right`;
-   * dropped wholesale on narrow terminals so the ctx gauge stays intact. */
-  private extras: string | null = null;
   private notice: string[] | null = null;
 
   constructor(p: Palette) {
@@ -187,11 +184,6 @@ export class StatusLine implements Component {
   setParts(left: string, right: string): void {
     this.left = left;
     this.right = right;
-  }
-
-  /** Transient pre-ctx gauges; empty string clears. */
-  setExtras(text: string): void {
-    this.extras = text === "" ? null : text;
   }
 
   showNotice(text: string): void {
@@ -207,14 +199,9 @@ export class StatusLine implements Component {
     if (this.notice !== null) return this.notice.map((line) => this.p.dim(line));
     const avail = Math.max(0, width);
     const sep = " · ";
-    let right =
-      this.extras !== null && this.right !== ""
-        ? `${this.extras}${sep}${this.right}`
-        : this.extras ?? this.right;
-    // The ctx gauge is the payload; volatile extras are dropped whole on
-    // narrow terminals rather than letting the gauge get truncated.
-    if (visibleWidth(right) > Math.max(0, avail - 2)) right = this.right;
-    right = truncateToWidth(right, Math.max(0, avail - 2));
+    // The ctx gauge (right) is the payload and is truncated last; the left
+    // segment clips from its tail (workspace name goes first).
+    const right = truncateToWidth(this.right, Math.max(0, avail - 2));
     const maxLeft = Math.max(0, avail - visibleWidth(right) - 2);
     const left = truncateToWidth(this.left, maxLeft);
     const pad = Math.max(1, avail - visibleWidth(left) - visibleWidth(right));
@@ -993,7 +980,8 @@ export class TuiApp {
   private streamSamples: Array<{ at: number; tokens: number }> = [];
   private streamTimer: ReturnType<typeof setInterval> | undefined;
   private liveTps: number | null = null;
-  private lastOutputTokens: number | null = null;
+  /** Session-total output tokens (provider-reported, projection-backed). */
+  private outputTotal: number | null = null;
   private todoItems: ReadonlyArray<TodoItem> = [];
   private readonly options: TuiAppOptions;
 
@@ -1082,8 +1070,8 @@ export class TuiApp {
   }
 
   /** Output tokens of the newest provider usage sample (null hides it). */
-  setLastOutputTokens(tokens: number | null): void {
-    this.lastOutputTokens = tokens !== null && tokens > 0 ? tokens : null;
+  setOutputTotal(tokens: number | null): void {
+    this.outputTotal = tokens !== null && tokens > 0 ? tokens : null;
   }
 
   /** Feed streamed assistant text into the live token-rate window. */
@@ -1140,34 +1128,43 @@ export class TuiApp {
   }
 
   private startStreamSampler(): void {
+    this.liveTps = null; // fresh turn: hidden until tokens flow again
     if (this.streamTimer !== undefined) return;
     this.streamTimer = setInterval(() => {
-      const cutoff = Date.now() - STREAM_WINDOW_MS;
-      const inWindow = this.streamSamples.filter((s) => s.at >= cutoff);
-      const first = inWindow[0];
-      const last = inWindow[inWindow.length - 1];
-      if (
-        first === undefined ||
-        last === undefined ||
-        last.at === first.at ||
-        last.tokens <= first.tokens
-      ) {
-        this.liveTps = null;
-      } else {
-        this.liveTps = Math.round((last.tokens - first.tokens) / ((last.at - first.at) / 1000));
-      }
+      this.sampleLiveTps();
       this.updateStatus();
       this.render();
     }, 500);
     this.streamTimer.unref?.();
   }
 
+  /** Rate over the sliding window; null when the window is degenerate. */
+  private sampleLiveTps(): void {
+    const cutoff = Date.now() - STREAM_WINDOW_MS;
+    const inWindow = this.streamSamples.filter((s) => s.at >= cutoff);
+    const first = inWindow[0];
+    const last = inWindow[inWindow.length - 1];
+    if (
+      first === undefined ||
+      last === undefined ||
+      last.at === first.at ||
+      last.tokens <= first.tokens
+    ) {
+      this.liveTps = null;
+    } else {
+      this.liveTps = Math.round((last.tokens - first.tokens) / ((last.at - first.at) / 1000));
+    }
+  }
+
   private stopStreamSampler(): void {
-    if (this.streamTimer === undefined) return;
-    clearInterval(this.streamTimer);
-    this.streamTimer = undefined;
+    if (this.streamTimer !== undefined) {
+      clearInterval(this.streamTimer);
+      this.streamTimer = undefined;
+      // Freeze the final reading instead of blanking: the turn just ended,
+      // which is exactly when you want to read the rate it streamed at.
+      this.sampleLiveTps();
+    }
     this.streamSamples = [];
-    this.liveTps = null;
   }
 
   /** Running-subagent summary under the status line (empty hides the row). */
@@ -1322,6 +1319,14 @@ export class TuiApp {
     const sep = this.p.dim(" · ");
     const left = [`${dot} ${this.p.dim(this.modelLabel)}`];
     if (this.cacheRate !== null) left.push(this.p.dim(`cache ${this.cacheRate}%`));
+    // Stream rate persists across the turn boundary: bright while live, dim
+    // once idle so a standing number is never mistaken for an active stream.
+    if (this.liveTps !== null && this.liveTps > 0) {
+      const rate = `~${this.liveTps} t/s`;
+      left.push(running ? rate : this.p.dim(rate));
+    }
+    // Session-total output (same source as /cost); hidden until first usage.
+    if (this.outputTotal !== null) left.push(this.p.dim(`out ${formatTokens(this.outputTotal)}`));
     left.push(this.p.dim(this.workspaceName));
     let right = "";
     if (this.contextInfo !== null) {
@@ -1333,12 +1338,6 @@ export class TuiApp {
       const text = `ctx ${pct}%${detail}`;
       right = pct >= 80 ? this.p.fg(text, "yellow") : this.p.dim(text);
     }
-    // Volatile gauges sit left of the ctx gauge and are dropped whole when
-    // the terminal is too narrow (StatusLine keeps the gauge intact).
-    const extras: string[] = [];
-    if (running && this.liveTps !== null && this.liveTps > 0) extras.push(`~${this.liveTps} t/s`);
-    if (this.lastOutputTokens !== null) extras.push(`out ${formatTokens(this.lastOutputTokens)}`);
-    this.status.setExtras(extras.join(" · "));
     this.status.setParts(left.join(sep), right);
   }
 
