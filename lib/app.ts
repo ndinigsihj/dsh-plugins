@@ -269,17 +269,12 @@ const IDLE_EXIT_GRACE_MS = 5_000;
 /** Max body lines rendered by an expanded tool card before an "… N more" stub. */
 const TOOL_LINES_CAP = 40;
 
-/** Preview rows shown under the streaming thinking head (fixed height). */
-const THINKING_PREVIEW_ROWS = 5;
-
 class AssistantRow implements RowComponent {
   private readonly box = new Container();
   private readonly reasoning: Text;
   private readonly markdown: Markdown;
   private readonly p: Palette;
   private readonly isExpanded: () => boolean;
-  private reasoningText = "";
-  private done = false;
   constructor(
     p: Palette,
     row: Extract<TranscriptRow, { kind: "assistant" }>,
@@ -294,52 +289,33 @@ class AssistantRow implements RowComponent {
     this.update(row);
   }
   update(row: Extract<TranscriptRow, { kind: "assistant" }>): void {
-    this.reasoningText = row.reasoning === "" ? "" : sanitizeDisplay(row.reasoning);
-    this.done = row.done;
+    const reasoning = row.reasoning === "" ? "" : sanitizeDisplay(row.reasoning);
     this.markdown.setText(sanitizeDisplay(row.text));
-    if (this.isExpanded() || this.reasoningText === "") {
-      // Expanded shows everything; no reasoning means nothing to show.
-      this.reasoning.setText(
-        this.reasoningText === "" ? "" : this.p.dim(`⏤ ${this.reasoningText}`),
-      );
+    if (this.isExpanded() || reasoning === "") {
+      this.reasoning.setText(reasoning === "" ? "" : this.p.dim(`⏤ ${reasoning}`));
       return;
     }
-    // Collapsed formatting needs the terminal width (see render()).
-  }
-  /** Collapsed block: a blue rail with a fixed-height live preview while the
-   * turn streams, collapsing to a single summary row once done. Every line is
-   * truncated to the actual width — a char-count cap would let CJK lines wrap
-   * and make the whole transcript below jump around. */
-  private formatCollapsed(width: number): void {
-    const rail = this.p.fg("▏", "brightBlue");
-    // The reasoning Text carries paddingX=1 on both sides and the rail eats
-    // two more columns — preview content must fit inside what's left or the
-    // component wraps it and the block height starts breathing again.
-    const budget = Math.max(0, width - 4);
-    const fit = (line: string): string =>
-      visibleWidth(line) > budget ? `${truncateToWidth(line, Math.max(0, budget - 1))}…` : line;
-    const icon = this.done
+    // Collapsed: white spinner while streaming (frozen glyph once done),
+    // size + expand hint, then the newest three lines as a live preview.
+    // The preview always reserves three rows — padding with blanks while the
+    // reasoning is short — so the block height never changes mid-stream and
+    // the transcript below does not jump around.
+    const icon = row.done
       ? this.p.fg("✻", "brightWhite")
       : this.p.fg(
           SPINNER_FRAMES[Math.floor(Date.now() / 110) % SPINNER_FRAMES.length] ?? "✻",
           "brightWhite",
         );
-    if (this.done) {
-      this.reasoning.setText(`${rail} ${this.p.dim(fit(`✻ thinking · ${this.reasoningText.length} chars · Ctrl+O expands`))}`);
-      return;
-    }
-    const recent = this.reasoningText.split("\n").filter((l) => l.trim() !== "").slice(
-      -THINKING_PREVIEW_ROWS,
-    );
-    const lines = [`${rail} ${this.p.fg(fit(`${icon} thinking · ${this.reasoningText.length} chars · Ctrl+O expands`), "brightWhite")}`];
-    for (let i = 0; i < THINKING_PREVIEW_ROWS; i += 1) {
+    const head = `${icon} ${this.p.fg(`thinking · ${reasoning.length} chars · Ctrl+O expands`, "brightWhite")}`;
+    const recent = reasoning.split("\n").filter((line) => line.trim() !== "").slice(-3);
+    const preview = [0, 1, 2].map((i) => {
       const line = recent[i];
-      lines.push(line === undefined ? rail : `${rail} ${this.p.dim(fit(line))}`);
-    }
-    this.reasoning.setText(lines.join("\n"));
+      if (line === undefined) return "";
+      return this.p.dim(line.length > 160 ? `  ${line.slice(0, 159)}…` : `  ${line}`);
+    });
+    this.reasoning.setText([head, ...preview].join("\n"));
   }
   render(width: number): string[] {
-    if (!this.isExpanded() && this.reasoningText !== "") this.formatCollapsed(width);
     return this.box.render(width);
   }
   invalidate(): void {
