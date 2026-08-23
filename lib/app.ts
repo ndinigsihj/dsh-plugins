@@ -1098,11 +1098,12 @@ export class TuiApp {
 
   private renderTodosLine(): void {
     const items = this.todoItems;
-    if (items.length === 0) {
+    const done = items.filter((t) => t.status === "completed").length;
+    // Empty list or everything done → no ambient line (the work is finished).
+    if (items.length === 0 || done === items.length) {
       this.todosLine.setText("");
       return;
     }
-    const done = items.filter((t) => t.status === "completed").length;
     if (!this.detailsExpanded) {
       const current =
         items.find((t) => t.status === "in_progress") ??
