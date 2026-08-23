@@ -871,13 +871,18 @@ async function run(
     if (!sessionIsBlank(agent.session.events as Array<{ type?: string }>)) return;
     const p = createPalette(true);
     const version = readPkgVersion();
+    // DeepSeek harness whale (traced from the official favicon silhouette).
     const art = [
-      "       .",
-      '      ":"',
-      '    ___:____     |"\\/"|',
-      "  ,'        `.    \\  /",
-      "  |  O        \\___/  |",
-      "~^~^~^~^~^~^~^~^~^~^~^~^~",
+      "     ▄▄▄▄███████▄▄  ▄▄",
+      "  █████████████████▄▄▄██████▄██████▄▄",
+      " ███████████████████████▄▄████████████",
+      "███████████████████████████▄▄██████▄▄",
+      "███    ▄██████████▄██████████▄",
+      "████      ████████ ▄██████▄",
+      "█████      ███████████████▄",
+      " █████   ▄█▄▄▄██████████",
+      "  ███████▄████████████████▄▄",
+      "    ▄███████████████▄▄ ▄▄▄▄▄▄",
     ].join("\n");
     const preset = currentPreset();
     const meta = [
