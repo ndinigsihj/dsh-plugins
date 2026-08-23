@@ -103,6 +103,7 @@ const HELP_TEXT = [
   "/new             start a fresh session on the configured/saved default preset",
   "/preset [id]     switch agent presets (blank session swaps live; otherwise saved as default)",
   "/model           switch THIS session's model only (history carries over; default untouched)",
+  "/effort          switch THIS session's reasoning effort (next turn on; default untouched)",
   "/compact         fold older history into a summary (core command)",
   "/cost            cumulative provider-reported token usage",
   "/tokens          current context-window occupancy detail",
@@ -362,7 +363,11 @@ interface CoreServices {
     }): Promise<{ agent: Agent }>;
   };
   agentDefaultModel: {
-    currentSelection(): { provider: string; model: string };
+    currentSelection(): {
+      provider: string;
+      model: string;
+      reasoningEffort?: string;
+    };
     /** Persist the default route (settings ns `agent-default-model`). */
     saveSelection?(next: { provider: string; model: string }): Promise<void>;
   };
@@ -370,6 +375,17 @@ interface CoreServices {
   llm?: {
     listProviders(): Array<{ id: string; name?: string }>;
     listModels(provider: string): Promise<Array<{ id: string; name?: string; description?: string }>>;
+    /** Exact-route metadata incl. selectable reasoning efforts (absent effort → provider default). */
+    resolveModelInfo?(
+      provider: string,
+      model: string,
+      signal?: AbortSignal,
+    ): Promise<{
+      reasoning?: {
+        efforts: ReadonlyArray<{ id: string; name: string; description?: string }>;
+        defaultEffort?: string;
+      };
+    }>;
   };
   sessions: {
     flush(session: unknown): Promise<void>;
@@ -525,6 +541,8 @@ async function run(
   const agentOptions = {
     provider: own.provider ?? selection.provider,
     model: own.model ?? selection.model,
+    // Ride the saved default effort for new sessions (absent → provider default).
+    reasoningEffort: selection.reasoningEffort,
   };
   // Resume route (user rule, overrides official #67): the session's own
   // recorded route wins — a deployment pin affects NEW sessions only, never
@@ -541,10 +559,15 @@ async function run(
    */
   function makeSetup(
     composed: ComposedPreset,
-    route: { provider: string; model: string },
+    route: { provider: string; model: string; reasoningEffort?: string },
   ): (agentCtx: Parameters<typeof installModelSelection>[0]) => void | Promise<void> {
     return (agentCtx) => {
-      installModelSelection(agentCtx, { current: route, assembled: undefined });
+      // Keep the ref handle: /effort writes through it (session-scoped,
+      // effective next turn) — the official mutable-selection seam.
+      // Cast: our slice carries reasoningEffort as plain string; the official
+      // param brands it (ReasoningEffortId) — identical at runtime.
+      selectionRef = { current: route, assembled: undefined };
+      installModelSelection(agentCtx, selectionRef as Parameters<typeof installModelSelection>[1]);
       return composed.setup?.(agentCtx);
     };
   }
@@ -591,6 +614,19 @@ async function run(
   // The route the booted agent ACTUALLY rides; single source of truth for the
   // status-bar label and the /model "current" check.
   let liveRoute: { provider: string; model: string } = agentOptions;
+  /** Live selection ref of the adopted agent (makeSetup hands it back here);
+   * /effort writes reasoningEffort through it — session-scoped, next turn.
+   * Shape mirrors dsh-agent's ModelSelectionRef. */
+  let selectionRef:
+    | {
+        current: { provider: string; model: string; reasoningEffort?: string } | undefined;
+        assembled: { provider: string; model: string; reasoningEffort?: string } | undefined;
+      }
+    | undefined;
+  /** Resolved reasoning-effort metadata for the active route (null = none exposed). */
+  let effortMeta:
+    | { efforts: ReadonlyArray<{ id: string; name: string; description?: string }>; defaultEffort?: string }
+    | undefined;
   let resumeTrace = "no-resume";
   if (resumeId !== undefined) {
     const facts = await bootResumeFacts(resumeId);
@@ -616,11 +652,16 @@ async function run(
         // OFFICIAL SHAPE — always pass the object. Undefined halves mean "the
         // session's own records supply the route"; omitting agentOptions
         // entirely yields a routeless agent ("has no provider/model").
+        // Session's own records supply the route; effort rides the saved
+        // default (the log does not record effort — design §5).
         agentOptions: {
           provider: resumeRouteOverride?.provider,
           model: resumeRouteOverride?.model,
         },
-        setup: makeSetup(composed, resumeRouteOverride ?? liveRoute),
+        setup: makeSetup(composed, {
+          ...(resumeRouteOverride ?? liveRoute),
+          reasoningEffort: selection.reasoningEffort,
+        }),
       })
     : await services.agents.create({
         sessionId: SessionId(`session-${randomUUID()}`),
@@ -682,6 +723,7 @@ async function run(
       { name: "clear", description: "Clear the transcript" },
       { name: "help", description: "Show dsh-tui help" },
       { name: "session", description: "Show the current session id" },
+      { name: "effort", description: "Pick the reasoning effort for this session" },
       { name: "new", description: "Start a fresh session on the configured/saved default preset" },
       {
         name: "preset",
@@ -800,6 +842,14 @@ async function run(
       },
     });
     services.commands.register({
+      name: "effort",
+      description: "Pick the reasoning effort for this session",
+      handler: () => {
+        void doEffort();
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
       name: "cost",
       description: "Show cumulative token usage",
       handler: () => {
@@ -869,6 +919,7 @@ async function run(
       }
     }
   }
+  await refreshEffortMeta(); // resolve route efforts before the banner renders
   showBootBanner();
   updateContextPressure();
   refreshSubagents();
@@ -900,9 +951,11 @@ async function run(
     const p = createPalette(true);
     const version = readPkgVersion();
     const preset = currentPreset();
+    const thinkName = effectiveEffortName();
     const meta = [
       `${liveRoute.provider}/${liveRoute.model}`,
       ...(preset === undefined ? [] : [`preset ${preset}`]),
+      ...(thinkName === undefined ? [] : [`think ${thinkName}`]),
       process.cwd(),
     ].join(" · ");
     const title = `✻ dsh-tui${version === "" ? "" : ` v${version}`} · deepseek harness`;
@@ -963,6 +1016,7 @@ async function run(
       });
       await adoptAgent(result.agent);
       liveRoute = agentOptions; // /new rides the same default route
+      await refreshEffortMeta(); // new route metadata for the banner below
       showBootBanner(); // fresh blank session: welcome block again
       app.appendCommandOutput(
         `New session ${result.agent.id}` +
@@ -1028,6 +1082,83 @@ async function run(
   /** The route the live agent is actually riding (single source of truth). */
   function activeRoute(): { provider: string; model: string } {
     return liveRoute;
+  }
+
+  /** Effective effort id: session override, else settings default. */
+  function effectiveEffortId(): string | undefined {
+    return (
+      selectionRef?.current?.reasoningEffort ??
+      services.agentDefaultModel.currentSelection().reasoningEffort
+    );
+  }
+
+  /** Display name of the effective effort from the resolved route metadata. */
+  function effectiveEffortName(): string | undefined {
+    if (effortMeta === undefined) return undefined;
+    const id = effectiveEffortId();
+    const hit =
+      id === undefined
+        ? effortMeta.efforts.find((e) => e.id === effortMeta?.defaultEffort)
+        : effortMeta.efforts.find((e) => e.id === id);
+    return hit?.name;
+  }
+
+  /** Sync the status-bar think label from current state (no I/O). */
+  function refreshEffortLabel(): void {
+    app.setThinkLabel(effectiveEffortName() ?? null);
+  }
+
+  /** Re-resolve route reasoning metadata and refresh the think label.
+   * Unresolvable route → metadata cleared, segment hidden. */
+  async function refreshEffortMeta(): Promise<void> {
+    effortMeta = undefined;
+    app.setThinkLabel(null);
+    const resolve = services.llm?.resolveModelInfo;
+    if (resolve === undefined) return;
+    try {
+      effortMeta = (await resolve(activeRoute().provider, activeRoute().model)).reasoning ?? undefined;
+    } catch {
+      return; // catalog/adapter hiccup: keep the segment hidden
+    }
+    refreshEffortLabel();
+  }
+
+  /** /effort — pick the reasoning effort for THIS session (next turn on).
+   * Session-scoped by design: writes only the selection ref, never the
+   * saved default — same contract as /model. */
+  async function doEffort(): Promise<void> {
+    if (agent.status === "running") {
+      app.showNotice("Agent is running — Esc cancels it first.");
+      return;
+    }
+    if (effortMeta === undefined || effortMeta.efforts.length === 0) {
+      app.showNotice("Current route exposes no reasoning efforts.");
+      return;
+    }
+    const meta = effortMeta;
+    const current = effectiveEffortId();
+    const items = meta.efforts.map((e) => ({
+      value: e.id,
+      label:
+        `${e.name}${e.id === current ? "  ← current" : ""}` +
+        `${e.id === meta.defaultEffort ? "  ← default" : ""}`,
+      description: e.description,
+    }));
+    const picked = await app.pickSession(items);
+    if (picked === null) {
+      app.showNotice("Effort selection cancelled.");
+      return;
+    }
+    const id = String(picked);
+    // Picking the adapter default clears the explicit override: absent effort
+    // materializes defaultEffort per installModelSelection semantics.
+    const nextEffort = id === meta.defaultEffort ? undefined : id;
+    if (selectionRef !== undefined && selectionRef.current !== undefined) {
+      selectionRef.current = { ...selectionRef.current, reasoningEffort: nextEffort };
+    }
+    refreshEffortLabel();
+    const name = meta.efforts.find((e) => e.id === id)?.name ?? id;
+    app.appendCommandOutput(`Thinking effort set to ${name} — takes effect next turn.`);
   }
 
   /** /cost — cumulative provider-reported usage for this session. */
@@ -1197,6 +1328,8 @@ async function run(
       void services.sessions.flush(next.session).catch(() => {});
       updateContextPressure();
       refreshSubagents();
+      // New route → re-resolve its reasoning metadata (label may change or hide).
+      void refreshEffortMeta();
       // Deliberately NOT touching the saved default: /model is session-scoped;
       // the default changes only via dsh settings (settings.yaml).
       app.appendCommandOutput(
@@ -1513,6 +1646,10 @@ async function run(
     }
     if (line === "/model") {
       await doModel();
+      return;
+    }
+    if (line === "/effort") {
+      await doEffort();
       return;
     }
     if (line === "/cost") {

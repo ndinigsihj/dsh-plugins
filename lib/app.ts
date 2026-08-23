@@ -1061,6 +1061,8 @@ export class TuiApp {
   private liveTps: number | null = null;
   /** Session-total output tokens (provider-reported, projection-backed). */
   private outputTotal: number | null = null;
+  /** Reasoning-effort display name (null = hidden). */
+  private thinkLabel: string | null = null;
   private todoItems: ReadonlyArray<TodoItem> = [];
   private readonly options: TuiAppOptions;
 
@@ -1149,6 +1151,13 @@ export class TuiApp {
   /** Latest cache hit rate in percent (null when no usage reported yet). */
   setCacheRate(rate: number | null): void {
     this.cacheRate = rate;
+    this.updateStatus();
+    this.render();
+  }
+
+  /** Reasoning-effort display name for the status bar (null hides the segment). */
+  setThinkLabel(label: string | null): void {
+    this.thinkLabel = label;
     this.updateStatus();
     this.render();
   }
@@ -1422,6 +1431,7 @@ export class TuiApp {
     const dot = running ? this.p.fg("●", "yellow") : this.p.fg("●", "green");
     const sep = this.p.dim(" · ");
     const left = [`${dot} ${this.p.dim(this.modelLabel)}`];
+    if (this.thinkLabel !== null) left.push(this.p.fg(`think ${this.thinkLabel}`, "cyan"));
     if (this.cacheRate !== null) left.push(this.p.dim(`cache ${this.cacheRate}%`));
     // Stream rate persists across the turn boundary: bright while live, dim
     // once idle so a standing number is never mistaken for an active stream.
