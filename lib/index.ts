@@ -1128,11 +1128,14 @@ async function run(
     }
     effortMeta = undefined;
     app.setThinkLabel(null);
-    const resolve = services.llm?.resolveModelInfo;
-    if (resolve === undefined) return;
+    const llm = services.llm;
+    if (llm?.resolveModelInfo === undefined) return;
     let next: EffortMeta | undefined;
     try {
-      next = (await resolve(activeRoute().provider, activeRoute().model)).reasoning ?? undefined;
+      // Call through the service object: detaching the method loses its
+      // receiver and the internals crash on a missing adapter registry.
+      const info = await llm.resolveModelInfo(activeRoute().provider, activeRoute().model);
+      next = info.reasoning ?? undefined;
       // TEMP DEBUG (E1 diagnosis): make silent hide-vs-fail distinguishable.
       process.stderr.write(
         `dsh-tui[debug]: effort meta ${key}: ` +
