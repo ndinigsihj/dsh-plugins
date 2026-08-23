@@ -903,7 +903,7 @@ async function run(
     const meta = [
       `${liveRoute.provider}/${liveRoute.model}`,
       ...(preset === undefined ? [] : [`preset ${preset}`]),
-      basename(process.cwd()),
+      process.cwd(),
     ].join(" · ");
     const title = `✻ dsh-tui${version === "" ? "" : ` v${version}`} · deepseek harness`;
     const hint = "/help 命令一览 · @ 文件补全 · Ctrl+O 展开思考 · Esc 打断";
