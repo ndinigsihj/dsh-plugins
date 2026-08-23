@@ -84,6 +84,7 @@ interface PreviewEvent {
   time?: number;
   data?: {
     content?: Array<{ type?: string; text?: unknown }>;
+    source?: { kind?: unknown };
     usage?: UsageLike;
     provider?: unknown;
     model?: unknown;
@@ -108,14 +109,15 @@ function formatStamp(ms: number): string {
 }
 
 /** /resume preview for one session: shape of the conversation, the route it
- * rode, and its first prompt. Pure — the caller decodes the log. */
+ * rode, and its latest real (non-injected) prompt. Pure — the caller decodes
+ * the log. */
 function buildPreviewFromEvents(events: ReadonlyArray<PreviewEvent>): string | null {
   if (events.length === 0) return null;
 
   let prompts = 0;
   let replies = 0;
   let tools = 0;
-  let firstPrompt = "";
+  let lastPrompt = "";
   let firstTime: number | undefined;
   let lastTime: number | undefined;
   let route = "";
@@ -126,10 +128,14 @@ function buildPreviewFromEvents(events: ReadonlyArray<PreviewEvent>): string | n
     }
     switch (event.type) {
       case "user/message": {
+        // Injected context (endless memory splices etc.) logs as user messages
+        // with a plugin source — it is noise for both the count and the excerpt.
+        const isHuman = event.data?.source?.kind === "user";
+        if (!isHuman) break;
         prompts += 1;
-        if (firstPrompt === "") {
-          const text = messageText(event).replace(/\s+/g, " ");
-          if (text !== "") firstPrompt = text.length > 160 ? `${text.slice(0, 159)}…` : text;
+        const text = messageText(event).replace(/\s+/g, " ");
+        if (text !== "") {
+          lastPrompt = text.length > 160 ? `${text.slice(0, 159)}…` : text;
         }
         break;
       }
@@ -150,13 +156,13 @@ function buildPreviewFromEvents(events: ReadonlyArray<PreviewEvent>): string | n
   }
 
   const lines = [
-    `turns ~${prompts} · replies ${replies} · tool calls ${tools}`,
+    `prompts ${prompts} · replies ${replies} · tool calls ${tools}`,
     route !== "" ? `route ${route}` : "",
     firstTime !== undefined && lastTime !== undefined
       ? `${formatStamp(firstTime)} → ${formatStamp(lastTime)}`
       : "",
     "",
-    firstPrompt !== "" ? `❝ ${firstPrompt}` : "(no user prompt)",
+    lastPrompt !== "" ? `❝ ${lastPrompt}` : "(no user prompt)",
   ].filter((l) => l !== "");
   return lines.map((l) => `  ${l}`).join("\n");
 }
@@ -683,6 +689,96 @@ async function run(
       out.push(local);
     }
     return out;
+  }
+
+  // Terminal command catalog.
+  if (services.commands !== undefined) {
+    services.commands.register({
+      name: "exit",
+      description: "Exit the terminal front door",
+      handler: () => {
+        void stopAndExit();
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "clear",
+      description: "Clear the transcript",
+      handler: () => {
+        app.model.clear();
+        app.onSessionEvent();
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "help",
+      description: "Show dsh-tui help",
+      handler: () => ({ kind: "success", text: HELP_TEXT }),
+    });
+    services.commands.register({
+      name: "sessions",
+      description: "List persisted sessions",
+      handler: () => {
+        void listSessions();
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "resume",
+      description: "Resume a persisted session: /resume <session-id>",
+      handler: ({ rawInput }) => {
+        void doResume(`/resume ${rawInput}`);
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "new",
+      description: "Start a fresh session",
+      handler: () => {
+        void startNewSession();
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "preset",
+      description: "Switch agent presets: /preset [id]",
+      handler: ({ rawInput }) => {
+        void doPreset(rawInput === "" ? "/preset" : `/preset ${rawInput}`);
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "model",
+      description: "Pick the default provider/model route",
+      handler: () => {
+        void doModel();
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "cost",
+      description: "Show cumulative token usage",
+      handler: () => {
+        showCost();
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "tokens",
+      description: "Show context-window occupancy detail",
+      handler: () => {
+        showTokens();
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "export",
+      description: "Export this conversation to a Markdown file",
+      handler: (invocation: { rawInput: string }) => {
+        void doExport(invocation.rawInput);
+        return { kind: "success", text: "Export started." };
+      },
+    });
   }
 
   const app = new TuiApp({
@@ -1422,95 +1518,6 @@ async function run(
     },
   );
 
-  // Terminal command catalog.
-  if (services.commands !== undefined) {
-    services.commands.register({
-      name: "exit",
-      description: "Exit the terminal front door",
-      handler: () => {
-        void stopAndExit();
-        return { kind: "success" };
-      },
-    });
-    services.commands.register({
-      name: "clear",
-      description: "Clear the transcript",
-      handler: () => {
-        app.model.clear();
-        app.onSessionEvent();
-        return { kind: "success" };
-      },
-    });
-    services.commands.register({
-      name: "help",
-      description: "Show dsh-tui help",
-      handler: () => ({ kind: "success", text: HELP_TEXT }),
-    });
-    services.commands.register({
-      name: "sessions",
-      description: "List persisted sessions",
-      handler: () => {
-        void listSessions();
-        return { kind: "success" };
-      },
-    });
-    services.commands.register({
-      name: "resume",
-      description: "Resume a persisted session: /resume <session-id>",
-      handler: ({ rawInput }) => {
-        void doResume(`/resume ${rawInput}`);
-        return { kind: "success" };
-      },
-    });
-    services.commands.register({
-      name: "new",
-      description: "Start a fresh session",
-      handler: () => {
-        void startNewSession();
-        return { kind: "success" };
-      },
-    });
-    services.commands.register({
-      name: "preset",
-      description: "Switch agent presets: /preset [id]",
-      handler: ({ rawInput }) => {
-        void doPreset(rawInput === "" ? "/preset" : `/preset ${rawInput}`);
-        return { kind: "success" };
-      },
-    });
-    services.commands.register({
-      name: "model",
-      description: "Pick the default provider/model route",
-      handler: () => {
-        void doModel();
-        return { kind: "success" };
-      },
-    });
-    services.commands.register({
-      name: "cost",
-      description: "Show cumulative token usage",
-      handler: () => {
-        showCost();
-        return { kind: "success" };
-      },
-    });
-    services.commands.register({
-      name: "tokens",
-      description: "Show context-window occupancy detail",
-      handler: () => {
-        showTokens();
-        return { kind: "success" };
-      },
-    });
-    services.commands.register({
-      name: "export",
-      description: "Export this conversation to a Markdown file",
-      handler: (invocation: { rawInput: string }) => {
-        void doExport(invocation.rawInput);
-        return { kind: "success", text: "Export started." };
-      },
-    });
-  }
 
   // Context-window occupancy. Preferred source: the contextPressure
   // projection — its numerator is the last provider sample plus signed
@@ -1590,7 +1597,7 @@ async function run(
         app.setLastOutputTokens(out);
       } else if (evt.type === "assistant/chunk") {
         const chunk = evt.data?.chunk as { type?: string; text?: string } | undefined;
-        if (chunk?.type === "text" && typeof chunk.text === "string" && chunk.text !== "") {
+        if (chunk?.type === "text-delta" && typeof chunk.text === "string" && chunk.text !== "") {
           app.noteStreamText(chunk.text);
         }
       }
