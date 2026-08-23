@@ -35,7 +35,7 @@ dsh 本体已提供 effort 的完整读写机制，本特性是纯接线：
 ```
 
 - `resolveModelInfo` 结果按 `(provider, model)` 缓存；boot、`/new`、`/model` 切换后各刷一次。
-- `/effort` 写入是双写：`saveSelection({ ...currentSelection(), reasoningEffort })`（持久化）+ `ref.current = { ...ref.current, reasoningEffort }`（活体立即生效）。前者与 `/model`、`/preset` 的落盘语义同构，后者是官方引用的既定用法。
+- **写入是会话作用域单写**（2026-08-23 定稿）：只写 `ref.current = { ...ref.current, reasoningEffort }`，**不调 `saveSelection`**——与 `/model` 的既定行为完全一致（会话级切换不动全局默认；默认只经 settings 通道变）。
 
 ## 3. 行为设计
 
@@ -43,7 +43,7 @@ dsh 本体已提供 effort 的完整读写机制，本特性是纯接线：
 
 - 入口检查：running 否决（同 `/new` `/model`，措辞一致）。
 - `resolveModelInfo(activeRoute())` 取档位；picker 每行标 `<name>` + 描述，`defaultEffort` 追加 `← default`，当前有效档追加 `← current`。
-- 选择：执行 2 节双写；输出 `Thinking effort set to <name>（takes effect next turn）`；Esc 取消输出 cancelled。
+- 选择：写 `ref.current`（会话作用域，见 §2）；输出 `Thinking effort set to <name>（takes effect next turn）`；Esc 取消输出 cancelled。
 - 路由无 `reasoning` 元数据 → notice「当前路由不暴露思考强度」。
 - 注册进 commands registry（自动进补全菜单）。
 
@@ -69,8 +69,8 @@ dsh 本体已提供 effort 的完整读写机制，本特性是纯接线：
 
 ## 5. 已知限制
 
-- resume 后显示的是 settings 默认档，不是该会话历史轮次实际使用的档位（日志不携带，core 形状决定）。
-- `saveSelection` 是全局默认语义：改档会影响之后新建的所有会话（与 `/model --save` 类官方行为一致）。
+- resume 后显示的是 settings 默认档，不是该会话历史轮次实际使用的档位（日志不携带，core 形状决定；2026-08-23 定稿：接受）。
+- `/effort` 是会话级临时档，不落盘——新会话回到 settings 默认（与 `/model` 行为对齐；用户拍板）。
 
 ## 6. 验收
 
