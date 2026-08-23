@@ -260,6 +260,14 @@ class UserRow implements RowComponent {
 /** Braille spin frames for the collapsed thinking header (time-based frame). */
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
+/** Hard-cap one line to `budget` display columns, appending an ellipsis when
+ * anything was cut — keeps the line from wrapping inside a Text component. */
+function fitColumns(line: string, budget: number): string {
+  return visibleWidth(line) > budget
+    ? `${truncateToWidth(line, Math.max(0, budget - 1))}…`
+    : line;
+}
+
 /** Max diff lines shown in collapsed mode before a "… N more" stub. */
 const DIFF_COLLAPSED_CAP = 24;
 
@@ -275,13 +283,16 @@ class AssistantRow implements RowComponent {
   private readonly markdown: Markdown;
   private readonly p: Palette;
   private readonly isExpanded: () => boolean;
+  private readonly getWidth: () => number;
   constructor(
     p: Palette,
     row: Extract<TranscriptRow, { kind: "assistant" }>,
     isExpanded: () => boolean,
+    getWidth: () => number,
   ) {
     this.p = p;
     this.isExpanded = isExpanded;
+    this.getWidth = getWidth;
     this.reasoning = new Text("", 1, 0);
     this.markdown = new Markdown("", 1, 1, markdownTheme(p));
     this.box.addChild(this.reasoning);
@@ -299,7 +310,9 @@ class AssistantRow implements RowComponent {
     // size + expand hint, then the newest three lines as a live preview.
     // The preview always reserves three rows — padding with blanks while the
     // reasoning is short — so the block height never changes mid-stream and
-    // the transcript below does not jump around.
+    // the transcript below does not jump around. Preview lines are capped by
+    // DISPLAY COLUMNS, not characters: a char cap lets CJK lines wrap inside
+    // Text and the block height starts breathing again.
     const icon = row.done
       ? this.p.fg("✻", "brightWhite")
       : this.p.fg(
@@ -307,11 +320,14 @@ class AssistantRow implements RowComponent {
           "brightWhite",
         );
     const head = `${icon} ${this.p.fg(`thinking · ${reasoning.length} chars · Ctrl+O expands`, "brightWhite")}`;
+    // Text carries paddingX=1 on each side; the two-space indent costs two
+    // more — whatever is left is the hard budget for one unwrapped line.
+    const budget = Math.max(0, (this.getWidth() || 80) - 4);
     const recent = reasoning.split("\n").filter((line) => line.trim() !== "").slice(-3);
     const preview = [0, 1, 2].map((i) => {
       const line = recent[i];
       if (line === undefined) return "";
-      return this.p.dim(line.length > 160 ? `  ${line.slice(0, 159)}…` : `  ${line}`);
+      return this.p.dim(`  ${fitColumns(line, budget)}`);
     });
     this.reasoning.setText([head, ...preview].join("\n"));
   }
@@ -465,12 +481,13 @@ function buildRowComponent(
   p: Palette,
   row: TranscriptRow,
   isExpanded: () => boolean,
+  getWidth: () => number,
 ): RowComponent {
   switch (row.kind) {
     case "user":
       return new UserRow(p, row);
     case "assistant":
-      return new AssistantRow(p, row, isExpanded);
+      return new AssistantRow(p, row, isExpanded, getWidth);
     case "tool":
       return new ToolRow(p, row, isExpanded);
     case "notice":
@@ -494,12 +511,19 @@ class TranscriptArea extends Container {
   private readonly model: TranscriptModel;
   private readonly p: Palette;
   private readonly isExpanded: () => boolean;
+  private readonly getWidth: () => number;
 
-  constructor(model: TranscriptModel, p: Palette, isExpanded: () => boolean) {
+  constructor(
+    model: TranscriptModel,
+    p: Palette,
+    isExpanded: () => boolean,
+    getWidth: () => number,
+  ) {
     super();
     this.model = model;
     this.p = p;
     this.isExpanded = isExpanded;
+    this.getWidth = getWidth;
   }
 
   /** Re-run every row's update() (details toggle changes render w/o revision). */
@@ -519,7 +543,7 @@ class TranscriptArea extends Container {
       seen.add(row.seq);
       let comp = this.bySeq.get(row.seq);
       if (comp === undefined) {
-        comp = buildRowComponent(this.p, row, this.isExpanded);
+        comp = buildRowComponent(this.p, row, this.isExpanded, this.getWidth);
         this.bySeq.set(row.seq, comp);
         this.addChild(comp);
       } else {
@@ -995,7 +1019,12 @@ export class TuiApp {
     this.tui = new TuiAltScreen(this.clipboardTerminal, true);
     enableShiftClickExtend(this.tui as TuiAltScreen);
 
-    this.transcriptArea = new TranscriptArea(this.transcript, this.p, () => this.detailsExpanded);
+    this.transcriptArea = new TranscriptArea(
+      this.transcript,
+      this.p,
+      () => this.detailsExpanded,
+      () => this.tui.terminal.columns,
+    );
     this.transcriptScroll = new ScrollView(this.transcriptArea, {
       follow: "end",
       primary: true,
