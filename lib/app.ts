@@ -141,6 +141,9 @@ export function formatTokens(n: number): string {
 /** Sliding window behind the live t/s gauge. */
 const STREAM_WINDOW_MS = 3000;
 
+/** Per-child line cap for the expanded subagent checklist. */
+const SUBAGENTS_EXPAND_CAP = 12;
+
 /** Rough live token estimate for streamed text: CJK ≈ 1 token/char, other
  * scripts ≈ 0.25. Only feeds the transient gauge — never any accounting. */
 function estimateStreamTokens(text: string): number {
@@ -968,6 +971,7 @@ export class TuiApp {
   private readonly editor: Editor;
   private readonly status: StatusLine;
   private readonly subagentsLine: Text;
+  private subagentItems: RunningSubagent[] = [];
   private readonly todosLine: Text;
   private agent: AgentSurface;
   private modelLabel: string;
@@ -1162,19 +1166,43 @@ export class TuiApp {
 
   /** Running-subagent summary under the status line (empty hides the row). */
   setSubagents(running: RunningSubagent[]): void {
+    this.subagentItems = running;
+    this.renderSubagentsLine();
+    this.render();
+  }
+
+  /** Collapsed: one summary line (fan-out safe). Expanded via Ctrl+O: one
+   * line per running child, newest last, capped so a large fan-out cannot
+   * eat the viewport. */
+  private renderSubagentsLine(): void {
+    const running = this.subagentItems;
     if (running.length === 0) {
       this.subagentsLine.setText("");
-      this.render();
       return;
     }
-    const lines = running.map((c) => {
-      const name = c.label ?? c.id.slice(0, 20);
-      const dot = this.p.fg("●", "green");
-      const line = c.mode === "continuable" ? `${dot} ${name} (bg)` : `${dot} ${name}`;
-      return line.length > 72 ? `${line.slice(0, 71)}…` : line;
-    });
+    const nameOf = (c: RunningSubagent): string => c.label ?? c.id.slice(0, 20);
+    const width = Math.max(20, process.stdout.columns ?? 100);
+    if (!this.detailsExpanded) {
+      const latest = nameOf(running[running.length - 1]!);
+      this.subagentsLine.setText(
+        truncateToWidth(
+          `${this.p.fg("◉ subagents", "cyan")} ${this.p.dim(`×${running.length}`)} · ${this.p.dim(latest)}`,
+          width,
+        ),
+      );
+      return;
+    }
+    const shown = running.slice(-SUBAGENTS_EXPAND_CAP);
+    const lines: string[] = [];
+    if (running.length > shown.length) {
+      lines.push(this.p.dim(`… ${running.length - shown.length} earlier`));
+    }
+    for (const child of shown) {
+      const bg = child.mode === "continuable" ? this.p.dim(" (bg)") : "";
+      lines.push(truncateToWidth(`${this.p.fg("●", "green")} ${nameOf(child)}${bg}`, width));
+    }
+    lines.push(this.p.dim("  Ctrl+O collapses"));
     this.subagentsLine.setText(lines.join("\n"));
-    this.render();
   }
 
   start(): void {
@@ -1235,6 +1263,7 @@ export class TuiApp {
     this.detailsExpanded = !this.detailsExpanded;
     this.transcriptArea.redrawAll();
     this.renderTodosLine(); // the ambient gauge expands with everything else
+    this.renderSubagentsLine();
     this.render();
   }
 
