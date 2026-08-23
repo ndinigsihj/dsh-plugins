@@ -14,6 +14,7 @@ import { randomUUID } from "node:crypto";
 import { installModelSelection } from "@deepseek-ai/dsh-agent";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import { SessionId } from "@deepseek-ai/dsh-session";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import { TuiApp, formatTokens, type AgentSurface, type AutocompleteCommand } from "./app.ts";
 import { createPalette } from "./palette.ts";
 import { renderTranscriptMarkdown } from "./export.ts";
@@ -892,12 +893,12 @@ async function run(
 
   /** Boot-time welcome block (blank sessions only): whale + route/preset/
    * workspace + key hints. Client-side chrome — styled here (the whale carries
-   * its own 24-bit color), rendered verbatim by the transcript, never exported. */
+   * its own 24-bit color), rendered verbatim by the transcript, never exported.
+   * Whale and slogan are centered on the widest banner line. */
   function showBootBanner(): void {
     if (!sessionIsBlank(agent.session.events as Array<{ type?: string }>)) return;
     const p = createPalette(true);
     const version = readPkgVersion();
-    const art = WHALE_GLYPHS.map((line) => `${WHALE_BLUE}${line}${WHALE_RESET}`).join("\n");
     const preset = currentPreset();
     const meta = [
       `${liveRoute.provider}/${liveRoute.model}`,
@@ -905,8 +906,20 @@ async function run(
       basename(process.cwd()),
     ].join(" · ");
     const title = `✻ dsh-tui${version === "" ? "" : ` v${version}`} · deepseek harness`;
-    const slogan = p.fg("探索未至之境", "brightBlue");
     const hint = "/help 命令一览 · @ 文件补全 · Ctrl+O 展开思考 · Esc 打断";
+    const sloganText = "探索未至之境";
+    // Canvas = the widest text line; glyph chars are single-width, the
+    // slogan is 6 CJK chars (12 columns).
+    const canvas = Math.max(
+      Math.max(...WHALE_GLYPHS.map((l) => l.length)) + 4,
+      visibleWidth(title),
+      visibleWidth(meta),
+      visibleWidth(hint),
+      12,
+    );
+    const whalePad = " ".repeat(Math.max(0, Math.floor((canvas - Math.max(...WHALE_GLYPHS.map((l) => l.length))) / 2)));
+    const art = WHALE_GLYPHS.map((line) => `${whalePad}${WHALE_BLUE}${line}${WHALE_RESET}`).join("\n");
+    const slogan = p.fg(`${" ".repeat(Math.max(0, Math.floor((canvas - 12) / 2)))}探索未至之境`, "brightBlue");
     app.appendBanner(
       [art, "", slogan, "", p.bold(title), p.dim(meta), "", p.dim(hint)].join("\n"),
     );
