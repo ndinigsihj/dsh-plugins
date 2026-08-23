@@ -1431,7 +1431,8 @@ export class TuiApp {
     const dot = running ? this.p.fg("●", "yellow") : this.p.fg("●", "green");
     const sep = this.p.dim(" · ");
     const left = [`${dot} ${this.p.dim(this.modelLabel)}`];
-    if (this.thinkLabel !== null) left.push(this.p.fg(`think ${this.thinkLabel}`, "cyan"));
+    // Bare effort name — no prefix, keep the bar lean (banner carries labels).
+    if (this.thinkLabel !== null) left.push(this.p.fg(this.thinkLabel, "cyan"));
     if (this.cacheRate !== null) left.push(this.p.dim(`cache ${this.cacheRate}%`));
     // Stream rate persists across the turn boundary: bright while live, dim
     // once idle so a standing number is never mistaken for an active stream.
