@@ -967,13 +967,20 @@ async function run(
     await app.stopAndExit(services.appExit, resumeHint());
   }
 
-  /** Parting hint printed after the TUI tears down: the exact command that
-   * reopens this session (harness convention: `--resume <sessionId>`).
+  /** Parting hint printed after the TUI tears down: the command that reopens
+   * this session (harness convention: `--resume <sessionId>`). Assumes the
+   * usual `dsh …` launcher — aliases and absolute paths are not reconstructed.
    * Blank sessions have nothing worth reopening — skip the noise. */
   function resumeHint(): string | undefined {
     if (sessionIsBlank(agent.session.events as Array<{ type?: string }>)) return undefined;
-    const args = argvWithoutResume(process.argv.slice(2));
-    return `\nResume with the command below:\n  dsh ${[...args, "--resume", agent.id].join(" ")}\n`;
+    const args = argvWithoutResume(process.argv.slice(2)).map(quoteIfNeeded);
+    return `\nResume with the command below:\n  dsh ${[...args, "--resume", quoteIfNeeded(agent.id)].join(" ")}\n`;
+  }
+
+  /** Single-quote a token for shell use only when needed, so the common path
+   * (`--profile tui`) stays visually identical to what the user typed. */
+  function quoteIfNeeded(token: string): string {
+    return /^[A-Za-z0-9_@%+=:,./-]+$/.test(token) ? token : `'${token.replaceAll("'", "'\\''")}'`;
   }
 
   /** Copy of launch args with any --resume target removed (callers append
