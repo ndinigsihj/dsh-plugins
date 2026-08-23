@@ -1180,33 +1180,17 @@ async function run(
     effortMeta = undefined;
     app.setThinkLabel(null);
     const llm = services.llm;
-    if (llm?.resolveModelInfo === undefined) {
-      // TEMP DEBUG (E1): runtime service lacks resolveModelInfo?
-      process.stderr.write("dsh-tui[debug]: services.llm.resolveModelInfo UNAVAILABLE\n");
-      return;
-    }
-    // TEMP DEBUG (E1): which providers are actually registered at runtime?
-    try {
-      process.stderr.write(`dsh-tui[debug]: llm providers: ${JSON.stringify(llm.listProviders())}\n`);
-    } catch (e) {
-      process.stderr.write(`dsh-tui[debug]: listProviders threw: ${String(e).slice(0, 120)}\n`);
-    }
+    if (llm?.resolveModelInfo === undefined) return;
     let next: EffortMeta | undefined;
     try {
       // Call through the service object: detaching the method loses its
       // receiver and the internals crash on a missing adapter registry.
       const info = await llm.resolveModelInfo(activeRoute().provider, activeRoute().model);
       next = info.reasoning ?? undefined;
-      // TEMP DEBUG (E1 diagnosis): distinguish silent hide-vs-fail.
-      process.stderr.write(
-        `dsh-tui[debug]: effort meta ${key}: ` +
-          (next === undefined
-            ? "no reasoning metadata"
-            : `${next.efforts.length} efforts [${next.efforts.map((e) => e.id).join(",")}], default=${next.defaultEffort ?? "-"}`) +
-          "\n",
-      );
     } catch (error) {
-      process.stderr.write(`dsh-tui[debug]: effort meta resolve FAILED: ${error instanceof Error ? error.message : String(error)}\n`);
+      console.error(
+        `dsh-tui: effort metadata for ${key} unavailable: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return; // superseded or adapter hiccup: keep the segment hidden
     }
     if (gen !== effortGeneration) return; // a newer refresh won
