@@ -1133,7 +1133,14 @@ async function run(
     let next: EffortMeta | undefined;
     try {
       next = (await resolve(activeRoute().provider, activeRoute().model)).reasoning ?? undefined;
-    } catch {
+      // TEMP DEBUG (E1 diagnosis): make silent hide-vs-fail distinguishable.
+      process.stderr.write(
+        `dsh-tui[debug]: effort meta ${key}: ` +
+          (next === undefined ? "no reasoning metadata" : `${next.efforts.length} efforts, default=${next.defaultEffort ?? "-"}`) +
+          "\n",
+      );
+    } catch (error) {
+      process.stderr.write(`dsh-tui[debug]: effort meta resolve FAILED: ${error instanceof Error ? error.message : String(error)}\n`);
       return; // superseded or adapter hiccup: keep the segment hidden
     }
     if (gen !== effortGeneration) return; // a newer refresh won
