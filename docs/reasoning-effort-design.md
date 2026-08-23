@@ -58,23 +58,27 @@ dsh 本体已提供 effort 的完整读写机制，本特性是纯接线：
 - `makeSetup` 的 route 参数升级为完整 `ModelSelection`：
   - fresh `/new`：`{ ...agentOptions, reasoningEffort: currentSelection().reasoningEffort }`；
   - boot fresh：同上；
-  - resume：仍记录路由优先（`recordedRouteOf`），effort 取 `currentSelection().reasoningEffort`（日志没有，只能带默认——见 §5）。
-- `/model` 活体切换：fork 种子不含 effort，切后 `ref.current.reasoningEffort` 保持不变（新路由不支持该档位时由 harness 请求前置拒绝兜底，picker 层下次打开按新路由重列）。
+  - resume：路由仍记录优先（`recordedRouteOf`）；effort = 该会话最后一条 `request/header`
+    快照 `header.config.reasoningEffort`（**effort 实际入日志，2026-08-23 对真实会话
+    核实并修正 §5 的误判**；`recordedEffortOf` 扫描），无记录时回落 settings 默认。
+- `/model` 活体切换：捕获旧 ref 的 effort 透传进新 makeSetup（新路由不支持该档位时由
+  harness 请求前置拒绝兜底，picker 层下次打开按新路由重列）。
 
 ## 4. 不做（v1）
 
-- effort 的 per-session 持久化（依赖日志形状扩展，等 core 把 effort 加入 `request/context`）。
 - `/model` 内合并档位选择（先验证独立 `/effort` 的交互）。
 - Web/host 侧同步（`dsh-client-ui-model-selection` 是 web 客户端自己的通道，与 TUI 无关）。
+- ~~effort 的 per-session 持久化~~ 已实现（§3.3 resume 恢复）：日志形状本就支持——
+  effort 记录在 `request/header` 而非 `request/context`，初版设计误判。
 
 ## 5. 已知限制
 
-- resume 后显示的是 settings 默认档，不是该会话历史轮次实际使用的档位（日志不携带，core 形状决定；2026-08-23 定稿：接受）。
-- `/effort` 是会话级临时档，不落盘——新会话回到 settings 默认（与 `/model` 行为对齐；用户拍板）。
+- `/effort` 是会话级临时档，不落盘 settings——新会话回到 settings 默认（与 `/model`
+  行为对齐；用户拍板）。resume 会话不受此限：档位从该会话 header 记录恢复。
 
 ## 6. 验收
 
 1. `/effort` 列表正确标注 default 与 current；选择后状态栏即时更新，下一轮对话生效。
-2. 欢迎屏 meta 与状态栏数值一致；`/new` 后显示 settings 默认档（§3.3）；resume 后同为 settings 默认。
+2. 欢迎屏 meta 与状态栏数值一致；`/new` 后显示 settings 默认档（§3.3）；resume 后显示该会话最后使用的档位（header 记录恢复，无记录回落默认）。
 3. 无 reasoning 元数据的路由：`/effort` 给出明确提示，状态栏/banner 不显示该段。
 4. tsc 通过；rewind/phase-swap 既有测试全绿。

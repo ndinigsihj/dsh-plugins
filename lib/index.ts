@@ -334,6 +334,23 @@ function recordedRouteOf(
   return undefined;
 }
 
+/** The reasoning effort a session last rode: the latest `request/header`
+ * snapshot's call config (effort IS logged there, unlike request/context).
+ * undefined when none recorded or the snapshot omits it (provider default). */
+function recordedEffortOf(
+  events: ReadonlyArray<unknown>,
+): string | undefined {
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const event = events[i] as
+      | { type?: string; data?: { header?: { config?: { reasoningEffort?: unknown } } } }
+      | undefined;
+    if (event?.type !== "request/header") continue;
+    const effort = event.data?.header?.config?.reasoningEffort;
+    if (typeof effort === "string") return effort;
+  }
+  return undefined;
+}
+
 /** Narrow the real Agent handle to the surface the app drives. */
 function agentSurface(agent: {
   id: string;
@@ -556,6 +573,8 @@ async function run(
   // history. The recorded model missing/no longer existing falls back to the
   // default (pin ?? saved default).
   let resumeRouteOverride: { provider: string; model: string } | undefined;
+  /** Effort the resumed session rides (last header record ?? settings default). */
+  let resumeEffort: string | undefined;
 
   /**
    * Model-selection + preset mount chain installed via the factory hook.
@@ -583,12 +602,14 @@ async function run(
   };
 
   /**
-   * Facts read once from a resumed session's log: its recorded preset and its
-   * last recorded route (the latest `request/context` event).
+   * Facts read once from a resumed session's log: its recorded preset, its
+   * last recorded route (the latest `request/context` event), and its last
+   * used reasoning effort (the latest `request/header` call config).
    */
   async function bootResumeFacts(id: string): Promise<{
     presetId?: string;
     recordedRoute?: { provider: string; model: string };
+    recordedEffort?: string;
   }> {
     try {
       const snap = await services.sessionQuery?.readSession(id);
@@ -596,6 +617,7 @@ async function run(
         return {
           presetId: recordedPresetOf(snap.events),
           recordedRoute: recordedRouteOf(snap.events),
+          recordedEffort: recordedEffortOf(snap.events),
         };
       }
     } catch {
@@ -640,6 +662,9 @@ async function run(
   if (resumeId !== undefined) {
     const facts = await bootResumeFacts(resumeId);
     requestedPreset = facts.presetId ?? own.preset;
+    // Effort restore (design §3.3): the session's last-used effort wins over
+    // the settings default; no header record yet → settings default.
+    resumeEffort = facts.recordedEffort ?? selection.reasoningEffort;
     if (facts.recordedRoute === undefined) {
       resumeRouteOverride = agentOptions; // no record — ride the default
       resumeTrace = "no-record→default";
@@ -661,15 +686,15 @@ async function run(
         // OFFICIAL SHAPE — always pass the object. Undefined halves mean "the
         // session's own records supply the route"; omitting agentOptions
         // entirely yields a routeless agent ("has no provider/model").
-        // Session's own records supply the route; effort rides the saved
-        // default (the log does not record effort — design §5).
+        // Session's own records supply the route AND the effort (last
+        // request/header snapshot); settings default only fills gaps.
         agentOptions: {
           provider: resumeRouteOverride?.provider,
           model: resumeRouteOverride?.model,
         },
         setup: makeSetup(composed, {
           ...(resumeRouteOverride ?? liveRoute),
-          reasoningEffort: selection.reasoningEffort,
+          reasoningEffort: resumeEffort ?? selection.reasoningEffort,
         }),
       })
     : await services.agents.create({
