@@ -44,6 +44,8 @@ export function renderTranscriptMarkdown(rows: ReadonlyArray<TranscriptRow>): st
         break;
       case "context":
         break; // resume/context markers carry no conversational content
+      case "banner":
+        break; // boot-time welcome block is UI chrome, not conversation
     }
   }
   return `${out.join("\n").trimEnd()}\n`;

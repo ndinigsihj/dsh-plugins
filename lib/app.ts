@@ -509,6 +509,24 @@ class NoticeRow implements RowComponent {
   }
 }
 
+/** Boot-time welcome block: the row carries pre-styled lines (whale art +
+ * route/preset/workspace + hints), rendered verbatim. */
+class BannerRow implements RowComponent {
+  private readonly text: Text;
+  constructor(row: Extract<TranscriptRow, { kind: "banner" }>) {
+    this.text = new Text(row.text, 1, 1);
+  }
+  update(): void {
+    /* static content */
+  }
+  render(width: number): string[] {
+    return this.text.render(width);
+  }
+  invalidate(): void {
+    this.text.invalidate();
+  }
+}
+
 function buildRowComponent(
   p: Palette,
   row: TranscriptRow,
@@ -526,6 +544,8 @@ function buildRowComponent(
     case "error":
     case "context":
       return new NoticeRow(p, row);
+    case "banner":
+      return new BannerRow(row);
   }
 }
 
@@ -1330,6 +1350,13 @@ export class TuiApp {
   /** Append multi-line command output as a notice row. */
   appendCommandOutput(text: string): void {
     this.transcript.addNotice(text);
+    this.transcriptArea.sync();
+    this.render();
+  }
+
+  /** Append the boot-time welcome block (blank sessions only, never exported). */
+  appendBanner(text: string): void {
+    this.transcript.addBanner(text);
     this.transcriptArea.sync();
     this.render();
   }

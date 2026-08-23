@@ -31,7 +31,14 @@ export type TranscriptRow =
     }
   | { kind: "notice"; text: string; seq: number }
   | { kind: "error"; text: string; seq: number }
-  | { kind: "context"; text: string; seq: number };
+  | { kind: "context"; text: string; seq: number }
+  | {
+      /** Boot-time welcome block (blank sessions only); carries pre-styled
+       * text and is skipped by /export. */
+      kind: "banner";
+      text: string;
+      seq: number;
+    };
 
 /** One entry of the model's todo list (todo/write snapshots, last-write-wins). */
 export interface TodoItem {
@@ -99,6 +106,13 @@ export class TranscriptModel {
   /** Append a non-session row (command output). */
   addNotice(text: string): void {
     this.rows.push({ kind: "notice", text, seq: this.noticeSeq });
+    this.noticeSeq -= 1;
+    this.bump();
+  }
+
+  /** Append the boot-time welcome block (client-side only, never exported). */
+  addBanner(text: string): void {
+    this.rows.push({ kind: "banner", text, seq: this.noticeSeq });
     this.noticeSeq -= 1;
     this.bump();
   }

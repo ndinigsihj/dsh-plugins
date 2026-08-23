@@ -7,6 +7,7 @@
 // feed instead of a single task.
 
 import { basename, resolve } from "node:path";
+import { readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import z from "@deepseek-ai/schemastery";
 import { randomUUID } from "node:crypto";
@@ -14,6 +15,7 @@ import { installModelSelection } from "@deepseek-ai/dsh-agent";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import { SessionId } from "@deepseek-ai/dsh-session";
 import { TuiApp, formatTokens, type AgentSurface, type AutocompleteCommand } from "./app.ts";
+import { createPalette } from "./palette.ts";
 import { renderTranscriptMarkdown } from "./export.ts";
 import type { ToolPresenters, TodoItem } from "./transcript.ts";
 import {
@@ -27,8 +29,19 @@ import {
   type SettingsSeam,
 } from "./presets.ts";
 
-/** Stable Cordis plugin name. */
-const name = "tui-runner";
+/** Version string from this repo's package.json, for the boot banner only. */
+function readPkgVersion(): string {
+  try {
+    const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
+      version?: unknown;
+    };
+    return typeof pkg.version === "string" ? pkg.version : "";
+  } catch {
+    return "";
+  }
+}
+
+/** Stable Cordis plugin name. */const name = "tui-runner";
 
 /** Core services required before the terminal front door can start. */
 const inject = [
@@ -829,6 +842,7 @@ async function run(
       }
     }
   }
+  showBootBanner();
   updateContextPressure();
   refreshSubagents();
 
@@ -848,6 +862,34 @@ async function run(
     } catch {
       return undefined;
     }
+  }
+
+  /** Boot-time welcome block (blank sessions only): whale + route/preset/
+   * workspace + key hints. Client-side chrome — styled here with its own
+   * palette instance, rendered verbatim by the transcript, never exported. */
+  function showBootBanner(): void {
+    if (!sessionIsBlank(agent.session.events as Array<{ type?: string }>)) return;
+    const p = createPalette(true);
+    const version = readPkgVersion();
+    const art = [
+      "       .",
+      '      ":"',
+      '    ___:____     |"\\/"|',
+      "  ,'        `.    \\  /",
+      "  |  O        \\___/  |",
+      "~^~^~^~^~^~^~^~^~^~^~^~^~",
+    ].join("\n");
+    const preset = currentPreset();
+    const meta = [
+      `${liveRoute.provider}/${liveRoute.model}`,
+      ...(preset === undefined ? [] : [`preset ${preset}`]),
+      basename(process.cwd()),
+    ].join(" · ");
+    const title = `✻ dsh-tui${version === "" ? "" : ` v${version}`} · deepseek harness`;
+    const hint = "/help 命令一览 · @ 文件补全 · Ctrl+O 展开思考 · Esc 打断";
+    app.appendBanner(
+      [p.fg(art, "brightBlue"), "", p.bold(title), p.dim(meta), "", p.dim(hint)].join("\n"),
+    );
   }
 
   /** Rebind the app + every closure to a newly adopted agent (/new path). */
@@ -888,6 +930,7 @@ async function run(
       });
       await adoptAgent(result.agent);
       liveRoute = agentOptions; // /new rides the same default route
+      showBootBanner(); // fresh blank session: welcome block again
       app.appendCommandOutput(
         `New session ${result.agent.id}` +
           (fresh.agentPreset === undefined ? "." : ` (preset ${fresh.agentPreset}).`),
