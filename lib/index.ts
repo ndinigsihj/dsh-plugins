@@ -905,9 +905,10 @@ async function run(
       basename(process.cwd()),
     ].join(" · ");
     const title = `✻ dsh-tui${version === "" ? "" : ` v${version}`} · deepseek harness`;
+    const slogan = p.fg("探索未至之境", "brightBlue");
     const hint = "/help 命令一览 · @ 文件补全 · Ctrl+O 展开思考 · Esc 打断";
     app.appendBanner(
-      [art, "", p.bold(title), p.dim(meta), "", p.dim(hint)].join("\n"),
+      [art, "", slogan, "", p.bold(title), p.dim(meta), "", p.dim(hint)].join("\n"),
     );
   }
 
