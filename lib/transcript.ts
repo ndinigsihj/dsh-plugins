@@ -31,7 +31,14 @@ export type TranscriptRow =
     }
   | { kind: "notice"; text: string; seq: number }
   | { kind: "error"; text: string; seq: number }
-  | { kind: "context"; text: string; seq: number };
+  | { kind: "context"; text: string; seq: number }
+  | { kind: "todos"; items: ReadonlyArray<TodoItem>; seq: number };
+
+/** One entry of the model's todo list (todo/write snapshots, last-write-wins). */
+export interface TodoItem {
+  content: string;
+  status: string;
+}
 
 interface ContentLike {
   type: string;
@@ -258,6 +265,25 @@ export class TranscriptModel {
         else if (reason.kind === "interrupted") notice = "Turn interrupted.";
         else if (reason.kind !== "completed") notice = `Turn ended: ${reason.kind}.`;
         if (notice !== "") this.rows.push({ kind: "notice", text: notice, seq: event.seq });
+        this.bump();
+        break;
+      }
+      case "todo/write": {
+        // Last-write-wins snapshot: fold into ONE synthetic row so the card
+        // updates in place instead of stacking a row per write.
+        const data = event.data as { todos?: ReadonlyArray<TodoItem> } | undefined;
+        const items = (data?.todos ?? []).map((t) => ({
+          content: String(t.content ?? ""),
+          status: String(t.status ?? "pending"),
+        }));
+        if (items.length === 0) break;
+        const existing = this.rows.find((r) => r.kind === "todos");
+        if (existing !== undefined && existing.kind === "todos") {
+          // Keep the original seq: it is the row's component identity.
+          existing.items = items;
+        } else {
+          this.rows.push({ kind: "todos", items, seq: event.seq });
+        }
         this.bump();
         break;
       }
