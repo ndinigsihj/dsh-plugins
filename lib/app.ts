@@ -479,8 +479,6 @@ function buildRowComponent(
       return new AssistantRow(p, row, isExpanded);
     case "tool":
       return new ToolRow(p, row, isExpanded);
-    case "todos":
-      return new TodosRow(p, row, isExpanded);
     case "notice":
     case "error":
     case "context":
@@ -493,61 +491,6 @@ function todoMarker(p: Palette, status: string): string {
   if (status === "completed") return p.fg("✓", "green");
   if (status === "in_progress") return p.fg("▸", "yellow");
   return p.dim("○");
-}
-
-/**
- * The model's todo list as ONE in-place card: collapsed shows progress plus
- * the current in-progress item, Ctrl+O expands the full checklist. The
- * transcript folds every todo/write into this row (last-write-wins).
- */
-class TodosRow implements RowComponent {
-  private readonly box = new Container();
-  private readonly text: Text;
-  private readonly p: Palette;
-  private readonly isExpanded: () => boolean;
-  private items: ReadonlyArray<TodoItem> = [];
-
-  constructor(p: Palette, row: Extract<TranscriptRow, { kind: "todos" }>, isExpanded: () => boolean) {
-    this.p = p;
-    this.isExpanded = isExpanded;
-    this.text = new Text("", 1, 0);
-    this.box.addChild(this.text);
-    this.update(row);
-  }
-
-  update(row: Extract<TranscriptRow, { kind: "todos" }>): void {
-    this.items = row.items;
-    const done = this.items.filter((t) => t.status === "completed").length;
-    const current = this.items.find((t) => t.status === "in_progress") ?? this.items.find((t) => t.status !== "completed");
-
-    if (!this.isExpanded()) {
-      const focus =
-        current !== undefined
-          ? ` · ${todoMarker(this.p, current.status)} ${this.p.dim(current.content)}`
-          : "";
-      this.text.setText(
-        `${this.p.fg("☰ todos", "cyan")} ${this.p.dim(`${done}/${this.items.length}`)}${focus}`,
-      );
-      return;
-    }
-
-    const lines = [`${this.p.fg(`☰ todos ${done}/${this.items.length}`, "cyan")}`];
-    for (const item of this.items) {
-      const marker = todoMarker(this.p, item.status);
-      const text = item.status === "completed" ? this.p.dim(item.content) : item.content;
-      lines.push(`  ${marker} ${text}`);
-    }
-    lines.push(this.p.dim("  Ctrl+O collapses"));
-    this.text.setText(lines.join("\n"));
-  }
-
-  render(width: number): string[] {
-    return this.box.render(width);
-  }
-
-  invalidate(): void {
-    this.box.invalidate();
-  }
 }
 
 /** One component per transcript row, persisted and updated via update(). */
