@@ -354,7 +354,7 @@ interface CoreServices {
     listSessions(
       signal?: AbortSignal,
     ): Promise<
-      Array<{ header: { id: string; cwd?: string; createdAt?: number }; live: boolean; persisted: boolean }>
+      Array<{ header: { id: string; cwd?: string; createdAt?: number; origin?: string }; live: boolean; persisted: boolean }>
     >;
     readTitleSnapshots(
       ids: string[],
@@ -1247,24 +1247,30 @@ async function run(
     totalRecords: number;
     localRecords: number;
     hiddenUntitled: number;
+    hiddenOlder: number;
   }> {
     const query = services.sessionQuery;
     if (query === undefined) {
-      return { items: [], totalRecords: 0, localRecords: 0, hiddenUntitled: 0 };
+      return { items: [], totalRecords: 0, localRecords: 0, hiddenUntitled: 0, hiddenOlder: 0 };
     }
     const records = await query.listSessions();
     // Scope to the current workspace: sessions persist keyed by cwd, and a
-    // global newest-first list mostly shows other projects' logs.
+    // global newest-first list mostly shows other projects' logs. Subagent
+    // children persist under the parent's workspace too and carry LLM titles
+    // (their first message is the spliced brief) — left in, they flood the
+    // recency window and crowd interactive history out of it.
     const cwd = process.cwd();
-    const local = records.filter((rec) => rec.header.cwd === cwd);
-    const recent = local.slice(0, 30);
-    const snapshots = await query.readTitleSnapshots(recent.map((rec) => rec.header.id));
-    // Untitled sessions are empty shells (a boot that never got a message) —
-    // keep them out of the picker.
+    const local = records.filter(
+      (rec) => rec.header.cwd === cwd && rec.header.origin !== "subagent",
+    );
+    // Untitled shells (a boot that never got a message) are dropped BEFORE the
+    // recency cut: slicing first let an empty boot occupy a slot while pushing
+    // real sessions out of the window.
+    const snapshots = await query.readTitleSnapshots(local.map((rec) => rec.header.id));
     let hiddenUntitled = 0;
-    const items: Array<{ value: string; label: string; description: string }> = [];
-    for (let i = 0; i < recent.length; i += 1) {
-      const rec = recent[i];
+    const titled: Array<{ rec: (typeof records)[number]; title: string }> = [];
+    for (let i = 0; i < local.length; i += 1) {
+      const rec = local[i];
       if (rec === undefined) continue;
       const snap = snapshots[i];
       const title = snap?.status === "fulfilled" ? snap.value?.title?.title : undefined;
@@ -1272,6 +1278,12 @@ async function run(
         hiddenUntitled += 1;
         continue;
       }
+      titled.push({ rec, title });
+    }
+    const recent = titled.slice(0, 30);
+    const hiddenOlder = titled.length - recent.length;
+    const items: Array<{ value: string; label: string; description: string }> = [];
+    for (const { rec, title } of recent) {
       const state = rec.live ? "live" : rec.persisted ? "persisted" : "missing";
       const when = relativeTime(rec.header.createdAt);
       const marker = rec.header.id === agent.id ? " (current)" : "";
@@ -1281,12 +1293,19 @@ async function run(
         description: `${when} · ${state}${marker}`,
       });
     }
-    return { items, totalRecords: records.length, localRecords: local.length, hiddenUntitled };
+    return {
+      items,
+      totalRecords: records.length,
+      localRecords: local.length,
+      hiddenUntitled,
+      hiddenOlder,
+    };
   }
 
   async function listSessions(): Promise<void> {
     try {
-      const { items, totalRecords, localRecords, hiddenUntitled } = await loadSessionItems();
+      const { items, totalRecords, localRecords, hiddenUntitled, hiddenOlder } =
+        await loadSessionItems();
       if (items.length === 0) {
         app.appendCommandOutput(
           `No titled sessions in this workspace` +
@@ -1295,7 +1314,9 @@ async function run(
         );
         return;
       }
-      const hiddenNote = hiddenUntitled > 0 ? ` · ${hiddenUntitled} untitled hidden` : "";
+      const hiddenNote =
+        (hiddenUntitled > 0 ? ` · ${hiddenUntitled} untitled hidden` : "") +
+        (hiddenOlder > 0 ? ` · ${hiddenOlder} older hidden` : "");
       const lines = items.map((item, i) => `${String(i + 1).padStart(2)}. ${item.label} [${item.description}]`);
       app.appendCommandOutput(
         `Sessions in ${basename(process.cwd())} (${localRecords}` +
