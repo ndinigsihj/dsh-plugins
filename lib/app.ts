@@ -328,13 +328,14 @@ class AssistantRow implements RowComponent {
     this.buildCollapsed(reasoning, row.done);
   }
 
-  /** Collapsed: white spinner while streaming (frozen glyph once done),
-   * size + expand hint, then the newest three lines as a live preview.
-   * The preview always reserves three rows — padding with blanks while the
-   * reasoning is short — so the block height never changes mid-stream and
-   * the transcript below does not jump around. Preview lines are capped by
-   * DISPLAY COLUMNS, not characters: a char cap lets CJK lines wrap inside
-   * Text and the block height starts breathing again. */
+  /** Collapsed: white spinner while streaming (frozen glyph once done), size +
+   * expand hint, and — while streaming only — the newest three lines as a live
+   * preview. The preview always reserves three rows — padding with blanks
+   * while the reasoning is short — so the block height never changes
+   * mid-stream and the transcript below does not jump around. Preview lines
+   * are capped by DISPLAY COLUMNS, not characters: a char cap lets CJK lines
+   * wrap inside Text and the block height starts breathing again. Once done
+   * the whole thing folds to its single summary line. */
   private buildCollapsed(reasoning: string, done: boolean): void {
     const icon = done
       ? this.p.fg("✻", "brightWhite")
@@ -343,6 +344,11 @@ class AssistantRow implements RowComponent {
           "brightWhite",
         );
     const head = `${icon} ${this.p.fg(`thinking · ${reasoning.length} chars · Ctrl+O expands`, "brightWhite")}`;
+    this.formattedAtWidth = this.getWidth() || 80;
+    if (done) {
+      this.reasoning.setText(head);
+      return;
+    }
     // Text carries paddingX=1 on each side; the two-space indent costs two
     // more — whatever is left is the hard budget for one unwrapped line.
     const usedWidth = this.getWidth() || 80;
