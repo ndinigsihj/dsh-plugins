@@ -274,7 +274,7 @@ read/ask_user_question 的常规任务序列；R6 回到 bash。未观察到注�
 | 步骤 | 内容 | 验证 |
 |---|---|---|
 | M1 | 本文档定稿（含用户拍板 §3.4 决策） | 审阅通过 |
-| ~~M2~~ | ~~spike：`phase-swap-bash.mjs` 最小实现（路径 a）+ 单测（dispose/register 顺序、同名冲突、promotion 判定幂等、失败降级）~~ | **✅ 完成（2026-08-20）**：per-agent shadow 定案；7 单测 + 24 存量全绿；无 LLM 组合冒烟通过（下节记录） |
+| ~~M2~~ | ~~spike：`phase-swap-bash.mjs` 最小实现（路径 a）+ 单测（dispose/register 顺序、同名冲突、promotion 判定幂等、失败降级）~~ | **✅ 完成（2026-08-20）**：per-agent shadow 定案；9 单测 + 24 存量全绿；无 LLM 组合冒烟通过（下节记录） |
 | M3 | 组合 preset 装配 + 手工会话冒烟（首轮目录=bash+str_replace_editor；二轮 AGENTS.md 注入 + bash 带提权参数） | 冒烟通过（M2 已用 headless 组合 + assemble/pre-step 瀑布完成等价验证；真实 TUI 手工会话待用户跑） |
 | M4 | §5 实验 A/B/C/D 全部组别执行并记录 | **✅ 完成（2026-08-20）**：数据表 + 判定见 §5.6；A 组通过，B 组无扰动，无需降级 |
 | M5 | 结果回写本文档；决策 merge 进 standard-bootstrap 还是独立 preset；README/索引更新；收尾 commit | **✅ 完成（2026-08-20）**：决策=**保持独立 preset**（§6.2）；README 加 liangshen-plus 小节；收尾 commit |
@@ -378,7 +378,7 @@ WARNINGS:         []                                                            
 ## 8. 相关文件索引
 
 - 设计：`presets/liangshen-plus/agent.cordis.yml`（repo 版本化 + 部署 `~/.dsh/.agent-presets/liangshen-plus/`）、`presets/liangshen-plus/phase-swap-bash.mjs`（repo 版本化）
-- 冒烟：`presets/liangshen-plus/smoke-driver.mjs`（无 LLM 两轮目录驱动）、`presets/liangshen-plus/smoke-boot.mjs`（headless 组合 + patches 启动）、`presets/liangshen-plus/phase-swap-bash.test.mjs`（7 单测）、`docs/liangshen-plus-manual-smoke.md`（TUI 手工会话步骤）
+- 冒烟：`presets/liangshen-plus/smoke-driver.mjs`（无 LLM 两轮目录驱动）、`presets/liangshen-plus/smoke-boot.mjs`（headless 组合 + patches 启动）、`presets/liangshen-plus/phase-swap-bash.test.mjs`（9 单测）、`docs/liangshen-plus-manual-smoke.md`（TUI 手工会话步骤）
 - M4 实验：`presets/liangshen-plus/m4-runner.mjs`（headless 组合 boot + patches，env 配置见 driver）、`presets/liangshen-plus/m4-driver.mjs`（A/B/C/D 逐跑驱动 + JSONL 记录 + 汇总）、`experiments/m4/results-*.jsonl`（原始数据）
 - 复用（部署包绝对路径，S7 定案）：`@deepseek-harness-tui/dsh-tui/presets/liangshen/tool-bootstrap.mjs`、`.../compaction-epoch.mjs`、`.../custom-bash.mjs`
 - 包依赖：`@deepseek-ai/dsh-tool-bash`（沙箱 bash，rc.8）、`@deepseek-ai/dsh-tool-bash-persistent`（持久 bash，rc.7）、`@deepseek-ai/dsh-tools`（scope layer 注册）、`@deepseek-ai/dsh-agent-instructions`（注入）、`@deepseek-ai/dsh-sandbox`（`ESCALATION_TARGETS`）

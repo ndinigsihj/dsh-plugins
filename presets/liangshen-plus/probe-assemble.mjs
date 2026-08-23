@@ -4,7 +4,7 @@
  *
  * 挂载：~/.dsh/.agent-presets/liangshen-plus/agent.cordis.yml 的 tool-bootstrap 之后
  *   - id: probe-assemble
- *     name: '/Users/vito/data/dev/dsh-tui/presets/liangshen-plus/probe-assemble.mjs'
+ *     name: '/Users/vito/data/dev/dsh-plugins/presets/liangshen-plus/probe-assemble.mjs'
  * 日志：/tmp/liangshen-plus-probe.log（每行一个 JSON）
  */
 import { appendFileSync } from "node:fs";

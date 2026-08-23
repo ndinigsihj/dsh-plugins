@@ -112,6 +112,7 @@ export class TranscriptModel {
       if (row.resultView !== undefined || row.error !== undefined) continue;
       if (row.name !== toolName) continue;
       row.awaitingApproval = true;
+      this.bump();
       return true;
     }
     return false;
@@ -126,6 +127,7 @@ export class TranscriptModel {
         changed = true;
       }
     }
+    if (changed) this.bump();
     return changed;
   }
 
@@ -134,6 +136,7 @@ export class TranscriptModel {
     this.openAssistant = null;
     this.toolByCall.clear();
     this.lastSeq = -1;
+    this.noticeSeq = -1;
     this.bump();
   }
 
@@ -151,8 +154,8 @@ export class TranscriptModel {
     // type union; handle them by string discriminant before the typed switch.
     const typeName = (event as { type: string }).type;
     if (typeName === "compaction/end") {
-      const data = (event as unknown as { data: { error?: string } }).data;
-      if (data.error !== undefined) {
+      const data = (event as unknown as { data?: { error?: string } }).data;
+      if (data?.error !== undefined) {
         this.rows.push({ kind: "error", text: `Compaction failed: ${data.error}`, seq: event.seq });
       } else {
         this.rows.push({
@@ -167,7 +170,9 @@ export class TranscriptModel {
 
     switch (event.type) {
       case "user/message": {
-        const data = event.data as {
+        // External feed: never trust the envelope shape — a malformed event
+        // must be skipped, not thrown through ctx.on's dispatch chain.
+        const data = (event.data ?? {}) as {
           content?: ReadonlyArray<ContentLike>;
           source?: { kind?: string };
         };
@@ -186,7 +191,10 @@ export class TranscriptModel {
         break;
       }
       case "assistant/chunk": {
-        const chunk = event.data.chunk as { type: string; text?: string; block?: ContentLike };
+        const chunk = (
+          event.data as { chunk?: { type: string; text?: string; block?: ContentLike } } | undefined
+        )?.chunk;
+        if (chunk === undefined) break;
         if (chunk.type === "text-delta" || chunk.type === "reasoning-delta") {
           const delta = chunk.text ?? "";
           if (delta === "") break;
@@ -200,7 +208,10 @@ export class TranscriptModel {
         break;
       }
       case "assistant/message": {
-        const message = event.data.message as { content?: ReadonlyArray<ContentLike> };
+        const message = (
+          event.data as { message?: { content?: ReadonlyArray<ContentLike> } } | undefined
+        )?.message;
+        if (message === undefined) break;
         const { text, reasoning } = splitContent(message.content ?? []);
         if (this.openAssistant === null) {
           if (text === "" && reasoning === "") break;
@@ -215,8 +226,9 @@ export class TranscriptModel {
         break;
       }
       case "tool/call": {
-        const data = event.data as { callId: string; name: string; arguments: string };
-        const args = parseArgs(data.arguments);
+        const data = event.data as Partial<{ callId: string; name: string; arguments: string }> | undefined;
+        if (typeof data?.callId !== "string" || typeof data.name !== "string") break;
+        const args = parseArgs(data.arguments ?? "");
         const row: Extract<TranscriptRow, { kind: "tool" }> = {
           kind: "tool",
           name: data.name,
@@ -230,17 +242,21 @@ export class TranscriptModel {
         break;
       }
       case "tool/result": {
-        const data = event.data as {
-          message: { content?: ReadonlyArray<ContentLike> };
-          error?: { name: string; code: string };
-          meta?: unknown;
-        };
-        const resultBlock = (data.message.content ?? []).find((b) => b.type === "tool-result");
+        const data = event.data as
+          | {
+              message?: { content?: ReadonlyArray<ContentLike> };
+              error?: { name: string; code: string };
+              meta?: unknown;
+            }
+          | undefined;
+        if (data === undefined) break;
+        const content = data.message?.content ?? [];
+        const resultBlock = content.find((b) => b.type === "tool-result");
         const callId = String(resultBlock?.toolCallId ?? "");
         const row = this.toolByCall.get(callId);
         if (row !== undefined) {
           row.resultView = presenters.presentResult(row.name, row.args, {
-            content: data.message.content ?? [],
+            content,
             isError: data.error !== undefined,
             meta: data.meta,
           });
@@ -250,7 +266,12 @@ export class TranscriptModel {
         break;
       }
       case "turn/end": {
-        const reason = event.data.reason as { kind: string; error?: { code: string; message: string } };
+        const reason = (
+          event.data as
+            | { reason?: { kind: string; error?: { code: string; message: string } } }
+            | undefined
+        )?.reason;
+        if (reason === undefined) break;
         let notice = "";
         if (reason.kind === "error") {
           this.rows.push({

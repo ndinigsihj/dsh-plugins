@@ -27,11 +27,12 @@
  *
  *   - insert:
  *       - id: dsh-rewind
- *         name: '/Users/vito/data/dev/dsh-tui/plugins/rewind-dsh.ts'
+ *         name: '/Users/vito/data/dev/dsh-plugins/plugins/rewind-dsh.ts'
  *         inject: [agents, sessions, sessionPersistence, commands]
  */
 
 import { randomUUID } from "node:crypto";
+import { readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Context } from "@deepseek-ai/cordis";
 
@@ -575,7 +576,6 @@ function resolveUnder(cwd: string, path: string): string {
 }
 
 async function readTextSafe(abs: string): Promise<string | null> {
-  const { readFile } = await import("node:fs/promises");
   try {
     return await readFile(abs, "utf8");
   } catch (error) {
@@ -584,13 +584,20 @@ async function readTextSafe(abs: string): Promise<string | null> {
   }
 }
 
+/** Atomic restore write: temp file in the target directory, then rename.
+ * A crash mid-write leaves the original intact instead of a truncated file. */
 async function writeTextSafe(abs: string, content: string): Promise<void> {
-  const { writeFile } = await import("node:fs/promises");
-  await writeFile(abs, content, "utf8");
+  const tmp = `${abs}.rewind-${randomUUID().slice(0, 8)}.tmp`;
+  try {
+    await writeFile(tmp, content, "utf8");
+    await rename(tmp, abs);
+  } catch (error) {
+    await unlink(tmp).catch(() => {});
+    throw error;
+  }
 }
 
 async function deleteFileSafe(abs: string): Promise<void> {
-  const { unlink } = await import("node:fs/promises");
   try {
     await unlink(abs);
   } catch (error) {

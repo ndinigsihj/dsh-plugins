@@ -49,7 +49,10 @@ const Config = z.object({});
 
 type CordisContext = {
   get<T = unknown>(key: string): T | undefined;
-  on(event: string, listener: (...args: any[]) => void): () => void;
+  // `never[]` is deliberate: parameters check contravariantly, so listeners
+  // may declare their concrete payload types while the bus stays untyped here
+  // (no `any`).
+  on(event: string, listener: (...args: never[]) => void): () => void;
   effect(disposer: () => void | (() => void)): void;
   interval(callback: () => void, ms: number): () => void;
 };
@@ -1132,6 +1135,12 @@ async function run(
 
   /** /model — pick a route and switch THIS session onto it (history intact). */
   async function doModel(): Promise<void> {
+    // Same veto as /new: a live switch forks the log mid-turn and strands the
+    // old agent still running in the background.
+    if (agent.status === "running") {
+      app.showNotice("Agent is running — Esc cancels it first.");
+      return;
+    }
     const llm = services.llm;
     if (llm === undefined) {
       app.showNotice("No llm service in this deployment.");
@@ -1381,7 +1390,20 @@ async function run(
       }
     }
     app.stopTerminal();
-    const relaunch = [process.execPath, ...process.argv.slice(1), "--resume", id];
+    // Drop any --resume already on the command line (chained /resume): the new
+    // target must win regardless of how the runtime parses duplicates.
+    const priorArgv: string[] = [];
+    const base = process.argv.slice(1);
+    for (let i = 0; i < base.length; i += 1) {
+      const arg = base[i] ?? "";
+      if (arg === "--resume") {
+        i += 1; // skip its value too
+        continue;
+      }
+      if (arg.startsWith("--resume=")) continue;
+      priorArgv.push(arg);
+    }
+    const relaunch = [process.execPath, ...priorArgv, "--resume", id];
     if (process.execve === undefined) {
       console.error("dsh-tui: process.execve is unavailable on this platform");
       services.appExit(1);

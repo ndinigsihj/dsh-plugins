@@ -31,6 +31,7 @@ import {
   type SelectListTheme,
   type TUI,
 } from "@earendil-works/pi-tui";
+import { lineDiff } from "./diff.ts";
 import { createPalette, type Palette } from "./palette.ts";
 import { sanitizeDisplay } from "./sanitize.ts";
 import { ClipboardTerminal } from "./terminal.ts";
@@ -272,44 +273,14 @@ class UserRow implements RowComponent {
 /** Braille spin frames for the collapsed thinking header (time-based frame). */
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
-/** Lines of unchanged context kept around each edit hunk. */
-const DIFF_CONTEXT = 3;
-
 /** Max diff lines shown in collapsed mode before a "… N more" stub. */
 const DIFF_COLLAPSED_CAP = 24;
 
-interface DiffLine {
-  kind: "add" | "del" | "ctx";
-  text: string;
-}
+/** Grace period for agent.whenIdle() during shutdown before forcing exit. */
+const IDLE_EXIT_GRACE_MS = 5_000;
 
-/**
- * Line diff tuned for edit-shaped changes: trim the common prefix/suffix,
- * mark the middle as del/add blocks, keep bounded context around them.
- */
-export function lineDiff(oldText: string | null, newText: string): DiffLine[] {
-  if (oldText === null) {
-    return newText.split("\n").map((text) => ({ kind: "add", text }) as DiffLine);
-  }
-  const oldLines = oldText.split("\n");
-  const newLines = newText.split("\n");
-  let start = 0;
-  while (start < oldLines.length && start < newLines.length && oldLines[start] === newLines[start]) start += 1;
-  let oldEnd = oldLines.length;
-  let newEnd = newLines.length;
-  while (oldEnd > start && newEnd > start && oldLines[oldEnd - 1] === newLines[newEnd - 1]) {
-    oldEnd -= 1;
-    newEnd -= 1;
-  }
-  const out: DiffLine[] = [];
-  const ctxFrom = Math.max(0, start - DIFF_CONTEXT);
-  for (let i = ctxFrom; i < start; i += 1) out.push({ kind: "ctx", text: oldLines[i] ?? "" });
-  for (let i = start; i < oldEnd; i += 1) out.push({ kind: "del", text: oldLines[i] ?? "" });
-  for (let i = start; i < newEnd; i += 1) out.push({ kind: "add", text: newLines[i] ?? "" });
-  const ctxAfter = Math.min(DIFF_CONTEXT, oldLines.length - oldEnd);
-  for (let i = 0; i < ctxAfter; i += 1) out.push({ kind: "ctx", text: oldLines[oldEnd + i] ?? "" });
-  return out;
-}
+/** Max body lines rendered by an expanded tool card before an "… N more" stub. */
+const TOOL_LINES_CAP = 40;
 
 class AssistantRow implements RowComponent {
   private readonly box = new Container();
@@ -439,6 +410,39 @@ class ToolRow implements RowComponent {
         .map((b) => String((b as { text?: unknown }).text ?? ""))
         .join("");
       if (text !== "") lines.push(sanitizeDisplay(text));
+    } else if (view !== undefined && view.card === "search") {
+      if (view.shape === "paths") {
+        for (const p of view.paths) lines.push(sanitizeDisplay(p));
+      } else {
+        for (const file of view.files) {
+          lines.push(this.p.bold(sanitizeDisplay(file.path)));
+          for (const m of file.matches) {
+            lines.push(`${this.p.dim(String(m.lineNumber))} ${sanitizeDisplay(m.line)}`);
+          }
+        }
+      }
+      if (view.truncated) lines.push(this.p.dim(`(${view.total} matches total)`));
+    } else if (view !== undefined && view.card === "read") {
+      lines.push(this.p.bold(sanitizeDisplay(view.path)));
+      for (const l of view.lines) {
+        lines.push(`${this.p.dim(String(l.number))} ${sanitizeDisplay(l.text)}`);
+      }
+      lines.push(this.p.dim(`showing ${view.lines.length} of ${view.totalLines} lines`));
+    } else if (view !== undefined && view.card === "web") {
+      if (view.kind === "search") {
+        for (const s of view.sources) {
+          lines.push(`- ${s.title !== undefined ? sanitizeDisplay(s.title) : "(untitled)"} ${this.p.dim(s.url)}`);
+        }
+        if (view.truncated) lines.push(this.p.dim("(sources truncated)"));
+      } else {
+        lines.push(`${sanitizeDisplay(view.url)} ${this.p.dim(`· HTTP ${view.statusCode}`)}`);
+        if (view.truncated) lines.push(this.p.dim("(body truncated)"));
+      }
+    }
+    if (lines.length > TOOL_LINES_CAP) {
+      const extra = lines.length - TOOL_LINES_CAP;
+      lines.length = TOOL_LINES_CAP;
+      lines.push(this.p.dim(`… ${extra} more lines`));
     }
     this.body.setText(lines.length === 0 ? this.p.dim("…") : this.p.dim(lines.join("\n")));
   }
@@ -704,7 +708,7 @@ class SessionPicker implements Component {
 
   private setPreview(text: string): void {
     this.previewValue = text;
-    this.previewText.setText(text.replace(/\n/g, "\n"));
+    this.previewText.setText(text);
   }
 
   private refreshHeader(): void {
@@ -770,7 +774,9 @@ class ApprovalCard implements Component {
   }
 
   render(width: number): string[] {
-    const cardWidth = Math.max(24, Math.min(width - 2, APPROVAL_CARD_MAX));
+    // Never exceed the available width; on a pathologically narrow terminal
+    // the card degrades (padding clamps at 0) instead of overflowing.
+    const cardWidth = Math.max(0, Math.min(width - 2, APPROVAL_CARD_MAX));
     const inner = cardWidth - 4; // border pipes plus one space each side
     const valueWidth = Math.max(16, inner - APPROVAL_LABEL_PAD);
 
@@ -1212,13 +1218,18 @@ export class TuiApp {
     this.tui.start();
   }
 
-  /** Idempotent shutdown: cancel active work, restore the terminal, exit. */
+  /** Idempotent shutdown: cancel active work, restore the terminal, exit.
+   * whenIdle() is raced against a grace timeout so a wedged agent can never
+   * leave the terminal in raw mode. */
   async stopAndExit(exit: (code: number) => void): Promise<void> {
     if (this.stopping) return;
     this.stopping = true;
     try {
       if (this.agent.status === "running") this.agent.cancel();
-      await this.agent.whenIdle();
+      await Promise.race([
+        this.agent.whenIdle(),
+        new Promise<void>((resolve) => setTimeout(resolve, IDLE_EXIT_GRACE_MS)),
+      ]);
       this.tui.stop();
       exit(0);
     } catch (error) {
@@ -1268,7 +1279,8 @@ export class TuiApp {
   }
 
   /** Surface a transient notice on the status line; the bar reverts to the
-   * session state after `timeoutMs` (or at the next state change). */
+   * session state after `timeoutMs`, when cleared explicitly, or when a new
+   * notice replaces it — unrelated status updates never retire it. */
   showNotice(text: string, timeoutMs = 8000): void {
     this.status.showNotice(text);
     this.clearNoticeTimer();
@@ -1299,7 +1311,9 @@ export class TuiApp {
   }
 
   private updateStatus(): void {
-    this.clearNoticeTimer(); // a real state change retires any pending notice
+    // Deliberately no notice handling here: notices retire via their own
+    // timer / clearNotice() only. Cancelling the timer from a gauge refresh
+    // would strand the notice text on the bar forever.
     const running = this.statusValue === "running";
     const dot = running ? this.p.fg("●", "yellow") : this.p.fg("●", "green");
     const sep = this.p.dim(" · ");

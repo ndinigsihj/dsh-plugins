@@ -267,7 +267,7 @@ ctx.on('tui/rewind-done', async (ev) => {
 ```yaml
 - insert:
     - id: dsh-rewind
-      name: '/Users/vito/data/dev/dsh-tui/plugins/rewind-dsh.ts'
+      name: '/Users/vito/data/dev/dsh-plugins/plugins/rewind-dsh.ts'
       inject: [agents, sessions, sessionPersistence, commands]
 ```
 

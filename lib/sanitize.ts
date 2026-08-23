@@ -8,8 +8,11 @@
 
 const ESC = String.fromCharCode(0x1b);
 
+// CSI (ESC[…), two-char escapes, and OSC strings (ESC] … BEL / ESC\) — the
+// latter can rewrite the terminal title or clipboard (OSC 0/2/52), so they
+// must never survive sanitization.
 const ANSI_ESCAPE = new RegExp(
-  `${ESC}(?:\\[[0-9;:]*[A-Za-z]|\\([A-Za-z]|[A-Za-z])`,
+  `${ESC}(?:\\][^\\x07${ESC}]*(?:\\x07|${ESC}\\\\)|\\[[0-9;:]*[A-Za-z]|\\([A-Za-z]|[A-Za-z])`,
   "g",
 );
 

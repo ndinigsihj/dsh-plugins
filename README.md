@@ -16,6 +16,11 @@ dsh --profile tui
    └─ dsh-tui                     owns the terminal; consumes in-process services
 ```
 
+Two deployment profiles share this repo's code: **`tui`** mounts the self-built
+pi-tui front end (`lib/`), while **`endless-tui`** runs the official TUI package
+with thin extension plugins from this repo mounted alongside it (`approval-tui.ts`,
+rewind, rename — see "Extension plugins").
+
 ## Prerequisites
 
 - Node `^22.19` (published dsh runs `.ts` via native type-stripping)
@@ -29,9 +34,9 @@ The profile's `cordis.patch.yml` inserts the local plugin files by absolute path
 ```yaml
 - insert:
     - id: tui-startup
-      name: '/Users/vito/data/dev/dsh-tui/lib/startup.ts'
+      name: '/Users/vito/data/dev/dsh-plugins/lib/startup.ts'
     - id: tui-runner
-      name: '/Users/vito/data/dev/dsh-tui/lib/index.ts'
+      name: '/Users/vito/data/dev/dsh-plugins/lib/index.ts'
 ```
 
 1. `npm install` (project has its own node_modules so the `.ts` imports resolve)
@@ -78,19 +83,26 @@ usage). It turns yellow at `>=80%`, which is also the `thresholdRatio` where
 | `lib/index.ts` | `tui-runner` plugin: create agent, wire services, own the terminal |
 | `lib/app.ts` | pi-tui app: alt-screen layout, transcript area, prompt editor, dialogs |
 | `lib/transcript.ts` | session/event → transcript rows (append-only, revision-tracked) |
+| `lib/export.ts` | `/export` Markdown serializer (pure rows → document) |
+| `lib/presets.ts` | agent-preset roster resolution for boot / `/preset` / `/new` |
+| `lib/diff.ts` | bounded line diff shared by tool cards and the exporter |
 | `lib/palette.ts` | 16-color SGR palette |
-| `lib/sanitize.ts` | ANSI hygiene (strip escapes, escape stray C0/C1) |
+| `lib/sanitize.ts` | ANSI hygiene (strip CSI/OSC escapes, escape stray C0/C1) |
+| `lib/terminal.ts` | ProcessTerminal wrapper adding OSC-52 clipboard support |
+| `lib/clipboard.ts` | local clipboard fallback when the host terminal has none |
 
 ## Extension plugins
 
 Thin Cordis plugins (no dsh-tui modification) mounted into a profile's
-`cordis.patch.yml` via absolute-path `insert`:
+`cordis.patch.yml` via absolute-path `insert`. `approval-tui.ts` serves the
+**official-TUI profile** (`endless-tui`); the self-built front end in `lib/`
+has its own approval card and does not use it:
 
 | File | Purpose |
 |---|---|
 | `plugins/rename-session.ts` | `/rename <title>` — set session title (pins against auto-retitle) |
 | `plugins/rewind-dsh.ts` | `/rewind [<seq>]` — **standalone rewind**: fork + file-restore + relaunch, overriding the built-in rewind (see `docs/rewind-file-restore-plugin.md`) |
-| `approval-tui.ts` | Route `approval/request` to the TUI question panel |
+| `approval-tui.ts` | `endless-tui` profile: route `approval/request` to the TUI question panel |
 
 ## Agent presets (liangshen-plus / liangshen-bash)
 

@@ -1,7 +1,8 @@
 // Transcript → Markdown serializer for /export. Pure: rows in, one string
 // out. Tool bodies are bounded (exports are for reading, not replaying).
 
-import { lineDiff } from "./app.ts";
+import { lineDiff } from "./diff.ts";
+import { sanitizeDisplay } from "./sanitize.ts";
 import type { TranscriptRow } from "./transcript.ts";
 
 /** Max rendered lines per tool card body in an export. */
@@ -50,7 +51,7 @@ export function renderTranscriptMarkdown(rows: ReadonlyArray<TranscriptRow>): st
 
 function renderToolCard(row: Extract<TranscriptRow, { kind: "tool" }>): string[] {
   const title = row.resultView?.title ?? row.callView?.title ?? row.name;
-  const lines = ["", `### Tool · ${sanitize(title)}`];
+  const lines = ["", `### Tool · ${sanitizeDisplay(title)}`];
   const body = renderToolBody(row);
   if (body.length > 0) {
     lines.push("");
@@ -80,7 +81,7 @@ function renderToolBody(row: Extract<TranscriptRow, { kind: "tool" }>): string[]
   if (view.card === "diff") {
     const lines: string[] = [];
     for (const d of view.diffs) {
-      lines.push(sanitize(d.path), "```diff");
+      lines.push(sanitizeDisplay(d.path), "```diff");
       for (const part of lineDiff(d.oldText, d.newText)) {
         lines.push(`${part.kind === "add" ? "+" : part.kind === "del" ? "-" : " "}${part.text}`);
       }
@@ -89,23 +90,20 @@ function renderToolBody(row: Extract<TranscriptRow, { kind: "tool" }>): string[]
     return lines;
   }
   if (view.card === "search") {
-    if (view.shape === "paths") return view.paths.slice(0, 12).map((p) => `- ${sanitize(p)}`);
+    if (view.shape === "paths") return view.paths.slice(0, 12).map((p) => `- ${sanitizeDisplay(p)}`);
     const lines: string[] = [];
     for (const file of view.files.slice(0, 6)) {
-      lines.push(`**${sanitize(file.path)}**`);
-      for (const m of file.matches.slice(0, 8)) lines.push(`- \`${m.lineNumber}\` ${sanitize(m.line)}`);
+      lines.push(`**${sanitizeDisplay(file.path)}**`);
+      for (const m of file.matches.slice(0, 8)) lines.push(`- \`${m.lineNumber}\` ${sanitizeDisplay(m.line)}`);
     }
     if (view.truncated) lines.push(`_(truncated; ${view.total} matches total)_`);
     return lines;
   }
   // generic / read / web: keep only a salient scalar input if present
   if ("rawInput" in view && typeof view.rawInput === "string") {
-    const text = sanitize(view.rawInput);
+    const text = sanitizeDisplay(view.rawInput);
     return text.split("\n").slice(0, 8);
   }
   return [];
 }
 
-function sanitize(text: string): string {
-  return text.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, "");
-}

@@ -12,6 +12,7 @@
   },
   "include": [
     "lib/**/*.ts",
-    "plugins/**/*.ts"
+    "plugins/**/*.ts",
+    "approval-tui.ts"
   ]
 }

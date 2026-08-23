@@ -17,7 +17,7 @@
  *
  *   - insert:
  *       - id: approval-tui
- *         name: '/Users/vito/data/dev/dsh-tui/approval-tui.ts'
+ *         name: '/Users/vito/data/dev/dsh-plugins/approval-tui.ts'
  *
  * 依赖：运行时只需 dsh-tui 已加载的 @deepseek-ai/dsh-user-questions
  * （dsh-tui bundle 自带）；无其他副作用。

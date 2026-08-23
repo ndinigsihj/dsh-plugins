@@ -4,10 +4,11 @@
 >
 > 依据:被删的 `@deepseek-ai/dsh-tui`(2026-08-04 移除)归档设计笔记 + 现仓库实测。
 
-## 状态(2026-08-14)
+## 状态(2026-08-23)
 
-MVP 已实现并验证。见 `README.md` 的使用方式。验证过的:boot 全屏、prompt 提交、agent 流式渲染、reasoning、注入 context 置灰、错误卡片、状态行、`/help` `/clear` `/exit`、干净退出(code 0)。
-待环境验证(需支持工具调用的模型路由):审批弹窗、提问面板、工具卡片的端到端。
+MVP 与二期主体均已实现并活体验证:boot 全屏、prompt 提交、流式渲染、reasoning、注入 context 置灰、错误卡片、状态行(ctx gauge)、审批弹窗(ApprovalCard)、提问面板(含多选)、工具卡片(diff/terminal/search/read/web)、`/help` `/clear` `/exit` `/sessions` `/resume`(+picker) `/model` `/export` `/preset` `/new` `/rewind`、命令+文件自动补全、Shift+点选扩展、todos/subagents 气氛行。
+
+**现状与分档的唯一真源是 `docs/tui-feature-gap.md`**(基线、spike、验收记录);本文只描述分层架构与服务契约。剩余按需项见该文档 M3 档。
 
 ## 1. 定位与分层
 
@@ -83,7 +84,7 @@ dsh CLI (launcher)                 # apps/cli: 解析 --profile tui,进程生命
 6. 16 色 palette + ANSI 卫生 + 终端 restore
 7. `/help` `/clear` `/exit` 命令
 
-**二期再上:** 文件 @ 自动补全、`/resume` 跨 workspace picker + execve、`/model` 选择器、`/skill:`、diff 语义配色、step 计时、steering 队列徽标。
+**二期再上(已基本落地):** 文件+命令自动补全、`/resume` 跨 workspace picker + execve、`/model` 选择器均已实现;`/skill:`、step 计时、steering 队列徽标仍未做,归入 `docs/tui-feature-gap.md` 的按需档。
 
 ## 6. 验证方式
 

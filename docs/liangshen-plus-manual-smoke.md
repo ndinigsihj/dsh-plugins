@@ -13,12 +13,12 @@
 |---|---|---|
 | preset 已部署 | `ls ~/.dsh/.agent-presets/liangshen-plus/` | `agent.cordis.yml` + `preset.yml` 存在 |
 | preset 可发现 | `dsh --profile endless-tui --dump-config`（或 M2 冒烟） | 组合正常，无报错 |
-| 单测绿（可选） | `cd ~/dev/dsh-tui && node --test presets/liangshen-plus/phase-swap-bash.test.mjs` | 9/9 通过 |
+| 单测绿（可选） | `cd ~/dev/dsh-plugins && node --test presets/liangshen-plus/phase-swap-bash.test.mjs` | 9/9 通过 |
 
 ## 1. 启动（stderr 重定向，避免 TUI 吞错误）
 
 ```bash
-cd /Users/vito/data/dev/dsh-tui
+cd /Users/vito/data/dev/dsh-plugins
 CC_TUI_PRESET=liangshen-plus dsh --profile endless-tui 2>/tmp/liangshen-plus-tui.err
 ```
 

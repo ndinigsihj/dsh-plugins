@@ -29,7 +29,7 @@ try {
 } catch {}
 
 const INSTALL_ANCHOR = "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/package.json";
-const SMOKE_DRIVER = "/Users/vito/data/dev/dsh-tui/presets/liangshen-plus/smoke-live-driver.mjs";
+const SMOKE_DRIVER = "/Users/vito/data/dev/dsh-plugins/presets/liangshen-plus/smoke-live-driver.mjs";
 
 const profile = loadProfile("dsh", "headless", INSTALL_ANCHOR);
 const bundlePatches = profile.layers.flatMap((layer) => layer.patches);
