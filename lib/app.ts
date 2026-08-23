@@ -1193,11 +1193,18 @@ export class TuiApp {
   }
 
   private startStreamSampler(): void {
-    this.liveTps = null; // fresh turn: hidden until tokens flow again
+    if (this.streamTimer !== undefined) return; // already sampling this turn
+    // Fresh turn starts blank: hidden until the first window computes, and
+    // the cumulative baseline must begin at zero AFTER the guard so a
+    // duplicate "running" status mid-turn cannot reset monotonicity.
+    this.liveTps = null;
     this.streamTokensTotal = 0;
-    if (this.streamTimer !== undefined) return;
     this.streamTimer = setInterval(() => {
-      this.liveTps = this.computeWindowTps();
+      // Only refresh on a computable window: during a tool tail (stream idle
+      // >3s) the window goes degenerate and the LAST MEASURED rate stays up —
+      // the reading drops only when a fresh turn resets it.
+      const rate = this.computeWindowTps();
+      if (rate !== null) this.liveTps = rate;
       this.updateStatus();
       this.render();
     }, 500);

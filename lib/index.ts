@@ -964,12 +964,15 @@ async function run(
     }
     const t = totals;
     const n = (v: number | undefined): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+    // The projection emits all-zero buckets from init, before any provider
+    // usage exists — treat an all-zero reading as "nothing recorded" so a
+    // fresh session gets the meter fallback instead of a proud row of zeros.
     const hasAny =
       t !== undefined &&
-      (t.uncachedInputTokens !== undefined ||
-        t.outputTokens !== undefined ||
-        t.cacheReadTokens !== undefined ||
-        t.cacheWriteTokens !== undefined);
+      (n(t.uncachedInputTokens) > 0 ||
+        n(t.outputTokens) > 0 ||
+        n(t.cacheReadTokens) > 0 ||
+        n(t.cacheWriteTokens) > 0);
     if (!hasAny) {
       let total: number | undefined;
       try {
