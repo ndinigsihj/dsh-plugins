@@ -75,6 +75,6 @@ dsh 本体已提供 effort 的完整读写机制，本特性是纯接线：
 ## 6. 验收
 
 1. `/effort` 列表正确标注 default 与 current；选择后状态栏即时更新，下一轮对话生效。
-2. 欢迎屏 meta 与状态栏数值一致；`/new` 后保持所选档；resume 后回到 settings 默认。
+2. 欢迎屏 meta 与状态栏数值一致；`/new` 后显示 settings 默认档（§3.3）；resume 后同为 settings 默认。
 3. 无 reasoning 元数据的路由：`/effort` 给出明确提示，状态栏/banner 不显示该段。
 4. tsc 通过；rewind/phase-swap 既有测试全绿。

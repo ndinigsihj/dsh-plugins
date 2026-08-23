@@ -247,6 +247,12 @@ interface ProjectionValues {
   };
 }
 
+/** Reasoning-effort metadata of one route (dsh-llm LlmModelReasoningInfo slice). */
+interface EffortMeta {
+  efforts: ReadonlyArray<{ id: string; name: string; description?: string }>;
+  defaultEffort?: string;
+}
+
 interface UsageLike {
   inputTokens?: unknown;
   outputTokens?: unknown;
@@ -541,7 +547,8 @@ async function run(
   const agentOptions = {
     provider: own.provider ?? selection.provider,
     model: own.model ?? selection.model,
-    // Ride the saved default effort for new sessions (absent → provider default).
+    // Consumed by makeSetup's selection ref (agents.create's AgentOptions
+    // ignores it) — seeds the session's initial reasoning effort.
     reasoningEffort: selection.reasoningEffort,
   };
   // Resume route (user rule, overrides official #67): the session's own
@@ -624,9 +631,11 @@ async function run(
       }
     | undefined;
   /** Resolved reasoning-effort metadata for the active route (null = none exposed). */
-  let effortMeta:
-    | { efforts: ReadonlyArray<{ id: string; name: string; description?: string }>; defaultEffort?: string }
-    | undefined;
+  let effortMeta: EffortMeta | undefined;
+  /** Route key effortMeta was resolved for + refresh generation (race guard:
+   * a slow resolve for an old route must never overwrite a newer one). */
+  let effortMetaKey = "";
+  let effortGeneration = 0;
   let resumeTrace = "no-resume";
   if (resumeId !== undefined) {
     const facts = await bootResumeFacts(resumeId);
@@ -1084,12 +1093,12 @@ async function run(
     return liveRoute;
   }
 
-  /** Effective effort id: session override, else settings default. */
+  /** Effective effort id: the session's EXPLICIT selection only. Absent →
+   * the adapter default applies at request time; the settings default only
+   * seeds the initial ref, so keeping it in this display chain made the label
+   * diverge from runtime after picking the default entry. */
   function effectiveEffortId(): string | undefined {
-    return (
-      selectionRef?.current?.reasoningEffort ??
-      services.agentDefaultModel.currentSelection().reasoningEffort
-    );
+    return selectionRef?.current?.reasoningEffort;
   }
 
   /** Display name of the effective effort from the resolved route metadata. */
@@ -1109,17 +1118,27 @@ async function run(
   }
 
   /** Re-resolve route reasoning metadata and refresh the think label.
-   * Unresolvable route → metadata cleared, segment hidden. */
+   * Cached per route key; a generation guard drops stale async results. */
   async function refreshEffortMeta(): Promise<void> {
+    const gen = ++effortGeneration;
+    const key = `${activeRoute().provider}/${activeRoute().model}`;
+    if (key === effortMetaKey) {
+      refreshEffortLabel();
+      return;
+    }
     effortMeta = undefined;
     app.setThinkLabel(null);
     const resolve = services.llm?.resolveModelInfo;
     if (resolve === undefined) return;
+    let next: EffortMeta | undefined;
     try {
-      effortMeta = (await resolve(activeRoute().provider, activeRoute().model)).reasoning ?? undefined;
+      next = (await resolve(activeRoute().provider, activeRoute().model)).reasoning ?? undefined;
     } catch {
-      return; // catalog/adapter hiccup: keep the segment hidden
+      return; // superseded or adapter hiccup: keep the segment hidden
     }
+    if (gen !== effortGeneration) return; // a newer refresh won
+    effortMeta = next;
+    effortMetaKey = key;
     refreshEffortLabel();
   }
 
@@ -1303,6 +1322,9 @@ async function run(
       (m) => app.showNotice(m),
     );
     try {
+      // Carry the session's chosen effort across the route switch (design §3.3);
+      // an unsupported level is rejected pre-flight by the harness.
+      const carriedEffort = selectionRef?.current?.reasoningEffort;
       const result = await services.agents.create({
         sessionId: SessionId(`session-${randomUUID()}`),
         seed,
@@ -1312,7 +1334,7 @@ async function run(
           ...(composed.agentPreset === undefined ? {} : { agentPreset: composed.agentPreset }),
         },
         agentOptions: { provider, model },
-        setup: makeSetup(composed, { provider, model }),
+        setup: makeSetup(composed, { provider, model, reasoningEffort: carriedEffort }),
       });
       const next = result.agent;
       agent = next;
