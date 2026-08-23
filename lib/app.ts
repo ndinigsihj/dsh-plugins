@@ -523,7 +523,7 @@ class TodosRow implements RowComponent {
     if (!this.isExpanded()) {
       const focus =
         current !== undefined
-          ? ` · ${this.p.fg("▸", "yellow")} ${this.p.dim(current.content)}`
+          ? ` · ${todoMarker(this.p, current.status)} ${this.p.dim(current.content)}`
           : "";
       this.text.setText(
         `${this.p.fg("☰ todos", "cyan")} ${this.p.dim(`${done}/${this.items.length}`)}${focus}`,
