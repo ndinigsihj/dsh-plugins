@@ -1547,7 +1547,12 @@ async function run(
         const pressure = (proj.snapshot(agent.session).values as ProjectionValues)
           .contextPressure;
         windowTokens = pressure?.contextWindow;
-        used = pressure?.projectedTokens;
+        // A failed request can log an all-zero usage chunk; the projection's
+        // last-wins sample then reads 0 while the surface is intact — treat
+        // that as "no usable sample" and fall through to the meter.
+        if (pressure?.projectedTokens !== undefined && pressure.projectedTokens > 0) {
+          used = pressure.projectedTokens;
+        }
       } catch {
         /* projection not ready — fall through to the meter */
       }
