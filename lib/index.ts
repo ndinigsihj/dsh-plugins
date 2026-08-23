@@ -1136,15 +1136,13 @@ async function run(
       // receiver and the internals crash on a missing adapter registry.
       const info = await llm.resolveModelInfo(activeRoute().provider, activeRoute().model);
       next = info.reasoning ?? undefined;
-      // TEMP DEBUG (E1 diagnosis): make silent hide-vs-fail distinguishable.
-      process.stderr.write(
-        `dsh-tui[debug]: effort meta ${key}: ` +
-          (next === undefined ? "no reasoning metadata" : `${next.efforts.length} efforts, default=${next.defaultEffort ?? "-"}`) +
-          "\n",
-      );
     } catch (error) {
-      process.stderr.write(`dsh-tui[debug]: effort meta resolve FAILED: ${error instanceof Error ? error.message : String(error)}\n`);
-      return; // superseded or adapter hiccup: keep the segment hidden
+      // Resolve failures keep the segment hidden; write one stderr line so a
+      // silent hide is never mistaken for "no efforts configured".
+      process.stderr.write(
+        `dsh-tui: effort meta resolve failed for ${key}: ${error instanceof Error ? error.message : String(error)}\n`,
+      );
+      return;
     }
     if (gen !== effortGeneration) return; // a newer refresh won
     effortMeta = next;
