@@ -89,6 +89,7 @@
 | M1 ✅ 白送档（2026-08-22 落地） | `/new`（M1a）；`/compact` 转发核心注册表 command-compact（dsh-base 已挂，compaction/end 事件进 transcript；顺带修正 execute 调用签名 images/signal 位）；`/cost` = projections `tokenUsage` 扁平四桶（wire view 即桶对象、无 `totals` 包裹层，2026-08-23 对安装包源码核实并修正；全零桶视作零样本走 meter 回退）+ billed/grand 汇总（无定价数据，token 口径），无投影时回退 tokenMeter 估算；`/tokens` = `contextPressure` 的 window/next-request/pct/last-reported + meter total；Ctrl+O 全局折叠思考与工具详情（默认收起，错误行保持可见，redrawAll 重绘）；rename/rewind 已随 tui profile 迁移并入 | tsc 通过；待活体复测 |
 | M2 小活档 ✅ | 已落地（2026-08-22）：会话浏览器预览（/resume 选中即显 turns/route/时间范围/首问；300ms 防抖 + 按会话缓存 + 代际防竞态）、`/export` Markdown（lib/export.ts 纯序列化，工具卡有界渲染）、多选问卷（接通 multiSelect 线字段 → CheckboxList，space/a/enter/esc）、状态行增强（流式 ~t/s 滑窗粗估 + out token 明细；可牺牲前缀语义，ctx gauge 永不截断） | 导出 markdown 可读；问卷 Space 多选提交正确；待活体复测 |
 | M3 中活档（按需） | 双击 Esc 回溯 UI、`@` 图片附件 | rewind 全流程不丢文件变更 |
+| E1 思考强度（设计稿 2026-08-23，待实现） | `/effort` 选择器 + 状态栏/banner `think <name>` 显示；全部骑官方缝：`agentDefaultModel.currentSelection/saveSelection`（读写）、`llm.resolveModelInfo().reasoning`（档位发现）、`installModelSelection` ref（活体生效）。设计：`docs/reasoning-effort-design.md` | 选择后下一轮生效且显示一致；resume 回 settings 默认 |
 | 不做 | §4 "不做" 行所列产品化外壳 | — |
 
 排序原则：先白送后小活，中活仅在 spike 通过后进入；每阶段独立 commit。
