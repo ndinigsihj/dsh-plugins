@@ -1041,6 +1041,7 @@ export class TuiApp {
   private streamTimer: ReturnType<typeof setInterval> | undefined;
   private liveTps: number | null = null;
   private lastOutputTokens: number | null = null;
+  private todoItems: ReadonlyArray<TodoItem> = [];
   private readonly options: TuiAppOptions;
 
   constructor(options: TuiAppOptions) {
@@ -1079,10 +1080,10 @@ export class TuiApp {
       { component: this.editor, basis: "auto", grow: 0, shrink: 1, minSize: 3 },
       { component: this.status, shrink: 1, minSize: 1 },
       { component: this.subagentsLine, shrink: 1, minSize: 0 },
-      { component: this.todosLine, shrink: 1, minSize: 0 },
     ]);
     const root = new VStack([
       { component: this.transcriptScroll, basis: 0, grow: 1, shrink: 1, minSize: 1 },
+      { component: this.todosLine, shrink: 1, minSize: 0 },
       { component: dock, basis: "auto", grow: 0, shrink: 1, minSize: 1 },
     ]);
 
@@ -1142,35 +1143,46 @@ export class TuiApp {
     }
   }
 
-  /** Ambient todo gauge above the status bar: visible while the list has open
-   * items (the transcript card scrolls away during streaming), hidden when
-   * empty or all-completed. */
+  /** Ambient todo gauge pinned between the transcript and the editor: visible
+   * while the list has open items (the transcript card scrolls away during
+   * streaming), hidden when empty or all-completed. Ctrl+O expands the full
+   * checklist in place. */
   setTodos(items: ReadonlyArray<TodoItem> | null): void {
-    if (items === null || items.length === 0) {
+    this.todoItems = items ?? [];
+    this.renderTodosLine();
+    this.render();
+  }
+
+  private renderTodosLine(): void {
+    const items = this.todoItems;
+    if (items.length === 0) {
       this.todosLine.setText("");
-      this.render();
       return;
     }
     const done = items.filter((t) => t.status === "completed").length;
-    if (done === items.length) {
-      this.todosLine.setText("");
-      this.render();
+    if (!this.detailsExpanded) {
+      const current =
+        items.find((t) => t.status === "in_progress") ??
+        items.find((t) => t.status !== "completed");
+      const focus =
+        current !== undefined
+          ? ` · ${todoMarker(this.p, current.status)} ${current.content}`
+          : "";
+      this.todosLine.setText(
+        truncateToWidth(
+          `${this.p.fg("☰ todos", "cyan")} ${this.p.dim(`${done}/${items.length}`)}${focus}`,
+          Math.max(20, process.stdout.columns ?? 100),
+        ),
+      );
       return;
     }
-    const current =
-      items.find((t) => t.status === "in_progress") ??
-      items.find((t) => t.status !== "completed");
-    const focus =
-      current !== undefined
-        ? ` · ${todoMarker(this.p, current.status)} ${current.content}`
-        : "";
-    this.todosLine.setText(
-      truncateToWidth(
-        `${this.p.fg("☰", "cyan")} ${this.p.dim(`${done}/${items.length}`)}${focus}`,
-        Math.max(20, process.stdout.columns ?? 100),
-      ),
-    );
-    this.render();
+    const lines = [this.p.fg(`☰ todos ${done}/${items.length}`, "cyan")];
+    for (const item of items) {
+      const text = item.status === "completed" ? this.p.dim(item.content) : item.content;
+      lines.push(`  ${todoMarker(this.p, item.status)} ${text}`);
+    }
+    lines.push(this.p.dim("  Ctrl+O collapses"));
+    this.todosLine.setText(lines.join("\n"));
   }
 
   private startStreamSampler(): void {
@@ -1278,6 +1290,7 @@ export class TuiApp {
   toggleDetails(): void {
     this.detailsExpanded = !this.detailsExpanded;
     this.transcriptArea.redrawAll();
+    this.renderTodosLine(); // the ambient gauge expands with everything else
     this.render();
   }
 
