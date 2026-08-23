@@ -260,12 +260,25 @@ class UserRow implements RowComponent {
 /** Braille spin frames for the collapsed thinking header (time-based frame). */
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
-/** Hard-cap one line to `budget` display columns, appending an ellipsis when
- * anything was cut — keeps the line from wrapping inside a Text component. */
+/** Hard-cap one ANSI-free line to `budget` display columns, appending an
+ * ellipsis when anything was cut — keeps the line from wrapping inside a Text
+ * component. Plain-text only on purpose: truncateToWidth closes the kept
+ * fragment with an SGR reset BEFORE its ellipsis, so any wrapping dim/color
+ * would not reach the marker. Inputs here are sanitizeDisplay'd (no escapes),
+ * which makes the hand-rolled width walk both correct and cheaper. */
 function fitColumns(line: string, budget: number): string {
-  return visibleWidth(line) > budget
-    ? `${truncateToWidth(line, Math.max(0, budget - 1))}…`
-    : line;
+  if (budget <= 0) return "";
+  if (visibleWidth(line) <= budget) return line;
+  let out = "";
+  let w = 0;
+  const limit = budget - 1; // room for the ellipsis itself
+  for (const ch of line) {
+    const cw = visibleWidth(ch);
+    if (w + cw > limit) break;
+    out += ch;
+    w += cw;
+  }
+  return `${out}…`;
 }
 
 /** Max diff lines shown in collapsed mode before a "… N more" stub. */
@@ -284,6 +297,10 @@ class AssistantRow implements RowComponent {
   private readonly p: Palette;
   private readonly isExpanded: () => boolean;
   private readonly getWidth: () => number;
+  private reasoningText = "";
+  private done = false;
+  /** Terminal width the collapsed block was last formatted for. */
+  private formattedAtWidth = -1;
   constructor(
     p: Palette,
     row: Extract<TranscriptRow, { kind: "assistant" }>,
@@ -301,19 +318,25 @@ class AssistantRow implements RowComponent {
   }
   update(row: Extract<TranscriptRow, { kind: "assistant" }>): void {
     const reasoning = row.reasoning === "" ? "" : sanitizeDisplay(row.reasoning);
+    this.reasoningText = reasoning;
+    this.done = row.done;
     this.markdown.setText(sanitizeDisplay(row.text));
     if (this.isExpanded() || reasoning === "") {
       this.reasoning.setText(reasoning === "" ? "" : this.p.dim(`⏤ ${reasoning}`));
       return;
     }
-    // Collapsed: white spinner while streaming (frozen glyph once done),
-    // size + expand hint, then the newest three lines as a live preview.
-    // The preview always reserves three rows — padding with blanks while the
-    // reasoning is short — so the block height never changes mid-stream and
-    // the transcript below does not jump around. Preview lines are capped by
-    // DISPLAY COLUMNS, not characters: a char cap lets CJK lines wrap inside
-    // Text and the block height starts breathing again.
-    const icon = row.done
+    this.buildCollapsed(reasoning, row.done);
+  }
+
+  /** Collapsed: white spinner while streaming (frozen glyph once done),
+   * size + expand hint, then the newest three lines as a live preview.
+   * The preview always reserves three rows — padding with blanks while the
+   * reasoning is short — so the block height never changes mid-stream and
+   * the transcript below does not jump around. Preview lines are capped by
+   * DISPLAY COLUMNS, not characters: a char cap lets CJK lines wrap inside
+   * Text and the block height starts breathing again. */
+  private buildCollapsed(reasoning: string, done: boolean): void {
+    const icon = done
       ? this.p.fg("✻", "brightWhite")
       : this.p.fg(
           SPINNER_FRAMES[Math.floor(Date.now() / 110) % SPINNER_FRAMES.length] ?? "✻",
@@ -322,16 +345,25 @@ class AssistantRow implements RowComponent {
     const head = `${icon} ${this.p.fg(`thinking · ${reasoning.length} chars · Ctrl+O expands`, "brightWhite")}`;
     // Text carries paddingX=1 on each side; the two-space indent costs two
     // more — whatever is left is the hard budget for one unwrapped line.
-    const budget = Math.max(0, (this.getWidth() || 80) - 4);
+    const usedWidth = this.getWidth() || 80;
+    const budget = Math.max(0, usedWidth - 4);
     const recent = reasoning.split("\n").filter((line) => line.trim() !== "").slice(-3);
     const preview = [0, 1, 2].map((i) => {
       const line = recent[i];
       if (line === undefined) return "";
       return this.p.dim(`  ${fitColumns(line, budget)}`);
     });
+    this.formattedAtWidth = usedWidth;
     this.reasoning.setText([head, ...preview].join("\n"));
   }
   render(width: number): string[] {
+    // Re-flow exactly once per resize: a stale budget would let Text re-wrap
+    // lines at its new width and the block height breathe again. Normal
+    // frames are a no-op (width matches), so the update()-driven repaint
+    // rhythm stays untouched.
+    if (!this.isExpanded() && this.reasoningText !== "" && width !== this.formattedAtWidth) {
+      this.buildCollapsed(this.reasoningText, this.done);
+    }
     return this.box.render(width);
   }
   invalidate(): void {
