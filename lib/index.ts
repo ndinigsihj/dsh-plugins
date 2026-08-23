@@ -495,16 +495,17 @@ async function run(
 
   /**
    * Model-selection + preset mount chain installed via the factory hook.
-   * `route` provided → install it as the agent's selection (create paths and
-   * resumes that must override); omitted → the session's durable records drive
-   * the route.
+   * Always installs a concrete route: besides request routing, the selection
+   * supplies the `provider`/`model` prompt variables that the deployment
+   * persona (and preset personas) render as `{{model}}` — a resumed session
+   * whose route comes from its own records still needs that variable value.
    */
   function makeSetup(
     composed: ComposedPreset,
-    route?: { provider: string; model: string },
+    route: { provider: string; model: string },
   ): (agentCtx: Parameters<typeof installModelSelection>[0]) => void | Promise<void> {
     return (agentCtx) => {
-      if (route !== undefined) installModelSelection(agentCtx, { current: route, assembled: undefined });
+      installModelSelection(agentCtx, { current: route, assembled: undefined });
       return composed.setup?.(agentCtx);
     };
   }
@@ -580,10 +581,7 @@ async function run(
           provider: resumeRouteOverride?.provider,
           model: resumeRouteOverride?.model,
         },
-        setup:
-          resumeRouteOverride === undefined
-            ? makeSetup(composed)
-            : makeSetup(composed, resumeRouteOverride),
+        setup: makeSetup(composed, resumeRouteOverride ?? liveRoute),
       })
     : await services.agents.create({
         sessionId: SessionId(`session-${randomUUID()}`),
