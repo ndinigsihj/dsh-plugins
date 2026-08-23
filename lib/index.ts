@@ -1154,20 +1154,34 @@ async function run(
     effortMeta = undefined;
     app.setThinkLabel(null);
     const llm = services.llm;
-    if (llm?.resolveModelInfo === undefined) return;
+    if (llm?.resolveModelInfo === undefined) {
+      // TEMP DEBUG (E1): runtime service lacks resolveModelInfo?
+      process.stderr.write("dsh-tui[debug]: services.llm.resolveModelInfo UNAVAILABLE\n");
+      return;
+    }
+    // TEMP DEBUG (E1): which providers are actually registered at runtime?
+    try {
+      process.stderr.write(`dsh-tui[debug]: llm providers: ${JSON.stringify(llm.listProviders())}\n`);
+    } catch (e) {
+      process.stderr.write(`dsh-tui[debug]: listProviders threw: ${String(e).slice(0, 120)}\n`);
+    }
     let next: EffortMeta | undefined;
     try {
       // Call through the service object: detaching the method loses its
       // receiver and the internals crash on a missing adapter registry.
       const info = await llm.resolveModelInfo(activeRoute().provider, activeRoute().model);
       next = info.reasoning ?? undefined;
-    } catch (error) {
-      // Resolve failures keep the segment hidden; write one stderr line so a
-      // silent hide is never mistaken for "no efforts configured".
+      // TEMP DEBUG (E1 diagnosis): distinguish silent hide-vs-fail.
       process.stderr.write(
-        `dsh-tui: effort meta resolve failed for ${key}: ${error instanceof Error ? error.message : String(error)}\n`,
+        `dsh-tui[debug]: effort meta ${key}: ` +
+          (next === undefined
+            ? "no reasoning metadata"
+            : `${next.efforts.length} efforts [${next.efforts.map((e) => e.id).join(",")}], default=${next.defaultEffort ?? "-"}`) +
+          "\n",
       );
-      return;
+    } catch (error) {
+      process.stderr.write(`dsh-tui[debug]: effort meta resolve FAILED: ${error instanceof Error ? error.message : String(error)}\n`);
+      return; // superseded or adapter hiccup: keep the segment hidden
     }
     if (gen !== effortGeneration) return; // a newer refresh won
     effortMeta = next;
