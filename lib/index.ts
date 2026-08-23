@@ -196,14 +196,13 @@ interface ProjectionValues {
     pressureTokens?: number;
     contextWindow?: number;
   };
-  /** Cumulative disjoint buckets (/cost); rc.8's view is totals-only. */
+  /** Cumulative disjoint buckets (/cost, status-bar `out`); the wire view is
+   * the flat bucket object itself (dsh-token-meter `view: state.totals`). */
   tokenUsage?: {
-    totals?: {
-      uncachedInputTokens?: number;
-      outputTokens?: number;
-      cacheReadTokens?: number;
-      cacheWriteTokens?: number;
-    };
+    uncachedInputTokens?: number;
+    outputTokens?: number;
+    cacheReadTokens?: number;
+    cacheWriteTokens?: number;
   };
 }
 
@@ -963,7 +962,7 @@ async function run(
     } catch {
       /* projections not ready */
     }
-    const t = totals?.totals;
+    const t = totals;
     const n = (v: number | undefined): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
     const hasAny =
       t !== undefined &&
@@ -1596,9 +1595,10 @@ async function run(
           used = pressure.projectedTokens;
         }
         // Session-total output for the status bar (/cost's same source); one
-        // snapshot read serves both gauges. Hidden until first usage lands.
-        const t = values.tokenUsage?.totals?.outputTokens;
-        if (typeof t === "number" && t > 0) outTotal = t;
+        // snapshot read serves both gauges. The wire view is the flat bucket
+        // object (no `totals` wrapper). Hidden until first usage lands.
+        const out = values.tokenUsage?.outputTokens;
+        if (typeof out === "number" && out > 0) outTotal = out;
       } catch {
         /* projection not ready — fall through to the meter */
       }

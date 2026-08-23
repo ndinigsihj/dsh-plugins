@@ -1034,6 +1034,9 @@ export class TuiApp {
   private detailsExpanded = false;
   /** Sliding samples of streamed assistant text for the live t/s gauge. */
   private streamSamples: Array<{ at: number; tokens: number }> = [];
+  /** Cumulative stream-text estimate; samples carry totals so the window
+   * difference is monotonic (per-delta values made the rate flicker). */
+  private streamTokensTotal = 0;
   private streamTimer: ReturnType<typeof setInterval> | undefined;
   private liveTps: number | null = null;
   /** Session-total output tokens (provider-reported, projection-backed). */
@@ -1138,7 +1141,8 @@ export class TuiApp {
   /** Feed streamed assistant text into the live token-rate window. */
   noteStreamText(text: string): void {
     const now = Date.now();
-    this.streamSamples.push({ at: now, tokens: estimateStreamTokens(text) });
+    this.streamTokensTotal += estimateStreamTokens(text);
+    this.streamSamples.push({ at: now, tokens: this.streamTokensTotal });
     const cutoff = now - STREAM_WINDOW_MS - 1000;
     while (this.streamSamples.length > 2 && (this.streamSamples[0]?.at ?? 0) < cutoff) {
       this.streamSamples.shift();
@@ -1190,17 +1194,20 @@ export class TuiApp {
 
   private startStreamSampler(): void {
     this.liveTps = null; // fresh turn: hidden until tokens flow again
+    this.streamTokensTotal = 0;
     if (this.streamTimer !== undefined) return;
     this.streamTimer = setInterval(() => {
-      this.sampleLiveTps();
+      this.liveTps = this.computeWindowTps();
       this.updateStatus();
       this.render();
     }, 500);
     this.streamTimer.unref?.();
   }
 
-  /** Rate over the sliding window; null when the window is degenerate. */
-  private sampleLiveTps(): void {
+  /** Rate over the sliding window; null when the window is degenerate.
+   * Samples carry the cumulative estimate, so the difference is monotonic —
+   * per-delta values made the reading flicker on and off. */
+  private computeWindowTps(): number | null {
     const cutoff = Date.now() - STREAM_WINDOW_MS;
     const inWindow = this.streamSamples.filter((s) => s.at >= cutoff);
     const first = inWindow[0];
@@ -1211,10 +1218,9 @@ export class TuiApp {
       last.at === first.at ||
       last.tokens <= first.tokens
     ) {
-      this.liveTps = null;
-    } else {
-      this.liveTps = Math.round((last.tokens - first.tokens) / ((last.at - first.at) / 1000));
+      return null;
     }
+    return Math.round((last.tokens - first.tokens) / ((last.at - first.at) / 1000));
   }
 
   private stopStreamSampler(): void {
@@ -1222,8 +1228,11 @@ export class TuiApp {
       clearInterval(this.streamTimer);
       this.streamTimer = undefined;
       // Freeze the final reading instead of blanking: the turn just ended,
-      // which is exactly when you want to read the rate it streamed at.
-      this.sampleLiveTps();
+      // which is exactly when you want to read the rate it streamed at. A
+      // stale window (text stopped >3s before turn end, e.g. tool tail) keeps
+      // the last tick's value rather than dropping to hidden.
+      const finalRate = this.computeWindowTps();
+      if (finalRate !== null) this.liveTps = finalRate;
     }
     this.streamSamples = [];
   }
