@@ -362,7 +362,7 @@ class ToolRow implements RowComponent {
     // While its approval dialog is open, mark the pending call so the user
     // can see which action the card is asking about.
     const badge = row.awaitingApproval === true ? this.p.fg("⚠ ", "yellow") : "";
-    this.header.setText(`${badge}${this.p.fg(`Tool / ${title}`, "cyan")}`);
+    this.header.setText(`${badge}${this.p.fg(`Tool / ${sanitizeDisplay(title)}`, "cyan")}`);
     // File edits render as an inline diff (pending call previews the intended
     // change; the result view shows what was applied). Collapsed caps the
     // lines with a stub; errors always stay visible.
@@ -375,11 +375,11 @@ class ToolRow implements RowComponent {
     if (diffDiffs !== undefined) {
       const rendered: string[] = [];
       for (const d of diffDiffs) {
-        rendered.push(this.p.bold(`${d.oldText === null ? "+ " : "~ "}${d.path}`));
+        rendered.push(this.p.bold(`${d.oldText === null ? "+ " : "~ "}${sanitizeDisplay(d.path)}`));
         for (const line of lineDiff(d.oldText, d.newText)) {
-          if (line.kind === "add") rendered.push(this.p.fg(`+ ${line.text}`, "green"));
-          else if (line.kind === "del") rendered.push(this.p.fg(`- ${line.text}`, "red"));
-          else rendered.push(this.p.dim(`  ${line.text}`));
+          if (line.kind === "add") rendered.push(this.p.fg(`+ ${sanitizeDisplay(line.text)}`, "green"));
+          else if (line.kind === "del") rendered.push(this.p.fg(`- ${sanitizeDisplay(line.text)}`, "red"));
+          else rendered.push(this.p.dim(`  ${sanitizeDisplay(line.text)}`));
         }
       }
       if (!this.isExpanded() && rendered.length > DIFF_COLLAPSED_CAP) {
@@ -1228,7 +1228,10 @@ export class TuiApp {
       if (this.agent.status === "running") this.agent.cancel();
       await Promise.race([
         this.agent.whenIdle(),
-        new Promise<void>((resolve) => setTimeout(resolve, IDLE_EXIT_GRACE_MS)),
+        new Promise<void>((resolve) => {
+          const t = setTimeout(resolve, IDLE_EXIT_GRACE_MS);
+          t.unref?.(); // must not hold the process open if appExit isn't a hard exit
+        }),
       ]);
       this.tui.stop();
       exit(0);

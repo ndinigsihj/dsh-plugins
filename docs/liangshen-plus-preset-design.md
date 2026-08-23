@@ -281,7 +281,7 @@ read/ask_user_question 的常规任务序列；R6 回到 bash。未观察到注�
 
 ### 6.1 M2 spike 记录（2026-08-20）
 
-**单测**（`node --test presets/liangshen-plus/phase-swap-bash.test.mjs`，7 项全绿，用部署包 rc.8 真实包）：
+**单测**（`node --test presets/liangshen-plus/phase-swap-bash.test.mjs`，9 项全绿，用部署包 rc.8 真实包）：
 
 | 用例 | 验证点 |
 |---|---|
@@ -292,6 +292,8 @@ read/ask_user_question 的常规任务序列；R6 回到 bash。未观察到注�
 | includeSubagents：父子独立 swap | S3 子代理 |
 | 失败降级：缺 sandboxPolicy → warn + 不 rethrow + persistent 保留 | S6 降级 |
 | 配置校验：未知 key/非布尔值 apply 时抛错 | 配置纪律 |
+| 首轮净化：未 promote 时过滤 tool:* 指引 sections，promote 后放行 | 锚定纯净度（后补，见本节下方踩坑第 3 条） |
+| 首轮净化：无 sections 的 assembly 原样返回 | 净化路径对无 sections 输入零副作用（后补） |
 
 **组合冒烟**（`node presets/liangshen-plus/smoke-boot.mjs`，headless profile 完整 bundle 组合 +
 agent-presets 挂载 liangshen-plus，无 LLM 只走 assemble/pre-step 瀑布）：
