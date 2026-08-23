@@ -1025,6 +1025,7 @@ export class TuiApp {
   private readonly editor: Editor;
   private readonly status: StatusLine;
   private readonly subagentsLine: Text;
+  private readonly todosLine: Text;
   private agent: AgentSurface;
   private modelLabel: string;
   private statusValue: "idle" | "running" = "idle";
@@ -1062,6 +1063,7 @@ export class TuiApp {
 
     this.status = new StatusLine(this.p);
     this.subagentsLine = new Text("", 1, 1);
+    this.todosLine = new Text("", 1, 0);
     this.editor = new Editor(this.tui, editorTheme(this.p));
     this.editor.onSubmit = (text) => this.handleSubmit(text);
     if (options.autocomplete !== undefined) {
@@ -1077,6 +1079,7 @@ export class TuiApp {
       { component: this.editor, basis: "auto", grow: 0, shrink: 1, minSize: 3 },
       { component: this.status, shrink: 1, minSize: 1 },
       { component: this.subagentsLine, shrink: 1, minSize: 0 },
+      { component: this.todosLine, shrink: 1, minSize: 0 },
     ]);
     const root = new VStack([
       { component: this.transcriptScroll, basis: 0, grow: 1, shrink: 1, minSize: 1 },
@@ -1137,6 +1140,37 @@ export class TuiApp {
     while (this.streamSamples.length > 2 && (this.streamSamples[0]?.at ?? 0) < cutoff) {
       this.streamSamples.shift();
     }
+  }
+
+  /** Ambient todo gauge above the status bar: visible while the list has open
+   * items (the transcript card scrolls away during streaming), hidden when
+   * empty or all-completed. */
+  setTodos(items: ReadonlyArray<TodoItem> | null): void {
+    if (items === null || items.length === 0) {
+      this.todosLine.setText("");
+      this.render();
+      return;
+    }
+    const done = items.filter((t) => t.status === "completed").length;
+    if (done === items.length) {
+      this.todosLine.setText("");
+      this.render();
+      return;
+    }
+    const current =
+      items.find((t) => t.status === "in_progress") ??
+      items.find((t) => t.status !== "completed");
+    const focus =
+      current !== undefined
+        ? ` · ${todoMarker(this.p, current.status)} ${current.content}`
+        : "";
+    this.todosLine.setText(
+      truncateToWidth(
+        `${this.p.fg("☰", "cyan")} ${this.p.dim(`${done}/${items.length}`)}${focus}`,
+        Math.max(20, process.stdout.columns ?? 100),
+      ),
+    );
+    this.render();
   }
 
   private startStreamSampler(): void {

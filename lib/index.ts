@@ -15,7 +15,7 @@ import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import { SessionId } from "@deepseek-ai/dsh-session";
 import { TuiApp, formatTokens, type AgentSurface, type AutocompleteCommand } from "./app.ts";
 import { renderTranscriptMarkdown } from "./export.ts";
-import type { ToolPresenters } from "./transcript.ts";
+import type { ToolPresenters, TodoItem } from "./transcript.ts";
 import {
   AGENT_PRESETS_NS,
   composePreset,
@@ -814,6 +814,16 @@ async function run(
     app.appendCommandOutput(`Resumed session ${agent.id}.`);
     const rate = lastCacheRate(agent.session.events);
     if (rate !== undefined) app.setCacheRate(rate);
+    // Seed the ambient todo gauge from the newest snapshot in the log.
+    for (let i = agent.session.events.length - 1; i >= 0; i -= 1) {
+      const evt = agent.session.events[i] as
+        | { type?: string; data?: { todos?: TodoItem[] } }
+        | undefined;
+      if (evt?.type === "todo/write") {
+        if (Array.isArray(evt.data?.todos)) app.setTodos(evt.data.todos);
+        break;
+      }
+    }
   }
   updateContextPressure();
   refreshSubagents();
@@ -1600,6 +1610,9 @@ async function run(
         if (chunk?.type === "text-delta" && typeof chunk.text === "string" && chunk.text !== "") {
           app.noteStreamText(chunk.text);
         }
+      } else if (evt.type === "todo/write") {
+        const todos = evt.data?.todos as TodoItem[] | undefined;
+        if (Array.isArray(todos)) app.setTodos(todos);
       }
       app.onSessionEvent();
       updateContextPressure();
