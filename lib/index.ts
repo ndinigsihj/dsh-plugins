@@ -41,7 +41,33 @@ function readPkgVersion(): string {
   }
 }
 
-/** Stable Cordis plugin name. */const name = "tui-runner";
+/** DeepSeek harness whale: official favicon silhouette as a half-block raster
+ * (each char row = two pixel rows), displayed in brand blue via 24-bit color.
+ * Glyphs: █ both halves · ▀ top · ▄ bottom. */
+const WHALE_BLUE = "\u001b[38;2;77;107;254m";
+const WHALE_RESET = "\u001b[39m";
+const WHALE_GLYPHS = [
+  "          ▄▄▄▄ ▀ ▄▄",
+  "    ▄██████▄██████▄  ▀▀█▄▄▄    ▄▄",
+  "   █████████████████▄  ▀█████▄ ▄███▄▄▄",
+  "  █████████████████████▄ ▀▀████████████▄",
+  " ████████████████████████▄▄ ▀███████████",
+  " ███████████████████████████  ▀███████▀",
+  " ██▀▀▀██████████████████████▀█▄██▀▀▀",
+  "███     ██████████▀▀███████████▀",
+  "███▄     ▀███████▀█▀ ████████▀",
+  "▀███       ████████  ██████▀",
+  " ████       ████████████████",
+  " ████▄       █████████████▀",
+  " ▀████▄   ▄▄ ▀▀██████████",
+  "  █████▄  ███▄▄ ▀████████",
+  "   ██████▄ █████▄ ▀███████▄▄",
+  "    ████████████████▄▄████████▄",
+  "     ▀█████████████▀▀▀",
+];
+
+/** Stable Cordis plugin name. */
+const name = "tui-runner";
 
 /** Core services required before the terminal front door can start. */
 const inject = [
@@ -865,20 +891,13 @@ async function run(
   }
 
   /** Boot-time welcome block (blank sessions only): whale + route/preset/
-   * workspace + key hints. Client-side chrome — styled here with its own
-   * palette instance, rendered verbatim by the transcript, never exported. */
+   * workspace + key hints. Client-side chrome — styled here (the whale carries
+   * its own 24-bit color), rendered verbatim by the transcript, never exported. */
   function showBootBanner(): void {
     if (!sessionIsBlank(agent.session.events as Array<{ type?: string }>)) return;
     const p = createPalette(true);
     const version = readPkgVersion();
-    const art = [
-      "       .",
-      '      ":"',
-      '    ___:____     |"\\/"|',
-      "  ,'        `.    \\  /",
-      "  |  O        \\___/  |",
-      "~^~^~^~^~^~^~^~^~^~^~^~^~",
-    ].join("\n");
+    const art = WHALE_GLYPHS.map((line) => `${WHALE_BLUE}${line}${WHALE_RESET}`).join("\n");
     const preset = currentPreset();
     const meta = [
       `${liveRoute.provider}/${liveRoute.model}`,
@@ -888,7 +907,7 @@ async function run(
     const title = `✻ dsh-tui${version === "" ? "" : ` v${version}`} · deepseek harness`;
     const hint = "/help 命令一览 · @ 文件补全 · Ctrl+O 展开思考 · Esc 打断";
     app.appendBanner(
-      [p.fg(art, "brightBlue"), "", p.bold(title), p.dim(meta), "", p.dim(hint)].join("\n"),
+      [art, "", p.bold(title), p.dim(meta), "", p.dim(hint)].join("\n"),
     );
   }
 
