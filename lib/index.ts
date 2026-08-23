@@ -298,7 +298,11 @@ function agentSurface(agent: {
 }): AgentSurface {
   return {
     id: agent.id,
-    status: agent.status,
+    // Live getter: the harness mutates agent.status; a copied value would
+    // freeze at boot-time "idle" and break every running-state check.
+    get status() {
+      return agent.status;
+    },
     followup: (m) => agent.followup(m),
     steer: (m) => agent.steer(m),
     cancel: () => agent.cancel({ kind: "user" }),
