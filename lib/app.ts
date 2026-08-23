@@ -1411,6 +1411,7 @@ export class TuiApp {
       if (overlayOpen) return undefined;
       if (this.agent.status === "running") {
         this.options.onCancel();
+        this.showNotice("Interrupted.", 2500);
         return { consume: true };
       }
       // Double Ctrl+C exits; a single one only hints (a lone Ctrl+C elsewhere
@@ -1439,6 +1440,7 @@ export class TuiApp {
       if (overlayOpen) return undefined;
       if (this.agent.status === "running") {
         this.options.onCancel();
+        this.showNotice("Interrupted.", 2500);
         return { consume: true };
       }
       // Idle: pass Esc through — the editor owns it (dismisses its
