@@ -1408,7 +1408,7 @@ export class TuiApp {
       const suffix = latest.status === "stopping" ? this.p.dim(" (stopping)") : "";
       this.jobsLine.setText(
         truncateToWidth(
-          `${this.p.fg("▣ jobs", "yellow")} ${this.p.dim(`×${jobs.length}`)} · ${this.p.dim(latest.label || latest.id)}${suffix}`,
+          `${this.p.fg("▣ jobs", "yellow")} ${this.p.dim(`×${jobs.length}`)} · ${this.p.dim(latest.label || latest.id)}${suffix}${this.p.dim(" · Ctrl+O expands")}`,
           width,
         ),
       );

@@ -14,6 +14,7 @@ import { randomUUID } from "node:crypto";
 import { installModelSelection } from "@deepseek-ai/dsh-agent";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import { SessionId } from "@deepseek-ai/dsh-session";
+import { z as zod } from "zod";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { TuiApp, formatTokens, type AgentSurface, type AutocompleteCommand, type GoalSummary, type RunningJob } from "./app.ts";
 import { createPalette } from "./palette.ts";
@@ -240,15 +241,15 @@ function promptExcerpt(text: string): string {
  * values ride its cold ladder — /resume previews stop paying full reads.
  * Failures are contained: the legacy readSession preview stays as fallback. */
 function registerPreviewUnit(proj: NonNullable<CoreServices["sessionProjections"]>): void {
-  const valueSchema = z.object({
-    prompts: z.number(),
-    replies: z.number(),
-    tools: z.number(),
-    route: z.union([z.object({ provider: z.string(), model: z.string() }), z.const(null)]),
-    firstTime: z.union([z.number(), z.const(null)]),
-    lastTime: z.union([z.number(), z.const(null)]),
-    firstPrompt: z.union([z.string(), z.const(null)]),
-    lastPrompt: z.union([z.string(), z.const(null)]),
+  const valueSchema = zod.object({
+    prompts: zod.number(),
+    replies: zod.number(),
+    tools: zod.number(),
+    route: zod.union([zod.object({ provider: zod.string(), model: zod.string() }), zod.null()]),
+    firstTime: zod.union([zod.number(), zod.null()]),
+    lastTime: zod.union([zod.number(), zod.null()]),
+    firstPrompt: zod.union([zod.string(), zod.null()]),
+    lastPrompt: zod.union([zod.string(), zod.null()]),
   });
   try {
     proj.register({
@@ -1577,27 +1578,30 @@ async function run(
   /** Seed cache-rate + todo gauge from the projection registry's whole
    * values: cells fold lazily over the in-memory log on first snapshot and
    * memoize by watermark, so one call replaces the per-key event scans.
-   * Falls back to direct scans only in bare boots without the registry.
-   * The registry is also the path that projection-cache checkpoints serve,
-   * keeping TUI state on the same fold the rest of the harness reads. */
+   * Falls back to direct scans when the registry is missing OR a read ever
+   * throws — seeding must never be the reason a boot dies. */
   function seedProjections(): void {
-    const proj = services.sessionProjections;
-    if (proj === undefined) {
-      app.setCacheRate(lastCacheRate(agent.session.events) ?? null);
-      for (let i = agent.session.events.length - 1; i >= 0; i -= 1) {
-        const evt = agent.session.events[i] as
-          | { type?: string; data?: { todos?: TodoItem[] } }
-          | undefined;
-        if (evt?.type === "todo/write") {
-          if (Array.isArray(evt.data?.todos)) app.setTodos(evt.data.todos);
-          break;
-        }
+    try {
+      const proj = services.sessionProjections;
+      if (proj !== undefined) {
+        const values = proj.snapshot(agent.session).values as ProjectionValues;
+        app.setCacheRate(cacheRateOf(values.tokenUsage) ?? null);
+        if (Array.isArray(values.todos)) app.setTodos(values.todos);
+        return;
       }
-      return;
+    } catch {
+      /* registry hiccup — fall through to direct scans */
     }
-    const values = proj.snapshot(agent.session).values as ProjectionValues;
-    app.setCacheRate(cacheRateOf(values.tokenUsage) ?? null);
-    if (Array.isArray(values.todos)) app.setTodos(values.todos);
+    app.setCacheRate(lastCacheRate(agent.session.events) ?? null);
+    for (let i = agent.session.events.length - 1; i >= 0; i -= 1) {
+      const evt = agent.session.events[i] as
+        | { type?: string; data?: { todos?: TodoItem[] } }
+        | undefined;
+      if (evt?.type === "todo/write") {
+        if (Array.isArray(evt.data?.todos)) app.setTodos(evt.data.todos);
+        break;
+      }
+    }
   }
 
   /**
