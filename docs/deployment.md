@@ -33,7 +33,7 @@
 
 ```bash
 git -C /Users/vito/data/dev/dsh-plugins worktree add --detach ~/dev/dsh-plugins-stable v0.1.2
-cd ~/dev/dsh-plugins-stable && npm i --omit=dev && scripts/link-global-dsh.sh
+cd ~/dev/dsh-plugins-stable && npm i && scripts/link-global-dsh.sh
 ```
 
 此后升级 host（`npm i -g @deepseek-ai/dsh`）后只需重跑 link 脚本（幂等）。
@@ -63,7 +63,10 @@ tag 版本，开发窗口显示工作树版本。
 1. 前置校验：工作区干净、`npx tsc --noEmit` 通过。
 2. `package.json` version 改为 `<version>`，commit（`Release v<version>`）并打附注 tag。
 3. 部署树不存在则先 `worktree add --detach ~/dev/dsh-plugins-stable v<version>`；存在则 `checkout v<version>`。
-4. 若 lockfile 相对上一检出有变化：部署树内 `npm i --omit=dev`；无条件重跑 `scripts/link-global-dsh.sh`（幂等，覆盖 host 升级场景）。
+4. 若 lockfile 相对上一检出有变化：部署树内 `npm i`；无条件重跑 `scripts/link-global-dsh.sh`（幂等，覆盖 host 升级场景）。
+   **顺序铁律：任何 npm i 之前先摘 `node_modules/@deepseek-ai` 符号链接，装完再由
+   link 脚本重建**——npm 会把已存在的链接当作 extraneous 包穿透删除，清空全局
+   dsh 依赖树（2026-08-24 实际事故，npm i -g 重装恢复）。
 5. 打印结果行：`stable = ~/dev/dsh-plugins-stable @ v<version>`；提示运行中的 TUI 需退出重启（或 /resume 重进）才吃到新代码。
 
 边界约定：
@@ -93,6 +96,7 @@ alias dsh-tui-dev='dsh --profile tui-dev'  # 开发工作树
 
 | 风险 | 影响 | 缓解 |
 |---|---|---|
+| npm i 穿透删除 `@deepseek-ai` 链接指向的全局树 | 全局 dsh 本体瘫痪 | release.sh 固定「先摘链接 → npm i → link 脚本重建」顺序；事故记录见 §4 |
 | 忘记跑 release.sh 直接改了部署树 | 稳定版被污染 | worktree 处于 detached HEAD，任何改动都会在下次 checkout 时暴露冲突而非静默覆盖 |
 | 部署树 node_modules 漂移（host 升级后） | 启动失败或行为错乱 | release.sh 每次 checkout 无条件重跑 link 脚本；link 脚本自带全局树存在性校验 |
 | 两 profile 行为差异被误判为 bug | 排查绕路 | banner 版本号 + profile 名双确认；文档固定此口径 |
