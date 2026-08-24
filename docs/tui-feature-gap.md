@@ -114,7 +114,7 @@
 | # | 能力 | 现状 | TUI 落地点 |
 |---|---|---|---|
 | A1 | `dsh-session-projection-cache`（持久投影缓存 + 冷读阶梯） | 已挂未消费 | ✅ 两步落地（2026-08-24）。spike 结论：cache 服务的是投影不是转录行，重建加速不成立；第一步 resume//new//model 种子改读注册表整值（seedProjections）；第二步注册自有 `tuiPreview` 投影单元（counts/route/时间范围/首末问），`/resume` 预览走 `coldSnapshot(id)` 冷读阶梯（缓存行 + 尾部回放 + 写回），全量 readSession 降为兜底。cache 以 writeEveryEvents=400/writeIntervalMs=30s 挂入 tui 与 tui-dev |
-| A2 | `dsh-permission-presets`（sandbox 档 + approval 策略 select，写会话事件） | base 已挂无入口 | `/permission` 弹层，会话中切沙箱/审批档 |
+| A2 | `dsh-permission-presets`（sandbox 档 + approval 策略 select，写会话事件） | base 已挂无入口 | ✅ 落地（2026-08-24）：`/permission` 选择器——preset 表声明序 + `current` 折叠标注 ← current，custom 状态先提示再选；写走 `set()`（记录 preset 意图 + knob 事实，回放权威）；running 否决对齐 /effort |
 | A3 | `dsh-session-stats`（整段对话计数 + 墙钟时间投影） | 未用，且无需挂载 | 由 A1 的自有 `tuiPreview` 单元覆盖（counts + 时间范围），不引入 dsh-session-stats |
 | A4 | `ctx.jobs` 后台任务注册表 | 工具已挂前端无显示 | 底部后台任务 gauge（照抄子代理行轮询模式） |
 | A5 | `dsh-spill-policy`（超长工具结果落盘 + 定位符） | base 已生效 | ToolRow 把 spill 定位符渲染成路径徽标 |

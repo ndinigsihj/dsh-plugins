@@ -104,6 +104,7 @@ const HELP_TEXT = [
   "/preset [id]     switch agent presets (blank session swaps live; otherwise saved as default)",
   "/model           switch THIS session's model only (history carries over; default untouched)",
   "/effort          switch THIS session's reasoning effort (next turn on; default untouched)",
+  "/permission      switch THIS session's sandbox/approval bundle (permission presets)",
   "/compact         fold older history into a summary (core command)",
   "/cost            cumulative provider-reported token usage",
   "/tokens          current context-window occupancy detail",
@@ -583,6 +584,14 @@ interface CoreServices {
       signal?: AbortSignal,
     ): Promise<{ values: ProjectionValues }>;
   };
+  /** Permission presets (base-mounted): sandbox/approval bundles with a
+   * durable log write path. */
+  permissionPresets?: {
+    readonly names: readonly string[];
+    current(events: unknown): string;
+    optionOf(name: string): { label?: string; description?: string };
+    set(session: unknown, name: string): void;
+  };
   tokenMeter?: {
     measure(session: unknown): { totalTokens: number };
   };
@@ -620,6 +629,7 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
   const commands = ctx.get<CoreServices["commands"]>("commands");
   const sessionQuery = ctx.get<CoreServices["sessionQuery"]>("sessionQuery");
   const sessionProjections = ctx.get<CoreServices["sessionProjections"]>("sessionProjections");
+  const permissionPresets = ctx.get<CoreServices["permissionPresets"]>("permissionPresets");
   const tokenMeter = ctx.get<CoreServices["tokenMeter"]>("tokenMeter");
   const subagents = ctx.get<CoreServices["subagents"]>("subagents");
   const agentPresets = ctx.get<PresetRoster>("agentPresets");
@@ -638,6 +648,7 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
     commands,
     sessionQuery,
     sessionProjections,
+    permissionPresets,
     tokenMeter,
     subagents,
     agentPresets,
@@ -893,6 +904,7 @@ async function run(
       { name: "help", description: "Show dsh-tui help" },
       { name: "session", description: "Show the current session id" },
       { name: "effort", description: "Pick the reasoning effort for this session" },
+      { name: "permission", description: "Switch this session's sandbox/approval bundle" },
       { name: "new", description: "Start a fresh session on the configured/saved default preset" },
       {
         name: "preset",
@@ -1383,6 +1395,48 @@ async function run(
     refreshEffortLabel();
     const name = meta.efforts.find((e) => e.id === id)?.name ?? id;
     app.appendCommandOutput(`Thinking effort set to ${name} — takes effect next turn.`);
+  }
+
+  /** /permission — switch this session's sandbox/approval bundle via the
+   * harness's permission-presets service. Read: preset table + effective
+   * current folded from the log; write: set() records preset intent plus
+   * knob facts, so replay and the projection stay authoritative. */
+  async function doPermission(): Promise<void> {
+    const pp = services.permissionPresets;
+    if (pp === undefined) {
+      app.showNotice("Permission presets unavailable in this boot.");
+      return;
+    }
+    if (agent.status === "running") {
+      app.showNotice("Agent is running — Esc cancels it first.");
+      return;
+    }
+    const current = pp.current(agent.session.events as never);
+    if (current === "custom") {
+      app.showNotice("Effective values match no preset (custom) — pick one to normalize.");
+    }
+    const items = pp.names.map((name) => {
+      const opt = pp.optionOf(name);
+      return {
+        value: name,
+        label: `${opt.label ?? name}${name === current ? "  ← current" : ""}`,
+        description: opt.description,
+      };
+    });
+    const picked = await app.pickSession(items);
+    if (picked === null) {
+      app.showNotice("Permission selection cancelled.");
+      return;
+    }
+    const name = String(picked);
+    try {
+      pp.set(agent.session, name);
+      app.appendCommandOutput(`Permission preset set to ${name}.`);
+    } catch (error) {
+      app.showNotice(
+        `Permission switch failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   /** /cost — cumulative provider-reported usage for this session. */
@@ -1895,6 +1949,10 @@ async function run(
     }
     if (line === "/effort") {
       await doEffort();
+      return;
+    }
+    if (line === "/permission") {
+      await doPermission();
       return;
     }
     if (line === "/cost") {
