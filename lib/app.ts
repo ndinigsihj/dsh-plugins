@@ -372,6 +372,14 @@ class AssistantRow implements RowComponent {
     }
     return this.box.render(width);
   }
+  /** Advance the spinner one step while still streaming. pi-tui renders on
+   * demand only, so without an external tick a silent model looks frozen;
+   * done/empty/expanded rows have nothing time-driven left. */
+  tick(): boolean {
+    if (this.done || this.reasoningText === "" || this.isExpanded()) return false;
+    this.buildCollapsed(this.reasoningText, false);
+    return true;
+  }
   invalidate(): void {
     this.box.invalidate();
   }
@@ -591,6 +599,16 @@ class TranscriptArea extends Container {
       const row = byRowSeq.get(seq);
       if (row !== undefined) comp.update(row);
     }
+  }
+
+  /** Advance time-driven animation on streaming assistant rows; true when
+   * any row actually moved (callers skip the repaint otherwise). */
+  tickStreaming(): boolean {
+    let animated = false;
+    for (const comp of this.bySeq.values()) {
+      if (comp instanceof AssistantRow && comp.tick()) animated = true;
+    }
+    return animated;
   }
 
   sync(): void {
@@ -1057,6 +1075,8 @@ export class TuiApp {
   private stopping = false;
   private lastCtrlC = 0;
   private noticeTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Drives the thinking-row spinner between chunks (pi-tui has no frame loop). */
+  private thinkTimer: ReturnType<typeof setInterval> | undefined;
   private detailsExpanded = false;
   /** Sliding samples of streamed assistant text for the live t/s gauge. */
   private streamSamples: Array<{ at: number; tokens: number }> = [];
@@ -1279,6 +1299,24 @@ export class TuiApp {
     this.streamSamples = [];
   }
 
+  /** Spinner heartbeat, aligned to the 110ms frame math in buildCollapsed:
+   * without it a stretch with zero arriving tokens renders as a frozen icon
+   * and reads as "stuck". Only rows that actually advanced trigger a repaint
+   * (pi-tui throttles requestRender anyway). */
+  private startThinkSpinner(): void {
+    if (this.thinkTimer !== undefined) return;
+    this.thinkTimer = setInterval(() => {
+      if (this.transcriptArea.tickStreaming()) this.render();
+    }, 110);
+    this.thinkTimer.unref?.();
+  }
+
+  private stopThinkSpinner(): void {
+    if (this.thinkTimer === undefined) return;
+    clearInterval(this.thinkTimer);
+    this.thinkTimer = undefined;
+  }
+
   /** Running-subagent summary under the status line (empty hides the row). */
   setSubagents(running: RunningSubagent[]): void {
     this.subagentItems = running;
@@ -1361,6 +1399,7 @@ export class TuiApp {
 
   /** Restore the terminal and stop rendering, without exiting the process. */
   stopTerminal(): void {
+    this.stopThinkSpinner();
     this.tui.stop();
   }
 
@@ -1382,6 +1421,8 @@ export class TuiApp {
     this.statusValue = status;
     if (status === "running") this.startStreamSampler();
     else this.stopStreamSampler();
+    if (status === "running") this.startThinkSpinner();
+    else this.stopThinkSpinner();
     this.updateStatus();
     this.render();
   }
