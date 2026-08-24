@@ -9,11 +9,11 @@
 
 | 问题 | 决策 |
 |---|---|
-| 隔离机制 | git worktree 快照树：`~/opt/dsh-plugins` 检出发布 tag（detached HEAD） |
+| 隔离机制 | git worktree 快照树：`~/dev/dsh-plugins-stable` 检出发布 tag（detached HEAD） |
 | 日常入口 | `dsh --profile tui` —— 路径全部改指部署树，只在打 tag 时前进 |
 | 开发入口 | `dsh --profile tui-dev` —— 新 profile，路径保持指向 `/Users/vito/data/dev/dsh-plugins` |
 | 发布动作 | `scripts/release.sh <version>`：校验 → bump → commit → tag → 切部署树 → 刷新依赖 |
-| 回滚 | `git -C ~/opt/dsh-plugins checkout <旧tag>`，一条命令 |
+| 回滚 | `git -C ~/dev/dsh-plugins-stable checkout <旧tag>`，一条命令 |
 | `endless-tui` | 不动（旧社区 TUI profile，仅存档） |
 
 依据：插件为纯 TS、cordis loader 直接加载，无构建产物——「部署」就是
@@ -24,16 +24,16 @@
 
 ```
 /Users/vito/data/dev/dsh-plugins     # 开发工作树（main），随时可脏
-~/opt/dsh-plugins                    # 部署快照（worktree, detached at tag）
-~/.dsh/profiles/tui/                 # 日常：4 处路径指 ~/opt/dsh-plugins/...
+~/dev/dsh-plugins-stable                    # 部署快照（worktree, detached at tag）
+~/.dsh/profiles/tui/                 # 日常：4 处路径指 ~/dev/dsh-plugins-stable/...
 ~/.dsh/profiles/tui-dev/             # 开发：同构 patch，路径指 dev 仓
 ```
 
 部署树首次创建：
 
 ```bash
-git -C /Users/vito/data/dev/dsh-plugins worktree add --detach ~/opt/dsh-plugins v0.1.2
-cd ~/opt/dsh-plugins && npm i --omit=dev && scripts/link-global-dsh.sh
+git -C /Users/vito/data/dev/dsh-plugins worktree add --detach ~/dev/dsh-plugins-stable v0.1.2
+cd ~/dev/dsh-plugins-stable && npm i --omit=dev && scripts/link-global-dsh.sh
 ```
 
 此后升级 host（`npm i -g @deepseek-ai/dsh`）后只需重跑 link 脚本（幂等）。
@@ -45,10 +45,10 @@ cd ~/opt/dsh-plugins && npm i --omit=dev && scripts/link-global-dsh.sh
 
 | 挂载点 | tui（日常 → 部署树） | tui-dev（开发 → 工作树） |
 |---|---|---|
-| tui-startup | `~/opt/dsh-plugins/lib/startup.ts` | `/Users/vito/data/dev/dsh-plugins/lib/startup.ts` |
-| tui-runner | `~/opt/dsh-plugins/lib/index.ts` | `/Users/vito/data/dev/dsh-plugins/lib/index.ts` |
-| tui-rename-session | `~/opt/dsh-plugins/plugins/rename-session.ts` | `.../dev/dsh-plugins/plugins/rename-session.ts` |
-| dsh-rewind | `~/opt/dsh-plugins/plugins/rewind-dsh.ts` | `.../dev/dsh-plugins/plugins/rewind-dsh.ts` |
+| tui-startup | `~/dev/dsh-plugins-stable/lib/startup.ts` | `/Users/vito/data/dev/dsh-plugins/lib/startup.ts` |
+| tui-runner | `~/dev/dsh-plugins-stable/lib/index.ts` | `/Users/vito/data/dev/dsh-plugins/lib/index.ts` |
+| tui-rename-session | `~/dev/dsh-plugins-stable/plugins/rename-session.ts` | `.../dev/dsh-plugins/plugins/rename-session.ts` |
+| dsh-rewind | `~/dev/dsh-plugins-stable/plugins/rewind-dsh.ts` | `.../dev/dsh-plugins/plugins/rewind-dsh.ts` |
 
 `tui-dev` 创建方式：`cp -R ~/.dsh/profiles/tui ~/.dsh/profiles/tui-dev` 后按上表
 改回 dev 路径（profile 仅 3 个文件、无本地 node_modules，复制成本可忽略）。
@@ -62,15 +62,15 @@ tag 版本，开发窗口显示工作树版本。
 
 1. 前置校验：工作区干净、`npx tsc --noEmit` 通过。
 2. `package.json` version 改为 `<version>`，commit（`Release v<version>`）并打附注 tag。
-3. 部署树不存在则先 `worktree add --detach ~/opt/dsh-plugins v<version>`；存在则 `checkout v<version>`。
+3. 部署树不存在则先 `worktree add --detach ~/dev/dsh-plugins-stable v<version>`；存在则 `checkout v<version>`。
 4. 若 lockfile 相对上一检出有变化：部署树内 `npm i --omit=dev`；无条件重跑 `scripts/link-global-dsh.sh`（幂等，覆盖 host 升级场景）。
-5. 打印结果行：`stable = ~/opt/dsh-plugins @ v<version>`；提示运行中的 TUI 需退出重启（或 /resume 重进）才吃到新代码。
+5. 打印结果行：`stable = ~/dev/dsh-plugins-stable @ v<version>`；提示运行中的 TUI 需退出重启（或 /resume 重进）才吃到新代码。
 
 边界约定：
 
 - 脚本不 push（仓库无 remote）；不触碰 profile 文件（路径一次性配好后不变）。
 - 中途失败即停（set -euo pipefail）；tag 已打而 checkout 失败时，手动
-  `git -C ~/opt/dsh-plugins checkout <tag>` 补齐即可，脚本幂等可重跑。
+  `git -C ~/dev/dsh-plugins-stable checkout <tag>` 补齐即可，脚本幂等可重跑。
 
 ## 5. 启动入口约定（shell 侧，自行配置）
 
