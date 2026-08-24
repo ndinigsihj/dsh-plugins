@@ -297,6 +297,11 @@ const IDLE_EXIT_GRACE_MS = 5_000;
 /** Max body lines rendered by an expanded tool card before an "… N more" stub. */
 const TOOL_LINES_CAP = 40;
 
+/** dsh-spill-policy's trailing notice inside oversized tool results:
+ * '(N bytes omitted … Full formatted result stored at: <locator>. <hint>)'.
+ * The locator is rendered as a compact badge instead of prose. */
+const SPILL_NOTICE_RE = /\([^()]*Full formatted result stored at: (.+?)\. /;
+
 class AssistantRow implements RowComponent {
   private readonly box = new Container();
   private readonly reasoning: Text;
@@ -411,6 +416,15 @@ class ToolRow implements RowComponent {
     this.isExpanded = isExpanded;
     this.update(row);
   }
+  /** Restyle spill notices into a compact locator badge: the prose sentence
+   * dsh-spill-policy appends becomes '⤓ full result <locator>' so the path
+   * is scannable instead of buried in boilerplate. */
+  private styleSpillNotices(text: string): string {
+    return text.replace(SPILL_NOTICE_RE, (_match, locator: string) => {
+      const clean = sanitizeDisplay(locator.trim());
+      return this.p.dim("(…omitted) ") + this.p.fg(`⤓ full result ${clean}`, "yellow");
+    });
+  }
   update(row: Extract<TranscriptRow, { kind: "tool" }>): void {
     const title = row.resultView?.card === "diff" && row.resultView.title !== undefined
       ? row.resultView.title
@@ -457,7 +471,8 @@ class ToolRow implements RowComponent {
     if (row.error !== undefined) lines.push(this.p.fg(`${row.error.name}: ${row.error.code}`, "red"));
     const view = row.resultView;
     if (view !== undefined && view.card === "terminal") {
-      if (view.output !== undefined && view.output !== "") lines.push(sanitizeDisplay(view.output));
+      if (view.output !== undefined && view.output !== "")
+        lines.push(this.styleSpillNotices(sanitizeDisplay(view.output)));
       if (view.exitCode !== undefined) lines.push(this.p.dim(`exit ${view.exitCode}`));
       else if (view.signal !== undefined) lines.push(this.p.dim(`signal ${view.signal}`));
     } else if (view !== undefined && view.card === "generic" && view.content !== undefined) {
@@ -465,7 +480,7 @@ class ToolRow implements RowComponent {
         .filter((b) => b.type === "text")
         .map((b) => String((b as { text?: unknown }).text ?? ""))
         .join("");
-      if (text !== "") lines.push(sanitizeDisplay(text));
+      if (text !== "") lines.push(this.styleSpillNotices(sanitizeDisplay(text)));
     } else if (view !== undefined && view.card === "search") {
       if (view.shape === "paths") {
         for (const p of view.paths) lines.push(sanitizeDisplay(p));

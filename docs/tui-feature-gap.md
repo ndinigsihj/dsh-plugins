@@ -117,7 +117,7 @@
 | A2 | `dsh-permission-presets`（sandbox 档 + approval 策略 select，写会话事件） | base 已挂无入口 | ✅ 落地（2026-08-24）：`/permission` 选择器——preset 表声明序 + `current` 折叠标注 ← current，custom 状态先提示再选；写走 `set()`（记录 preset 意图 + knob 事实，回放权威）；running 否决对齐 /effort |
 | A3 | `dsh-session-stats`（整段对话计数 + 墙钟时间投影） | 未用，且无需挂载 | 由 A1 的自有 `tuiPreview` 单元覆盖（counts + 时间范围），不引入 dsh-session-stats |
 | A4 | `ctx.jobs` 后台任务注册表 | 工具已挂前端无显示 | ✅ 落地（2026-08-24）：底部 `▣ jobs` 行，与子代理行同构（折叠一行 ×N · 最新 label；Ctrl+O 展开逐条、stopping 置灰）；owner-fenced `list(agent)` 同步读，复用 tool/turn 生命周期触发刷新 |
-| A5 | `dsh-spill-policy`（超长工具结果落盘 + 定位符） | base 已生效 | ToolRow 把 spill 定位符渲染成路径徽标 |
+| A5 | `dsh-spill-policy`（超长工具结果落盘 + 定位符） | base 已生效 | ✅ 落地（2026-08-24）：ToolRow 对 terminal/generic 卡结果做后处理，spill 通知句渲染为 `⤓ full result <locator>` 黄色徽标（正则单次匹配、无 lookbehind） |
 | A6 | `dsh-goal` + `/goal`（同会话目标状态） | 工具已挂无显示 | 目标常驻条：当前目标 + 轮次进度（对齐 web GoalBar） |
 
 ### 9.2 B 组：小量接线
