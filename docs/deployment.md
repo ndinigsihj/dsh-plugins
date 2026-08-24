@@ -72,6 +72,11 @@ tag 版本，开发窗口显示工作树版本。
 边界约定：
 
 - 脚本不 push（仓库无 remote）；不触碰 profile 文件（路径一次性配好后不变）。
+- **profile 插件挂载同样分通道**：新 host 插件挂载只进 tui-dev；tui 的对应挂载属于
+  发布步骤的一部分，随包含该功能的版本一起上。教训（2026-08-24）：cache 挂载被
+  同构写进了 tui，导致 stable 启动即整树 pending 拒启——loader fail-fast 只看
+  服务是否可满足，不看 runner 代码版本。TUI 侧所有可选服务均按缺失优雅降级，
+  未挂载只退化功能、不炸启动。
 - 中途失败即停（set -euo pipefail）；tag 已打而 checkout 失败时，手动
   `git -C ~/dev/dsh-plugins-stable checkout <tag>` 补齐即可，脚本幂等可重跑。
 
