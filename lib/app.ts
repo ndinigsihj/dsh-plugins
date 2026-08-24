@@ -1083,6 +1083,32 @@ class CheckboxList implements Component {
   }
 }
 
+/** Phase marks/colors and the non-active phase tag, keyed exactly like
+ * dsh-goal's projection phase values. */
+function goalStyle(
+  phase: GoalSummary["phase"],
+): { mark: string; color: "cyan" | "brightWhite" | "red" | "green" } {
+  return phase === "active"
+    ? { mark: "◎", color: "cyan" }
+    : phase === "paused"
+      ? { mark: "⏸", color: "brightWhite" }
+      : phase === "blocked"
+        ? { mark: "⛔", color: "red" }
+        : { mark: "✓", color: "green" };
+}
+
+/** Session-goal bar text, e.g. `◎ objective · round 1/5` — active unwrapped,
+ * other phases get a ` · phase` tag. Truncates to the given terminal width
+ * (floored at 20). Pure, so the display effect is unit-testable. */
+export function formatGoalLine(p: Palette, goal: GoalSummary, width: number): string {
+  const style = goalStyle(goal.phase);
+  const tag = goal.phase === "active" ? "" : ` · ${goal.phase}`;
+  const text =
+    `${p.fg(style.mark, style.color)} ${goal.objective} ` +
+    p.dim(`· round ${goal.roundsStarted}/${goal.maxGoalRounds}${tag}`);
+  return truncateToWidth(text, Math.max(20, width));
+}
+
 export class TuiApp {
   private readonly terminal = new ProcessTerminal();
   private readonly clipboardTerminal = new ClipboardTerminal(this.terminal);
@@ -1374,23 +1400,9 @@ export class TuiApp {
   setGoal(goal: GoalSummary | null): void {
     if (goal === null) {
       this.goalLine.setText("");
-      this.render();
-      return;
+    } else {
+      this.goalLine.setText(formatGoalLine(this.p, goal, process.stdout.columns ?? 100));
     }
-    const width = Math.max(20, process.stdout.columns ?? 100);
-    const style =
-      goal.phase === "active"
-        ? { mark: "◎", color: "cyan" as const }
-        : goal.phase === "paused"
-          ? { mark: "⏸", color: "brightWhite" as const }
-          : goal.phase === "blocked"
-            ? { mark: "⛔", color: "red" as const }
-            : { mark: "✓", color: "green" as const };
-    const tag = goal.phase === "active" ? "" : ` · ${goal.phase}`;
-    const text =
-      `${this.p.fg(style.mark, style.color)} ${goal.objective} ` +
-      this.p.dim(`· round ${goal.roundsStarted}/${goal.maxGoalRounds}${tag}`);
-    this.goalLine.setText(truncateToWidth(text, width));
     this.render();
   }
 
