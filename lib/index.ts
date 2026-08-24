@@ -211,6 +211,101 @@ function buildPreviewFromEvents(events: ReadonlyArray<PreviewEvent>): string | n
   return lines.map((l) => `  ${l}`).join("\n");
 }
 
+/** Same shape as buildPreviewFromEvents, sourced from the `tuiPreview`
+ * projection values instead of a decoded log. */
+function formatPreviewFromValues(v: TuiPreviewValue): string | null {
+  if (v.prompts === 0 && v.replies === 0 && v.tools === 0) return null;
+  const lines = [
+    `prompts ${v.prompts} · replies ${v.replies} · tool calls ${v.tools}`,
+    v.route !== null ? `route ${v.route.provider}/${v.route.model}` : "",
+    v.firstTime !== null && v.lastTime !== null
+      ? `${formatStamp(v.firstTime)} → ${formatStamp(v.lastTime)}`
+      : "",
+    "",
+    v.lastPrompt !== null && v.lastPrompt !== "" ? `❝ ${v.lastPrompt}` : "(no user prompt)",
+  ].filter((l) => l !== "");
+  return lines.map((l) => `  ${l}`).join("\n");
+}
+
+/** Human-prompt excerpt cap shared by the preview builder and its projection. */
+function promptExcerpt(text: string): string {
+  return text.length > 160 ? `${text.slice(0, 159)}…` : text;
+}
+
+/** Register the plugin-owned `tuiPreview` projection unit: conversation
+ * counts, time range, route, and first/last human-prompt excerpts as whole
+ * values. Cells fold lazily over the in-memory log even when events predate
+ * registration, and once dsh-session-projection-cache is mounted these
+ * values ride its cold ladder — /resume previews stop paying full reads.
+ * Failures are contained: the legacy readSession preview stays as fallback. */
+function registerPreviewUnit(proj: NonNullable<CoreServices["sessionProjections"]>): void {
+  const valueSchema = z.object({
+    prompts: z.number(),
+    replies: z.number(),
+    tools: z.number(),
+    route: z.union([z.object({ provider: z.string(), model: z.string() }), z.const(null)]),
+    firstTime: z.union([z.number(), z.const(null)]),
+    lastTime: z.union([z.number(), z.const(null)]),
+    firstPrompt: z.union([z.string(), z.const(null)]),
+    lastPrompt: z.union([z.string(), z.const(null)]),
+  });
+  try {
+    proj.register({
+      key: "tuiPreview",
+      stateVersion: 1,
+      stateSchema: valueSchema,
+      init: () => ({
+        prompts: 0,
+        replies: 0,
+        tools: 0,
+        route: null,
+        firstTime: null,
+        lastTime: null,
+        firstPrompt: null,
+        lastPrompt: null,
+      }),
+      apply: (state, event) => {
+        const s = { ...(state as TuiPreviewValue) };
+        if (typeof event.time === "number") {
+          if (s.firstTime === null || event.time < s.firstTime) s.firstTime = event.time;
+          if (s.lastTime === null || event.time > s.lastTime) s.lastTime = event.time;
+        }
+        switch (event.type) {
+          case "user/message": {
+            if (event.data?.source?.kind !== "user") break;
+            s.prompts += 1;
+            const text = promptExcerpt(messageText(event).replace(/\s+/g, " "));
+            if (text !== "") {
+              if (s.firstPrompt === null) s.firstPrompt = text;
+              s.lastPrompt = text;
+            }
+            break;
+          }
+          case "assistant/message":
+            s.replies += 1;
+            break;
+          case "tool/call":
+            s.tools += 1;
+            break;
+          case "request/context": {
+            const { provider, model } = event.data ?? {};
+            if (typeof provider === "string" && typeof model === "string") {
+              s.route = { provider, model };
+            }
+            break;
+          }
+        }
+        return s;
+      },
+      wire: { viewSchema: valueSchema, view: (state) => state },
+    });
+  } catch (error) {
+    console.error(
+      `dsh-tui: tuiPreview projection unavailable: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
 /** Truncate a label to a display width. */
 function truncate(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
@@ -247,6 +342,22 @@ interface ProjectionValues {
   };
   /** Latest todo snapshot (dsh-tool-todo registers the unit). */
   todos?: TodoItem[];
+  /** This plugin's own preview unit: whole conversation shape for /resume
+   * previews, served from the projection-cache cold ladder without a full
+   * log read. */
+  tuiPreview?: TuiPreviewValue;
+}
+
+/** Whole-value wire shape of the `tuiPreview` projection unit. */
+interface TuiPreviewValue {
+  prompts: number;
+  replies: number;
+  tools: number;
+  route: { provider: string; model: string } | null;
+  firstTime: number | null;
+  lastTime: number | null;
+  firstPrompt: string | null;
+  lastPrompt: string | null;
 }
 
 /** Reasoning-effort metadata of one route (dsh-llm LlmModelReasoningInfo slice). */
@@ -455,6 +566,22 @@ interface CoreServices {
   };
   sessionProjections?: {
     snapshot(session: unknown): { values: ProjectionValues };
+    register(definition: {
+      key: string;
+      stateVersion: number;
+      stateSchema: unknown;
+      init: () => unknown;
+      apply: (state: unknown, event: PreviewEvent) => unknown;
+      wire?: { viewSchema?: unknown; view: (state: unknown) => unknown };
+    }): () => void;
+  };
+  /** Persisted projection checkpoints (mounted by the tui profile patch);
+   * coldSnapshot walks cached-row + tail-replay and writes the row back. */
+  sessionProjectionCache?: {
+    coldSnapshot(
+      sessionId: string,
+      signal?: AbortSignal,
+    ): Promise<{ values: ProjectionValues }>;
   };
   tokenMeter?: {
     measure(session: unknown): { totalTokens: number };
@@ -555,6 +682,12 @@ async function run(
   const resolved = resolveServices(ctx);
   if (resolved === undefined) return;
   const services = resolved; // narrowed copy, visible inside closures
+
+  // Register before any preview can fire; lazy folds pick the unit up even
+  // for sessions opened earlier.
+  if (services.sessionProjections !== undefined) {
+    registerPreviewUnit(services.sessionProjections);
+  }
 
   // Create (or resume) the root agent through the core registry. Resume is a
   // launcher-level decision: `dsh --profile tui --resume <id>` arrives through
@@ -927,9 +1060,26 @@ async function run(
     onCancel: () => agent.cancel({ kind: "user" }),
     onExit: () => stopAndExit(),
     autocomplete: { commands: autocompleteCommands() },
-    sessionPreview: (sessionId) => {
+    sessionPreview: async (sessionId) => {
+      // Cold ladder first: cached checkpoint + persistence tail replay, no
+      // full-log decode; the row is written back so repeat hovers get
+      // cheaper. Falls through to the legacy full read when the cache is
+      // absent, the session has no persisted log, or the unit is missing.
+      const cacheSvc = services.sessionProjectionCache;
+      if (cacheSvc !== undefined) {
+        try {
+          const cut = await cacheSvc.coldSnapshot(sessionId);
+          const fromValues = cut.values.tuiPreview;
+          if (fromValues !== undefined) {
+            const formatted = formatPreviewFromValues(fromValues);
+            if (formatted !== null) return formatted;
+          }
+        } catch {
+          /* fall through to the legacy path */
+        }
+      }
       const query = services.sessionQuery;
-      if (query === undefined) return Promise.resolve(null);
+      if (query === undefined) return null;
       return query
         .readSession(sessionId)
         .then((loaded) => buildPreviewFromEvents((loaded.events ?? []) as ReadonlyArray<PreviewEvent>))

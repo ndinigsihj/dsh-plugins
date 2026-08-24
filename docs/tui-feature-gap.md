@@ -113,9 +113,9 @@
 
 | # | 能力 | 现状 | TUI 落地点 |
 |---|---|---|---|
-| A1 | `dsh-session-projection-cache`（持久投影缓存 + 冷读阶梯） | 已挂未消费 | ✅ 第一步落地（2026-08-24）：spike 结论——cache 服务的是投影不是转录行，重建加速不成立；诚实落点改为 resume//new//model 种子改读注册表整值（seedProjections，消手搓事件扫描）。第二步（待做）：注册自有 projection 单元（route/首问）+ 预览走 coldSnapshot 冷读阶梯，与 A3 合并交付 |
+| A1 | `dsh-session-projection-cache`（持久投影缓存 + 冷读阶梯） | 已挂未消费 | ✅ 两步落地（2026-08-24）。spike 结论：cache 服务的是投影不是转录行，重建加速不成立；第一步 resume//new//model 种子改读注册表整值（seedProjections）；第二步注册自有 `tuiPreview` 投影单元（counts/route/时间范围/首末问），`/resume` 预览走 `coldSnapshot(id)` 冷读阶梯（缓存行 + 尾部回放 + 写回），全量 readSession 降为兜底。cache 以 writeEveryEvents=400/writeIntervalMs=30s 挂入 tui 与 tui-dev |
 | A2 | `dsh-permission-presets`（sandbox 档 + approval 策略 select，写会话事件） | base 已挂无入口 | `/permission` 弹层，会话中切沙箱/审批档 |
-| A3 | `dsh-session-stats`（整段对话计数 + 墙钟时间投影） | 未用 | `/status` 与 `/resume` 预览补 turns/时长/起止（替换手搓事件扫描） |
+| A3 | `dsh-session-stats`（整段对话计数 + 墙钟时间投影） | 未用，且无需挂载 | 由 A1 的自有 `tuiPreview` 单元覆盖（counts + 时间范围），不引入 dsh-session-stats |
 | A4 | `ctx.jobs` 后台任务注册表 | 工具已挂前端无显示 | 底部后台任务 gauge（照抄子代理行轮询模式） |
 | A5 | `dsh-spill-policy`（超长工具结果落盘 + 定位符） | base 已生效 | ToolRow 把 spill 定位符渲染成路径徽标 |
 | A6 | `dsh-goal` + `/goal`（同会话目标状态） | 工具已挂无显示 | 目标常驻条：当前目标 + 轮次进度（对齐 web GoalBar） |
