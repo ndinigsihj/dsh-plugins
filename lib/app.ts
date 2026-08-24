@@ -74,6 +74,13 @@ export interface RunningSubagent {
   label?: string;
 }
 
+/** One live background job (ctx.jobs snapshot slice) for the ambient gauge. */
+export interface RunningJob {
+  id: string;
+  label: string;
+  status: "running" | "stopping";
+}
+
 /** One entry of the editor's slash-command menu (structural SlashCommand). */
 export interface AutocompleteCommand {
   name: string;
@@ -1065,6 +1072,8 @@ export class TuiApp {
   private readonly status: StatusLine;
   private readonly subagentsLine: Text;
   private subagentItems: RunningSubagent[] = [];
+  private readonly jobsLine: Text;
+  private jobItems: RunningJob[] = [];
   private readonly todosLine: Text;
   private agent: AgentSurface;
   private modelLabel: string;
@@ -1117,6 +1126,7 @@ export class TuiApp {
 
     this.status = new StatusLine(this.p);
     this.subagentsLine = new Text("", 1, 1);
+    this.jobsLine = new Text("", 1, 1);
     this.todosLine = new Text("", 1, 0);
     this.editor = new Editor(this.tui, editorTheme(this.p));
     this.editor.onSubmit = (text) => this.handleSubmit(text);
@@ -1136,6 +1146,7 @@ export class TuiApp {
     const root = new VStack([
       { component: this.transcriptScroll, basis: 0, grow: 1, shrink: 1, minSize: 1 },
       { component: this.subagentsLine, shrink: 1, minSize: 0 },
+      { component: this.jobsLine, shrink: 1, minSize: 0 },
       { component: this.todosLine, shrink: 1, minSize: 0 },
       { component: dock, basis: "auto", grow: 0, shrink: 1, minSize: 1 },
     ]);
@@ -1324,6 +1335,48 @@ export class TuiApp {
     this.render();
   }
 
+  /** Live background-job summary (empty hides the row). Same collapsed /
+   * Ctrl+O-expanded contract as the subagents line. */
+  setJobs(live: RunningJob[]): void {
+    this.jobItems = live;
+    this.renderJobsLine();
+    this.render();
+  }
+
+  /** Collapsed: one summary line with the newest job label. Expanded: one
+   * line per live job, stopping jobs dimmed, capped like the subagent list. */
+  private renderJobsLine(): void {
+    const jobs = this.jobItems;
+    if (jobs.length === 0) {
+      this.jobsLine.setText("");
+      return;
+    }
+    const width = Math.max(20, process.stdout.columns ?? 100);
+    if (!this.detailsExpanded) {
+      const latest = jobs[jobs.length - 1]!;
+      const suffix = latest.status === "stopping" ? this.p.dim(" (stopping)") : "";
+      this.jobsLine.setText(
+        truncateToWidth(
+          `${this.p.fg("▣ jobs", "yellow")} ${this.p.dim(`×${jobs.length}`)} · ${this.p.dim(latest.label || latest.id)}${suffix}`,
+          width,
+        ),
+      );
+      return;
+    }
+    const shown = jobs.slice(-SUBAGENTS_EXPAND_CAP);
+    const lines: string[] = [];
+    if (jobs.length > shown.length) {
+      lines.push(this.p.dim(`… ${jobs.length - shown.length} earlier`));
+    }
+    for (const job of shown) {
+      const mark = job.status === "stopping" ? this.p.dim("●") : this.p.fg("●", "yellow");
+      const tag = job.status === "stopping" ? this.p.dim(" (stopping)") : "";
+      lines.push(truncateToWidth(`${mark} ${job.label || job.id}${tag}`, width));
+    }
+    lines.push(this.p.dim("  Ctrl+O collapses"));
+    this.jobsLine.setText(lines.join("\n"));
+  }
+
   /** Collapsed: one summary line (fan-out safe). Expanded via Ctrl+O: one
    * line per running child, newest last, capped so a large fan-out cannot
    * eat the viewport. */
@@ -1437,6 +1490,7 @@ export class TuiApp {
     this.transcriptArea.redrawAll();
     this.renderTodosLine(); // the ambient gauge expands with everything else
     this.renderSubagentsLine();
+    this.renderJobsLine();
     this.render();
   }
 

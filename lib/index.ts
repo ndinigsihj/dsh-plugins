@@ -15,7 +15,7 @@ import { installModelSelection } from "@deepseek-ai/dsh-agent";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import { SessionId } from "@deepseek-ai/dsh-session";
 import { visibleWidth } from "@earendil-works/pi-tui";
-import { TuiApp, formatTokens, type AgentSurface, type AutocompleteCommand } from "./app.ts";
+import { TuiApp, formatTokens, type AgentSurface, type AutocompleteCommand, type RunningJob } from "./app.ts";
 import { createPalette } from "./palette.ts";
 import { renderTranscriptMarkdown } from "./export.ts";
 import type { ToolPresenters, TodoItem } from "./transcript.ts";
@@ -603,6 +603,14 @@ interface CoreServices {
       Array<{ id: string; activity: "running" | "inactive"; mode: "one-shot" | "continuable"; label?: string }>
     >;
   };
+  /** Background-job registry (base-mounted); list is owner-fenced + sync. */
+  jobs?: {
+    list(caller?: unknown): Array<{
+      id: unknown;
+      label?: unknown;
+      status: string;
+    }>;
+  };
   /** Optional roster over ~/.dsh/.agent-presets (absent in bare boots). */
   agentPresets?: PresetRoster;
   /** User-settings seam; the /preset default persists through its ns. */
@@ -632,6 +640,7 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
   const permissionPresets = ctx.get<CoreServices["permissionPresets"]>("permissionPresets");
   const tokenMeter = ctx.get<CoreServices["tokenMeter"]>("tokenMeter");
   const subagents = ctx.get<CoreServices["subagents"]>("subagents");
+  const jobs = ctx.get<CoreServices["jobs"]>("jobs");
   const agentPresets = ctx.get<PresetRoster>("agentPresets");
   const settings = ctx.get<SettingsSeam>("settings");
   const llm = ctx.get<CoreServices["llm"]>("llm");
@@ -651,6 +660,7 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
     permissionPresets,
     tokenMeter,
     subagents,
+    jobs,
     agentPresets,
     settings,
     llm,
@@ -2167,6 +2177,29 @@ async function run(
       });
   }
 
+  /** Live background-job summary: the owner-fenced registry list is
+   * synchronous and cheap; it rides the same lifecycle triggers as the
+   * subagent gauge (tool/turn events), which cover job start via bash and
+   * settle via completion activity. */
+  function refreshJobs(): void {
+    const jobs = services.jobs;
+    if (jobs === undefined) return;
+    try {
+      const live: RunningJob[] = [];
+      for (const job of jobs.list(agent as never)) {
+        if (job.status !== "running" && job.status !== "stopping") continue;
+        live.push({
+          id: String(job.id),
+          label: typeof job.label === "string" ? job.label : "",
+          status: job.status,
+        });
+      }
+      app.setJobs(live);
+    } catch {
+      /* transient — leave the previous summary */
+    }
+  }
+
   // Session event feed → transcript.
   const disposeSessionFeed = ctx.on(
     "session/event",
@@ -2198,6 +2231,7 @@ async function run(
         evt.type === "turn/end"
       ) {
         refreshSubagents();
+        refreshJobs();
       }
       app.onSessionEvent();
       updateContextPressure();
