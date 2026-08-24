@@ -15,7 +15,7 @@ import { installModelSelection } from "@deepseek-ai/dsh-agent";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import { SessionId } from "@deepseek-ai/dsh-session";
 import { visibleWidth } from "@earendil-works/pi-tui";
-import { TuiApp, formatTokens, type AgentSurface, type AutocompleteCommand, type RunningJob } from "./app.ts";
+import { TuiApp, formatTokens, type AgentSurface, type AutocompleteCommand, type GoalSummary, type RunningJob } from "./app.ts";
 import { createPalette } from "./palette.ts";
 import { renderTranscriptMarkdown } from "./export.ts";
 import type { ToolPresenters, TodoItem } from "./transcript.ts";
@@ -343,6 +343,15 @@ interface ProjectionValues {
   };
   /** Latest todo snapshot (dsh-tool-todo registers the unit). */
   todos?: TodoItem[];
+  /** Current session goal (dsh-goal's projection unit; null when none). */
+  goal?: {
+    goal: {
+      objective: string;
+      phase: "active" | "paused" | "blocked" | "complete";
+      maxGoalRounds: number;
+    };
+    roundsStarted: number;
+  } | null;
   /** This plugin's own preview unit: whole conversation shape for /resume
    * previews, served from the projection-cache cold ladder without a full
    * log read. */
@@ -1120,6 +1129,7 @@ async function run(
   showBootBanner();
   updateContextPressure();
   refreshSubagents();
+  refreshGoal();
 
   async function stopAndExit(): Promise<void> {
     try {
@@ -1219,6 +1229,7 @@ async function run(
     app.onSessionEvent();
     updateContextPressure();
     refreshSubagents();
+    refreshGoal();
   }
 
   /** /new — fresh session in-process: create + rebind, keep this terminal. */
@@ -1647,6 +1658,7 @@ async function run(
       void services.sessions.flush(next.session).catch(() => {});
       updateContextPressure();
       refreshSubagents();
+      refreshGoal();
       // New route → re-resolve its reasoning metadata (label may change or hide).
       void refreshEffortMeta();
       // Deliberately NOT touching the saved default: /model is session-scoped;
@@ -2200,6 +2212,27 @@ async function run(
     }
   }
 
+  /** Goal bar: read the goal projection's whole value (registry fold or
+   * cache-seeded) and mirror phase/rounds into the ambient row. */
+  function refreshGoal(): void {
+    if (services.sessionProjections === undefined) return;
+    try {
+      const g = projectionValues().goal ?? null;
+      const summary: GoalSummary | null =
+        g === null
+          ? null
+          : {
+              objective: g.goal.objective,
+              phase: g.goal.phase,
+              roundsStarted: g.roundsStarted,
+              maxGoalRounds: g.goal.maxGoalRounds,
+            };
+      app.setGoal(summary);
+    } catch {
+      /* projections not ready — leave the previous bar */
+    }
+  }
+
   // Session event feed → transcript.
   const disposeSessionFeed = ctx.on(
     "session/event",
@@ -2228,10 +2261,12 @@ async function run(
         evt.type === "tool/call" ||
         evt.type === "tool/result" ||
         evt.type === "turn/start" ||
-        evt.type === "turn/end"
+        evt.type === "turn/end" ||
+        (evt.type !== undefined && evt.type.startsWith("goal/"))
       ) {
         refreshSubagents();
         refreshJobs();
+        refreshGoal();
       }
       app.onSessionEvent();
       updateContextPressure();

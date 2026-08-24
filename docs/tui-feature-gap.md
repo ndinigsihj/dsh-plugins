@@ -118,7 +118,7 @@
 | A3 | `dsh-session-stats`（整段对话计数 + 墙钟时间投影） | 未用，且无需挂载 | 由 A1 的自有 `tuiPreview` 单元覆盖（counts + 时间范围），不引入 dsh-session-stats |
 | A4 | `ctx.jobs` 后台任务注册表 | 工具已挂前端无显示 | ✅ 落地（2026-08-24）：底部 `▣ jobs` 行，与子代理行同构（折叠一行 ×N · 最新 label；Ctrl+O 展开逐条、stopping 置灰）；owner-fenced `list(agent)` 同步读，复用 tool/turn 生命周期触发刷新 |
 | A5 | `dsh-spill-policy`（超长工具结果落盘 + 定位符） | base 已生效 | ✅ 落地（2026-08-24）：ToolRow 对 terminal/generic 卡结果做后处理，spill 通知句渲染为 `⤓ full result <locator>` 黄色徽标（正则单次匹配、无 lookbehind） |
-| A6 | `dsh-goal` + `/goal`（同会话目标状态） | 工具已挂无显示 | 目标常驻条：当前目标 + 轮次进度（对齐 web GoalBar） |
+| A6 | `dsh-goal` + `/goal`（同会话目标状态） | 工具已挂无显示 | ✅ 落地（2026-08-24）：目标常驻条 `◎ objective · round N/M`（phase 着色：active 青/paused 白/blocked 红/complete 绿），读 goal 投影整值；goal/* 事件与 tool/turn 触发刷新，boot//new/model 切换同步重种 |
 
 ### 9.2 B 组：小量接线
 

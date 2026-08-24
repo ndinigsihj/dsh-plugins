@@ -81,6 +81,14 @@ export interface RunningJob {
   status: "running" | "stopping";
 }
 
+/** The session's current goal, sliced from dsh-goal's projection value. */
+export interface GoalSummary {
+  objective: string;
+  phase: "active" | "paused" | "blocked" | "complete";
+  roundsStarted: number;
+  maxGoalRounds: number;
+}
+
 /** One entry of the editor's slash-command menu (structural SlashCommand). */
 export interface AutocompleteCommand {
   name: string;
@@ -1089,6 +1097,7 @@ export class TuiApp {
   private subagentItems: RunningSubagent[] = [];
   private readonly jobsLine: Text;
   private jobItems: RunningJob[] = [];
+  private readonly goalLine: Text;
   private readonly todosLine: Text;
   private agent: AgentSurface;
   private modelLabel: string;
@@ -1142,6 +1151,7 @@ export class TuiApp {
     this.status = new StatusLine(this.p);
     this.subagentsLine = new Text("", 1, 1);
     this.jobsLine = new Text("", 1, 1);
+    this.goalLine = new Text("", 1, 1);
     this.todosLine = new Text("", 1, 0);
     this.editor = new Editor(this.tui, editorTheme(this.p));
     this.editor.onSubmit = (text) => this.handleSubmit(text);
@@ -1160,6 +1170,7 @@ export class TuiApp {
     ]);
     const root = new VStack([
       { component: this.transcriptScroll, basis: 0, grow: 1, shrink: 1, minSize: 1 },
+      { component: this.goalLine, shrink: 1, minSize: 0 },
       { component: this.subagentsLine, shrink: 1, minSize: 0 },
       { component: this.jobsLine, shrink: 1, minSize: 0 },
       { component: this.todosLine, shrink: 1, minSize: 0 },
@@ -1355,6 +1366,31 @@ export class TuiApp {
   setJobs(live: RunningJob[]): void {
     this.jobItems = live;
     this.renderJobsLine();
+    this.render();
+  }
+
+  /** Session-goal bar above the ambient rows; null hides it. One line always
+   * — the objective is the content, so there is nothing to expand. */
+  setGoal(goal: GoalSummary | null): void {
+    if (goal === null) {
+      this.goalLine.setText("");
+      this.render();
+      return;
+    }
+    const width = Math.max(20, process.stdout.columns ?? 100);
+    const style =
+      goal.phase === "active"
+        ? { mark: "◎", color: "cyan" as const }
+        : goal.phase === "paused"
+          ? { mark: "⏸", color: "brightWhite" as const }
+          : goal.phase === "blocked"
+            ? { mark: "⛔", color: "red" as const }
+            : { mark: "✓", color: "green" as const };
+    const tag = goal.phase === "active" ? "" : ` · ${goal.phase}`;
+    const text =
+      `${this.p.fg(style.mark, style.color)} ${goal.objective} ` +
+      this.p.dim(`· round ${goal.roundsStarted}/${goal.maxGoalRounds}${tag}`);
+    this.goalLine.setText(truncateToWidth(text, width));
     this.render();
   }
 
