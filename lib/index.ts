@@ -245,6 +245,8 @@ interface ProjectionValues {
     cacheReadTokens?: number;
     cacheWriteTokens?: number;
   };
+  /** Latest todo snapshot (dsh-tool-todo registers the unit). */
+  todos?: TodoItem[];
 }
 
 /** Reasoning-effort metadata of one route (dsh-llm LlmModelReasoningInfo slice). */
@@ -940,18 +942,7 @@ async function run(
     app.model.rebuild(agent.session.events as never, presenters);
     app.onSessionEvent();
     app.appendCommandOutput(`Resumed session ${agent.id}.`);
-    const rate = lastCacheRate(agent.session.events);
-    if (rate !== undefined) app.setCacheRate(rate);
-    // Seed the ambient todo gauge from the newest snapshot in the log.
-    for (let i = agent.session.events.length - 1; i >= 0; i -= 1) {
-      const evt = agent.session.events[i] as
-        | { type?: string; data?: { todos?: TodoItem[] } }
-        | undefined;
-      if (evt?.type === "todo/write") {
-        if (Array.isArray(evt.data?.todos)) app.setTodos(evt.data.todos);
-        break;
-      }
-    }
+    seedProjections();
   }
   await refreshEffortMeta(); // resolve route efforts before the banner renders
   showBootBanner();
@@ -1358,6 +1349,32 @@ async function run(
     return proj.snapshot(agent.session).values as ProjectionValues;
   }
 
+  /** Seed cache-rate + todo gauge from the projection registry's whole
+   * values: cells fold lazily over the in-memory log on first snapshot and
+   * memoize by watermark, so one call replaces the per-key event scans.
+   * Falls back to direct scans only in bare boots without the registry.
+   * The registry is also the path that projection-cache checkpoints serve,
+   * keeping TUI state on the same fold the rest of the harness reads. */
+  function seedProjections(): void {
+    const proj = services.sessionProjections;
+    if (proj === undefined) {
+      app.setCacheRate(lastCacheRate(agent.session.events) ?? null);
+      for (let i = agent.session.events.length - 1; i >= 0; i -= 1) {
+        const evt = agent.session.events[i] as
+          | { type?: string; data?: { todos?: TodoItem[] } }
+          | undefined;
+        if (evt?.type === "todo/write") {
+          if (Array.isArray(evt.data?.todos)) app.setTodos(evt.data.todos);
+          break;
+        }
+      }
+      return;
+    }
+    const values = proj.snapshot(agent.session).values as ProjectionValues;
+    app.setCacheRate(cacheRateOf(values.tokenUsage) ?? null);
+    if (Array.isArray(values.todos)) app.setTodos(values.todos);
+  }
+
   /**
    * /model live switch, official recipe: fork the whole log as seed, create a
    * NEW session on the new route with the SAME preset, then replay history.
@@ -1407,7 +1424,9 @@ async function run(
       app.setAgent(agentSurface(next));
       liveRoute = { provider, model };
       app.setModelLabel(`${liveRoute.provider}/${liveRoute.model}`);
-      app.setCacheRate(lastCacheRate(next.session.events) ?? null);
+      // Registry fold re-reads for the new session: cache-rate and the todo
+      // gauge both re-seed so in-flight todos survive the switch.
+      seedProjections();
       app.model.clear();
       app.model.rebuild(next.session.events as never, presenters);
       app.onSessionEvent();

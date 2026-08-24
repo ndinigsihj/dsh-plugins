@@ -113,7 +113,7 @@
 
 | # | 能力 | 现状 | TUI 落地点 |
 |---|---|---|---|
-| A1 | `dsh-session-projection-cache`（持久投影缓存 + 冷读阶梯） | 已挂未消费 | 巨型会话 `/resume` 转录重建走缓存冷读替代全量回放；readTitleSnapshots 只治了列表没治重建 |
+| A1 | `dsh-session-projection-cache`（持久投影缓存 + 冷读阶梯） | 已挂未消费 | ✅ 第一步落地（2026-08-24）：spike 结论——cache 服务的是投影不是转录行，重建加速不成立；诚实落点改为 resume//new//model 种子改读注册表整值（seedProjections，消手搓事件扫描）。第二步（待做）：注册自有 projection 单元（route/首问）+ 预览走 coldSnapshot 冷读阶梯，与 A3 合并交付 |
 | A2 | `dsh-permission-presets`（sandbox 档 + approval 策略 select，写会话事件） | base 已挂无入口 | `/permission` 弹层，会话中切沙箱/审批档 |
 | A3 | `dsh-session-stats`（整段对话计数 + 墙钟时间投影） | 未用 | `/status` 与 `/resume` 预览补 turns/时长/起止（替换手搓事件扫描） |
 | A4 | `ctx.jobs` 后台任务注册表 | 工具已挂前端无显示 | 底部后台任务 gauge（照抄子代理行轮询模式） |
