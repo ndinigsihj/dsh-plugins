@@ -36,6 +36,10 @@ fi
 git tag -a "$tag" -m "$tag"
 
 if [ -d "$STABLE" ]; then
+  # package-lock.json is a regenerable artifact: a local npm run in the
+  # stable tree normalizes it beyond the committed blob and would block the
+  # checkout. Discard that one file, then advance.
+  git -C "$STABLE" checkout -- package-lock.json 2>/dev/null || true
   git -C "$STABLE" checkout --detach "$tag"
 else
   git worktree add --detach "$STABLE" "$tag"
