@@ -102,3 +102,66 @@
 | `/compact` 经 commands 注册表转发的行为未知（可能要求特定 agent 状态） | M1 排期偏差 | 先手动验证，不通改走 sessions 服务直连 |
 | 官方 0.8.x 迭代快，差距清单会漂移 | 追不全 | 只追"常用功能"档位，不追全集；版本差异在本文档记录基线 |
 | rc.7→rc.8 peer 契约 drift（启动警告等） | 与官方包共用时的已知问题 | 见 [`rc8-capability-assessment.md`](rc8-capability-assessment.md) §4；本 TUI 直连 rc.8 服务不受影响 |
+
+## 9. host 0.1.1-rc.2 能力盘点：可用未接清单（2026-08-24）
+
+口径：`dsh-base` bundle 已把绝大部分 host 服务挂进每个 profile（含 sqlite 会话查询、
+压缩、spill、审批瀑布），"未利用"分两种——服务在跑但 TUI 前端没接（A 组/B 组），
+和整链未挂载。逐项实现，顺序即排期。
+
+### 9.1 A 组：服务已在跑，TUI 直接可吃
+
+| # | 能力 | 现状 | TUI 落地点 |
+|---|---|---|---|
+| A1 | `dsh-session-projection-cache`（持久投影缓存 + 冷读阶梯） | 已挂未消费 | 巨型会话 `/resume` 转录重建走缓存冷读替代全量回放；readTitleSnapshots 只治了列表没治重建 |
+| A2 | `dsh-permission-presets`（sandbox 档 + approval 策略 select，写会话事件） | base 已挂无入口 | `/permission` 弹层，会话中切沙箱/审批档 |
+| A3 | `dsh-session-stats`（整段对话计数 + 墙钟时间投影） | 未用 | `/status` 与 `/resume` 预览补 turns/时长/起止（替换手搓事件扫描） |
+| A4 | `ctx.jobs` 后台任务注册表 | 工具已挂前端无显示 | 底部后台任务 gauge（照抄子代理行轮询模式） |
+| A5 | `dsh-spill-policy`（超长工具结果落盘 + 定位符） | base 已生效 | ToolRow 把 spill 定位符渲染成路径徽标 |
+| A6 | `dsh-goal` + `/goal`（同会话目标状态） | 工具已挂无显示 | 目标常驻条：当前目标 + 轮次进度（对齐 web GoalBar） |
+
+### 9.2 B 组：小量接线
+
+| # | 能力 | 现状 | TUI 落地点 |
+|---|---|---|---|
+| B1 | `dsh-file-reference-local`（@file 标准语法 + 模糊索引） | 补全用 pi-tui 自带 cwd 遍历 | `@` 文件源切 harness 标准缝，语法对齐官方 |
+| B2 | `dsh-attachment(-local)`（内容寻址附件存储） | 整链未挂 | M3「@ 图片附件」的后端半边：粘贴→存附件→消息 images |
+| B3 | `dsh-session-reference`（跨会话快照引用） | 未用 | `@` 引用历史会话进当前上下文 |
+| B4 | `dsh-mcp-client`（MCP 服务器桥接） | 全链未挂 | 外部工具生态入口 + TUI 工具清单展示 |
+| B5 | `dsh-plan-mode`（计划评审退出） | preset 已挂走通用审批卡 | plan 退出专用确认卡片 |
+
+### 9.3 C 组：可选/实验
+
+| 能力 | 说明 |
+|---|---|
+| `dsh-schedule`（会话级持久 after/at/fixed-rate 提醒） | 无模型工具面，需自包一层 |
+| `dsh-code-runtime` + `dsh-agent-tool-presentation` | 官方 code preset 的 Code Mode（单 run_code），动 preset 可试 |
+| `dsh-terminal(-bash)` 持久 PTY | preset 已挂 persistent bash；未来 `/shells` 面板 |
+
+### 9.4 明确不适用
+
+`client-ui-*` 全家（Web 渲染半边）、host-webserver/frontend-static/api-gateway/
+api-remotes（Web 托管栈）、telemetry/typert/invariants（基础设施）、theme/locale
+（不做档）、directory-picker（Web GUI host）、pwsh/windows-acl/landlock（非本机场景）。
+
+### 9.5 实施顺序
+
+A1 → A2 → A3 → A4 → B2（并入 M3 图片附件）→ A5 → A6 → B1 → B3 → B5 → B4 → C 组按需。
+每项独立 commit，先小 spike 验服务语义再接 UI。
+
+## 10. api-gateway 与自建 relay 的边界（2026-08-24 问答定稿）
+
+问题：api-gateway 能否当 relay-server？多 relay-client 能否接入一个 api-gateway？
+
+结论：
+
+| 问 | 答 |
+|---|---|
+| api-gateway 是 server 吗 | 不是。它是 host 内的 Typert Remote 方法**分发器**（transport-agnostic）；真正对外的是 `dsh-host-webserver` 上由 `dsh-client-connection` 挂载的 `/api` 前缀——HTTP POST 上行 + WebSocket 事件流下行 |
+| 多客户端接一个 host | 这正是它的设计场景（dsh web 即此形态）：ConnectionController 支持多连接，session 按 scope 隔离；非回环部署须声明 `trustedHosts`（浏览器信任栅栏，DNS-rebinding/跨站防御），特权方法钉死 loopback |
+| 协议是谁的 | 官方 Typert remote 集（BFF 由 dsh-api-remotes 组装），不是自定义协议；认证是 trust fence 而非 token |
+| 对 dsh-relay 的意义 | relay-server 若换成「跑 web 表面 + 讲官方 /api 协议」，可白得重连、事件复用、会话路由，但被绑进官方 wire 词汇表，且 endless 自有事件仍要自己带外传；relay 的 token 鉴权模型与 trust fence 不同构。多 host 聚合（一个 hub 收多个 host）api-gateway 不解决——那仍是自建 hub 的职责 |
+
+落地建议：维持自建 relay 现状（协议自主、已测试）；若未来要"多个官方客户端连同一个
+host"，直接启用 web 表面即可，不必经过 relay；两套并存时以场景划界——官方客户端走
+/api，endless 同步走 relay。
