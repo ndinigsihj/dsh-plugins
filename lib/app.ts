@@ -566,7 +566,11 @@ class ToolRow implements RowComponent {
       lines.length = TOOL_LINES_CAP;
       lines.push(this.p.dim(`… ${extra} more lines`));
     }
-    this.body.setText(lines.length === 0 ? this.p.dim("…") : this.p.dim(lines.join("\n")));
+    // No blanket dim wrap: expanded bodies carry PRIMARY payloads now (plans,
+    // commands) that style themselves per line — the legacy full-body faint
+    // washed them out (SGR 2 sits under any inner color). Secondary bits
+    // keep their own dim at push sites; the empty stub stays dim.
+    this.body.setText(lines.length === 0 ? this.p.dim("…") : lines.join("\n"));
   }
   render(width: number): string[] {
     return this.box.render(width);
