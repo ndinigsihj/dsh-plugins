@@ -126,7 +126,7 @@
 |---|---|---|---|
 | B1 | `dsh-file-reference-local`（@file 标准语法 + 模糊索引） | 补全用 pi-tui 自带 cwd 遍历 | ✅ 落地（2026-08-25）：FileReferenceAutocomplete 组合 provider——命令与语法仍由 pi-tui 处理，@ 上下文候选项替换为 harness 发现阶段结果（空/失败回退 cwd walk；applyCompletion 原样委托，item/prefix 保持内层约定）；挂载进 tui-dev |
 | B2 | `dsh-attachment(-local)`（内容寻址附件存储） | 整链未挂 | M3「@ 图片附件」的后端半边：粘贴→存附件→消息 images |
-| B3 | `dsh-session-reference`（跨会话快照引用） | 未用 | `@` 引用历史会话进当前上下文 |
+| B3 | `dsh-session-reference`（跨会话快照引用） | 未用 | ✅ 落地（2026-08-25）：@ 菜单并入 session 候选（`remoteExportCandidates` cwd 亲和排序，`⌗ label · cwd · 时间`），选中插入规范 `@[label](dsh-session:…)` mention；resolver 自挂 pre-step 在请求时展开快照（预算/去重/排除自身均服务内建）；挂载进 tui-dev |
 | B4 | `dsh-mcp-client`（MCP 服务器桥接） | 全链未挂 | 外部工具生态入口 + TUI 工具清单展示 |
 | B5 | `dsh-plan-mode`（计划评审退出） | preset 已挂走通用审批卡 | plan 退出专用确认卡片 |
 

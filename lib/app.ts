@@ -122,6 +122,12 @@ export interface TuiAppOptions {
     query: string,
     signal: AbortSignal,
   ) => Promise<Array<{ path: string; kind: "file" | "directory" }>>;
+  /** Cross-session mentions merged into the same @ menu (optional). Each
+   * entry carries its canonical markdown mention ready for insertion. */
+  sessionCompletions?: (
+    query: string,
+    signal: AbortSignal,
+  ) => Promise<Array<{ mention: string; label: string; description?: string }>>;
   /** Async preview text for the highlighted session in the /resume picker. */
   sessionPreview?: SessionPreviewLoader;
 }
@@ -1137,6 +1143,7 @@ class FileReferenceAutocomplete implements AutocompleteProvider {
   constructor(
     private readonly inner: CombinedAutocompleteProvider,
     private readonly files?: TuiAppOptions["fileCompletions"],
+    private readonly sessions?: TuiAppOptions["sessionCompletions"],
   ) {}
 
   async getSuggestions(
@@ -1147,7 +1154,7 @@ class FileReferenceAutocomplete implements AutocompleteProvider {
   ): Promise<AutocompleteSuggestions | null> {
     const base = await this.inner.getSuggestions(lines, cursorLine, cursorCol, options);
     if (
-      this.files === undefined ||
+      (this.files === undefined && this.sessions === undefined) ||
       !this.inner.shouldTriggerFileCompletion(lines, cursorLine, cursorCol)
     ) {
       return base;
@@ -1156,17 +1163,32 @@ class FileReferenceAutocomplete implements AutocompleteProvider {
     if (atPrefix === null) return base;
     try {
       const query = atPrefix.startsWith(`@"`) ? atPrefix.slice(2, -1) : atPrefix.slice(1);
-      const candidates = await this.files(query, options.signal);
-      const items = candidates.map((cand) => {
-        const dir = cand.kind === "directory";
-        const path = dir && !cand.path.endsWith("/") ? `${cand.path}/` : cand.path;
-        const quoted = atPrefix.startsWith(`@"`) || path.includes(" ");
-        return {
-          value: quoted ? `@"${path}"` : `@${path}`,
-          label: `${path.split("/").filter(Boolean).pop() ?? path}${dir ? "/" : ""}`,
-          description: path,
-        };
-      });
+      const [fileItems, sessionItems] = await Promise.all([
+        this.files === undefined
+          ? Promise.resolve([])
+          : this.files(query, options.signal).then((candidates) =>
+              candidates.map((cand) => {
+                const dir = cand.kind === "directory";
+                const path = dir && !cand.path.endsWith("/") ? `${cand.path}/` : cand.path;
+                const quoted = atPrefix.startsWith(`@"`) || path.includes(" ");
+                return {
+                  value: quoted ? `@"${path}"` : `@${path}`,
+                  label: `${path.split("/").filter(Boolean).pop() ?? path}${dir ? "/" : ""}`,
+                  description: path,
+                };
+              }),
+            ),
+        this.sessions === undefined
+          ? Promise.resolve([])
+          : this.sessions(query, options.signal).then((mentions) =>
+              mentions.map((m) => ({
+                value: m.mention,
+                label: `⌗ ${m.label}`,
+                description: m.description ?? "session snapshot",
+              })),
+            ),
+      ]);
+      const items = [...fileItems, ...sessionItems];
       if (items.length === 0) return base;
       return { items, prefix: atPrefix };
     } catch {
@@ -1262,7 +1284,9 @@ export class TuiApp {
         options.autocomplete.commands as never,
         process.cwd(),
       );
-      this.editor.setAutocompleteProvider(new FileReferenceAutocomplete(provider, options.fileCompletions));
+      this.editor.setAutocompleteProvider(
+        new FileReferenceAutocomplete(provider, options.fileCompletions, options.sessionCompletions),
+      );
       this.editor.setAutocompleteMaxVisible?.(8);
     }
 

@@ -629,6 +629,15 @@ interface CoreServices {
       signal: AbortSignal,
     ): Promise<Array<{ path: string; kind: string }>>;
   };
+  /** Cross-session mention candidates (mounted by the tui-dev profile patch);
+   * mentions carry the canonical markdown the resolver expands at pre-step. */
+  sessionReferenceResolver?: {
+    remoteExportCandidates(
+      agent: unknown,
+      query: string,
+      signal?: AbortSignal,
+    ): Promise<Array<{ mention: string; label: string; cwd?: string; createdAt?: number }>>;
+  };
   /** Optional roster over ~/.dsh/.agent-presets (absent in bare boots). */
   agentPresets?: PresetRoster;
   /** User-settings seam; the /preset default persists through its ns. */
@@ -660,6 +669,9 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
   const subagents = ctx.get<CoreServices["subagents"]>("subagents");
   const jobs = ctx.get<CoreServices["jobs"]>("jobs");
   const fileReferences = ctx.get<CoreServices["fileReferences"]>("fileReferences");
+  const sessionReferenceResolver = ctx.get<CoreServices["sessionReferenceResolver"]>(
+    "sessionReferenceResolver",
+  );
   const agentPresets = ctx.get<PresetRoster>("agentPresets");
   const settings = ctx.get<SettingsSeam>("settings");
   const llm = ctx.get<CoreServices["llm"]>("llm");
@@ -681,6 +693,7 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
     subagents,
     jobs,
     fileReferences,
+    sessionReferenceResolver,
     agentPresets,
     settings,
     llm,
@@ -1112,6 +1125,24 @@ async function run(
                 kind: c.kind === "directory" ? ("directory" as const) : ("file" as const),
               })),
             ),
+    sessionCompletions:
+      services.sessionReferenceResolver === undefined
+        ? undefined
+        : (query, signal) =>
+            services.sessionReferenceResolver!
+              .remoteExportCandidates(agent, query, signal)
+              .then((candidates) =>
+                candidates.map((c) => ({
+                  mention: c.mention,
+                  label: c.label,
+                  description: [
+                    c.cwd !== undefined ? c.cwd.replace(/^\/Users\/[^/]+/, "~") : undefined,
+                    typeof c.createdAt === "number" ? relativeTime(c.createdAt) : undefined,
+                  ]
+                    .filter(Boolean)
+                    .join(" · "),
+                })),
+              ),
     sessionPreview: async (sessionId) => {
       // Cold ladder first: cached checkpoint + persistence tail replay, no
       // full-log decode; the row is written back so repeat hovers get
