@@ -512,7 +512,11 @@ class ToolRow implements RowComponent {
           ? joinTextBlocks(view.content)
           : undefined;
       if (callText !== "" && callText !== resultText)
-        lines.push(this.styleSpillNotices(sanitizeDisplay(callText)));
+        lines.push(
+          // Bright over default: the payload is the reason the card was
+          // expanded, so it must out-shout the narration below it.
+          this.p.fg(this.styleSpillNotices(sanitizeDisplay(callText)), "brightWhite"),
+        );
     }
     if (view !== undefined && view.card === "terminal") {
       if (view.output !== undefined && view.output !== "")
@@ -1049,7 +1053,11 @@ class PlanReviewCard implements Component {
       wrapped.push(...(raw.trim() === "" ? [""] : wrapTextWithAnsi(raw, inner)));
     }
     const shown = wrapped.slice(0, PLAN_REVIEW_BODY_LINES);
-    for (const line of shown) content.push(line === "" ? "" : truncateToWidth(line, inner));
+    for (const line of shown) {
+      content.push(
+        line === "" ? "" : this.palette.fg(truncateToWidth(line, inner), "brightWhite"),
+      );
+    }
     if (wrapped.length > shown.length) {
       content.push(
         this.palette.dim(`… ${wrapped.length - shown.length} more lines · full plan in the transcript`),
