@@ -1140,11 +1140,20 @@ function atPrefixBeforeCursor(line: string, cursorCol: number): string | null {
  * empty or failed discovery, and applyCompletion delegates untouched since
  * items and prefix keep the inner conventions (`@path`, quoted on spaces). */
 class FileReferenceAutocomplete implements AutocompleteProvider {
+  // Explicit fields: Node strip-only TS rejects parameter properties
+  // (ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX) — they require emit.
+  private readonly inner: CombinedAutocompleteProvider;
+  private readonly files: TuiAppOptions["fileCompletions"];
+  private readonly sessions: TuiAppOptions["sessionCompletions"] | undefined;
   constructor(
-    private readonly inner: CombinedAutocompleteProvider,
-    private readonly files?: TuiAppOptions["fileCompletions"],
-    private readonly sessions?: TuiAppOptions["sessionCompletions"],
-  ) {}
+    inner: CombinedAutocompleteProvider,
+    files?: TuiAppOptions["fileCompletions"],
+    sessions?: TuiAppOptions["sessionCompletions"],
+  ) {
+    this.inner = inner;
+    this.files = files;
+    this.sessions = sessions;
+  }
 
   async getSuggestions(
     lines: string[],
