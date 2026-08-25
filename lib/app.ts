@@ -326,6 +326,14 @@ const TOOL_LINES_CAP = 40;
  * The locator is rendered as a compact badge instead of prose. */
 const SPILL_NOTICE_RE = /\([^()]*Full formatted result stored at: (.+?)\. /;
 
+/** Joined visible text of a tool view's content blocks (empty when none). */
+function joinTextBlocks(content: ReadonlyArray<{ type?: unknown; text?: unknown }>): string {
+  return content
+    .filter((b) => b.type === "text")
+    .map((b) => String(typeof b.text === "string" ? b.text : ""))
+    .join("");
+}
+
 class AssistantRow implements RowComponent {
   private readonly box = new Container();
   private readonly reasoning: Text;
@@ -494,6 +502,18 @@ class ToolRow implements RowComponent {
     const lines: string[] = [];
     if (row.error !== undefined) lines.push(this.p.fg(`${row.error.name}: ${row.error.code}`, "red"));
     const view = row.resultView;
+    // Expanded cards read top-down: the CALL payload first (bash command,
+    // exit_plan_mode plan…), then the result. The result sometimes repeats
+    // the call verbatim (ask-style tools narrate instead) — skip that.
+    if (row.callView !== undefined && row.callView.card === "generic" && row.callView.content !== undefined) {
+      const callText = joinTextBlocks(row.callView.content);
+      const resultText =
+        view !== undefined && view.card === "generic" && view.content !== undefined
+          ? joinTextBlocks(view.content)
+          : undefined;
+      if (callText !== "" && callText !== resultText)
+        lines.push(this.styleSpillNotices(sanitizeDisplay(callText)));
+    }
     if (view !== undefined && view.card === "terminal") {
       if (view.output !== undefined && view.output !== "")
         lines.push(this.styleSpillNotices(sanitizeDisplay(view.output)));
@@ -533,15 +553,6 @@ class ToolRow implements RowComponent {
         lines.push(`${sanitizeDisplay(view.url)} ${this.p.dim(`· HTTP ${view.statusCode}`)}`);
         if (view.truncated) lines.push(this.p.dim("(body truncated)"));
       }
-    } else if (view === undefined && row.callView?.card === "generic") {
-      // Pending or failed call with no resultView: the payload (e.g. the
-      // full plan inside exit_plan_mode) lives only on the call side.
-      // export.ts already renders this exact fallback.
-      const text = (row.callView.content ?? [])
-        .filter((b) => b.type === "text")
-        .map((b) => String((b as { text?: unknown }).text ?? ""))
-        .join("");
-      if (text !== "") lines.push(this.styleSpillNotices(sanitizeDisplay(text)));
     }
     if (lines.length > TOOL_LINES_CAP) {
       const extra = lines.length - TOOL_LINES_CAP;
