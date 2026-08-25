@@ -38,14 +38,9 @@ Esc 移除与 Esc 打断 agent 的冲突处理：有待发队列且 agent 空闲
 
 ## 4. 技术方案
 
-- **S1 挂载**：tui-dev patch 加
-  ```yaml
-  - id: attachment-local
-    name: '@deepseek-ai/dsh-attachment-local'
-    config:
-      dshHome: /Users/vito/.dsh
-  ```
-  （config 必填项仅 dshHome；其余预算用默认值。）
+- **S1 挂载**：无需新增——`dsh-base` 已挂 `dsh-attachment-local`（默认 dshHome=~/.dsh）。
+  教训：设计时只查了 §9 清单没复查 base 行，重复挂载导致 loader duplicate id 拒启
+  （2026-08-25 实际发生，删行即愈）。后续任何挂载前先 grep base patch。
 - **S2 接线**：CoreServices 增 `attachments?: { saveImage(input): Promise<{attachmentId: string; …ref 字段}>; imageLimits?: unknown }` 结构类型；mediaType 判定表 = 扩展名映射，未知扩展拒绝入队。
 - **S3 待发队列**：TuiApp 增 pendingImages 状态 + setPendingImages 渲染 ambient 行；`/img` 与粘贴识别都调 `app.addPendingImage(path)`；提交钩子在 onPrompt 前。
 - **S4 组装**：onPrompt 时若有队列：读文件字节 → saveImage → content = `[{text}, {type:"image", attachment: ref}…]`；createUserMessage 走既有 createMessage 通路。失败策略见 §3。
