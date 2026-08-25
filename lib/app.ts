@@ -5,6 +5,8 @@
 // stay as separate in-process services; this module consumes them.
 
 import { basename } from "node:path";
+import { readdir } from "node:fs/promises";
+import { homedir } from "node:os";
 import {
   CombinedAutocompleteProvider,
   Container,
@@ -1134,6 +1136,35 @@ function atPrefixBeforeCursor(line: string, cursorCol: number): string | null {
   return plain ? plain[1]! : null;
 }
 
+/** Live readdir candidates for escape-path queries (absolute, ~, ../): the
+ * workspace-rooted discovery index cannot see these, but the parent
+ * directory listing completes them just the same. Directories sort first
+ * so drilling continues; capped to keep the menu usable. */
+async function literalPathCandidates(
+  rawQuery: string,
+  signal: AbortSignal,
+): Promise<Array<{ path: string; kind: "file" | "directory" }>> {
+  const expanded = rawQuery === "~" || rawQuery.startsWith("~/") ? `${homedir()}${rawQuery.slice(1)}` : rawQuery;
+  const slash = expanded.lastIndexOf("/");
+  if (slash < 0) return [];
+  const directory = expanded.slice(0, slash + 1) || "/";
+  const fragment = expanded.slice(slash + 1);
+  const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
+  signal.throwIfAborted();
+  return entries
+    .filter((entry) => entry.name.startsWith(fragment))
+    .sort(
+      (a, b) =>
+        Number(b.isDirectory()) - Number(a.isDirectory()) ||
+        a.name.localeCompare(b.name),
+    )
+    .slice(0, 8)
+    .map((entry) => ({
+      path: `${directory}${entry.name}`,
+      kind: entry.isDirectory() ? ("directory" as const) : ("file" as const),
+    }));
+}
+
 /** Provider composition: pi-tui keeps command + grammar handling; when an
  * @-context is active and the harness discovery seam is wired, its
  * candidates REPLACE the cwd-walk results — inner stays the fallback for
@@ -1172,21 +1203,29 @@ class FileReferenceAutocomplete implements AutocompleteProvider {
     if (atPrefix === null) return base;
     try {
       const query = atPrefix.startsWith(`@"`) ? atPrefix.slice(2, -1) : atPrefix.slice(1);
-      const [fileItems, sessionItems] = await Promise.all([
-        this.files === undefined
+      // Out-of-workspace paths (/ ~ ../) are invisible to the rooted
+      // discovery index — complete them with a live readdir of the parent
+      // directory so absolute references stay first-class.
+      const wantsLiteral =
+        query.startsWith("/") ||
+        query.startsWith("~/") ||
+        query.startsWith("../") ||
+        query === ".." ||
+        query === "~";
+      const toItem = (cand: { path: string; kind: "file" | "directory" }) => {
+        const dir = cand.kind === "directory";
+        const path = dir && !cand.path.endsWith("/") ? `${cand.path}/` : cand.path;
+        const quoted = atPrefix.startsWith(`@"`) || path.includes(" ");
+        return {
+          value: quoted ? `@"${path}"` : `@${path}`,
+          label: `${path.split("/").filter(Boolean).pop() ?? path}${dir ? "/" : ""}`,
+          description: path,
+        };
+      };
+      const [fileItems, sessionItems, literalItems] = await Promise.all([
+        this.files === undefined || wantsLiteral
           ? Promise.resolve([])
-          : this.files(query, options.signal).then((candidates) =>
-              candidates.map((cand) => {
-                const dir = cand.kind === "directory";
-                const path = dir && !cand.path.endsWith("/") ? `${cand.path}/` : cand.path;
-                const quoted = atPrefix.startsWith(`@"`) || path.includes(" ");
-                return {
-                  value: quoted ? `@"${path}"` : `@${path}`,
-                  label: `${path.split("/").filter(Boolean).pop() ?? path}${dir ? "/" : ""}`,
-                  description: path,
-                };
-              }),
-            ),
+          : this.files(query, options.signal).then((candidates) => candidates.map(toItem)),
         this.sessions === undefined
           ? Promise.resolve([])
           : this.sessions(query, options.signal).then((mentions) =>
@@ -1196,8 +1235,9 @@ class FileReferenceAutocomplete implements AutocompleteProvider {
                 description: m.description ?? "session snapshot",
               })),
             ),
+        wantsLiteral ? literalPathCandidates(query, options.signal) : Promise.resolve([]),
       ]);
-      const items = [...fileItems, ...sessionItems];
+      const items = [...literalItems.map(toItem), ...fileItems, ...sessionItems];
       if (items.length === 0) return base;
       return { items, prefix: atPrefix };
     } catch {
