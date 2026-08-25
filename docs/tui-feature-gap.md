@@ -124,7 +124,7 @@
 
 | # | 能力 | 现状 | TUI 落地点 |
 |---|---|---|---|
-| B1 | `dsh-file-reference-local`（@file 标准语法 + 模糊索引） | 补全用 pi-tui 自带 cwd 遍历 | `@` 文件源切 harness 标准缝，语法对齐官方 |
+| B1 | `dsh-file-reference-local`（@file 标准语法 + 模糊索引） | 补全用 pi-tui 自带 cwd 遍历 | ✅ 落地（2026-08-25）：FileReferenceAutocomplete 组合 provider——命令与语法仍由 pi-tui 处理，@ 上下文候选项替换为 harness 发现阶段结果（空/失败回退 cwd walk；applyCompletion 原样委托，item/prefix 保持内层约定）；挂载进 tui-dev |
 | B2 | `dsh-attachment(-local)`（内容寻址附件存储） | 整链未挂 | M3「@ 图片附件」的后端半边：粘贴→存附件→消息 images |
 | B3 | `dsh-session-reference`（跨会话快照引用） | 未用 | `@` 引用历史会话进当前上下文 |
 | B4 | `dsh-mcp-client`（MCP 服务器桥接） | 全链未挂 | 外部工具生态入口 + TUI 工具清单展示 |

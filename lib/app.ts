@@ -26,6 +26,8 @@ import {
   type Component,
   type EditorTheme,
   type MarkdownTheme,
+  type AutocompleteProvider,
+  type AutocompleteSuggestions,
   type OverlayHandle,
   type SelectItem,
   type SelectListTheme,
@@ -114,6 +116,12 @@ export interface TuiAppOptions {
   onExit(): Promise<void>;
   /** Editor slash-command + @-file completion catalog (optional). */
   autocomplete?: { commands: AutocompleteCommand[] };
+  /** Harness file-reference discovery as the @-completion source (optional;
+   * absent → pi-tui's cwd-walk provider stays the only file source). */
+  fileCompletions?: (
+    query: string,
+    signal: AbortSignal,
+  ) => Promise<Array<{ path: string; kind: "file" | "directory" }>>;
   /** Async preview text for the highlighted session in the /resume picker. */
   sessionPreview?: SessionPreviewLoader;
 }
@@ -1109,6 +1117,74 @@ export function formatGoalLine(p: Palette, goal: GoalSummary, width: number): st
   return truncateToWidth(text, Math.max(20, width));
 }
 
+/** @-prefix token before the cursor: `@query`, or an unterminated quoted
+ * `@"query…`. null when the cursor is not in an @-context. Mirrors pi-tui's
+ * delimiter grammar without lookbehind. */
+function atPrefixBeforeCursor(line: string, cursorCol: number): string | null {
+  const text = line.slice(0, cursorCol);
+  const quoted = /(?:^|\s)(@"[^"]*)$/.exec(text);
+  if (quoted) return quoted[1]!;
+  const plain = /(?:^|\s)(@[^\s]*)$/.exec(text);
+  return plain ? plain[1]! : null;
+}
+
+/** Provider composition: pi-tui keeps command + grammar handling; when an
+ * @-context is active and the harness discovery seam is wired, its
+ * candidates REPLACE the cwd-walk results — inner stays the fallback for
+ * empty or failed discovery, and applyCompletion delegates untouched since
+ * items and prefix keep the inner conventions (`@path`, quoted on spaces). */
+class FileReferenceAutocomplete implements AutocompleteProvider {
+  constructor(
+    private readonly inner: CombinedAutocompleteProvider,
+    private readonly files?: TuiAppOptions["fileCompletions"],
+  ) {}
+
+  async getSuggestions(
+    lines: string[],
+    cursorLine: number,
+    cursorCol: number,
+    options: { signal: AbortSignal; force?: boolean },
+  ): Promise<AutocompleteSuggestions | null> {
+    const base = await this.inner.getSuggestions(lines, cursorLine, cursorCol, options);
+    if (
+      this.files === undefined ||
+      !this.inner.shouldTriggerFileCompletion(lines, cursorLine, cursorCol)
+    ) {
+      return base;
+    }
+    const atPrefix = atPrefixBeforeCursor(lines[cursorLine] ?? "", cursorCol);
+    if (atPrefix === null) return base;
+    try {
+      const query = atPrefix.startsWith(`@"`) ? atPrefix.slice(2, -1) : atPrefix.slice(1);
+      const candidates = await this.files(query, options.signal);
+      const items = candidates.map((cand) => {
+        const dir = cand.kind === "directory";
+        const path = dir && !cand.path.endsWith("/") ? `${cand.path}/` : cand.path;
+        const quoted = atPrefix.startsWith(`@"`) || path.includes(" ");
+        return {
+          value: quoted ? `@"${path}"` : `@${path}`,
+          label: `${path.split("/").filter(Boolean).pop() ?? path}${dir ? "/" : ""}`,
+          description: path,
+        };
+      });
+      if (items.length === 0) return base;
+      return { items, prefix: atPrefix };
+    } catch {
+      return base; // discovery failure degrades to the cwd walk
+    }
+  }
+
+  applyCompletion(
+    lines: string[],
+    cursorLine: number,
+    cursorCol: number,
+    item: { value: string; label: string; description?: string },
+    prefix: string,
+  ): { lines: string[]; cursorLine: number; cursorCol: number } {
+    return this.inner.applyCompletion(lines, cursorLine, cursorCol, item as never, prefix);
+  }
+}
+
 export class TuiApp {
   private readonly terminal = new ProcessTerminal();
   private readonly clipboardTerminal = new ClipboardTerminal(this.terminal);
@@ -1186,7 +1262,7 @@ export class TuiApp {
         options.autocomplete.commands as never,
         process.cwd(),
       );
-      this.editor.setAutocompleteProvider(provider);
+      this.editor.setAutocompleteProvider(new FileReferenceAutocomplete(provider, options.fileCompletions));
       this.editor.setAutocompleteMaxVisible?.(8);
     }
 

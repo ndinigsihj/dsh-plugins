@@ -621,6 +621,14 @@ interface CoreServices {
       status: string;
     }>;
   };
+  /** Harness @-file discovery (mounted by the tui-dev profile patch). */
+  fileReferences?: {
+    list(
+      agent: unknown,
+      query: string,
+      signal: AbortSignal,
+    ): Promise<Array<{ path: string; kind: string }>>;
+  };
   /** Optional roster over ~/.dsh/.agent-presets (absent in bare boots). */
   agentPresets?: PresetRoster;
   /** User-settings seam; the /preset default persists through its ns. */
@@ -651,6 +659,7 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
   const tokenMeter = ctx.get<CoreServices["tokenMeter"]>("tokenMeter");
   const subagents = ctx.get<CoreServices["subagents"]>("subagents");
   const jobs = ctx.get<CoreServices["jobs"]>("jobs");
+  const fileReferences = ctx.get<CoreServices["fileReferences"]>("fileReferences");
   const agentPresets = ctx.get<PresetRoster>("agentPresets");
   const settings = ctx.get<SettingsSeam>("settings");
   const llm = ctx.get<CoreServices["llm"]>("llm");
@@ -671,6 +680,7 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
     tokenMeter,
     subagents,
     jobs,
+    fileReferences,
     agentPresets,
     settings,
     llm,
@@ -1092,6 +1102,16 @@ async function run(
     onCancel: () => agent.cancel({ kind: "user" }),
     onExit: () => stopAndExit(),
     autocomplete: { commands: autocompleteCommands() },
+    fileCompletions:
+      services.fileReferences === undefined
+        ? undefined
+        : (query, signal) =>
+            services.fileReferences!.list(agent, query, signal).then((candidates) =>
+              candidates.map((c) => ({
+                path: c.path,
+                kind: c.kind === "directory" ? ("directory" as const) : ("file" as const),
+              })),
+            ),
     sessionPreview: async (sessionId) => {
       // Cold ladder first: cached checkpoint + persistence tail replay, no
       // full-log decode; the row is written back so repeat hovers get
