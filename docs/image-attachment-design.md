@@ -45,13 +45,13 @@ Esc 移除与 Esc 打断 agent 的冲突处理：有待发队列且 agent 空闲
 - **S3 待发队列**：TuiApp 增 pendingImages 状态 + setPendingImages 渲染 ambient 行；`/img` 与粘贴识别都调 `app.addPendingImage(path)`；提交钩子在 onPrompt 前。
 - **S4 组装**：onPrompt 时若有队列：读文件字节 → saveImage → content = `[{text}, {type:"image", attachment: ref}…]`；createUserMessage 走既有 createMessage 通路。失败策略见 §3。
 - **S5 回放占位**：transcript.ts user 分支对 image block 渲染 `[图片 <name||id 前 8 位>]` 标记行；export.ts 导出同样占位。resume 后从日志 image block 直接可见（引用外存，日志体积不受影响）。
-- **S6 测试模型**：视觉验证需 vision 路由——settings 已有 `opencode-go/deepseek-v4-flash-vision-exp`（supportsReasoningEffort 已配）。验收时 `/model` 切到它再问「图里是什么」。
+- **S6 测试模型**：视觉验证需 vision 路由——settings 的 `opencode-go/deepseek-v4-flash-vision-exp` 必须显式声明 `input: [text, image]`；模型名本身不声明能力，缺省会被 pi-ai 当作 text-only 并降载图片。验收时 `/model` 切到它再问「图里是什么」。
 
 ## 5. 风险
 
 | 风险 | 缓解 |
 |---|---|
-| 非 vision 路由收到 image block | pi-ai 已内建降载/占位叙事（OFFLOADED_IMAGE_TEXT）；文档标注需 vision 路由才真正"看得见" |
+| 非 vision 路由收到 image block | pi-ai 已内建降载/占位叙事（OFFLOADED_IMAGE_TEXT）；自定义 route 的模型必须显式声明 `input` 含 `image`，否则默认按 text-only 降载 |
 | 大图 token 成本 | host 归一化+预算已兜底；前端不做二次限制 |
 | 粘贴误判（恰好粘贴一个 .png 结尾的非路径文本） | 入队前 fs 存在性校验，失败则当普通文本放行 |
 | 日志膨胀 | 日志只存 ImageAttachmentRef，字节在 storages 外存 |
