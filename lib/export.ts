@@ -22,6 +22,9 @@ export function renderTranscriptMarkdown(rows: ReadonlyArray<TranscriptRow>): st
     switch (row.kind) {
       case "user":
         out.push("", "## User", "", row.text.trim(), "");
+        if (row.images !== undefined && row.images.length > 0) {
+          out.push(`attachments: ${row.images.join(" ")}`, "");
+        }
         break;
       case "assistant": {
         out.push("", "## Assistant", "");

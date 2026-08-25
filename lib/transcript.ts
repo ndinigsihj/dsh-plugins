@@ -9,7 +9,7 @@ import type { SessionEvent } from "@deepseek-ai/dsh-session/types";
 import type { ToolCallView, ToolResultView } from "@deepseek-ai/dsh-tools/presentation";
 
 export type TranscriptRow =
-  | { kind: "user"; text: string; seq: number }
+  | { kind: "user"; text: string; images?: string[]; seq: number }
   | {
       kind: "assistant";
       /** Visible markdown text; reasoning is folded into a dim section. */
@@ -192,14 +192,26 @@ export class TranscriptModel {
         };
         const content = data.content ?? [];
         const { text, reasoning } = splitContent(content);
+        const imageLabels = content
+          .filter((b) => (b as { type?: unknown }).type === "image")
+          .map((b) => {
+            const att = (b as { attachment?: { attachmentId?: unknown } }).attachment;
+            const id = typeof att?.attachmentId === "string" ? att.attachmentId : "";
+            return `[图片 ${id.slice(0, 8) || "?"}]`;
+          });
         const joined = text || reasoning;
-        if (joined === "") break;
+        if (joined === "" && imageLabels.length === 0) break;
         // Injected context (runtime snapshots, reminders) is plugin-sourced;
         // render it dim, distinct from a human user message.
         if (data.source?.kind === "plugin") {
           this.rows.push({ kind: "context", text: joined, seq: event.seq });
         } else {
-          this.rows.push({ kind: "user", text: joined, seq: event.seq });
+          this.rows.push({
+            kind: "user",
+            text: joined,
+            images: imageLabels.length > 0 ? imageLabels : undefined,
+            seq: event.seq,
+          });
         }
         this.bump();
         break;

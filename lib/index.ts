@@ -8,7 +8,7 @@
 
 import { basename, resolve } from "node:path";
 import { readFileSync } from "node:fs";
-import { writeFile } from "node:fs/promises";
+import { writeFile, readFile } from "node:fs/promises";
 import z from "@deepseek-ai/schemastery";
 import { randomUUID } from "node:crypto";
 import { installModelSelection } from "@deepseek-ai/dsh-agent";
@@ -105,6 +105,7 @@ const HELP_TEXT = [
   "/preset [id]     switch agent presets (blank session swaps live; otherwise saved as default)",
   "/model           switch THIS session's model only (history carries over; default untouched)",
   "/effort          switch THIS session's reasoning effort (next turn on; default untouched)",
+  "/img <path>…     attach image files to your next message",
   "/permission      switch THIS session's sandbox/approval bundle (permission presets)",
   "/compact         fold older history into a summary (core command)",
   "/cost            cumulative provider-reported token usage",
@@ -118,11 +119,18 @@ const HELP_TEXT = [
   "Ctrl+O          展开/收起思考与工具详情",
 ].join("\n");
 
-function userMessage(text: string): unknown {
-  return createUserMessage({
-    content: [{ type: "text", text }],
-    source: { kind: "user" },
-  });
+/** Host mediaType for an image path, or undefined for unsupported files. */
+function imageMediaTypeOfPath(path: string): string | undefined {
+  const dot = path.lastIndexOf(".");
+  if (dot < 0) return undefined;
+  switch (path.slice(dot).toLowerCase()) {
+    case ".png": return "image/png";
+    case ".jpg":
+    case ".jpeg": return "image/jpeg";
+    case ".webp": return "image/webp";
+    case ".gif": return "image/gif";
+    default: return undefined;
+  }
 }
 
 interface PreviewEvent {
@@ -638,6 +646,14 @@ interface CoreServices {
       signal?: AbortSignal,
     ): Promise<Array<{ mention: string; label: string; cwd?: string; createdAt?: number }>>;
   };
+  /** Content-addressed image store (mounted by the tui-dev profile patch). */
+  attachments?: {
+    saveImage(input: {
+      data: Uint8Array;
+      mediaType: string;
+      name?: string;
+    }): Promise<Record<string, unknown>>;
+  };
   /** Optional roster over ~/.dsh/.agent-presets (absent in bare boots). */
   agentPresets?: PresetRoster;
   /** User-settings seam; the /preset default persists through its ns. */
@@ -672,6 +688,7 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
   const sessionReferenceResolver = ctx.get<CoreServices["sessionReferenceResolver"]>(
     "sessionReferenceResolver",
   );
+  const attachments = ctx.get<CoreServices["attachments"]>("attachments");
   const agentPresets = ctx.get<PresetRoster>("agentPresets");
   const settings = ctx.get<SettingsSeam>("settings");
   const llm = ctx.get<CoreServices["llm"]>("llm");
@@ -694,6 +711,7 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
     jobs,
     fileReferences,
     sessionReferenceResolver,
+    attachments,
     agentPresets,
     settings,
     llm,
@@ -947,6 +965,7 @@ async function run(
       { name: "help", description: "Show dsh-tui help" },
       { name: "session", description: "Show the current session id" },
       { name: "effort", description: "Pick the reasoning effort for this session" },
+      { name: "img", description: "Attach image files to your next message" },
       { name: "permission", description: "Switch this session's sandbox/approval bundle" },
       { name: "new", description: "Start a fresh session on the configured/saved default preset" },
       {
@@ -1103,15 +1122,58 @@ async function run(
     agent: agentSurface(agent),
     modelLabel: `${liveRoute.provider}/${liveRoute.model}`,
     presenters,
-    onPrompt: (text) => {
+    onPrompt: (text, images) => {
       if (text.startsWith("/")) {
         void runCommand(text);
         return;
       }
-      const msg = userMessage(text);
+      const content = [{ type: "text", text }] as unknown as Parameters<
+        typeof createUserMessage
+      >[0]["content"];
+      for (const img of images ?? []) {
+        // Full ImageAttachmentRef — the pi-ai adapter resolves request
+        // versions from it at assembly time.
+        content.push({ type: "image", attachment: img.ref } as never);
+      }
+      const msg = createUserMessage({
+        content,
+        source: { kind: "user" },
+      });
       if (agent.status === "running") agent.steer(msg);
       else agent.followup(msg);
     },
+    saveImages:
+      services.attachments === undefined
+        ? undefined
+        : async (paths) => {
+            const saved: Array<{
+              path: string;
+              name: string;
+              mediaType: string;
+              attachmentId: string;
+              ref: Record<string, unknown>;
+            }> = [];
+            for (const path of paths) {
+              const data = new Uint8Array(await readFile(path));
+              const mediaType = imageMediaTypeOfPath(path);
+              if (mediaType === undefined) {
+                throw new Error(`${basename(path)} is not a supported image (png/jpeg/webp/gif)`);
+              }
+              const ref = await services.attachments!.saveImage({
+                data,
+                mediaType,
+                name: basename(path),
+              });
+              saved.push({
+                path,
+                name: basename(path),
+                mediaType,
+                attachmentId: String(ref.attachmentId ?? ""),
+                ref,
+              });
+            }
+            return saved;
+          },
     onCancel: () => agent.cancel({ kind: "user" }),
     onExit: () => stopAndExit(),
     autocomplete: { commands: autocompleteCommands() },
@@ -2022,6 +2084,15 @@ async function run(
     }
     if (line === "/model") {
       await doModel();
+      return;
+    }
+    if (line === "/img" || line.startsWith("/img ")) {
+      const paths = line.slice(4).trim().split(/\s+/).filter((p) => p !== "");
+      if (paths.length === 0) {
+        app.showNotice("Usage: /img <path> [<path>…] — png/jpeg/webp/gif.");
+        return;
+      }
+      app.addPendingImagePaths(paths);
       return;
     }
     if (line === "/effort") {

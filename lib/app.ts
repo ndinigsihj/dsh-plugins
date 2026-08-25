@@ -5,6 +5,7 @@
 // stay as separate in-process services; this module consumes them.
 
 import { basename } from "node:path";
+import { existsSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import {
@@ -110,8 +111,9 @@ export interface TuiAppOptions {
   agent: AgentSurface;
   modelLabel: string;
   presenters: ToolPresenters;
-  /** User submitted a non-command line. Decide send-vs-steer and dispatch. */
-  onPrompt(text: string): void;
+  /** User submitted a non-command line. Decide send-vs-steer and dispatch.
+   * images carries the already-saved attachments for this message. */
+  onPrompt(text: string, images?: ReadonlyArray<SavedImage>): void;
   /** Esc/Ctrl+C while a turn is running. */
   onCancel(): void;
   /** Exit requested (e.g. /exit). */
@@ -124,6 +126,9 @@ export interface TuiAppOptions {
     query: string,
     signal: AbortSignal,
   ) => Promise<Array<{ path: string; kind: "file" | "directory" }>>;
+  /** Persist image files into ctx.attachments at submit time. Absent →
+   * /img and paste detection stay disabled (bare boots). */
+  saveImages?: (paths: string[]) => Promise<SavedImage[]>;
   /** Cross-session mentions merged into the same @ menu (optional). Each
    * entry carries its canonical markdown mention ready for insertion. */
   sessionCompletions?: (
@@ -275,7 +280,11 @@ class UserRow implements RowComponent {
     this.update(row);
   }
   update(row: Extract<TranscriptRow, { kind: "user" }>): void {
-    this.text.setText(this.p.fg(this.boxPrefix() + row.text, "yellow"));
+    const images =
+      row.images !== undefined && row.images.length > 0
+        ? this.p.dim(` ${row.images.join(" ")}`)
+        : "";
+    this.text.setText(this.p.fg(this.boxPrefix() + row.text, "yellow") + images);
   }
   private boxPrefix(): string {
     return "> ";
@@ -290,6 +299,17 @@ class UserRow implements RowComponent {
 
 /** Braille spin frames for the collapsed thinking header (time-based frame). */
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+/** Extensions accepted as image attachments (host mediaType map mirrors). */
+const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
+
+/** Whether a path looks like a supported image (extension check only —
+ * existence is validated separately so paste detection stays cheap). */
+function isImageFilePath(path: string): boolean {
+  const dot = path.lastIndexOf(".");
+  if (dot < 0) return false;
+  return IMAGE_EXTENSIONS.has(path.slice(dot).toLowerCase());
+}
 
 /** Hard-cap one ANSI-free line to `budget` display columns, appending an
  * ellipsis when anything was cut — keeps the line from wrapping inside a Text
@@ -1116,6 +1136,22 @@ interface ParsedMouseEvent {
   release: boolean;
 }
 
+/** One cross-session mention merged into the @ menu (canonical mention). */
+export interface SessionMentionItem {
+  mention: string;
+  label: string;
+  description?: string;
+}
+
+/** An image saved into ctx.attachments, ready for message assembly. */
+export interface SavedImage {
+  path: string;
+  name: string;
+  mediaType: string;
+  attachmentId: string;
+  /** Full ImageAttachmentRef for the message content block. */
+  ref: Record<string, unknown>;
+}
 /** The selection state pi-tui keeps private (and stable across 0.84.x) that
  * shift-extend needs: the anchor survives scrolling, so extending it across a
  * scrolled viewport resolves into absolute content coordinates. */
@@ -1416,6 +1452,8 @@ export class TuiApp {
   private readonly jobsLine: Text;
   private jobItems: RunningJob[] = [];
   private readonly goalLine: Text;
+  private readonly imageLine: Text;
+  private pendingImagePaths: string[] = [];
   private readonly todosLine: Text;
   private agent: AgentSurface;
   private modelLabel: string;
@@ -1470,9 +1508,19 @@ export class TuiApp {
     this.subagentsLine = new Text("", 1, 1);
     this.jobsLine = new Text("", 1, 1);
     this.goalLine = new Text("", 1, 1);
+    this.imageLine = new Text("", 1, 1);
     this.todosLine = new Text("", 1, 0);
     this.editor = new Editor(this.tui, editorTheme(this.p));
     this.editor.onSubmit = (text) => this.handleSubmit(text);
+    // Paste-in detection: a whole-editor text that is exactly an existing
+    // image file path becomes a pending attachment instead of prompt text.
+    this.editor.onChange = (text) => {
+      const t = text.trim();
+      if (t !== "" && isImageFilePath(t) && existsSync(t)) {
+        this.addPendingImagePaths([t]);
+        this.editor.setText("");
+      }
+    };
     if (options.autocomplete !== undefined) {
       const provider = new CombinedAutocompleteProvider(
         options.autocomplete.commands as never,
@@ -1494,6 +1542,7 @@ export class TuiApp {
       { component: this.subagentsLine, shrink: 1, minSize: 0 },
       { component: this.jobsLine, shrink: 1, minSize: 0 },
       { component: this.todosLine, shrink: 1, minSize: 0 },
+      { component: this.imageLine, shrink: 1, minSize: 0 },
       { component: dock, basis: "auto", grow: 0, shrink: 1, minSize: 1 },
     ]);
 
@@ -1932,7 +1981,49 @@ export class TuiApp {
     });
   }
 
-  askQuestion(item: AskQuestionRequest["questions"][number]): Promise<string[] | null> {    if (item.multiSelect === true && (item.options?.length ?? 0) > 0) {
+  /** Queue image paths for the next message; returns how many were added.
+   * Unknown extensions or missing files are noticed and skipped. */
+  addPendingImagePaths(paths: string[]): number {
+    let added = 0;
+    for (const path of paths) {
+      if (!isImageFilePath(path) || !existsSync(path)) {
+        this.showNotice(`Skipped ${truncateToWidth(path, 60)} — not an existing image (png/jpeg/webp/gif).`);
+        continue;
+      }
+      this.pendingImagePaths.push(path);
+      added += 1;
+    }
+    if (added > 0) this.renderImageLine();
+    return added;
+  }
+
+  /** Drop the most recently queued image; false when the queue is empty. */
+  removeLastPendingImage(): boolean {
+    if (this.pendingImagePaths.length === 0) return false;
+    this.pendingImagePaths.pop();
+    this.renderImageLine();
+    return true;
+  }
+
+  private renderImageLine(): void {
+    if (this.pendingImagePaths.length === 0) {
+      this.imageLine.setText("");
+      this.render();
+      return;
+    }
+    const names = this.pendingImagePaths.map((p) => basename(p));
+    const width = Math.max(20, process.stdout.columns ?? 100);
+    this.imageLine.setText(
+      truncateToWidth(
+        `${this.p.fg("🖼 images", "magenta")} ×${names.length} · ${this.p.dim(names.join(", "))}${this.p.dim(" · esc 移除最后一张")}`,
+        width,
+      ),
+    );
+    this.render();
+  }
+
+  askQuestion(item: AskQuestionRequest["questions"][number]): Promise<string[] | null> {
+    if (item.multiSelect === true && (item.options?.length ?? 0) > 0) {
       return new Promise((resolve) => {
         const list = new CheckboxList(this.p, item.question, item.options ?? []);
         const handle = this.tui.showOverlay(list, { anchor: "bottom-left", margin: 1 });
@@ -2046,6 +2137,11 @@ export class TuiApp {
         this.options.onCancel();
         return { consume: true };
       }
+      // Idle with queued images: Esc removes the last one. Gated on empty
+      // editor text so an open completion menu keeps its own dismissal.
+      if (this.pendingImagePaths.length > 0 && this.editor.getText().trim() === "") {
+        if (this.removeLastPendingImage()) return { consume: true };
+      }
       // Idle: pass Esc through — the editor owns it (dismisses its
       // autocomplete menu); a bare Esc with no menu is a harmless no-op.
       return undefined;
@@ -2053,12 +2149,32 @@ export class TuiApp {
     return undefined;
   }
 
-  private handleSubmit(text: string): void {
+  private async handleSubmit(text: string): Promise<void> {
     const trimmed = text.trim();
-    if (trimmed === "") return;
+    const hasImages = this.pendingImagePaths.length > 0;
+    if (trimmed === "" && !hasImages) return;
+    if (hasImages && this.options.saveImages === undefined) {
+      this.showNotice("Attachment storage unavailable in this boot — press esc to drop images.");
+      return;
+    }
+    let saved: SavedImage[] | undefined;
+    if (hasImages) {
+      try {
+        // Save BEFORE touching the editor: a failed image keeps the queue
+        // and the draft text so the user can fix and resend.
+        saved = await this.options.saveImages!(this.pendingImagePaths.slice());
+      } catch (error) {
+        this.showNotice(
+          `Attachment failed: ${error instanceof Error ? error.message : String(error)} — message not sent.`,
+        );
+        return;
+      }
+      this.pendingImagePaths = [];
+      this.renderImageLine();
+    }
     this.editor.addToHistory(text);
     this.editor.setText("");
-    this.options.onPrompt(trimmed);
+    this.options.onPrompt(trimmed, saved);
     this.render();
   }
 }
