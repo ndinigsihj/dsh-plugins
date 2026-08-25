@@ -119,18 +119,32 @@ const HELP_TEXT = [
   "Ctrl+O          展开/收起思考与工具详情",
 ].join("\n");
 
-/** Host mediaType for an image path, or undefined for unsupported files. */
-function imageMediaTypeOfPath(path: string): string | undefined {
-  const dot = path.lastIndexOf(".");
-  if (dot < 0) return undefined;
-  switch (path.slice(dot).toLowerCase()) {
-    case ".png": return "image/png";
-    case ".jpg":
-    case ".jpeg": return "image/jpeg";
-    case ".webp": return "image/webp";
-    case ".gif": return "image/gif";
-    default: return undefined;
+/** Sniff the real image format from magic bytes — extensions lie (renamed
+ * files are common), and dsh-attachment-local verifies declared type against
+ * fully decoded bytes before accepting anything. */
+function sniffImageMediaType(data: Uint8Array): string | undefined {
+  const b = data;
+  if (b.length >= 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) {
+    return "image/png";
   }
+  if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) {
+    return "image/jpeg";
+  }
+  if (
+    b.length >= 12 &&
+    b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 &&
+    b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50
+  ) {
+    return "image/webp";
+  }
+  if (
+    b.length >= 6 &&
+    b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 &&
+    (b[3] === 0x37 || b[3] === 0x39)
+  ) {
+    return "image/gif";
+  }
+  return undefined;
 }
 
 interface PreviewEvent {
@@ -1155,9 +1169,13 @@ async function run(
             }> = [];
             for (const path of paths) {
               const data = new Uint8Array(await readFile(path));
-              const mediaType = imageMediaTypeOfPath(path);
+              // Trust bytes, not the extension — admission decodes and
+              // compares, so a renamed file must declare what it really is.
+              const mediaType = sniffImageMediaType(data);
               if (mediaType === undefined) {
-                throw new Error(`${basename(path)} is not a supported image (png/jpeg/webp/gif)`);
+                throw new Error(
+                  `${basename(path)} is not a decodable png/jpeg/webp/gif image`,
+                );
               }
               const ref = await services.attachments!.saveImage({
                 data,
