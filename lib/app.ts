@@ -512,10 +512,13 @@ class ToolRow implements RowComponent {
           ? joinTextBlocks(view.content)
           : undefined;
       if (callText !== "" && callText !== resultText)
+        // Per-line styling: pi-tui resets SGR at every newline, so wrapping
+        // the whole multi-line block once leaves all but the first line
+        // unstyled (exactly why the card looked dim under it).
         lines.push(
-          // Bright over default: the payload is the reason the card was
-          // expanded, so it must out-shout the narration below it.
-          this.p.fg(this.styleSpillNotices(sanitizeDisplay(callText)), "brightWhite"),
+          ...this.styleSpillNotices(sanitizeDisplay(callText))
+            .split("\n")
+            .map((line) => this.p.fg(line, "brightWhite")),
         );
     }
     if (view !== undefined && view.card === "terminal") {
