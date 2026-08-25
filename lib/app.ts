@@ -533,6 +533,15 @@ class ToolRow implements RowComponent {
         lines.push(`${sanitizeDisplay(view.url)} ${this.p.dim(`· HTTP ${view.statusCode}`)}`);
         if (view.truncated) lines.push(this.p.dim("(body truncated)"));
       }
+    } else if (view === undefined && row.callView?.card === "generic") {
+      // Pending or failed call with no resultView: the payload (e.g. the
+      // full plan inside exit_plan_mode) lives only on the call side.
+      // export.ts already renders this exact fallback.
+      const text = (row.callView.content ?? [])
+        .filter((b) => b.type === "text")
+        .map((b) => String((b as { text?: unknown }).text ?? ""))
+        .join("");
+      if (text !== "") lines.push(this.styleSpillNotices(sanitizeDisplay(text)));
     }
     if (lines.length > TOOL_LINES_CAP) {
       const extra = lines.length - TOOL_LINES_CAP;
