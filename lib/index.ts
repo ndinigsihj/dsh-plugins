@@ -2110,12 +2110,24 @@ async function run(
           questions: Array<{
             id: string;
             question: string;
+            detail?: string;
+            intent?: { kind?: string };
             options?: Array<{ label: string; description?: string }>;
             multiSelect?: boolean;
           }>;
         };
         const answers: Array<{ id: string; selected: string[] }> = [];
         for (const item of req.questions ?? []) {
+          // B5: dsh-plan-mode's exit review carries the full plan in `detail`
+          // and compares the answer against its exact "Approve" label. The
+          // dedicated card renders that body; null answers mean
+          // keep-planning/dismissed, which the service narrates itself.
+          if (item.intent?.kind === "plan-review" && typeof item.detail === "string" && item.detail !== "") {
+            const picked = await app.askPlanReview({ question: item.question, plan: item.detail });
+            if (picked === null) return { answers: [] };
+            answers.push({ id: item.id, selected: [picked] });
+            continue;
+          }
           const selected = await app.askQuestion({
             id: item.id,
             question: item.question,

@@ -962,6 +962,116 @@ class ApprovalCard implements Component {
   }
 }
 
+const PLAN_REVIEW_CARD_MAX = 100;
+/** Body lines shown before the "full plan in the transcript" pointer. The
+ * complete plan is also rendered by the exit_plan_mode tool card above. */
+const PLAN_REVIEW_BODY_LINES = 14;
+
+/** Dedicated review card for dsh-plan-mode's exit_plan_mode ask: the plan
+ * body renders inline instead of the generic option-only question list.
+ * Approve must return the exact host label ("Approve") — the service
+ * compares it verbatim; everything else reads as keep-planning. */
+class PlanReviewCard implements Component {
+  private readonly palette: Palette;
+  private readonly question: string;
+  private readonly plan: string;
+  private readonly select: SelectList;
+
+  onDecide?: (outcome: "approved" | "kept" | "cancelled") => void;
+
+  constructor(palette: Palette, question: string, plan: string) {
+    this.palette = palette;
+    this.question = question;
+    this.plan = plan;
+    this.select = new SelectList(
+      [
+        { value: "approved", label: "Approve — leave plan mode" },
+        { value: "kept", label: "Keep planning" },
+      ],
+      2,
+      selectListTheme(palette),
+    );
+  }
+
+  handleInput(data: string): void {
+    if (matchesKey(data, "escape")) {
+      this.onDecide?.("cancelled");
+      return;
+    }
+    if (matchesKey(data, "enter")) {
+      const item = this.select.getSelectedItem();
+      if (item !== null) this.onDecide?.(item.value as "approved" | "kept");
+      return;
+    }
+    if (matchesKey(data, "up")) {
+      this.select.setSelectedIndex(0);
+      return;
+    }
+    if (matchesKey(data, "down")) {
+      this.select.setSelectedIndex(1);
+      return;
+    }
+    if (isPrintableInput(data)) {
+      const key = data.toLowerCase();
+      if (key === "a") this.onDecide?.("approved");
+      else if (key === "r") this.onDecide?.("kept");
+    }
+  }
+
+  render(width: number): string[] {
+    const cardWidth = Math.max(0, Math.min(width - 2, PLAN_REVIEW_CARD_MAX));
+    const inner = Math.max(16, cardWidth - 4);
+    const content: string[] = [""];
+    content.push(truncateToWidth(this.question, inner));
+    content.push("");
+    const wrapped: string[] = [];
+    for (const raw of this.plan.split("\n")) {
+      wrapped.push(...(raw.trim() === "" ? [""] : wrapTextWithAnsi(raw, inner)));
+    }
+    const shown = wrapped.slice(0, PLAN_REVIEW_BODY_LINES);
+    for (const line of shown) content.push(line === "" ? "" : truncateToWidth(line, inner));
+    if (wrapped.length > shown.length) {
+      content.push(
+        this.palette.dim(`… ${wrapped.length - shown.length} more lines · full plan in the transcript`),
+      );
+    }
+    content.push("");
+    content.push(...this.select.render(Math.max(24, inner)));
+    content.push(
+      this.palette.dim(
+        "  ↑↓ choose · enter confirm · a approve & exit · r keep planning · esc cancel",
+      ),
+    );
+    content.push("");
+    return [
+      this.topRule(cardWidth),
+      ...content.map((l) => this.bodyLine(l, cardWidth)),
+      this.bottomRule(cardWidth),
+    ];
+  }
+
+  invalidate(): void {
+    this.select.invalidate();
+  }
+
+  private bodyLine(text: string, cardWidth: number): string {
+    const pad = Math.max(0, cardWidth - 4 - visibleWidth(text));
+    return `${this.palette.dim("│ ")}${text}${" ".repeat(pad)}${this.palette.dim(" │")}`;
+  }
+
+  private topRule(cardWidth: number): string {
+    const title = this.palette.fg("📋 Plan review", "cyan");
+    const left = this.palette.dim("╭─ ");
+    const right = this.palette.dim(" ─╮");
+    const fill = Math.max(0, cardWidth - visibleWidth(left) - visibleWidth(title) - visibleWidth(right));
+    return `${left}${title}${this.palette.dim("─".repeat(fill))}${right}`;
+  }
+
+  private bottomRule(cardWidth: number): string {
+    return this.palette.dim(`╰${"─".repeat(Math.max(0, cardWidth - 2))}╯`);
+  }
+}
+
 /** SGR mouse event as pi-tui's parser produces it; the button byte carries
  * xterm modifier bits (bit2 = shift, bit5 = motion, bit6 = wheel). */
 interface ParsedMouseEvent {
@@ -1772,8 +1882,22 @@ export class TuiApp {
   }
 
   /** Prompt the human for one question, returning the chosen label or null on cancel. */
-  askQuestion(item: AskQuestionRequest["questions"][number]): Promise<string[] | null> {
-    if (item.multiSelect === true && (item.options?.length ?? 0) > 0) {
+  /** B5: dedicated plan-exit review card. Resolves the host's approve label
+   * verbatim ("Approve") on approval, or null for keep-planning/dismissed —
+   * dsh-plan-mode narrates both non-approve outcomes itself. */
+  askPlanReview(item: { question: string; plan: string }): Promise<string | null> {
+    return new Promise((resolve) => {
+      const card = new PlanReviewCard(this.p, item.question, item.plan);
+      card.onDecide = (outcome) => {
+        this.tui.hideOverlay();
+        resolve(outcome === "approved" ? "Approve" : null);
+      };
+      this.tui.showOverlay(card, { anchor: "bottom-center", margin: 1 });
+      this.tui.setFocus(card);
+    });
+  }
+
+  askQuestion(item: AskQuestionRequest["questions"][number]): Promise<string[] | null> {    if (item.multiSelect === true && (item.options?.length ?? 0) > 0) {
       return new Promise((resolve) => {
         const list = new CheckboxList(this.p, item.question, item.options ?? []);
         const handle = this.tui.showOverlay(list, { anchor: "bottom-left", margin: 1 });
