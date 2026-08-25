@@ -110,6 +110,7 @@ const HELP_TEXT = [
   "/compact         fold older history into a summary (core command)",
   "/cost            cumulative provider-reported token usage",
   "/tokens          current context-window occupancy detail",
+  "/tools [filter]  list registered tools (native + MCP)",
   "/export [file]   export this conversation to a Markdown file",
   "/sessions        list persisted sessions",
   "/resume <id>     resume a persisted session",
@@ -1020,6 +1021,7 @@ async function run(
         },
       },
       { name: "model", description: "Switch this session's model (history carries over)" },
+      { name: "tools", description: "List registered tools (native + MCP)", argumentHint: "[filter]" },
     ];
     for (const local of locals) {
       const existing = out.find((c) => c.name === local.name);
@@ -1119,6 +1121,14 @@ async function run(
       description: "Show context-window occupancy detail",
       handler: () => {
         showTokens();
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "tools",
+      description: "List registered tools (native + MCP)",
+      handler: ({ rawInput }) => {
+        showTools(rawInput);
         return { kind: "success" };
       },
     });
@@ -1673,6 +1683,81 @@ async function run(
       if (total !== undefined) lines.push(`  meter total    ${formatTokens(total)}`);
     } catch {
       /* meter absent */
+    }
+    app.appendCommandOutput(lines.join("\n"));
+  }
+
+  /**
+   * /tools [filter] — the visible tool inventory (native + mcp__ servers).
+   * Read live from the registry on every invocation: MCP list_changed
+   * re-syncs and reconnect recoveries mutate the catalog behind us, so a
+   * snapshot would stale. Agent scope first — its schemas() folds agent
+   * shadowing/restrict into what THIS session presents; the host plane
+   * covers the boot window before an agent exists.
+   */
+  function showTools(rawInput: string): void {
+    type Row = { name: string; description?: string };
+    const readFrom = (
+      source: { get<T = unknown>(key: string): T | undefined } | undefined,
+    ): Row[] | undefined => {
+      if (source === undefined) return undefined;
+      try {
+        return source.get<{ schemas?(): Row[] }>("tools")?.schemas?.();
+      } catch {
+        return undefined; // registry absent on this plane
+      }
+    };
+    const rows = readFrom(agent?.ctx) ?? readFrom(ctx);
+    if (rows === undefined) {
+      app.appendCommandOutput("Tool registry unavailable.");
+      return;
+    }
+    const query = rawInput.trim().toLowerCase();
+    const filtered =
+      query === ""
+        ? rows
+        : rows.filter(
+            (r) =>
+              r.name.toLowerCase().includes(query) ||
+              (r.description ?? "").toLowerCase().includes(query),
+          );
+    if (filtered.length === 0) {
+      app.appendCommandOutput(`No tools match "${rawInput.trim()}".`);
+      return;
+    }
+
+    // Group under the mcp__<server>__<raw> naming convention (dsh-mcp-client);
+    // everything else is native. MCP servers get per-tool lines, native stays
+    // a folded name list — the interesting delta is always the MCP side.
+    const groups = new Map<string, Row[]>();
+    for (const row of filtered) {
+      const server = /^mcp__([A-Za-z0-9_-]+)__/.exec(row.name)?.[1] ?? "";
+      const bucket = groups.get(server);
+      if (bucket === undefined) groups.set(server, [row]);
+      else bucket.push(row);
+    }
+    const mcpGroups = [...groups.entries()].filter(([server]) => server !== "");
+    const native = groups.get("") ?? [];
+    const mcpCount = mcpGroups.reduce((sum, [, list]) => sum + list.length, 0);
+    const header =
+      `${filtered.length}${filtered.length === rows.length ? "" : ` of ${rows.length}`} tools · ` +
+      `native ${native.length}` +
+      (mcpCount > 0 ? ` · mcp ${mcpCount} (${mcpGroups.map(([s]) => s).join(", ")})` : "");
+
+    /** First description line, hard-clamped so one tool never wraps wide. */
+    const brief = (text: string | undefined): string => {
+      const first = (text ?? "").split("\n", 1)[0]?.trim() ?? "";
+      return first.length > 90 ? `${first.slice(0, 89)}…` : first;
+    };
+
+    const lines: string[] = [header];
+    for (const [server, list] of mcpGroups) {
+      lines.push(`${server} (${list.length})`);
+      for (const row of list) lines.push(`  ${row.name} — ${brief(row.description)}`);
+    }
+    if (native.length > 0) {
+      lines.push(`native (${native.length})`);
+      lines.push(`  ${native.map((r) => r.name).join(" · ")}`);
     }
     app.appendCommandOutput(lines.join("\n"));
   }
