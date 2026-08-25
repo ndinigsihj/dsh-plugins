@@ -114,7 +114,7 @@ const HELP_TEXT = [
   "/resume <id>     resume a persisted session",
   "/session         show the current session id",
   "/help            show this help",
-  "补全：/ + Tab 出命令菜单（↑/↓ 选，Tab 应用）· @ + Tab 出文件引用",
+  "补全：/ + Tab 出命令菜单 · @ + Tab 出文件引用 · @选中目录后按 Tab 下钻",
   "Ctrl+O          展开/收起思考与工具详情",
 ].join("\n");
 
