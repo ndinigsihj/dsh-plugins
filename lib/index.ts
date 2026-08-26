@@ -6,9 +6,10 @@
 // runner stays alive and is driven by terminal input and the session event
 // feed instead of a single task.
 
-import { basename, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { readFileSync } from "node:fs";
-import { writeFile, readFile } from "node:fs/promises";
+import { writeFile, readFile, readdir, rm, rename } from "node:fs/promises";
+import { homedir } from "node:os";
 import z from "@deepseek-ai/schemastery";
 import { randomUUID } from "node:crypto";
 import { installModelSelection } from "@deepseek-ai/dsh-agent";
@@ -114,6 +115,7 @@ const HELP_TEXT = [
   "/export [file]   export this conversation to a Markdown file",
   "/sessions        list persisted sessions",
   "/resume <id>     resume a persisted session",
+  "/rm <prefix>     delete a session (log + projection cache; confirmed)",
   "/session         show the current session id",
   "/help            show this help",
   "补全：/ + Tab 出命令菜单 · @ + Tab 出文件引用 · @选中目录后按 Tab 下钻",
@@ -1003,6 +1005,7 @@ async function run(
         },
       },
       { name: "sessions", description: "List sessions in this workspace" },
+      { name: "rm", description: "Delete a session (confirmed)", argumentHint: "<id-prefix>" },
       {
         name: "resume",
         description: "Resume a persisted session",
@@ -1065,6 +1068,14 @@ async function run(
       description: "List persisted sessions",
       handler: () => {
         void listSessions();
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "rm",
+      description: "Delete a session by id prefix (confirmed): /rm <prefix>",
+      handler: ({ rawInput }) => {
+        void doRm(rawInput);
         return { kind: "success" };
       },
     });
@@ -2115,10 +2126,10 @@ async function run(
       }
       titled.push({ rec, title });
     }
-    const recent = titled.slice(0, 30);
-    const hiddenOlder = titled.length - recent.length;
+    // No recency cap (design D1=B): titled+local is already the filtered set,
+    // the picker filters by text, and the cleanup path (/rm) owns bloat.
     const items: Array<{ value: string; label: string; description: string }> = [];
-    for (const { rec, title } of recent) {
+    for (const { rec, title } of titled) {
       const state = rec.live ? "live" : rec.persisted ? "persisted" : "missing";
       const when = relativeTime(rec.header.createdAt);
       const marker = rec.header.id === agent.id ? " (current)" : "";
@@ -2133,7 +2144,7 @@ async function run(
       totalRecords: records.length,
       localRecords: local.length,
       hiddenUntitled,
-      hiddenOlder,
+      hiddenOlder: 0,
     };
   }
 
@@ -2183,7 +2194,9 @@ async function run(
         );
         return;
       }
-      const picked = await app.pickSession(items);
+      const picked = await app.pickSession(items, {
+        onRequestDelete: (id) => deleteSessionFlow(id),
+      });
       if (picked === null) {
         app.showNotice("Resume cancelled.");
         return;
@@ -2191,6 +2204,152 @@ async function run(
       await relaunchToResume(picked);
     } catch (error) {
       app.showNotice(`dsh-tui: resume failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /** Sessions root of the host deployment (~/.dsh/sessions, one dir per
+   * workspace slug). Only used for the plugin-plane delete below — dsh has
+   * no standard delete seam; persistence "remove" is internal bookkeeping. */
+  const sessionsRoot = join(homedir(), ".dsh", "sessions");
+
+  /** Locate the log dir for a session id across every workspace slug. */
+  async function findSessionDir(id: string): Promise<string | undefined> {
+    let slugs: string[];
+    try {
+      slugs = await readdir(sessionsRoot);
+    } catch {
+      return undefined;
+    }
+    for (const slug of slugs) {
+      const candidate = join(sessionsRoot, slug, id);
+      try {
+        await readdir(candidate);
+        return candidate;
+      } catch {
+        /* not under this slug */
+      }
+    }
+    return undefined;
+  }
+
+  /** Drop the session's row from the projection cache (keyed by id), keeping
+   * a stale row from resurrecting ghost gauge/todo state in UI reads. */
+  async function pruneProjectionCache(id: string): Promise<void> {
+    const file = join(homedir(), ".dsh", "storages", "session_projcache.json");
+    let raw: string;
+    try {
+      raw = await readFile(file, "utf8");
+    } catch {
+      return; // no cache file — nothing to prune
+    }
+    let parsed: { tables?: Record<string, Record<string, unknown>> };
+    try {
+      parsed = JSON.parse(raw) as typeof parsed;
+    } catch {
+      return;
+    }
+    const table = parsed.tables?.sessions;
+    if (table === undefined || table[id] === undefined) return;
+    delete table[id];
+    const tmp = `${file}.tmp`;
+    await writeFile(tmp, JSON.stringify(parsed), "utf8");
+    await rename(tmp, file);
+  }
+
+  /**
+   * /rm + picker Ctrl+D shared flow (docs/session-list-delete-design.md):
+   * guard → approval card → remove log dir → prune projection cache. Returns
+   * true only when the session was actually deleted.
+   */
+  async function deleteSessionFlow(id: string, knownLabel?: string): Promise<boolean> {
+    if (services.sessionQuery === undefined) {
+      app.showNotice("Session deletion unavailable: no sessionQuery service.");
+      return false;
+    }
+    if (id === agent.id) {
+      app.showNotice("Refusing to delete the current session.");
+      return false;
+    }
+    let label = knownLabel;
+    if (label === undefined) {
+      try {
+        const snaps = await services.sessionQuery.readTitleSnapshots([id]);
+        label =
+          snaps[0]?.status === "fulfilled" ? snaps[0]?.value?.title?.title : undefined;
+      } catch {
+        /* untitled fallback below */
+      }
+    }
+    try {
+      const records = await services.sessionQuery.listSessions();
+      if (records.some((rec) => rec.header.id === id && rec.live)) {
+        app.showNotice("Refusing: that session is live in the store.");
+        return false;
+      }
+    } catch {
+      /* listing failed — proceed to confirmation without the live check */
+    }
+    const outcome = await app.askApproval({
+      toolName: "/rm",
+      reason: `删除会话「${label ?? "(untitled)"}」\n${id}\n日志与投影缓存一并移除，不可恢复 —— a 确认 · r/esc 取消`,
+    });
+    if (outcome !== "allowed-once") return false;
+    const dir = await findSessionDir(id);
+    if (dir === undefined) {
+      app.showNotice(`No on-disk log found for ${id} (already gone?).`);
+      return false;
+    }
+    try {
+      await rm(dir, { recursive: true, force: true });
+      await pruneProjectionCache(id);
+    } catch (error) {
+      app.showNotice(
+        `rm failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return false;
+    }
+    process.stderr.write(`dsh-tui: rm session ${id}\n`);
+    return true;
+  }
+
+  /** /rm <id-prefix> — resolve a unique prefix within this workspace's
+   * titled sessions, then run the guarded delete flow. */
+  async function doRm(rawInput: string): Promise<void> {
+    const prefix = rawInput.trim().replace(/^session-/, "");
+    if (prefix.length < 4) {
+      app.showNotice("Usage: /rm <id-prefix> (at least 4 chars, see /sessions).");
+      return;
+    }
+    if (services.sessionQuery === undefined) {
+      app.showNotice("Session deletion unavailable: no sessionQuery service.");
+      return;
+    }
+    try {
+      const records = await services.sessionQuery.listSessions();
+      const cwd = process.cwd();
+      const matches = records.filter(
+        (rec) =>
+          rec.header.cwd === cwd && rec.header.id.startsWith(`session-${prefix}`),
+      );
+      if (matches.length === 0) {
+        app.showNotice(`No session matches "${prefix}" in this workspace.`);
+        return;
+      }
+      if (matches.length > 1) {
+        app.showNotice(`"${prefix}" is ambiguous (${matches.length} matches) — more characters.`);
+        return;
+      }
+      const rec = matches[0];
+      if (rec === undefined) return;
+      const snaps = await services.sessionQuery.readTitleSnapshots([rec.header.id]);
+      const title =
+        snaps[0]?.status === "fulfilled" ? snaps[0]?.value?.title?.title : undefined;
+      const deleted = await deleteSessionFlow(rec.header.id, title ?? "(untitled)");
+      if (deleted) app.showNotice(`Deleted ${rec.header.id}.`);
+    } catch (error) {
+      app.showNotice(
+        `/rm failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 

@@ -769,6 +769,9 @@ class SessionPicker implements Component {
 
   onPick?: (value: string) => void;
   onCancel?: () => void;
+  /** Ctrl+D on the highlighted session (design D2=C). Resolves true when the
+   * deletion actually happened; the picker then drops the row locally. */
+  onRequestDelete?: (value: string) => Promise<boolean>;
 
   constructor(p: Palette, items: SessionPickItem[], previewLoader?: SessionPreviewLoader) {
     this.p = p;
@@ -800,6 +803,18 @@ class SessionPicker implements Component {
     }
     if (matchesKey(data, "down")) {
       this.move(1);
+      return;
+    }
+    if (matchesKey(data, "ctrl+d")) {
+      const item = this.select.getSelectedItem();
+      if (item !== null && this.onRequestDelete !== undefined) {
+        void this.onRequestDelete(item.value).then((deleted) => {
+          if (!deleted) return;
+          this.items = this.items.filter((i) => i.value !== item.value);
+          this.previewCache.delete(item.value);
+          this.applyFilter();
+        });
+      }
       return;
     }
     if (matchesKey(data, "backspace")) {
@@ -2067,10 +2082,15 @@ export class TuiApp {
     });
   }
 
-  /** Pick one session from the list, or null on cancel. */
-  pickSession(sessions: SessionPickItem[]): Promise<string | null> {
+  /** Pick one session from the list, or null on cancel. The optional delete
+   * hook enables Ctrl+D on the highlighted row (docs/session-list-delete-design.md). */
+  pickSession(
+    sessions: SessionPickItem[],
+    hooks?: { onRequestDelete?: (value: string) => Promise<boolean> },
+  ): Promise<string | null> {
     return new Promise((resolve) => {
       const picker = new SessionPicker(this.p, sessions, this.options.sessionPreview);
+      if (hooks?.onRequestDelete !== undefined) picker.onRequestDelete = hooks.onRequestDelete;
       picker.onPick = (value) => {
         this.tui.hideOverlay();
         resolve(value);
