@@ -2165,6 +2165,19 @@ export class TuiApp {
       void this.options.onExit();
       return { consume: true };
     }
+    // Fast double-Esc arrives PRE-GLUED: terminals batch both keydowns into
+    // one stdin read and StdinBuffer parses "\x1b\x1b" as a single key —
+    // pi-tui parseKey names it "ctrl+alt+[" (verified). Map it straight to
+    // the rewind gesture; the 600ms window below only serves slower pairs.
+    if (
+      matchesKey(data, "ctrl+alt+[") &&
+      !overlayOpen &&
+      this.agent.status !== "running"
+    ) {
+      this.lastEscape = 0;
+      this.options.onDoubleEscape?.();
+      return { consume: true };
+    }
     if (matchesKey(data, "escape")) {
       if (overlayOpen) return undefined;
       if (this.agent.status === "running") {

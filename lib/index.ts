@@ -1779,15 +1779,12 @@ async function run(
       .join("");
   }
 
-  /**
-   * Double-Esc rewind picker (docs/m3-rewind-ui-design.md §3.4): scan this
-   * session's user messages with the same rule the dsh-rewind plugin's bare
-   * /rewind lists them, then hand the picked seq to the very same command
-   * path a typed `/rewind <seq>` takes — fork, file restore, and execve
-   * resume stay entirely inside the plugin.
-   */
-  async function doRewindPicker(): Promise<void> {
-    const events = (agent.session.events ?? []) as ReadonlyArray<{
+  /** Rewind candidates from one event source — same filter/truncation as
+   * the dsh-rewind plugin's bare /rewind list (user messages only). */
+  function rewindCandidates(
+    source: ReadonlyArray<unknown>,
+  ): Array<{ seq: number; summary: string }> {
+    const events = source as ReadonlyArray<{
       seq?: number;
       type?: string;
       data?: { content?: unknown; source?: { kind?: string } };
@@ -1800,6 +1797,28 @@ async function run(
       const text = rewindMessageText(event.data?.content).replace(/\s+/g, " ").trim();
       items.push({ seq: event.seq, summary: text === "" ? "(empty)" : truncate(text, 60) });
     }
+    return items;
+  }
+
+  /**
+   * Double-Esc rewind picker (docs/m3-rewind-ui-design.md §3.4): list this
+   * session's user messages with the same rule the dsh-rewind plugin uses,
+   * then hand the picked seq to the very same command path a typed
+   * `/rewind <seq>` takes — fork, file restore, and execve resume stay
+   * entirely inside the plugin. A resumed session may carry no in-memory
+   * history yet, so an empty agent log falls back to sessionQuery's.
+   */
+  async function doRewindPicker(): Promise<void> {
+    let items = rewindCandidates(agent.session.events ?? []);
+    if (items.length === 0 && services.sessionQuery !== undefined) {
+      try {
+        const snap = await services.sessionQuery.readSession(agent.id);
+        if (snap !== undefined) items = rewindCandidates(snap.events);
+      } catch {
+        /* unreadable log — empty list handled below */
+      }
+    }
+    process.stderr.write(`dsh-tui: rewind picker: ${items.length} candidate(s)\n`);
     if (items.length === 0) {
       app.showNotice("No past user messages to rewind to.");
       return;
