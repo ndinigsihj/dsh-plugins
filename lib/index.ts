@@ -977,6 +977,10 @@ async function run(
     };
   }
   let presenters: ToolPresenters = presentersFor(agent);
+  /** Monotonic guard for refreshSubagents(): a newer refresh supersedes an
+   * older in-flight response. Declared before any early refresh call to
+   * avoid TDZ on first boot. */
+  let subagentRefreshGeneration = 0;
 
   /**
    * Slash-command catalog for the editor menu: the full commands registry
@@ -2708,7 +2712,6 @@ async function run(
   // child state lives in projection-backed runtime data (listChildren), but
   // waiting on a fixed poll lags starts/finishes by up to the interval — so
   // every lifecycle-relevant session event triggers an immediate re-read.
-  let subagentRefreshGeneration = 0;
   function refreshSubagents(): void {
     const subs = services.subagents;
     if (subs === undefined) return;
