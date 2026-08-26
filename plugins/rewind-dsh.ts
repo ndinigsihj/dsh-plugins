@@ -605,7 +605,21 @@ function relaunchToResume(sessionId: string, cwd: string): void {
   }
   process.env.DSH_TUI_RESUME_SESSION = sessionId;
   process.env.DSH_CC_RESUME_SESSION = sessionId;
-  const relaunch = [process.execPath, ...process.argv.slice(1)];
+  // 剥掉本次启动自带的 --resume 再显式追加新目标：startup 层解析为
+  // `opts.resume ?? DSH_CC_RESUME_SESSION`，argv 里残留的源会话 id 会压过
+  // 刚放进 env 的 childId（2026-08-26 活体复现：回退后 resume 回源会话）。
+  const args = process.argv.slice(1);
+  const kept: string[] = [];
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i] ?? "";
+    if (arg === "--resume") {
+      i += 1; // 连值一起跳过
+      continue;
+    }
+    if (arg.startsWith("--resume=")) continue;
+    kept.push(arg);
+  }
+  const relaunch = [process.execPath, ...kept, "--resume", sessionId];
   if (process.execve === undefined) {
     console.error("[dsh-rewind] process.execve unavailable — resume manually with:");
     console.error(`  /resume ${sessionId}`);
