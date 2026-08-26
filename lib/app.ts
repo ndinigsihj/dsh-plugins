@@ -772,6 +772,10 @@ class SessionPicker implements Component {
   /** Ctrl+D on the highlighted session (design D2=C). Resolves true when the
    * deletion actually happened; the picker then drops the row locally. */
   onRequestDelete?: (value: string) => Promise<boolean>;
+  /** Async mutations (post-delete relist, debounced previews) call this to
+   * schedule a repaint — components hold no tui reference of their own, and
+   * in a key-driven render model nothing else would repaint for them. */
+  requestRender?: () => void;
 
   constructor(p: Palette, items: SessionPickItem[], previewLoader?: SessionPreviewLoader) {
     this.p = p;
@@ -861,6 +865,7 @@ class SessionPicker implements Component {
     this.index = 0;
     this.refreshHeader();
     this.schedulePreview();
+    this.requestRender?.();
   }
 
   private move(dir: number): void {
@@ -911,6 +916,7 @@ class SessionPicker implements Component {
   private setPreview(text: string): void {
     this.previewValue = text;
     this.previewText.setText(text);
+    this.requestRender?.();
   }
 
   private refreshHeader(): void {
@@ -2090,6 +2096,7 @@ export class TuiApp {
   ): Promise<string | null> {
     return new Promise((resolve) => {
       const picker = new SessionPicker(this.p, sessions, this.options.sessionPreview);
+      picker.requestRender = () => this.render();
       if (hooks?.onRequestDelete !== undefined) picker.onRequestDelete = hooks.onRequestDelete;
       picker.onPick = (value) => {
         this.tui.hideOverlay();
