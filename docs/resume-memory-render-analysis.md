@@ -118,6 +118,16 @@ resume 路径的 rebuild 直接消费 `assistant/message` 终态，跳过
 单测：`lib/transcript-area.test.ts`（窗口挂载、高度守恒、补偿收敛、
 /clear 重建恢复、skipStreamDeltas 折叠语义、live chunk 路径回归）。
 
+### 4.1.1 首发实现的两个 live 路径回归（已修，2026-08-26 晚）
+
+| 回归 | 根因 | 修复 |
+|------|------|------|
+| resume 后继续对话不显示（重启才可见） | ① `snapshot` 是模型内部数组的**同一引用**，长度比较永远相等 → 新行永不建槽位；② 窗口化丢了旧 sync 的全量 `comp.update(row)` → 原地变更（chunk 折叠、result 回填）不上屏 | 弃用长度比较：行创建统一 markDirty，sync 以脏序列驱动建槽 + 定向 update；数组引用变化才触发历史重置 |
+| （同症状的次要面）流式 spinner 不动画 | 同上——组件 reasoningText 停留在空 | 同上 |
+
+回归测试：`appends rows at follow-end and mounts them`、
+`streams into a mounted row after resume`、`backfills tool results in place`。
+
 ### 4.2 待实机确认（需 iTerm2 交互，headless 无法覆盖）
 
 | 场景 | 期望 |

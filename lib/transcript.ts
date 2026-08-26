@@ -83,6 +83,9 @@ function parseArgs(raw: string): unknown {
   }
 }
 
+/** Shared empty result for takeDirtySeqs() — avoids allocating per frame. */
+const EMPTY_DIRTY: ReadonlySet<number> = new Set<number>();
+
 export class TranscriptModel {
   private rows: TranscriptRow[] = [];
   private revision = 0;
@@ -90,6 +93,12 @@ export class TranscriptModel {
   private toolByCall = new Map<string, Extract<TranscriptRow, { kind: "tool" }>>();
   private lastSeq = -1;
   private noticeSeq = -1;
+  /** Seqs mutated in place since the last takeDirtySeqs() — streaming chunk
+   * folds, tool-result backfills, finalizations. The windowed TranscriptArea
+   * updates only these mounted components (a plain length check can't see
+   * in-place changes; missing this was the "resumed session stops
+   * displaying live turns" regression of 2026-08-26). */
+  private readonly dirtySeqs = new Set<number>();
 
   get snapshot(): ReadonlyArray<TranscriptRow> {
     return this.rows;
@@ -97,6 +106,19 @@ export class TranscriptModel {
 
   get currentRevision(): number {
     return this.revision;
+  }
+
+  /** Drain the in-place mutation set (append-only growth is tracked by the
+   * caller via snapshot length). */
+  takeDirtySeqs(): ReadonlySet<number> {
+    if (this.dirtySeqs.size === 0) return EMPTY_DIRTY;
+    const drained = new Set(this.dirtySeqs);
+    this.dirtySeqs.clear();
+    return drained;
+  }
+
+  private markDirty(seq: number): void {
+    this.dirtySeqs.add(seq);
   }
 
   private bump(): void {
@@ -149,6 +171,7 @@ export class TranscriptModel {
     this.rows = [];
     this.openAssistant = null;
     this.toolByCall.clear();
+    this.dirtySeqs.clear();
     this.lastSeq = -1;
     this.noticeSeq = -1;
     this.bump();
@@ -187,12 +210,14 @@ export class TranscriptModel {
       const data = (event as unknown as { data?: { error?: string } }).data;
       if (data?.error !== undefined) {
         this.rows.push({ kind: "error", text: `Compaction failed: ${data.error}`, seq: event.seq });
+        this.markDirty(event.seq);
       } else {
         this.rows.push({
           kind: "notice",
           text: "… earlier context was compacted …",
           seq: event.seq,
         });
+        this.markDirty(event.seq);
       }
       this.bump();
       return;
@@ -221,6 +246,7 @@ export class TranscriptModel {
         // render it dim, distinct from a human user message.
         if (data.source?.kind === "plugin") {
           this.rows.push({ kind: "context", text: joined, seq: event.seq });
+          this.markDirty(event.seq);
         } else {
           this.rows.push({
             kind: "user",
@@ -228,6 +254,7 @@ export class TranscriptModel {
             images: imageLabels.length > 0 ? imageLabels : undefined,
             seq: event.seq,
           });
+          this.markDirty(event.seq);
         }
         this.bump();
         break;
@@ -243,6 +270,7 @@ export class TranscriptModel {
           const row = (this.openAssistant ??= this.pushAssistant(event.seq));
           if (chunk.type === "text-delta") row.text += delta;
           else row.reasoning += delta;
+          this.markDirty(row.seq);
           this.bump();
         } else if (chunk.type === "block-end" && chunk.block?.type === "text") {
           this.openAssistant ??= this.pushAssistant(event.seq);
@@ -258,10 +286,12 @@ export class TranscriptModel {
         if (this.openAssistant === null) {
           if (text === "" && reasoning === "") break;
           this.rows.push({ kind: "assistant", text, reasoning, done: true, seq: event.seq });
+          this.markDirty(event.seq);
         } else {
           this.openAssistant.text = text;
           this.openAssistant.reasoning = reasoning;
           this.openAssistant.done = true;
+          this.markDirty(this.openAssistant.seq);
           this.openAssistant = null;
         }
         this.bump();
@@ -280,6 +310,7 @@ export class TranscriptModel {
         };
         this.rows.push(row);
         this.toolByCall.set(data.callId, row);
+        this.markDirty(row.seq);
         this.bump();
         break;
       }
@@ -303,6 +334,7 @@ export class TranscriptModel {
             meta: data.meta,
           });
           if (data.error !== undefined) row.error = data.error;
+          this.markDirty(row.seq);
         }
         this.bump();
         break;
@@ -321,12 +353,14 @@ export class TranscriptModel {
             text: `${reason.error?.code ?? "error"}: ${reason.error?.message ?? "unknown"}`,
             seq: event.seq,
           });
+          this.markDirty(event.seq);
         } else if (reason.kind === "max-tokens") notice = "Turn ended: max tokens reached.";
         else if (reason.kind === "aborted") notice = "Turn stopped.";
         else if (reason.kind === "rejected") notice = "Turn rejected.";
         else if (reason.kind === "interrupted") notice = "Turn interrupted.";
         else if (reason.kind !== "completed") notice = `Turn ended: ${reason.kind}.`;
         if (notice !== "") this.rows.push({ kind: "notice", text: notice, seq: event.seq });
+          this.markDirty(event.seq);
         this.bump();
         break;
       }
@@ -346,6 +380,7 @@ export class TranscriptModel {
       seq,
     };
     this.rows.push(row);
+    this.markDirty(seq);
     return row;
   }
 }

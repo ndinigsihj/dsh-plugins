@@ -724,7 +724,8 @@ export class TranscriptArea extends Container {
   private readonly getWidth: () => number;
   /** Owning ScrollView — scrollTop/viewportHeight source for windowing. */
   private scrollView: ScrollView | null = null;
-  /** Snapshot mirror from the last reconcile (model only appends or clears). */
+  /** Snapshot reference from the last sync — identity change = history swap
+   * (/clear → rebuild); the live array's growth arrives via dirty seqs. */
   private rowsCache: ReadonlyArray<TranscriptRow> = [];
   /** Full slot list parallel to rowsCache: real component or height stub. */
   private slots: TranscriptSlot[] = [];
@@ -733,6 +734,8 @@ export class TranscriptArea extends Container {
   private winEnd = 0;
   /** Rendered line count per seq, kept across reconciles and remounts. */
   private readonly heightsBySeq = new Map<number, number>();
+  /** seq → rowsCache index, maintained alongside slots for dirty-row lookup. */
+  private readonly rowIndexBySeq = new Map<number, number>();
   /** First visible row index, recorded by applyWindow for the compensation
    * pass in render(). */
   private visStart = 0;
@@ -782,38 +785,52 @@ export class TranscriptArea extends Container {
     return animated;
   }
 
-  /** Model changed. The model only ever appends or clears, so an equal
-   * length is an in-place mutation (tool results, flags) — no slot changes;
-   * a longer snapshot with a matching prefix extends the slot list without
-   * discarding measured heights; anything else (a non-append history swap)
-   * rebuilds the slot list from scratch, keeping only measured heights for
-   * seqs that survive. */
+  /** Model changed. `snapshot` is the model's live internal array, so length
+   * comparisons are useless (the alias grows together) — growth and in-place
+   * edits alike arrive through the dirty-seq set (every row creation marks
+   * itself), while a changed array *reference* signals a history swap
+   * (/clear → rebuild). New seqs append stub slots; known seqs get their
+   * mounted component updated. */
   sync(): void {
-    if (this.model.currentRevision === this.lastRevision) return;
-    this.lastRevision = this.model.currentRevision;
     const snapshot = this.model.snapshot;
-    if (snapshot.length === this.rowsCache.length) return;
-    const extendsPrefix =
-      snapshot.length > this.slots.length &&
-      (this.slots.length === 0 ||
-        snapshot[this.slots.length - 1]?.seq === this.slots[this.slots.length - 1]?.seq);
-    if (!extendsPrefix) {
-      // Full reset (/clear or a non-append history swap).
+    const revision = this.model.currentRevision;
+    if (revision === this.lastRevision && snapshot === this.rowsCache) return;
+    this.lastRevision = revision;
+    const dirty = this.model.takeDirtySeqs();
+    if (snapshot !== this.rowsCache) {
+      // History swap (/clear → rebuild): discard everything, keep nothing.
       this.bySeq.clear();
       this.heightsBySeq.clear();
+      this.rowIndexBySeq.clear();
       this.winStart = 0;
       this.winEnd = 0;
       this.slots = [];
+      this.rowsCache = snapshot;
     }
-    while (this.slots.length < snapshot.length) {
-      const row = snapshot[this.slots.length]!;
-      this.slots.push({
-        seq: row.seq,
-        comp: new HeightStub(this.heightsBySeq.get(row.seq) ?? UNMEASURED_ROW_LINES),
-        real: false,
-      });
+    if (dirty.size > 0) {
+      const ordered = [...dirty].sort((a, b) => a - b);
+      for (const seq of ordered) {
+        if (this.rowIndexBySeq.has(seq)) continue;
+        const idx = this.slots.length;
+        this.rowIndexBySeq.set(seq, idx);
+        this.slots.push({
+          seq,
+          comp: new HeightStub(this.heightsBySeq.get(seq) ?? UNMEASURED_ROW_LINES),
+          real: false,
+        });
+      }
+      this.visStart = Math.min(this.visStart, Math.max(0, this.slots.length - 1));
     }
-    this.rowsCache = snapshot;
+    // Push in-place mutations into their mounted components. This is what
+    // makes live turns visible after a resume: chunk folds and result
+    // backfills mutate existing rows without touching the slot list.
+    for (const seq of dirty) {
+      const comp = this.bySeq.get(seq);
+      if (comp === undefined) continue; // stubbed — mounts fresh from the row
+      const idx = this.rowIndexBySeq.get(seq);
+      const row = idx !== undefined ? this.rowsCache[idx] : undefined;
+      if (row !== undefined && row.seq === seq) comp.update(row);
+    }
   }
 
   /** Slot height in lines: measured when the row has rendered at least once,

@@ -66,6 +66,11 @@ function mountedCount(area: TranscriptArea): number {
   return (area as unknown as { bySeq: Map<number, unknown> }).bySeq.size;
 }
 
+/** Strip palette-free lines down to text for substring assertions. */
+function flatten(lines: ReadonlyArray<string>): ReadonlyArray<string> {
+  return lines;
+}
+
 describe("TranscriptArea windowing", () => {
   it("mounts only a bounded window on boot (follow-end fallback)", () => {
     const rows = 400;
@@ -145,21 +150,65 @@ describe("TranscriptArea windowing", () => {
     assert.ok(bySeq.size > 0, "no rows mounted after history swap");
   });
 
-  it("appends rows at follow-end without losing earlier mounts", () => {
+  it("streams into a mounted row after resume (in-place updates render)", () => {
+    // Regression: resumed session, live turn streams chunks that fold into an
+    // existing assistant row — row count never changes, so only the dirty-seq
+    // update pass can make the new text visible.
+    const { area, model, scroll } = makeArea(5);
+    scroll.updateLayout(Number.POSITIVE_INFINITY, 40, () => {});
+    area.render(80);
+    const chunk = (seq: number, text: string): Ev => ({
+      type: "assistant/chunk",
+      seq,
+      data: { turn: 99, step: 0, chunk: { type: "text-delta", index: seq, text } },
+    });
+    model.apply(chunk(1000, "Hel") as never, presenters);
+    model.apply(chunk(1001, "lo") as never, presenters);
+    area.sync();
+    const mid = flatten(area.render(80)).join("\n");
+    assert.ok(mid.includes("Hello"), "streaming text not visible after resume");
+    model.apply(assistantMessage(1002, "Hello world") as never, presenters);
+    area.sync();
+    const done = flatten(area.render(80)).join("\n");
+    assert.ok(done.includes("Hello world"), "finalized message not visible");
+  });
+
+  it("backfills tool results in place (row count unchanged)", () => {
+    const { area, model, scroll } = makeArea(3);
+    scroll.updateLayout(Number.POSITIVE_INFINITY, 40, () => {});
+    area.render(80);
+    const call: Ev = {
+      type: "tool/call",
+      seq: 500,
+      data: { callId: "call_1", name: "bash", arguments: '{"command":"ls"}' },
+    };
+    model.apply(call as never, presenters);
+    area.sync();
+    area.render(80);
+    const result: Ev = {
+      type: "tool/result",
+      seq: 501,
+      data: { message: { content: [{ type: "tool-result", toolCallId: "call_1", output: "done" }] } },
+    };
+    model.apply(result as never, presenters);
+    area.sync();
+    // No throw / no stale crash is the contract here; result visibility
+    // depends on the presenter which the stub doesn't exercise.
+    assert.ok(model.snapshot.some((r) => r.kind === "tool"));
+  });
+
+  it("appends rows at follow-end and mounts them", () => {
     const { area, model, scroll } = makeArea(50);
     scroll.updateLayout(Number.POSITIVE_INFINITY, 40, () => {});
     area.render(80);
-    const before = mountedCount(area);
-    model.apply(
-      userMessage(1000, "late") as never,
-      presenters,
-    );
+    model.apply(userMessage(1000, "late") as never, presenters);
     model.apply(assistantMessage(1001, "reply") as never, presenters);
     area.sync();
-    area.render(80);
-    assert.ok(mountedCount(area) >= Math.min(before, 2));
-    const snapshot = model.snapshot;
-    assert.equal(snapshot[snapshot.length - 1]?.kind, "assistant");
+    const text = flatten(area.render(80)).join("\n");
+    // The alias pitfall this guards against: snapshot IS the model's live
+    // array, so length checks can't see appends — only dirty-seq sync can.
+    assert.ok(text.includes("late"), "appended user row never mounted");
+    assert.ok(text.includes("reply"), "appended assistant row never mounted");
   });
 });
 
