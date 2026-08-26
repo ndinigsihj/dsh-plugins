@@ -2198,10 +2198,14 @@ export class TuiApp {
       const now = Date.now();
       if (now - this.lastEscape < 600) {
         this.lastEscape = 0;
+        // Consume the firing press: onDoubleEscape opens the picker
+        // synchronously and it steals focus DURING this key's dispatch —
+        // an unconsumed Esc would fall straight into the fresh SelectList
+        // and cancel it before the first render ever paints.
         this.options.onDoubleEscape?.();
-      } else {
-        this.lastEscape = now;
+        return { consume: true };
       }
+      this.lastEscape = now;
       return undefined;
     }
     return undefined;
