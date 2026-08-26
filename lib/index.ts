@@ -1203,6 +1203,9 @@ async function run(
             return saved;
           },
     onCancel: () => agent.cancel({ kind: "user" }),
+    onDoubleEscape: () => {
+      void doRewindPicker();
+    },
     onExit: () => stopAndExit(),
     autocomplete: { commands: autocompleteCommands() },
     fileCompletions:
@@ -1760,6 +1763,50 @@ async function run(
       lines.push(`  ${native.map((r) => r.name).join(" · ")}`);
     }
     app.appendCommandOutput(lines.join("\n"));
+  }
+
+  /** Concatenated text of a user/message content payload (string or text
+   * blocks) — mirrors the dsh-rewind plugin's textBlocks for list parity. */
+  function rewindMessageText(content: unknown): string {
+    if (typeof content === "string") return content;
+    if (!Array.isArray(content)) return "";
+    return content
+      .filter(
+        (b): b is { type: string; text?: unknown } =>
+          typeof b === "object" && b !== null && (b as { type?: string }).type === "text",
+      )
+      .map((b) => String(b.text ?? ""))
+      .join("");
+  }
+
+  /**
+   * Double-Esc rewind picker (docs/m3-rewind-ui-design.md §3.4): scan this
+   * session's user messages with the same rule the dsh-rewind plugin's bare
+   * /rewind lists them, then hand the picked seq to the very same command
+   * path a typed `/rewind <seq>` takes — fork, file restore, and execve
+   * resume stay entirely inside the plugin.
+   */
+  async function doRewindPicker(): Promise<void> {
+    const events = (agent.session.events ?? []) as ReadonlyArray<{
+      seq?: number;
+      type?: string;
+      data?: { content?: unknown; source?: { kind?: string } };
+    }>;
+    const items: Array<{ seq: number; summary: string }> = [];
+    for (let i = events.length - 1; i >= 0; i -= 1) {
+      const event = events[i];
+      if (event?.type !== "user/message" || typeof event.seq !== "number") continue;
+      if (event.data?.source?.kind !== undefined && event.data.source.kind !== "user") continue;
+      const text = rewindMessageText(event.data?.content).replace(/\s+/g, " ").trim();
+      items.push({ seq: event.seq, summary: text === "" ? "(empty)" : truncate(text, 60) });
+    }
+    if (items.length === 0) {
+      app.showNotice("No past user messages to rewind to.");
+      return;
+    }
+    const seq = await app.pickRewindPoint(items);
+    if (seq === null) return;
+    await runCommand(`/rewind ${seq}`);
   }
 
   /** /export [file] — serialize the transcript to Markdown on disk. */

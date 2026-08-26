@@ -116,6 +116,9 @@ export interface TuiAppOptions {
   onPrompt(text: string, images?: ReadonlyArray<SavedImage>): void;
   /** Esc/Ctrl+C while a turn is running. */
   onCancel(): void;
+  /** Double-Esc while idle (docs/m3-rewind-ui-design.md): open the rewind
+   * point picker. Absent → the gesture is a silent no-op. */
+  onDoubleEscape?: () => void;
   /** Exit requested (e.g. /exit). */
   onExit(): Promise<void>;
   /** Editor slash-command + @-file completion catalog (optional). */
@@ -1463,6 +1466,9 @@ export class TuiApp {
   private readonly workspaceName: string;
   private stopping = false;
   private lastCtrlC = 0;
+  /** Armed at every idle Esc (design D1=A); a second press inside the window
+   * fires onDoubleEscape. Same window constant as the Ctrl+C double-press. */
+  private lastEscape = 0;
   private noticeTimer: ReturnType<typeof setTimeout> | undefined;
   /** Drives the thinking-row spinner between chunks (pi-tui has no frame loop). */
   private thinkTimer: ReturnType<typeof setInterval> | undefined;
@@ -2078,6 +2084,34 @@ export class TuiApp {
     });
   }
 
+  /** Pick a rewind point ([seq] summary rows), or null on cancel.
+   * docs/m3-rewind-ui-design.md §3.3 — SelectList twin of pickSession. */
+  pickRewindPoint(
+    items: ReadonlyArray<{ seq: number; summary: string }>,
+  ): Promise<number | null> {
+    return new Promise((resolve) => {
+      const list: SelectItem[] = items.map((i) => ({
+        value: String(i.seq),
+        label: `[${i.seq}] ${i.summary}`,
+      }));
+      const select = new SelectList(
+        list,
+        Math.min(Math.max(list.length, 3), 12),
+        selectListTheme(this.p),
+      );
+      select.onSelect = (sel) => {
+        handle.hide();
+        resolve(Number(sel.value));
+      };
+      select.onCancel = () => {
+        handle.hide();
+        resolve(null);
+      };
+      const handle = this.tui.showOverlay(select, { anchor: "bottom-left", margin: 1 });
+      this.tui.setFocus(select);
+    });
+  }
+
   /** Prompt the human to approve a tool call via the approval card. */
   askApproval(req: ApprovalRequest): Promise<"allowed-once" | "rejected" | "cancelled"> {
     return new Promise((resolve) => {
@@ -2139,11 +2173,22 @@ export class TuiApp {
       }
       // Idle with queued images: Esc removes the last one. Gated on empty
       // editor text so an open completion menu keeps its own dismissal.
+      // Consumed paths never arm the double-Esc window.
       if (this.pendingImagePaths.length > 0 && this.editor.getText().trim() === "") {
         if (this.removeLastPendingImage()) return { consume: true };
       }
       // Idle: pass Esc through — the editor owns it (dismisses its
       // autocomplete menu); a bare Esc with no menu is a harmless no-op.
+      // Design D1=A: every idle Esc arms the rewind window regardless of
+      // draft text or an open menu; the second press inside the window has
+      // no competing meaning, and a mis-fired picker closes with one Esc.
+      const now = Date.now();
+      if (now - this.lastEscape < 600) {
+        this.lastEscape = 0;
+        this.options.onDoubleEscape?.();
+      } else {
+        this.lastEscape = now;
+      }
       return undefined;
     }
     return undefined;
