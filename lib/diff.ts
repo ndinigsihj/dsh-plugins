@@ -16,10 +16,11 @@ export interface DiffLine {
  */
 export function lineDiff(oldText: string | null, newText: string): DiffLine[] {
   if (oldText === null) {
+    if (newText === "") return [];
     return newText.split("\n").map((text) => ({ kind: "add", text }) as DiffLine);
   }
   const oldLines = oldText.split("\n");
-  const newLines = newText.split("\n");
+  const newLines = newText === "" ? [] : newText.split("\n");
   let start = 0;
   while (start < oldLines.length && start < newLines.length && oldLines[start] === newLines[start]) start += 1;
   let oldEnd = oldLines.length;

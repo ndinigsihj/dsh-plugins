@@ -14,13 +14,17 @@ tag="v$ver"
 cd "$(dirname "$0")/.."
 STABLE="${DSH_STABLE_DIR:-$HOME/dev/dsh-plugins-stable}"
 
-git diff --quiet || { echo "error: dirty working tree — commit or stash first" >&2; exit 1; }
+if [ -n "$(git status --porcelain)" ]; then
+  echo "error: dirty working tree (including staged/untracked) — commit or stash first" >&2
+  exit 1
+fi
 if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
   echo "error: $tag already exists" >&2
   exit 1
 fi
 
 npx tsc --noEmit
+npm test
 
 # Bump only when needed so a re-run after a late failure stays commit-clean.
 if [ "$(node -p "require('./package.json').version")" != "$ver" ]; then
@@ -35,6 +39,13 @@ if [ "$(node -p "require('./package.json').version")" != "$ver" ]; then
 fi
 git tag -a "$tag" -m "$tag"
 
+# Capture the OLD lockfile BEFORE advancing the stable tree: after checkout
+# HEAD already points at the new tag, so comparing there is always equal.
+prevLock="none"
+if [ -d "$STABLE" ]; then
+  prevLock=$(git -C "$STABLE" rev-parse HEAD:"package-lock.json" 2>/dev/null || echo none)
+fi
+
 if [ -d "$STABLE" ]; then
   # package-lock.json is a regenerable artifact: a local npm run in the
   # stable tree normalizes it beyond the committed blob and would block the
@@ -48,7 +59,6 @@ fi
 # npm prunes THROUGH a pre-existing node_modules/@deepseek-ai symlink and
 # wipes the global host tree (2026-08-24 incident): strip it before any npm
 # run, restore via the idempotent link script afterwards.
-prevLock=$(git -C "$STABLE" rev-parse HEAD:"package-lock.json" 2>/dev/null || echo none)
 newLock=$(git rev-parse "$tag:package-lock.json")
 rm -f "$STABLE/node_modules/@deepseek-ai"
 if [ "$prevLock" != "$newLock" ]; then

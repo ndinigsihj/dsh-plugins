@@ -33,8 +33,8 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { readFile, rename, unlink, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { chmod, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { resolve, sep } from "node:path";
 import type { Context } from "@deepseek-ai/cordis";
 
 export const name = "dsh-rewind";
@@ -212,27 +212,70 @@ export function filePathFromArgs(argsJson: string): string | undefined {
   }
 }
 
-/** 从 tool/result.message 的文本块里判断 write 是 Created 还是 Updated。 */
+/** 从 tool/result.message 的文本块里判断 write 是 Created 还是 Updated。
+ * 真实事件里 message.content 是 `tool-result` 信封，正文在
+ * `content[].content[].text`；同时兼容旧版平铺文本块。 */
 function writeOperationFromMessage(content: unknown): "create" | "update" | undefined {
   const blocks: string[] = [];
-  if (typeof content === "string") {
-    blocks.push(content);
-  } else if (Array.isArray(content)) {
-    for (const block of content) {
-      if (
-        block !== null &&
-        typeof block === "object" &&
-        (block as { type?: string }).type === "text" &&
-        typeof (block as { text?: unknown }).text === "string"
-      ) {
-        blocks.push((block as { text: string }).text);
+  const collect = (c: unknown): void => {
+    if (typeof c === "string") {
+      blocks.push(c);
+      return;
+    }
+    if (!Array.isArray(c)) return;
+    for (const block of c) {
+      if (block === null || typeof block !== "object") continue;
+      const b = block as { type?: unknown; text?: unknown; content?: unknown };
+      if (b.type === "tool-result") collect(b.content);
+      else if (b.type === "text" && typeof b.text === "string") blocks.push(b.text);
+    }
+  };
+  collect(content);
+  const text = blocks.join("\n");
+  if (/Created\s+file/.test(text)) return "create";
+  if (/Updated\s+file/.test(text)) return "update";
+  return undefined;
+}
+
+/** 真实 dsh tool/result 的 callId 形状：顶层 data.callId 只在旧/自定义事件里；
+ * 现行事件是 data.message.source.callId 或 data.message.content[].toolCallId。 */
+function toolResultCallId(data: Record<string, unknown>): string {
+  const direct = data.callId;
+  if (typeof direct === "string" && direct !== "") return direct;
+  const message = data.message;
+  if (typeof message !== "object" || message === null) return "";
+  const m = message as { source?: { callId?: unknown }; content?: unknown };
+  if (typeof m.source?.callId === "string" && m.source.callId !== "") return m.source.callId;
+  if (Array.isArray(m.content)) {
+    for (const block of m.content) {
+      if (block !== null && typeof block === "object") {
+        const id = (block as { toolCallId?: unknown }).toolCallId;
+        if (typeof id === "string" && id !== "") return id;
       }
     }
   }
-  const text = blocks.join("\n");
-  if (text.includes("Created")) return "create";
-  if (text.includes("Updated")) return "update";
-  return undefined;
+  return "";
+}
+
+/** 失败的 tool/result 不可作为逆向依据（工具本身没生效，回滚会误伤）。 */
+function resultFailed(data: Record<string, unknown>): boolean {
+  if (data.error !== undefined) return true;
+  const message = data.message;
+  if (typeof message !== "object" || message === null) return false;
+  const content = (message as { content?: unknown }).content;
+  if (!Array.isArray(content)) return false;
+  return content.some(
+    (b) => b !== null && typeof b === "object" && (b as { isError?: unknown }).isError === true,
+  );
+}
+
+/** str_replace_editor insert 的反向移除片段。insert_line:0 时 value 前没有
+ * 换行，反向要移除 `value\n`；>0 时反向移除 `\nvalue`（与工具实现一致）。 */
+function insertReverseFragment(args: Record<string, unknown>): string | undefined {
+  const value = typeof args.new_str === "string" ? args.new_str : "";
+  if (value === "") return undefined;
+  if (args.insert_line === 0) return value.endsWith("\n") ? value : `${value}\n`;
+  return value.startsWith("\n") ? value : `\n${value}`;
 }
 
 /** 从 tool/result.meta 提取 diffs（防御性窄化，malformed 返回 undefined）。 */
@@ -296,9 +339,13 @@ export function buildRestorePlan(
       continue;
     }
     if (event.type !== "tool/result") continue;
-    const callId = typeof data.callId === "string" ? data.callId : "";
+    const callId = toolResultCallId(data);
     const call = byCall.get(callId);
     if (call === undefined) continue;
+    if (resultFailed(data)) {
+      skipped.push(`#${call.seq} ${call.name}: failed result — skipped`);
+      continue;
+    }
 
     const toolName = call.name;
     const meta = diffsFromMeta(data.meta);
@@ -354,9 +401,8 @@ export function buildRestorePlan(
           skipped.push(`#${call.seq} str_replace_editor: missing old_str/new_str`);
         }
       } else if (command === "insert") {
-        // str_replace_editor 在 insert_line 之后插入 "\n"+new_str（见其实现），反向移除该片段。
-        if (typeof args.new_str === "string") {
-          const inserted = args.new_str.startsWith("\n") ? args.new_str : `\n${args.new_str}`;
+        const inserted = insertReverseFragment(args);
+        if (inserted !== undefined) {
           record(path, { op: "str_replace_editor", newText: inserted, oldText: "" });
         } else {
           skipped.push(`#${call.seq} str_replace_editor insert: missing new_str`);
@@ -483,8 +529,30 @@ function apply(ctx: Context): void {
 
       const cwd = child.header?.cwd ?? process.cwd();
 
-      // 2) 文件恢复（方案 2）：把 seq>boundary 的写操作反向回滚到边界点。
+      // 2) execve 前强制落盘子会话：持久层是 write-behind 批量缓冲（fork 的
+      //    seed 未必已到磁盘），不 flush 则新进程找不到 resume 目标
+      //    （2026-08-26 活体复现："session ... not found" 后直接退出）。
+      //    flush 必须发生在文件恢复之前：flush 失败时磁盘尚未被改动。
+      try {
+        if (typeof sessions.flush !== "function") throw new Error("sessions.flush unavailable");
+        await sessions.flush(child as never);
+      } catch (error) {
+        return {
+          kind: "error",
+          text: `failed to flush forked session: ${error instanceof Error ? error.message : String(error)} — rewind aborted before any file changes`,
+        };
+      }
+
+      // 3) 文件恢复（方案 2）：先全量 dry-run，全部可逆才写盘——
+      //    任一文件失败就整体放弃，避免 A 成功、B 失败的部分回滚。
       const { steps, skipped } = buildRestorePlan(events, boundary);
+      const plan: Array<{
+        path: string;
+        abs: string;
+        current: string;
+        next: string;
+        delete: boolean;
+      }> = [];
       const restored: string[] = [];
       const failed: string[] = [];
       for (const [path, chronoSteps] of steps) {
@@ -493,7 +561,12 @@ function apply(ctx: Context): void {
           failed.push(path);
           continue;
         }
-        const abs = resolveUnder(cwd, path);
+        const resolved = resolveUnder(cwd, path);
+        if (resolved === undefined) {
+          failed.push(`${path} (outside workspace)`);
+          continue;
+        }
+        const abs = resolved.abs;
         try {
           const current = await readTextSafe(abs);
           if (current === null) {
@@ -507,28 +580,37 @@ function apply(ctx: Context): void {
             failed.push(path);
             continue;
           }
-          if (result === "\u0000DELETE\u0000") {
-            await deleteFileSafe(abs);
-            restored.push(path);
-          } else if (result !== current) {
-            await writeTextSafe(abs, result);
-            restored.push(path);
-          }
+          plan.push({
+            path,
+            abs,
+            current,
+            next: result,
+            delete: result === "\u0000DELETE\u0000",
+          });
         } catch (error) {
           failed.push(`${path} (${error instanceof Error ? error.message : String(error)})`);
         }
       }
-
-      // 3) execve 前强制落盘子会话：持久层是 write-behind 批量缓冲（fork 的
-      //    seed 未必已到磁盘），不 flush 则新进程找不到 resume 目标
-      //    （2026-08-26 活体复现："session ... not found" 后直接退出）。
-      try {
-        if (typeof sessions.flush !== "function") throw new Error("sessions.flush unavailable");
-        await sessions.flush(child as never);
-      } catch (error) {
+      if (failed.length > 0) {
         return {
           kind: "error",
-          text: `failed to flush forked session: ${error instanceof Error ? error.message : String(error)} — files may already be restored; rewind aborted`,
+          text: `rewind aborted before file changes — cannot restore: ${failed.join(", ")}`,
+        };
+      }
+      for (const item of plan) {
+        try {
+          if (item.delete) await deleteFileSafe(item.abs);
+          else if (item.next !== item.current) await writeTextSafe(item.abs, item.next);
+          restored.push(item.path);
+        } catch (error) {
+          failed.push(`${item.path} (${error instanceof Error ? error.message : String(error)})`);
+          break;
+        }
+      }
+      if (failed.length > 0) {
+        return {
+          kind: "error",
+          text: `rewind aborted after partial file changes: ${failed.join(", ")} — resume manually with /resume ${child.id}`,
         };
       }
 
@@ -586,9 +668,14 @@ function truncate(text: string, n: number): string {
   return text.length > n ? `${text.slice(0, n)}…` : text;
 }
 
-/** diff 里的 path 是模型侧相对路径，相对 cwd 解析。 */
-function resolveUnder(cwd: string, path: string): string {
-  return path.startsWith("/") ? path : join(cwd, path);
+/** diff 里的 path 是模型侧相对路径，相对 cwd 解析；解析结果必须落在
+ * 会话工作区内（拒绝绝对路径逃逸和 `..` 越界）。 */
+function resolveUnder(cwd: string, path: string): { abs: string } | undefined {
+  if (path === "") return undefined;
+  const base = resolve(cwd);
+  const abs = path.startsWith("/") ? resolve(path) : resolve(cwd, path);
+  const prefix = base.endsWith(sep) ? base : `${base}${sep}`;
+  return abs === base || abs.startsWith(prefix) ? { abs } : undefined;
 }
 
 async function readTextSafe(abs: string): Promise<string | null> {
@@ -606,6 +693,10 @@ async function writeTextSafe(abs: string, content: string): Promise<void> {
   const tmp = `${abs}.rewind-${randomUUID().slice(0, 8)}.tmp`;
   try {
     await writeFile(tmp, content, "utf8");
+    // Preserve the original file's permission bits through the atomic rename
+    // (a naive temp write would reset a mode-600 file to the umask default).
+    const st = await stat(abs).catch(() => undefined);
+    if (st !== undefined) await chmod(tmp, st.mode);
     await rename(tmp, abs);
   } catch (error) {
     await unlink(tmp).catch(() => {});
@@ -666,7 +757,7 @@ function relaunchToResume(sessionId: string, cwd: string): void {
     if (arg.startsWith("--resume=")) continue;
     kept.push(arg);
   }
-  const relaunch = [process.execPath, ...kept, "--resume", sessionId];
+  const relaunch = [process.execPath, ...(process.execArgv ?? []), ...kept, "--resume", sessionId];
   if (process.execve === undefined) {
     console.error("[dsh-rewind] process.execve unavailable — resume manually with:");
     console.error(`  /resume ${sessionId}`);

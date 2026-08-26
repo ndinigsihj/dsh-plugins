@@ -11,6 +11,7 @@
  * 挂载方式：由 boot 脚本通过 patch insert 本插件 + agent-presets 行。
  * 运行：node scripts/liangshen-plus-smoke.mjs（见文件头注释）
  */
+import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { installModelSelection } from "/Users/vito/.dsh/profiles/endless-tui/node_modules/.pnpm/node_modules/@deepseek-ai/dsh-agent/lib/index.js";
 import { SessionId } from "/Users/vito/.dsh/profiles/endless-tui/node_modules/.pnpm/node_modules/@deepseek-ai/dsh-session/lib/index.js";
@@ -67,6 +68,9 @@ async function run(ctx) {
   // R1 assembly（目录）
   const r1 = await agent.ctx.systemPrompt.assemble(context);
   console.log("ROUND1 catalog:", JSON.stringify(summary(r1)));
+  assert.ok(r1.tools.includes("bash"), "R1 must expose bash");
+  assert.ok(r1.tools.includes("str_replace_editor"), "R1 must expose str_replace_editor");
+  assert.ok(!r1.bashParams.includes("sandbox_permissions"), "R1 persistent bash must not expose sandbox_permissions");
 
   // R1 pre-step（注入）
   const r1Pre = await agent.dispatch.waterfall(
@@ -74,7 +78,10 @@ async function run(ctx) {
     { agent, messages: [], signal: context.signal },
     () => Promise.resolve({ kind: "enter", messages: [] }),
   );
-  console.log("ROUND1 pre-step sources:", JSON.stringify((r1Pre.messages ?? []).map((m) => m.source?.kind)));
+  const r1Sources = (r1Pre.messages ?? []).map((m) => m.source?.kind);
+  console.log("ROUND1 pre-step sources:", JSON.stringify(r1Sources));
+  assert.ok(!r1Sources.includes("agent-instructions"), "R1 must not inject agent-instructions");
+  assert.ok(!r1Sources.includes("skill-catalog"), "R1 must not inject skill-catalog");
 
   // 首个 durable tool/call（promotion）→ swap
   agent.session.append("tool/call", { callId: "smoke-1", name: "bash", arguments: "{}" });
@@ -83,6 +90,9 @@ async function run(ctx) {
   // R2 assembly（swap 结果以 R2 目录为准：bash 应为沙箱 schema）
   const r2 = await agent.ctx.systemPrompt.assemble(context);
   console.log("ROUND2 catalog:", JSON.stringify(summary(r2)));
+  assert.ok(r2.tools.includes("bash"), "R2 must expose bash");
+  assert.ok(r2.tools.includes("str_replace_editor"), "R2 must expose str_replace_editor");
+  assert.ok(r2.bashParams.includes("sandbox_permissions"), "R2 sandbox bash must expose sandbox_permissions");
 
   // R2 pre-step（注入恢复）
   const r2Pre = await agent.dispatch.waterfall(
@@ -90,7 +100,9 @@ async function run(ctx) {
     { agent, messages: [], signal: context.signal },
     () => Promise.resolve({ kind: "enter", messages: [] }),
   );
-  console.log("ROUND2 pre-step sources:", JSON.stringify((r2Pre.messages ?? []).map((m) => m.source?.kind)));
+  const r2Sources = (r2Pre.messages ?? []).map((m) => m.source?.kind);
+  console.log("ROUND2 pre-step sources:", JSON.stringify(r2Sources));
+  assert.ok(r2Sources.includes("agent-instructions"), "R2 must inject agent-instructions");
   console.log("WARNINGS:", JSON.stringify(warnings));
 
   process.exit(0);

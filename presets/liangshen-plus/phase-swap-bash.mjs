@@ -55,7 +55,10 @@ export function apply(ctx, config) {
   }
   const enableRunInBackground = optionalBoolean(source.enableRunInBackground, 'enableRunInBackground')
   const swapConfig = {
-    ...enableRunInBackground !== undefined ? { enableRunInBackground } : {},
+    ...(enableRunInBackground !== undefined ? { enableRunInBackground } : {}),
+    ...(source.timeoutMs !== undefined ? { timeoutMs: source.timeoutMs } : {}),
+    ...(source.backendType !== undefined ? { backendType: source.backendType } : {}),
+    ...(source.maxOutputChars !== undefined ? { maxOutputChars: source.maxOutputChars } : {}),
   }
 
   // Same epoch-aware promotion tracker as tool-bootstrap, so compaction falls

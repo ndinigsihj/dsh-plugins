@@ -40,8 +40,9 @@ The profile's `cordis.patch.yml` inserts the local plugin files by absolute path
 ```
 
 1. `npm install` (project has its own node_modules so the `.ts` imports resolve)
-2. Ensure `~/.dsh/profiles/tui/package.json` declares the `dsh-base` bundle (see below)
-3. Run `npx dsh --profile tui`
+2. `scripts/link-global-dsh.sh` — the `.ts` sources import `@deepseek-ai/*` packages that are not declared in `package.json`; this links them to the globally installed dsh dependency tree (idempotent, re-run after `npm i -g @deepseek-ai/dsh`)
+3. Ensure `~/.dsh/profiles/tui/package.json` declares the `dsh-base` bundle (see below)
+4. Run `npx dsh --profile tui`
 
 ```json
 // ~/.dsh/profiles/tui/package.json

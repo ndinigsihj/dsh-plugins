@@ -72,20 +72,10 @@ const WHALE_GLYPHS = [
 /** Stable Cordis plugin name. */
 const name = "tui-runner";
 
-/** Core services required before the terminal front door can start. */
-const inject = [
-  "agentDefaultModel",
-  "agents",
-  "sessions",
-  "userQuestions",
-  "commands",
-  "sessionQuery",
-  "sessionProjections",
-  "tokenMeter",
-  "subagents",
-  "timer",
-  "tuiStartup",
-];
+/** Core services required before the terminal front door can start. Everything
+ * else in resolveServices is optional-by-design and must stay out of inject so
+ * bare boots can still reach their fallback paths. */
+const inject = ["agentDefaultModel", "agents", "sessions", "tuiStartup", "appExit"];
 
 const Config = z.object({});
 
@@ -120,7 +110,9 @@ const HELP_TEXT = [
   "/resume <id>     resume a persisted session",
   "/rm <prefix>     delete a session (log + projection cache; confirmed)",
   "/session         show the current session id",
+  "/rewind          rewind to a past message (restores file edits)",
   "/help            show this help",
+  "双击 Esc         打开回退选择器",
   "补全：/ + Tab 出命令菜单 · @ + Tab 出文件引用 · @选中目录后按 Tab 下钻",
   "Ctrl+O          展开/收起思考与工具详情",
 ].join("\n");
@@ -336,9 +328,19 @@ function registerPreviewUnit(proj: NonNullable<CoreServices["sessionProjections"
   }
 }
 
-/** Truncate a label to a display width. */
+/** Truncate a label to a display width (CJK/wide chars count as two columns). */
 function truncate(text: string, max: number): string {
-  return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
+  if (visibleWidth(text) <= max) return text;
+  let out = "";
+  let w = 0;
+  const limit = max - 1; // room for the ellipsis
+  for (const ch of text) {
+    const cw = visibleWidth(ch);
+    if (w + cw > limit) break;
+    out += ch;
+    w += cw;
+  }
+  return `${out}…`;
 }
 
 /** Relative "…ago" label for a timestamp. */
@@ -406,7 +408,10 @@ interface EffortMeta {
 }
 
 interface UsageLike {
+  /** Live usage events report this as `inputTokens`; the projection's token
+   * totals expose the same disjoint bucket as `uncachedInputTokens`. */
   inputTokens?: unknown;
+  uncachedInputTokens?: unknown;
   outputTokens?: unknown;
   cacheReadTokens?: unknown;
   cacheWriteTokens?: unknown;
@@ -421,7 +426,8 @@ function cacheRateOf(usage: UsageLike | undefined): number | undefined {
   if (usage === undefined || typeof usage !== "object") return undefined;
   const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
   const read = num(usage.cacheReadTokens);
-  const denom = num(usage.inputTokens) + read + num(usage.cacheWriteTokens);
+  const input = num(usage.uncachedInputTokens ?? usage.inputTokens);
+  const denom = input + read + num(usage.cacheWriteTokens);
   if (denom <= 0) return undefined;
   return Math.round((read / denom) * 1000) / 10;
 }
@@ -443,7 +449,7 @@ function lastUsageReport(
       const usage = data.usage as UsageLike | undefined;
       if (usage !== undefined && typeof usage === "object") {
         const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
-        promptTokens = num(usage.inputTokens) + num(usage.cacheReadTokens) + num(usage.cacheWriteTokens);
+        promptTokens = num(usage.uncachedInputTokens ?? usage.inputTokens) + num(usage.cacheReadTokens) + num(usage.cacheWriteTokens);
         if (promptTokens <= 0) promptTokens = undefined; // meaningless zero — keep scanning
       }
     }
@@ -858,7 +864,12 @@ async function run(
   async function routeExists(route: { provider: string; model: string }): Promise<boolean> {
     const llm = services.llm;
     if (llm === undefined) return true;
-    const providers = llm.listProviders();
+    let providers: Array<{ id: string }>;
+    try {
+      providers = llm.listProviders();
+    } catch {
+      return true; // uncheckable → assume present
+    }
     if (!providers.some((p) => p.id === route.provider)) return false;
     const models = await llm.listModels(route.provider).catch(() => []);
     return models.some((m) => m.id === route.model);
@@ -1396,8 +1407,8 @@ async function run(
 
   /** Rebind the app + every closure to a newly adopted agent (/new path). */
   async function adoptAgent(next: Agent): Promise<void> {
-    agent = next;
     await next.whenIdle();
+    agent = next;
     presenters = presentersFor(next);
     app.setAgent(agentSurface(next));
     app.setCacheRate(null); // fresh session: no usage reported yet
@@ -1941,7 +1952,7 @@ async function run(
     // request route changes (same rule as rewind).
     const composed = await composePreset(
       services.agentPresets,
-      recordedPresetOf(agent.session.events as Array<{ type: string; data?: unknown }>),
+      recordedPresetOf(agent.session.events as Array<{ type: string; data?: unknown }>) ?? currentPreset(),
       (m) => app.showNotice(m),
     );
     try {
@@ -1960,8 +1971,8 @@ async function run(
         setup: makeSetup(composed, { provider, model, reasoningEffort: carriedEffort }),
       });
       const next = result.agent;
-      agent = next;
       await next.whenIdle();
+      agent = next;
       presenters = presentersFor(next);
       app.setAgent(agentSurface(next));
       liveRoute = { provider, model };
@@ -2195,7 +2206,7 @@ async function run(
   }
 
   async function doResume(line: string): Promise<void> {
-    const id = line.split(/\s+/)[1];
+    const id = line.trim().split(/\s+/)[1];
     if (id !== undefined) {
       if (id === agent.id) {
         app.showNotice("already in this session");
@@ -2227,10 +2238,16 @@ async function run(
     }
   }
 
+  /** Host dsh home directory: honor DSH_HOME when set, else ~/.dsh. */
+  function dshHomeDir(): string {
+    const envHome = process.env.DSH_HOME;
+    return envHome !== undefined && envHome !== "" ? envHome : join(homedir(), ".dsh");
+  }
+
   /** Sessions root of the host deployment (~/.dsh/sessions, one dir per
    * workspace slug). Only used for the plugin-plane delete below — dsh has
    * no standard delete seam; persistence "remove" is internal bookkeeping. */
-  const sessionsRoot = join(homedir(), ".dsh", "sessions");
+  const sessionsRoot = join(dshHomeDir(), "sessions");
 
   /** Locate the log dir for a session id across every workspace slug. */
   async function findSessionDir(id: string): Promise<string | undefined> {
@@ -2255,7 +2272,7 @@ async function run(
   /** Drop the session's row from the projection cache (keyed by id), keeping
    * a stale row from resurrecting ghost gauge/todo state in UI reads. */
   async function pruneProjectionCache(id: string): Promise<void> {
-    const file = join(homedir(), ".dsh", "storages", "session_projcache.json");
+    const file = join(dshHomeDir(), "storages", "session_projcache.json");
     let raw: string;
     try {
       raw = await readFile(file, "utf8");
@@ -2382,7 +2399,16 @@ async function run(
     }
     // The persistence backend keys sessions by workspace (cwd). chdir to the
     // target session's original cwd so the resumed process finds its log.
-    const records = services.sessionQuery === undefined ? [] : await services.sessionQuery.listSessions();
+    // A list failure must not become an unhandled rejection; without the cwd
+    // we can still relaunch from the current directory.
+    let records: Awaited<ReturnType<NonNullable<CoreServices["sessionQuery"]>["listSessions"]>> = [];
+    if (services.sessionQuery !== undefined) {
+      try {
+        records = await services.sessionQuery.listSessions();
+      } catch (error) {
+        console.error(`dsh-tui: session list failed: ${String(error)}`);
+      }
+    }
     const target = records.find((r) => r.header.id === id);
     const targetCwd = target?.header.cwd;
     if (targetCwd !== undefined) {
@@ -2390,6 +2416,7 @@ async function run(
         process.chdir(targetCwd);
       } catch (error) {
         console.error(`dsh-tui: cannot enter ${targetCwd}: ${String(error)}`);
+        app.stopTerminal();
         services.appExit(1);
         return;
       }
@@ -2398,7 +2425,7 @@ async function run(
     // Drop any --resume already on the command line (chained /resume): the new
     // target must win regardless of how the runtime parses duplicates.
     const priorArgv = argvWithoutResume(process.argv.slice(1));
-    const relaunch = [process.execPath, ...priorArgv, "--resume", id];
+    const relaunch = [process.execPath, ...(process.execArgv ?? []), ...priorArgv, "--resume", id];
     if (process.execve === undefined) {
       console.error("dsh-tui: process.execve is unavailable on this platform");
       services.appExit(1);
@@ -2535,6 +2562,7 @@ async function run(
     const disposeProvider = services.userQuestions.registerProvider({
       ask: async (request) => {
         const req = request as {
+          signal?: AbortSignal;
           questions: Array<{
             id: string;
             question: string;
@@ -2551,7 +2579,11 @@ async function run(
           // dedicated card renders that body; null answers mean
           // keep-planning/dismissed, which the service narrates itself.
           if (item.intent?.kind === "plan-review" && typeof item.detail === "string" && item.detail !== "") {
-            const picked = await app.askPlanReview({ question: item.question, plan: item.detail });
+            const picked = await app.askPlanReview({
+              question: item.question,
+              plan: item.detail,
+              signal: req.signal,
+            });
             if (picked === null) return { answers: [] };
             answers.push({ id: item.id, selected: [picked] });
             continue;
@@ -2561,6 +2593,7 @@ async function run(
             question: item.question,
             options: item.options,
             multiSelect: item.multiSelect,
+            signal: req.signal,
           });
           if (selected === null) return { answers: [] };
           answers.push({ id: item.id, selected });
@@ -2579,9 +2612,11 @@ async function run(
       if (request.signal?.aborted === true) {
         return Promise.resolve("cancelled");
       }
-      return app.askApproval({ toolName: request.toolName, reason: request.reason }) as Promise<
-        unknown
-      >;
+      return app.askApproval({
+        toolName: request.toolName,
+        reason: request.reason,
+        signal: request.signal,
+      }) as Promise<unknown>;
     },
   );
 
@@ -2668,12 +2703,15 @@ async function run(
   // child state lives in projection-backed runtime data (listChildren), but
   // waiting on a fixed poll lags starts/finishes by up to the interval — so
   // every lifecycle-relevant session event triggers an immediate re-read.
+  let subagentRefreshGeneration = 0;
   function refreshSubagents(): void {
     const subs = services.subagents;
     if (subs === undefined) return;
+    const generation = ++subagentRefreshGeneration;
     void subs
       .listChildren(agent.id)
       .then((children) => {
+        if (generation !== subagentRefreshGeneration) return; // stale response
         const running = children
           .filter((c) => c.activity === "running")
           .map((c) => ({ id: c.id, mode: c.mode, label: c.label }));

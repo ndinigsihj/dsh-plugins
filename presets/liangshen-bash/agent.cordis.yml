@@ -121,22 +121,16 @@
   config:
     sampleOverCapGlobResults: false
 
-# Minimal 的第二个工具：str_replace_editor over 本地裸 fs（照抄 liangshen）。
-- id: bootstrap-filesystem
-  name: cordis:group
-  group: true
-  isolate:
-    fs: true
+# str_replace_editor：2026-08-25 起走宿主沙箱化 ctx.fs（原配本地 fs-local
+# 已移除——越界写无审批，见 session-259d6388 与 liangshen-plus 同日修复）。
+# str_replace_editor 走宿主沙箱化 ctx.fs：workspace-write 边界=会话不可变
+# cwd，越界写 → 拒绝 → 提权审批。（原 bootstrap-filesystem 隔离组+本地裸
+# fs-local 已删：isolate 组内无 fs 提供者会使工具无法激活，且裸 fs 曾致
+# 越界写静默成功——session-259d6388。）
+- id: str-replace-editor
+  name: '@deepseek-ai/dsh-tool-str-replace-editor'
   config:
-    - id: fs-local
-      name: '@deepseek-ai/dsh-fs-local'
-      config:
-        cwd: !!js process.env.DSH_CWD ?? process.cwd()
-
-    - id: str-replace-editor
-      name: '@deepseek-ai/dsh-tool-str-replace-editor'
-      config:
-        maxOutputChars: 16000
+    maxOutputChars: 16000
 
 # ── background jobs ─────────────────────────────────────────────────────────
 - id: tool-jobs

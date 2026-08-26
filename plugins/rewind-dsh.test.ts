@@ -127,7 +127,43 @@ function toolResult(seq: number, callId: string, meta?: unknown, messageContent?
   return {
     seq,
     type: "tool/result",
-    data: { callId, meta, message: { content: messageContent } },
+    data: {
+      meta,
+      // Real dsh shape: no top-level callId; it lives in message.source.callId
+      // and message.content[].toolCallId, with text nested under the
+      // tool-result envelope's own content.
+      message: {
+        source: { kind: "tool", callId },
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: callId,
+            content: messageContent,
+            isError: false,
+          },
+        ],
+      },
+    },
+  };
+}
+
+function toolResultFailed(seq: number, callId: string) {
+  return {
+    seq,
+    type: "tool/result",
+    data: {
+      message: {
+        source: { kind: "tool", callId },
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: callId,
+            content: [{ type: "text", text: "Error: boom" }],
+            isError: true,
+          },
+        ],
+      },
+    },
   };
 }
 
@@ -195,6 +231,58 @@ test("buildRestorePlan: str_replace_editor str_replace / insert / create", () =>
   assert.deepEqual(steps.get("f.ts")![0], { op: "str_replace_editor", newText: "B", oldText: "A" });
   assert.equal(steps.get("f.ts")![1]!.newText, "\nX"); // insert 反向片段
   assert.deepEqual(steps.get("g.ts"), [{ op: "str_replace_editor", newText: "", oldText: null, deleteAfter: true }]);
+});
+
+test("buildRestorePlan: insert_line 0 uses no leading newline in reverse fragment", () => {
+  const events = [
+    toolCall(10, "i0", "str_replace_editor", '{"command":"insert","path":"f.ts","insert_line":0,"new_str":"X"}'),
+    toolResult(11, "i0", undefined, "ok"),
+  ];
+  const { steps } = buildRestorePlan(events, 9);
+  assert.equal(steps.get("f.ts")?.length, 1);
+  assert.deepEqual(steps.get("f.ts")![0], { op: "str_replace_editor", newText: "X\n", oldText: "" });
+});
+
+test("buildRestorePlan: failed tool result is skipped, not restored", () => {
+  const events = [
+    toolCall(10, "f1", "write", '{"file_path":"a.txt","content":"v2"}'),
+    toolResultFailed(11, "f1"),
+    toolCall(12, "f2", "edit", '{"file_path":"a.txt","old_string":"v1","new_string":"v2"}'),
+    toolResult(13, "f2", { diffs: [{ path: "a.txt", oldText: "v1", newText: "v2" }] }),
+  ];
+  const { steps, skipped } = buildRestorePlan(events, 9);
+  assert.equal(steps.get("a.txt")?.length, 1);
+  const firstSkipped = skipped[0];
+  assert.ok(firstSkipped);
+  assert.match(firstSkipped, /failed result/);
+});
+
+test("buildRestorePlan: real-shape callId extraction drives non-empty steps", () => {
+  // Regression for H1: production tool/result has no top-level data.callId.
+  const events = [
+    toolCall(10, "call_real_1", "write", '{"file_path":"a.txt","content":"v2"}'),
+    {
+      seq: 11,
+      type: "tool/result",
+      data: {
+        message: {
+          source: { kind: "tool", callId: "call_real_1" },
+          content: [
+            {
+              type: "tool-result",
+              toolCallId: "call_real_1",
+              content: [{ type: "text", text: "ok" }],
+              isError: false,
+            },
+          ],
+        },
+        meta: { diffs: [{ path: "a.txt", oldText: "v1", newText: "v2" }] },
+      },
+    },
+  ];
+  const { steps, skipped } = buildRestorePlan(events, 9);
+  assert.equal(skipped.length, 0);
+  assert.equal(steps.get("a.txt")?.length, 1);
 });
 
 test("buildRestorePlan: ignores events at/before boundary", () => {

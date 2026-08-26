@@ -258,7 +258,7 @@ export class TranscriptModel {
           content?: ReadonlyArray<ContentLike>;
           source?: { kind?: string };
         };
-        const content = data.content ?? [];
+        const content = Array.isArray(data.content) ? data.content : [];
         const { text, reasoning } = splitContent(content);
         const imageLabels = content
           .filter((b) => (b as { type?: unknown }).type === "image")
@@ -298,7 +298,12 @@ export class TranscriptModel {
           this.markDirty(row.seq);
           this.bump();
         } else if (chunk.type === "block-end" && chunk.block?.type === "text") {
-          this.openAssistant ??= this.pushAssistant(event.seq);
+          if (this.openAssistant === null) {
+            this.openAssistant = this.pushAssistant(event.seq);
+            // A fresh block-end with no earlier text-delta must bump so the
+            // windowed TranscriptArea mounts the new row immediately.
+            this.bump();
+          }
         }
         break;
       }
@@ -307,7 +312,7 @@ export class TranscriptModel {
           event.data as { message?: { content?: ReadonlyArray<ContentLike> } } | undefined
         )?.message;
         if (message === undefined) break;
-        const { text, reasoning } = splitContent(message.content ?? []);
+        const { text, reasoning } = splitContent(Array.isArray(message.content) ? message.content : []);
         if (this.openAssistant === null) {
           if (text === "" && reasoning === "") break;
           this.pushRow({ kind: "assistant", text, reasoning, done: true, seq: event.seq });
@@ -346,7 +351,7 @@ export class TranscriptModel {
             }
           | undefined;
         if (data === undefined) break;
-        const content = data.message?.content ?? [];
+        const content = Array.isArray(data.message?.content) ? data.message.content : [];
         const resultBlock = content.find((b) => b.type === "tool-result");
         const callId = String(resultBlock?.toolCallId ?? "");
         const row = this.toolByCall.get(callId);

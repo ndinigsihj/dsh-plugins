@@ -65,12 +65,16 @@ export interface AskQuestionRequest {
     options?: Array<{ label: string; description?: string }>;
     /** Harness wire flag: more than one option may be selected. */
     multiSelect?: boolean;
+    /** When the caller aborts, the card closes and resolves null. */
+    signal?: AbortSignal;
   }>;
 }
 
 export interface ApprovalRequest {
   toolName: string;
   reason?: string;
+  /** When the caller aborts, the card closes itself and resolves cancelled. */
+  signal?: AbortSignal;
 }
 
 export interface RunningSubagent {
@@ -287,7 +291,7 @@ class UserRow implements RowComponent {
       row.images !== undefined && row.images.length > 0
         ? this.p.dim(` ${row.images.join(" ")}`)
         : "";
-    this.text.setText(this.p.fg(this.boxPrefix() + row.text, "yellow") + images);
+    this.text.setText(this.p.fg(this.boxPrefix() + sanitizeDisplay(row.text), "yellow") + images);
   }
   private boxPrefix(): string {
     return "> ";
@@ -610,7 +614,8 @@ class NoticeRow implements RowComponent {
     row: Extract<TranscriptRow, { kind: "notice" | "error" | "context" }>,
   ) {
     const color = row.kind === "error" ? "red" : null;
-    this.text = new Text(color === null ? p.dim(row.text) : p.fg(row.text, color), 1, 1);
+    const text = sanitizeDisplay(row.text);
+    this.text = new Text(color === null ? p.dim(text) : p.fg(text, color), 1, 1);
   }
   update(): void {
     /* static content */
@@ -998,18 +1003,21 @@ export class QuestionCard implements Component {
     const inner = cardWidth - 4;
 
     const content: string[] = [""];
-    for (const line of wrapTextWithAnsi(this.question, inner)) {
+    const question = sanitizeDisplay(this.question);
+    for (const line of wrapTextWithAnsi(question, inner)) {
       content.push(this.palette.bold(line));
     }
-    if (this.description !== undefined && this.description.trim() !== "") {
+    const description =
+      this.description === undefined ? undefined : sanitizeDisplay(this.description);
+    if (description !== undefined && description.trim() !== "") {
       content.push("");
-      for (const line of wrapTextWithAnsi(this.description, inner)) {
+      for (const line of wrapTextWithAnsi(description, inner)) {
         content.push(this.palette.dim(line));
       }
     }
     content.push("");
     content.push(...this.list.render(inner));
-    if (this.hint !== undefined) content.push(this.palette.dim(`  ${this.hint}`));
+    if (this.hint !== undefined) content.push(this.palette.dim(`  ${sanitizeDisplay(this.hint)}`));
     content.push("");
 
     return [
@@ -1285,11 +1293,13 @@ class ApprovalCard implements Component {
 
     const content: string[] = [];
     content.push("");
-    content.push(this.padLabel("Tool", this.palette.bold(this.toolName), valueWidth));
+    content.push(this.padLabel("Tool", this.palette.bold(sanitizeDisplay(this.toolName)), valueWidth));
+    const reason =
+      this.reason === undefined ? undefined : sanitizeDisplay(this.reason);
     const reasonLines =
-      this.reason === undefined || this.reason.trim() === ""
+      reason === undefined || reason.trim() === ""
         ? [this.palette.dim("(no reason provided)")]
-        : wrapTextWithAnsi(this.reason, valueWidth);
+        : wrapTextWithAnsi(reason, valueWidth);
     for (const [i, line] of reasonLines.entries()) {
       content.push(this.padLabel(i === 0 ? "Request" : "", line, valueWidth));
     }
@@ -1392,10 +1402,10 @@ class PlanReviewCard implements Component {
     const cardWidth = Math.max(0, Math.min(width - 2, PLAN_REVIEW_CARD_MAX));
     const inner = Math.max(16, cardWidth - 4);
     const content: string[] = [""];
-    content.push(truncateToWidth(this.question, inner));
+    content.push(truncateToWidth(sanitizeDisplay(this.question), inner));
     content.push("");
     const wrapped: string[] = [];
-    for (const raw of this.plan.split("\n")) {
+    for (const raw of sanitizeDisplay(this.plan).split("\n")) {
       wrapped.push(...(raw.trim() === "" ? [""] : wrapTextWithAnsi(raw, inner)));
     }
     const shown = wrapped.slice(0, PLAN_REVIEW_BODY_LINES);
@@ -1497,6 +1507,16 @@ interface SelectionInternals {
  */
 function enableShiftClickExtend(tui: TuiAltScreen): void {
   const t = tui as unknown as SelectionInternals & { requestRender(): void };
+  // pi-tui keeps these private; if a version renames them, fall back to the
+  // plain mouse behavior instead of crashing the whole TUI on a Shift+click.
+  if (
+    typeof t.handleSelectionMouseEvent !== "function" ||
+    typeof t.getSelectionPoint !== "function" ||
+    typeof t.updateSelectionFocus !== "function" ||
+    typeof t.copySelectionToClipboard !== "function"
+  ) {
+    return;
+  }
   const original = t.handleSelectionMouseEvent.bind(t);
   t.handleSelectionMouseEvent = (event: ParsedMouseEvent) => {
     const isPress = !event.release && (event.button & (32 | 64)) === 0;
@@ -1519,6 +1539,10 @@ function enableShiftClickExtend(tui: TuiAltScreen): void {
   };
 }
 
+/** Max checkbox rows rendered before a "… more" stub; keeps tall multi-selects
+ * inside the viewport. */
+const CHECKBOX_MAX_VISIBLE = 8;
+
 /** Multi-select question overlay: the harness `multiSelect` wire flag asks
  * for several of the options at once. Space toggles, a selects/deselects
  * all, Enter submits the checked labels (possibly empty), Esc cancels. */
@@ -1529,6 +1553,7 @@ export class CheckboxList implements Component {
   private readonly options: Array<{ label: string; description?: string }>;
   private readonly checked: boolean[];
   private cursor = 0;
+  private scrollOffset = 0;
 
   onSubmit?: (selected: string[]) => void;
   onCancel?: () => void;
@@ -1578,13 +1603,17 @@ export class CheckboxList implements Component {
   render(width: number): string[] {
     const lines: string[] = [];
     if (this.question !== "") lines.push(this.palette.dim(this.question), "");
-    this.options.forEach((option, i) => {
+    const end = Math.min(this.options.length, this.scrollOffset + CHECKBOX_MAX_VISIBLE);
+    if (this.scrollOffset > 0) lines.push(this.palette.dim(`… ${this.scrollOffset} more above`));
+    for (let i = this.scrollOffset; i < end; i += 1) {
+      const option = this.options[i]!;
       const cursor = i === this.cursor ? this.palette.fg("❯ ", "cyan") : "  ";
       const box = this.checked[i] === true ? this.palette.fg("[x]", "green") : this.palette.dim("[ ]");
       const desc =
         option.description !== undefined ? this.palette.dim(` — ${option.description}`) : "";
       lines.push(truncateToWidth(`${cursor}${box} ${option.label}${desc}`, Math.max(0, width - 2)));
-    });
+    }
+    if (end < this.options.length) lines.push(this.palette.dim(`… ${this.options.length - end} more below`));
     lines.push("");
     lines.push(this.palette.dim("space toggle · a all/none · enter submit · esc cancel"));
     return lines;
@@ -1594,6 +1623,10 @@ export class CheckboxList implements Component {
 
   private move(delta: number): void {
     this.cursor = Math.max(0, Math.min(this.options.length - 1, this.cursor + delta));
+    if (this.cursor < this.scrollOffset) this.scrollOffset = this.cursor;
+    else if (this.cursor >= this.scrollOffset + CHECKBOX_MAX_VISIBLE) {
+      this.scrollOffset = this.cursor - CHECKBOX_MAX_VISIBLE + 1;
+    }
   }
 
   private selectedLabels(): string[] {
@@ -1622,7 +1655,7 @@ export function formatGoalLine(p: Palette, goal: GoalSummary, width: number): st
   const style = goalStyle(goal.phase);
   const tag = goal.phase === "active" ? "" : ` · ${goal.phase}`;
   const text =
-    `${p.fg(style.mark, style.color)} ${goal.objective} ` +
+    `${p.fg(style.mark, style.color)} ${sanitizeDisplay(goal.objective)} ` +
     p.dim(`· round ${goal.roundsStarted}/${goal.maxGoalRounds}${tag}`);
   return truncateToWidth(text, Math.max(20, width));
 }
@@ -1922,6 +1955,8 @@ export class TuiApp {
   /** Output tokens of the newest provider usage sample (null hides it). */
   setOutputTotal(tokens: number | null): void {
     this.outputTotal = tokens !== null && tokens > 0 ? tokens : null;
+    this.updateStatus();
+    this.render();
   }
 
   /** Feed streamed assistant text into the live token-rate window. */
@@ -1959,7 +1994,7 @@ export class TuiApp {
         items.find((t) => t.status !== "completed");
       const focus =
         current !== undefined
-          ? ` · ${todoMarker(this.p, current.status)} ${current.content}`
+          ? ` · ${todoMarker(this.p, current.status)} ${sanitizeDisplay(current.content)}`
           : "";
       this.todosLine.setText(
         truncateToWidth(
@@ -1971,7 +2006,8 @@ export class TuiApp {
     }
     const lines = [this.p.fg(`☰ todos ${done}/${items.length}`, "cyan")];
     for (const item of items) {
-      const text = item.status === "completed" ? this.p.dim(item.content) : item.content;
+      const clean = sanitizeDisplay(item.content);
+      const text = item.status === "completed" ? this.p.dim(clean) : clean;
       lines.push(`  ${todoMarker(this.p, item.status)} ${text}`);
     }
     lines.push(this.p.dim("  Ctrl+O collapses"));
@@ -2303,15 +2339,27 @@ export class TuiApp {
   /** B5: dedicated plan-exit review card. Resolves the host's approve label
    * verbatim ("Approve") on approval, or null for keep-planning/dismissed —
    * dsh-plan-mode narrates both non-approve outcomes itself. */
-  askPlanReview(item: { question: string; plan: string }): Promise<string | null> {
+  askPlanReview(item: { question: string; plan: string; signal?: AbortSignal }): Promise<string | null> {
     return new Promise((resolve) => {
+      if (item.signal?.aborted === true) {
+        resolve(null);
+        return;
+      }
       const card = new PlanReviewCard(this.p, item.question, item.plan);
-      card.onDecide = (outcome) => {
+      const finish = (outcome: string | null) => {
         this.tui.hideOverlay();
-        resolve(outcome === "approved" ? "Approve" : null);
+        resolve(outcome);
+      };
+      card.onDecide = (outcome) => {
+        finish(outcome === "approved" ? "Approve" : null);
       };
       this.tui.showOverlay(card, { anchor: "bottom-center", margin: 1 });
       this.tui.setFocus(card);
+      item.signal?.addEventListener(
+        "abort",
+        () => finish(null),
+        { once: true },
+      );
     });
   }
 
@@ -2359,23 +2407,30 @@ export class TuiApp {
   askQuestion(item: AskQuestionRequest["questions"][number]): Promise<string[] | null> {
     if (item.multiSelect === true && (item.options?.length ?? 0) > 0) {
       return new Promise((resolve) => {
+        if (item.signal?.aborted === true) {
+          resolve(null);
+          return;
+        }
         // Question text lives on the card frame ("" suppresses the list's
         // own dim title so it is not rendered twice).
         const list = new CheckboxList(this.p, "", item.options ?? []);
         const card = new QuestionCard(this.p, { header: item.header, question: item.question }, list);
         const handle = this.tui.showOverlay(card, { anchor: "bottom-center", margin: 1 });
-        list.onSubmit = (selected) => {
+        const finish = (selected: string[] | null) => {
           handle.hide();
           resolve(selected);
         };
-        list.onCancel = () => {
-          handle.hide();
-          resolve(null);
-        };
+        list.onSubmit = (selected) => finish(selected);
+        list.onCancel = () => finish(null);
         this.tui.setFocus(card);
+        item.signal?.addEventListener("abort", () => finish(null), { once: true });
       });
     }
     return new Promise((resolve) => {
+      if (item.signal?.aborted === true) {
+        resolve(null);
+        return;
+      }
       const items: SelectItem[] = (item.options ?? []).map((o) => ({
         value: o.label,
         label: o.label,
@@ -2392,15 +2447,14 @@ export class TuiApp {
         "↑↓ choose · enter confirm · esc cancel",
       );
       const handle = this.tui.showOverlay(card, { anchor: "bottom-center", margin: 1 });
-      select.onSelect = (sel) => {
+      const finish = (selected: string[] | null) => {
         handle.hide();
-        resolve([sel.value]);
+        resolve(selected);
       };
-      select.onCancel = () => {
-        handle.hide();
-        resolve(null);
-      };
+      select.onSelect = (sel) => finish([sel.value]);
+      select.onCancel = () => finish(null);
       this.tui.setFocus(card);
+      item.signal?.addEventListener("abort", () => finish(null), { once: true });
     });
   }
 
@@ -2458,6 +2512,10 @@ export class TuiApp {
   /** Prompt the human to approve a tool call via the approval card. */
   askApproval(req: ApprovalRequest): Promise<"allowed-once" | "rejected" | "cancelled"> {
     return new Promise((resolve) => {
+      if (req.signal?.aborted === true) {
+        resolve("cancelled");
+        return;
+      }
       const card = new ApprovalCard(this.p, req.toolName, req.reason);
       const finish = (outcome: "allowed-once" | "rejected" | "cancelled") => {
         if (this.transcript.clearApprovalFlags()) this.transcriptArea.redrawAll();
@@ -2469,6 +2527,7 @@ export class TuiApp {
       // Point at the pending call the card is about, behind the overlay.
       if (this.transcript.flagPendingTool(req.toolName)) this.transcriptArea.redrawAll();
       this.tui.setFocus(card);
+      req.signal?.addEventListener("abort", () => finish("cancelled"), { once: true });
     });
   }
 
@@ -2569,12 +2628,13 @@ export class TuiApp {
       this.showNotice("Attachment storage unavailable in this boot — press esc to drop images.");
       return;
     }
+    const originalPaths = this.pendingImagePaths.slice();
     let saved: SavedImage[] | undefined;
     if (hasImages) {
       try {
         // Save BEFORE touching the editor: a failed image keeps the queue
         // and the draft text so the user can fix and resend.
-        saved = await this.options.saveImages!(this.pendingImagePaths.slice());
+        saved = await this.options.saveImages!(originalPaths);
       } catch (error) {
         this.showNotice(
           `Attachment failed: ${error instanceof Error ? error.message : String(error)} — message not sent.`,
@@ -2585,8 +2645,20 @@ export class TuiApp {
       this.renderImageLine();
     }
     this.editor.addToHistory(text);
-    this.editor.setText("");
-    this.options.onPrompt(trimmed, saved);
+    // The user may have typed while images were saving; keep any new suffix
+    // instead of wiping the whole editor with setText("").
+    const afterSaveText = this.editor.getText();
+    if (afterSaveText.startsWith(text)) this.editor.setText(afterSaveText.slice(text.length));
+    else this.editor.setText(afterSaveText);
+    try {
+      this.options.onPrompt(trimmed, saved);
+    } catch (error) {
+      this.pendingImagePaths = originalPaths;
+      this.renderImageLine();
+      this.showNotice(
+        `Message send failed: ${error instanceof Error ? error.message : String(error)} — draft kept.`,
+      );
+    }
     this.render();
   }
 }
