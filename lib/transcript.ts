@@ -176,6 +176,7 @@ export class TranscriptModel {
       if (row.resultView !== undefined || row.error !== undefined) continue;
       if (row.name !== toolName) continue;
       row.awaitingApproval = true;
+      this.markDirty(row.seq);
       this.bump();
       return true;
     }
@@ -188,6 +189,7 @@ export class TranscriptModel {
     for (const row of this.rows) {
       if (row.kind === "tool" && row.awaitingApproval === true) {
         row.awaitingApproval = undefined;
+        this.markDirty(row.seq);
         changed = true;
       }
     }

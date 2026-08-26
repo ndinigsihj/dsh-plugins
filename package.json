@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Interactive terminal front door for DeepSeek Harness: pi-tui renderer mounted inside the dsh process.",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.19.0"
   },
   "scripts": {
     "test": "node --test lib/goal-bar.test.ts lib/transcript-area.test.ts plugins/rewind-dsh.test.ts presets/liangshen-plus/phase-swap-bash.test.mjs"

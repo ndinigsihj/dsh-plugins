@@ -9,7 +9,7 @@
  *   R2. agent/pre-step → 二轮注入（应含 agent-instructions）
  *
  * 挂载方式：由 boot 脚本通过 patch insert 本插件 + agent-presets 行。
- * 运行：node scripts/liangshen-plus-smoke.mjs（见文件头注释）
+ * 运行：node presets/liangshen-plus/smoke-boot.mjs
  */
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -67,10 +67,11 @@ async function run(ctx) {
 
   // R1 assembly（目录）
   const r1 = await agent.ctx.systemPrompt.assemble(context);
-  console.log("ROUND1 catalog:", JSON.stringify(summary(r1)));
-  assert.ok(r1.tools.includes("bash"), "R1 must expose bash");
-  assert.ok(r1.tools.includes("str_replace_editor"), "R1 must expose str_replace_editor");
-  assert.ok(!r1.bashParams.includes("sandbox_permissions"), "R1 persistent bash must not expose sandbox_permissions");
+  const s1 = summary(r1);
+  console.log("ROUND1 catalog:", JSON.stringify(s1));
+  assert.ok(s1.tools.includes("bash"), "R1 must expose bash");
+  assert.ok(s1.tools.includes("str_replace_editor"), "R1 must expose str_replace_editor");
+  assert.ok(!s1.bashParams.includes("sandbox_permissions"), "R1 persistent bash must not expose sandbox_permissions");
 
   // R1 pre-step（注入）
   const r1Pre = await agent.dispatch.waterfall(
@@ -89,10 +90,11 @@ async function run(ctx) {
 
   // R2 assembly（swap 结果以 R2 目录为准：bash 应为沙箱 schema）
   const r2 = await agent.ctx.systemPrompt.assemble(context);
-  console.log("ROUND2 catalog:", JSON.stringify(summary(r2)));
-  assert.ok(r2.tools.includes("bash"), "R2 must expose bash");
-  assert.ok(r2.tools.includes("str_replace_editor"), "R2 must expose str_replace_editor");
-  assert.ok(r2.bashParams.includes("sandbox_permissions"), "R2 sandbox bash must expose sandbox_permissions");
+  const s2 = summary(r2);
+  console.log("ROUND2 catalog:", JSON.stringify(s2));
+  assert.ok(s2.tools.includes("bash"), "R2 must expose bash");
+  assert.ok(s2.tools.includes("str_replace_editor"), "R2 must expose str_replace_editor");
+  assert.ok(s2.bashParams.includes("sandbox_permissions"), "R2 sandbox bash must expose sandbox_permissions");
 
   // R2 pre-step（注入恢复）
   const r2Pre = await agent.dispatch.waterfall(

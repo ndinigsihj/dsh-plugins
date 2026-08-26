@@ -102,7 +102,6 @@ export function apply(ctx, config) {
       const agent = ctx.get('agents')?.get(session.id)
       if (agent === undefined) return
       if (!promotion.status(agent).promoted) return
-      swapped.add(session.id)
       // Register sandbox bash into THIS agent's scope layer, shadowing the
       // shared persistent bash for this session only. `dsh-tool-bash.apply`
       // resolves ctx.shell / ctx.sandboxPolicy / ctx.approval / ctx.systemPrompt
@@ -112,6 +111,9 @@ export function apply(ctx, config) {
       await agent.ctx.inject(['tools', 'shell', 'systemPrompt', 'shellEnv'], (injectedCtx) => {
         sandboxBash.apply(injectedCtx, swapConfig)
       })
+      // Mark swapped only after the swap actually succeeded: a transient
+      // failure must leave the session eligible for a future retry.
+      swapped.add(session.id)
     } catch (error) {
       // Degrade: keep persistent bash (full directory but no escalation).
       warnOnce(

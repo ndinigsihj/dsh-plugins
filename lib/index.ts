@@ -2240,8 +2240,13 @@ async function run(
 
   /** Host dsh home directory: honor DSH_HOME when set, else ~/.dsh. */
   function dshHomeDir(): string {
-    const envHome = process.env.DSH_HOME;
-    return envHome !== undefined && envHome !== "" ? envHome : join(homedir(), ".dsh");
+    const envHome = process.env.DSH_HOME?.trim();
+    if (envHome !== undefined && envHome !== "") {
+      if (envHome === "~") return homedir();
+      if (envHome.startsWith("~/")) return join(homedir(), envHome.slice(2));
+      return envHome;
+    }
+    return join(homedir(), ".dsh");
   }
 
   /** Sessions root of the host deployment (~/.dsh/sessions, one dir per

@@ -27,6 +27,9 @@ const smokePatches = [
   { id: "headless-startup", disabled: true },
   // dsh-base 的 tool-bash 会与 preset 的 bash 撞名 → 按 endless-tui 的处置禁用
   { id: "tool-bash", disabled: true },
+  // 沙箱友好：session 根改 /tmp（headless 进程跑在 workspace-write 沙箱下，
+  // ~/.dsh/sessions 不可写；冒烟不需要跨进程恢复，/tmp 足够）
+  { id: "session-persistence-jsonl", config: { root: "/tmp/liangshen-plus-smoke-sessions" } },
   // 挂 agent-presets 服务（dsh-base 不提供；endless-tui 由 dsh-tui bundle 提供）
   {
     insert: [

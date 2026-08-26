@@ -1808,6 +1808,7 @@ export class TuiApp {
   private readonly goalLine: Text;
   private readonly imageLine: Text;
   private pendingImagePaths: string[] = [];
+  private submitting = false;
   private readonly todosLine: Text;
   private agent: AgentSurface;
   private modelLabel: string;
@@ -2614,51 +2615,59 @@ export class TuiApp {
   }
 
   private async handleSubmit(text: string): Promise<void> {
-    const trimmed = text.trim();
-    const hasImages = this.pendingImagePaths.length > 0;
-    if (trimmed === "" && !hasImages) {
-      // Empty Enter doubles as "jump to latest": scrolling up through a
-      // long transcript previously left only the wheel grind back down.
-      // scrollToEnd also restores follow-end so new turns auto-again.
-      this.transcriptScroll.scrollToEnd();
-      this.render();
-      return;
-    }
-    if (hasImages && this.options.saveImages === undefined) {
-      this.showNotice("Attachment storage unavailable in this boot — press esc to drop images.");
-      return;
-    }
-    const originalPaths = this.pendingImagePaths.slice();
-    let saved: SavedImage[] | undefined;
-    if (hasImages) {
-      try {
-        // Save BEFORE touching the editor: a failed image keeps the queue
-        // and the draft text so the user can fix and resend.
-        saved = await this.options.saveImages!(originalPaths);
-      } catch (error) {
-        this.showNotice(
-          `Attachment failed: ${error instanceof Error ? error.message : String(error)} — message not sent.`,
-        );
+    // Reentrancy guard: image saving is async, so a second Enter during the
+    // wait must not fire another concurrent save/submit.
+    if (this.submitting) return;
+    this.submitting = true;
+    try {
+      const trimmed = text.trim();
+      const hasImages = this.pendingImagePaths.length > 0;
+      if (trimmed === "" && !hasImages) {
+        // Empty Enter doubles as "jump to latest": scrolling up through a
+        // long transcript previously left only the wheel grind back down.
+        // scrollToEnd also restores follow-end so new turns auto-again.
+        this.transcriptScroll.scrollToEnd();
+        this.render();
         return;
       }
-      this.pendingImagePaths = [];
-      this.renderImageLine();
+      if (hasImages && this.options.saveImages === undefined) {
+        this.showNotice("Attachment storage unavailable in this boot — press esc to drop images.");
+        return;
+      }
+      const originalPaths = this.pendingImagePaths.slice();
+      let saved: SavedImage[] | undefined;
+      if (hasImages) {
+        try {
+          // Save BEFORE touching the editor: a failed image keeps the queue
+          // and the draft text so the user can fix and resend.
+          saved = await this.options.saveImages!(originalPaths);
+        } catch (error) {
+          this.showNotice(
+            `Attachment failed: ${error instanceof Error ? error.message : String(error)} — message not sent.`,
+          );
+          return;
+        }
+        this.pendingImagePaths = [];
+        this.renderImageLine();
+      }
+      this.editor.addToHistory(text);
+      // The user may have typed while images were saving; keep any new suffix
+      // instead of wiping the whole editor with setText("").
+      const afterSaveText = this.editor.getText();
+      if (afterSaveText.startsWith(text)) this.editor.setText(afterSaveText.slice(text.length));
+      else this.editor.setText(afterSaveText);
+      try {
+        this.options.onPrompt(trimmed, saved);
+      } catch (error) {
+        this.pendingImagePaths = originalPaths;
+        this.renderImageLine();
+        this.showNotice(
+          `Message send failed: ${error instanceof Error ? error.message : String(error)} — draft kept.`,
+        );
+      }
+      this.render();
+    } finally {
+      this.submitting = false;
     }
-    this.editor.addToHistory(text);
-    // The user may have typed while images were saving; keep any new suffix
-    // instead of wiping the whole editor with setText("").
-    const afterSaveText = this.editor.getText();
-    if (afterSaveText.startsWith(text)) this.editor.setText(afterSaveText.slice(text.length));
-    else this.editor.setText(afterSaveText);
-    try {
-      this.options.onPrompt(trimmed, saved);
-    } catch (error) {
-      this.pendingImagePaths = originalPaths;
-      this.renderImageLine();
-      this.showNotice(
-        `Message send failed: ${error instanceof Error ? error.message : String(error)} — draft kept.`,
-      );
-    }
-    this.render();
   }
 }

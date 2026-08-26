@@ -725,6 +725,7 @@ function isNotFound(error: unknown): boolean {
  * bracketed paste——否则这些模式会越过 execve 留在终端上。三条序列对
  * 未启用的模式均为 no-op；pop-on-empty 按 spec 也是 no-op，不会误伤外层。 */
 function restoreTerminalForHandoff(): void {
+  if (!process.stdout.isTTY) return;
   try {
     process.stdin.setRawMode?.(false);
   } catch {
