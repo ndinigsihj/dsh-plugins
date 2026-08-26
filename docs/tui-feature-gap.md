@@ -103,11 +103,14 @@
 | 官方 0.8.x 迭代快，差距清单会漂移 | 追不全 | 只追"常用功能"档位，不追全集；版本差异在本文档记录基线 |
 | rc.7→rc.8 peer 契约 drift（启动警告等） | 与官方包共用时的已知问题 | 见 [`rc8-capability-assessment.md`](rc8-capability-assessment.md) §4；本 TUI 直连 rc.8 服务不受影响 |
 
-## 9. host 0.1.1-rc.2 能力盘点：可用未接清单（2026-08-24）
+## 9. host 0.1.1-rc.2 能力盘点：可用未接清单（2026-08-24，续盘 2026-08-27）
 
 口径：`dsh-base` bundle 已把绝大部分 host 服务挂进每个 profile（含 sqlite 会话查询、
 压缩、spill、审批瀑布），"未利用"分两种——服务在跑但 TUI 前端没接（A 组/B 组），
 和整链未挂载。逐项实现，顺序即排期。
+
+> 2026-08-27 续盘：新增 A7–A10（已挂载/低配可开）、B6–B10（小量接线）、C 组细化与
+> 不适用项补全。A3 行同步修正为"计数/时间范围已覆盖、时序细分留给 B6"。
 
 ### 9.1 A 组：服务已在跑，TUI 直接可吃
 
@@ -115,10 +118,14 @@
 |---|---|---|---|
 | A1 | `dsh-session-projection-cache`（持久投影缓存 + 冷读阶梯） | 已挂未消费 | ✅ 两步落地（2026-08-24）。spike 结论：cache 服务的是投影不是转录行，重建加速不成立；第一步 resume//new//model 种子改读注册表整值（seedProjections）；第二步注册自有 `tuiPreview` 投影单元（counts/route/时间范围/首末问），`/resume` 预览走 `coldSnapshot(id)` 冷读阶梯（缓存行 + 尾部回放 + 写回），全量 readSession 降为兜底。cache 以 writeEveryEvents=400/writeIntervalMs=30s 挂入 tui 与 tui-dev |
 | A2 | `dsh-permission-presets`（sandbox 档 + approval 策略 select，写会话事件） | base 已挂无入口 | ✅ 落地（2026-08-24）：`/permission` 选择器——preset 表声明序 + `current` 折叠标注 ← current，custom 状态先提示再选；写走 `set()`（记录 preset 意图 + knob 事实，回放权威）；running 否决对齐 /effort |
-| A3 | `dsh-session-stats`（整段对话计数 + 墙钟时间投影） | 未用，且无需挂载 | 由 A1 的自有 `tuiPreview` 单元覆盖（counts + 时间范围），不引入 dsh-session-stats |
+| A3 | `dsh-session-stats`（整段对话计数 + LLM/tool/TTFT/decode 墙钟投影） | 未挂载；计数与时间范围已由 A1 `tuiPreview` 覆盖 | counts/time 不重复引入；**时序细分（llmMs/toolMs/ttftMs/decodeMs+decodeTokens）仍可吃 → B6** |
 | A4 | `ctx.jobs` 后台任务注册表 | 工具已挂前端无显示 | ✅ 落地（2026-08-24）：底部 `▣ jobs` 行，与子代理行同构（折叠一行 ×N · 最新 label；Ctrl+O 展开逐条、stopping 置灰）；owner-fenced `list(agent)` 同步读，复用 tool/turn 生命周期触发刷新 |
 | A5 | `dsh-spill-policy`（超长工具结果落盘 + 定位符） | base 已生效 | ✅ 落地（2026-08-24）：ToolRow 对 terminal/generic 卡结果做后处理，spill 通知句渲染为 `⤓ full result <locator>` 黄色徽标（正则单次匹配、无 lookbehind） |
 | A6 | `dsh-goal` + `/goal`（同会话目标状态） | 工具已挂无显示 | ✅ 落地（2026-08-24）：目标常驻条 `◎ objective · round N/M`（phase 着色：active 青/paused 白/blocked 红/complete 绿），读 goal 投影整值；goal/* 事件与 tool/turn 触发刷新，boot//new/model 切换同步重种 |
+| A7 | `sessionQuery.traceSession()`（会话血缘：ancestors→root + descendants 树） | 已挂载未消费 | `/trace`：当前会话的 fork 祖先/后代树；`/resume`/rewind 预览可标 `forked from …`；纯服务接线 |
+| A8 | `sessionQuery.traceEvent()/readEvent()/listEvents()`（事件级溯源、邻近窗口、轻量事件列表） | 已挂载未消费 | 工具卡 drill-down：查看被 shadowed 前的事件或相邻窗口；rewind 选择器可展示被替换链 |
+| A9 | `sessionQuery.searchSessions()/searchEvents()`（FTS5 会话全文） | 已挂载但 `openAt: never`（SQLite 不开，搜索恒报 `SESSION_QUERY_SEARCH_DISABLED`） | profile patch 给 `session-query-sqlite` 行配 `openAt: first-search` + 持久 `path`；加 `/search [query]` 跨会话搜索，返回 session hit + snippet（240 字）列表 |
+| A10 | `dsh-command-feedback`（`/feedback <text>`） | base 已挂全局命令，走注册表 | 免费：slash 菜单应已能出；补 HELP_TEXT 一行 + 可选 notice；无需新挂载 |
 
 ### 9.2 B 组：小量接线
 
@@ -129,25 +136,36 @@
 | B3 | `dsh-session-reference`（跨会话快照引用） | 未用 | ✅ 落地（2026-08-25）：@ 菜单并入 session 候选（`remoteExportCandidates` cwd 亲和排序，`⌗ label · cwd · 时间`），选中插入规范 `@[label](dsh-session:…)` mention；resolver 自挂 pre-step 在请求时展开快照（预算/去重/排除自身均服务内建）；挂载进 tui-dev |
 | B4 | `dsh-mcp-client`（MCP 服务器桥接） | 全链未挂 | ✅ 落地（2026-08-26，设计 docs/mcp-inventory-design.md）：mcp-everything（官方测试器）挂进 tui-dev 验链路；`/tools [filter]` 每次现读 agent-scope `schemas()`——天然反映 MCP 再同步/重连后的目录，mcp__ 工具按 server 聚合逐条带截断描述、原生折叠名单 |
 | B5 | `dsh-plan-mode`（计划评审退出） | preset 已挂走通用审批卡 | ✅ 落地（2026-08-25）：exit_plan_mode 的 ask 特化为 PlanReviewCard（📋 标题 + 计划正文内嵌 14 行预览/全文指向转录卡；a 批准并退出 / r 继续规划 / esc 取消）；Approve 按服务比对常量原样返回，非批准由服务自述叙事；挂载面不变（base 已有）|
+| B6 | `dsh-session-stats`（`sessionStats` 投影：turns/steps/llmMs/toolMs/ttftMs/decodeMs±tokens） | 未挂载 | 一行挂载；`/stats` 或状态行加 `llm 12s · tool 3s · ttft 1.2s · 32 tok/s decode`；值走 `sessionProjections.snapshot`，与 A3 不重复 |
+| B7 | `dsh-message-feedback`（每条 finalized assistant 消息持久 ±note，CAS 版本） | 未挂载 | 一行挂载（inject `storageDomain`/`sessionPersistence`/`sessions`，config `maxNoteBytes`）；transcript 行保留 `message.id`，行内键 `f` 评 +/-、可加 note；小 UI |
+| B8 | `dsh-workspace`（workspace 注册表：标题/顺序/归档/会话归属） | 未挂载 | 一行挂载（inject `storageDomain`/`sessionPersistence`）；`/workspace` 列出/新建/重命名/归档；TUI 的 workspace 概念从 `basename(cwd)` 升级为注册实体 |
+| B9 | `dsh-schedule`（会话级持久 after/at/every 提醒） | 未挂载 | 挂载后根 agent 自动获得 `schedule_*` 模型工具；TUI 可额外折叠 `schedule/change` 事件显示 `⏰ N reminders`；纯模型面也可先用 |
+| B10 | `dsh-authorization`（OAuth/粘贴码式凭据获取） | 未挂载 | 挂载后 `ctx.authorization`；TUI `/login` 用现有 Ask/Notice 弹层渲染 text/secret/select prompt；当前无 OAuth provider 时低优先 |
 
 ### 9.3 C 组：可选/实验
 
 | 能力 | 说明 |
 |---|---|
-| `dsh-schedule`（会话级持久 after/at/fixed-rate 提醒） | 无模型工具面，需自包一层 |
-| `dsh-code-runtime` + `dsh-agent-tool-presentation` | 官方 code preset 的 Code Mode（单 run_code），动 preset 可试 |
-| `dsh-terminal(-bash)` 持久 PTY | preset 已挂 persistent bash；未来 `/shells` 面板 |
+| `dsh-schedule`（会话级持久 after/at/every 提醒） | 有 `schedule_*` 模型工具（B9）；TUI 只做提醒显示则自包一层折叠 |
+| `dsh-code-runtime-worker-thread` + `dsh-agent-tool-presentation` | 官方 Code Mode：preset 加 presentation row（`mode: code/both`）+ 挂 worker runtime；模型面变单 `run_code`；需动 preset |
+| `dsh-terminal` + `dsh-terminal-bash` + `dsh-tool-bash-persistent`（+ pwsh 同族） | 持久 PTY 栈：模型可开 owner-scoped shell；TUI 潜在 `/shells` 面板（list/read/send/signal/kill） |
+| `dsh-tool-cordis` + `dsh-cordis-host-runner` | 动态插件：模型可 define/run Cordis 插件；TUI `/plugins` 不必挂 Remote-only 的 host-plugin-inventory，同进程直接读 `ctx.loader` 即可 |
+| `dsh-time-context` / `dsh-tmux-context` | 模型每步上下文（当前时间 / tmux pane）；非 TUI 表面，需要时间/tmux 感知再挂 |
 
 ### 9.4 明确不适用
 
 `client-ui-*` 全家（Web 渲染半边）、host-webserver/frontend-static/api-gateway/
 api-remotes（Web 托管栈）、telemetry/typert/invariants（基础设施）、theme/locale
 （不做档）、directory-picker（Web GUI host）、pwsh/windows-acl/landlock（非本机场景）。
+另：`dsh-session-log-export` 的 Web `/export`（ZIP）与本 TUI 已有 Markdown `/export` 命令
+冲突，不挂；`dsh-host-plugin-inventory` 是 Remote-only，TUI 同进程直接读 `ctx.loader` 即可，不必挂。
 
 ### 9.5 实施顺序
 
 A1 → A2 → A3 → A4 → B2（并入 M3 图片附件）→ A5 → A6 → B1 → B3 → B5 → B4 → C 组按需。
 每项独立 commit，先小 spike 验服务语义再接 UI。
+
+2026-08-27 续盘候选顺序：A7/A8（纯接线，免费）→ A10（帮助文本）→ A9（spike 验 FTS 配置与 Node 22 sqlite 行为）→ B6（小）→ B7/B8/B9/B10（中）→ C 组按需。
 
 ## 10. api-gateway 与自建 relay 的边界（2026-08-24 问答定稿）
 
