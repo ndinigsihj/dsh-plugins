@@ -670,14 +670,76 @@ function todoMarker(p: Palette, status: string): string {
   return p.dim("○");
 }
 
-/** One component per transcript row, persisted and updated via update(). */
-class TranscriptArea extends Container {
+/** Rows kept mounted beyond the visible range so ordinary scrolling never
+ * reveals a stub line. */
+const WINDOW_OVERSCAN_ROWS = 60;
+/** Re-materialize only when the visible range drifts within this many rows
+ * of the window edge — a wheel tick must not thrash component mounts. */
+const WINDOW_HYSTERESIS_ROWS = 30;
+/** Line-count guess for rows never rendered yet (most rows are 1–3 lines;
+ * the real count is recorded on first render and the stub rebuilt then). */
+const UNMEASURED_ROW_LINES = 2;
+/** Viewport-height fallback before the first layout pass populates the
+ * ScrollView's metrics (boot frame, follow-end). */
+const FALLBACK_VIEWPORT_LINES = 40;
+
+/** Blank-line placeholder for a row outside the materialized window.
+ * Renders one preallocated shared array in O(1), so cold invalidation and
+ * per-frame layout cost stay bounded by the window instead of the whole
+ * transcript, while the stub's line count keeps ScrollView scroll metrics
+ * exact (measured from the row's last real render; estimated before that).
+ * See docs/resume-memory-render-analysis.md §3-A'. */
+class HeightStub implements Component {
+  private readonly blanks: string[];
+  readonly lineCount: number;
+  constructor(lineCount: number) {
+    this.lineCount = Math.max(1, lineCount);
+    this.blanks = new Array<string>(this.lineCount).fill("");
+  }
+  render(_width: number): string[] {
+    return this.blanks;
+  }
+  invalidate(): void {
+    /* nothing cached worth clearing */
+  }
+}
+
+interface TranscriptSlot {
+  seq: number;
+  comp: Component;
+  real: boolean;
+}
+
+/** Windowed transcript container: mounts real row components only for the
+ * visible range (+overscan) and stands the rest in with height-preserving
+ * stubs, so per-frame and cold-invalidation cost track the viewport instead
+ * of the whole transcript while scrolling stays byte-identical to a full
+ * mount (docs/resume-memory-render-analysis.md §3-A'). */
+export class TranscriptArea extends Container {
   private readonly bySeq = new Map<number, RowComponent>();
   private lastRevision = -1;
   private readonly model: TranscriptModel;
   private readonly p: Palette;
   private readonly isExpanded: () => boolean;
   private readonly getWidth: () => number;
+  /** Owning ScrollView — scrollTop/viewportHeight source for windowing. */
+  private scrollView: ScrollView | null = null;
+  /** Snapshot mirror from the last reconcile (model only appends or clears). */
+  private rowsCache: ReadonlyArray<TranscriptRow> = [];
+  /** Full slot list parallel to rowsCache: real component or height stub. */
+  private slots: TranscriptSlot[] = [];
+  /** Materialized window [winStart, winEnd) into rowsCache. */
+  private winStart = 0;
+  private winEnd = 0;
+  /** Rendered line count per seq, kept across reconciles and remounts. */
+  private readonly heightsBySeq = new Map<number, number>();
+  /** First visible row index, recorded by applyWindow for the compensation
+   * pass in render(). */
+  private visStart = 0;
+  /** Height delta of rows above the viewport, applied to scrollTop on the
+   * NEXT frame (mutating mid-layout would fight pi-tui's translate step).
+   * Without it, measuring a previously-estimated row shifts the view. */
+  private pendingScrollDelta = 0;
 
   constructor(
     model: TranscriptModel,
@@ -692,7 +754,14 @@ class TranscriptArea extends Container {
     this.getWidth = getWidth;
   }
 
-  /** Re-run every row's update() (details toggle changes render w/o revision). */
+  /** Called by TuiApp right after the wrapping ScrollView exists; windowing
+   * reads its scroll metrics every frame. */
+  attachScrollView(sv: ScrollView | null): void {
+    this.scrollView = sv;
+  }
+
+  /** Re-run every mounted row's update() (details toggle changes render w/o
+   * revision). Unmounted rows re-read their row object on next mount. */
   redrawAll(): void {
     const byRowSeq = new Map(this.model.snapshot.map((r) => [r.seq, r]));
     for (const [seq, comp] of this.bySeq) {
@@ -702,7 +771,9 @@ class TranscriptArea extends Container {
   }
 
   /** Advance time-driven animation on streaming assistant rows; true when
-   * any row actually moved (callers skip the repaint otherwise). */
+   * any row actually moved (callers skip the repaint otherwise). Only the
+   * materialized window can animate — streaming always happens at the tail,
+   * which is inside the window whenever follow-end holds. */
   tickStreaming(): boolean {
     let animated = false;
     for (const comp of this.bySeq.values()) {
@@ -711,27 +782,155 @@ class TranscriptArea extends Container {
     return animated;
   }
 
+  /** Model changed. The model only ever appends or clears, so an equal
+   * length is an in-place mutation (tool results, flags) — no slot changes;
+   * a longer snapshot with a matching prefix extends the slot list without
+   * discarding measured heights; anything else (a non-append history swap)
+   * rebuilds the slot list from scratch, keeping only measured heights for
+   * seqs that survive. */
   sync(): void {
     if (this.model.currentRevision === this.lastRevision) return;
     this.lastRevision = this.model.currentRevision;
-    const seen = new Set<number>();
-    for (const row of this.model.snapshot) {
-      seen.add(row.seq);
-      let comp = this.bySeq.get(row.seq);
-      if (comp === undefined) {
-        comp = buildRowComponent(this.p, row, this.isExpanded, this.getWidth);
-        this.bySeq.set(row.seq, comp);
-        this.addChild(comp);
-      } else {
-        comp.update(row);
+    const snapshot = this.model.snapshot;
+    if (snapshot.length === this.rowsCache.length) return;
+    const extendsPrefix =
+      snapshot.length > this.slots.length &&
+      (this.slots.length === 0 ||
+        snapshot[this.slots.length - 1]?.seq === this.slots[this.slots.length - 1]?.seq);
+    if (!extendsPrefix) {
+      // Full reset (/clear or a non-append history swap).
+      this.bySeq.clear();
+      this.heightsBySeq.clear();
+      this.winStart = 0;
+      this.winEnd = 0;
+      this.slots = [];
+    }
+    while (this.slots.length < snapshot.length) {
+      const row = snapshot[this.slots.length]!;
+      this.slots.push({
+        seq: row.seq,
+        comp: new HeightStub(this.heightsBySeq.get(row.seq) ?? UNMEASURED_ROW_LINES),
+        real: false,
+      });
+    }
+    this.rowsCache = snapshot;
+  }
+
+  /** Slot height in lines: measured when the row has rendered at least once,
+   * else the stub's carried estimate. */
+  private slotLines(slot: TranscriptSlot): number {
+    if (slot.real) return this.heightsBySeq.get(slot.seq) ?? UNMEASURED_ROW_LINES;
+    return slot.comp instanceof HeightStub ? slot.comp.lineCount : UNMEASURED_ROW_LINES;
+  }
+
+  /** Ensure [start, end) holds real components and everything outside holds
+   * stubs; rebuilds this.children to mirror the slots. */
+  private materialize(start: number, end: number): void {
+    this.winStart = start;
+    this.winEnd = end;
+    let childrenChanged = false;
+    for (let i = 0; i < this.slots.length; i += 1) {
+      const slot = this.slots[i]!;
+      const wanted = i >= start && i < end;
+      if (wanted && !slot.real) {
+        const row = this.rowsCache[i]!;
+        const comp = buildRowComponent(this.p, row, this.isExpanded, this.getWidth);
+        this.bySeq.set(slot.seq, comp);
+        slot.comp = comp;
+        slot.real = true;
+        childrenChanged = true;
+      } else if (!wanted && slot.real) {
+        const measured = this.heightsBySeq.get(slot.seq);
+        slot.comp = new HeightStub(measured ?? UNMEASURED_ROW_LINES);
+        slot.real = false;
+        this.bySeq.delete(slot.seq);
+        childrenChanged = true;
       }
     }
-    for (const [seq, comp] of this.bySeq) {
-      if (!seen.has(seq)) {
-        this.removeChild(comp);
-        this.bySeq.delete(seq);
-      }
+    if (childrenChanged || this.children.length !== this.slots.length) {
+      this.children = this.slots.map((s) => s.comp);
     }
+  }
+
+  /** Recenter the materialized window around the visible line range, with
+   * hysteresis so idle frames never thrash mounts. Runs before each render. */
+  private applyWindow(): void {
+    const n = this.slots.length;
+    if (n === 0) return;
+    const sv = this.scrollView;
+    // viewportHeight is populated by the first layout pass; before that we
+    // fall back to follow-end (materialize the tail).
+    const metricsReady = sv !== null && sv.viewportHeight > 0;
+    let i0: number;
+    let j0: number;
+    if (metricsReady) {
+      const top = sv!.scrollTop;
+      const bottom = top + Math.max(1, sv!.viewportHeight);
+      // One cumulative walk: i0 = first row whose lines reach below `top`,
+      // j0 = first row starting at/after `bottom` (n → visible runs to end).
+      let cum = 0;
+      i0 = -1;
+      j0 = n;
+      for (let i = 0; i < n; i += 1) {
+        const h = this.slotLines(this.slots[i]!);
+        if (i0 === -1 && cum + h > top) i0 = i;
+        if (cum >= bottom) {
+          j0 = i;
+          break;
+        }
+        cum += h;
+      }
+      if (i0 === -1) i0 = n - 1; // stale metrics: scrolled past content end
+    } else {
+      let back = 0;
+      i0 = n;
+      for (let i = n - 1; i >= 0 && back < FALLBACK_VIEWPORT_LINES; i -= 1) {
+        back += this.slotLines(this.slots[i]!);
+        i0 = i;
+      }
+      j0 = n;
+    }
+    if (j0 <= i0) j0 = Math.min(n, i0 + 1);
+    this.visStart = i0;
+    // Keep the window when the visible range is comfortably inside it.
+    const slackBefore = i0 - this.winStart;
+    const slackAfter = this.winEnd - j0;
+    const covered =
+      this.winEnd > this.winStart &&
+      this.winStart <= i0 &&
+      j0 <= this.winEnd &&
+      (slackBefore >= WINDOW_HYSTERESIS_ROWS || this.winStart === 0) &&
+      (slackAfter >= WINDOW_HYSTERESIS_ROWS || this.winEnd === n);
+    if (covered) return;
+    const start = Math.max(0, i0 - WINDOW_OVERSCAN_ROWS);
+    const end = Math.min(n, j0 + WINDOW_OVERSCAN_ROWS);
+    this.materialize(start, end);
+  }
+
+  render(width: number): string[] {
+    this.sync();
+    // Compensate first: rows measured last frame above the viewport changed
+    // the content layout under the scroll anchor (see pendingScrollDelta).
+    if (this.pendingScrollDelta !== 0 && this.scrollView !== null && this.scrollView.viewportHeight > 0) {
+      this.scrollView.scrollTo(this.scrollView.scrollTop + this.pendingScrollDelta);
+      this.pendingScrollDelta = 0;
+    }
+    this.applyWindow();
+    let deltaAbove = 0;
+    let idx = 0;
+    const out: string[] = [];
+    for (const slot of this.slots) {
+      const lines = slot.comp.render(width);
+      if (slot.real) {
+        const prev = this.heightsBySeq.get(slot.seq);
+        this.heightsBySeq.set(slot.seq, lines.length);
+        if (idx < this.visStart) deltaAbove += lines.length - (prev ?? UNMEASURED_ROW_LINES);
+      }
+      for (const line of lines) out.push(line);
+      idx += 1;
+    }
+    if (deltaAbove !== 0) this.pendingScrollDelta += deltaAbove;
+    return out;
   }
 }
 
@@ -1530,6 +1729,7 @@ export class TuiApp {
       overscroll: "chain",
       scrollbar: "auto",
     });
+    this.transcriptArea.attachScrollView(this.transcriptScroll);
 
     this.status = new StatusLine(this.p);
     this.subagentsLine = new Text("", 1, 1);

@@ -1292,8 +1292,11 @@ async function run(
   });
 
   // On resume, rebuild the transcript from the persisted log before live events.
+  // skipStreamDeltas: fold from assistant/message final states — a large log
+  // expands to ~10× its line count in chunk events whose replay only re-derives
+  // text the final messages already carry (resume-perf analysis §3-B).
   if (resumeId !== undefined) {
-    app.model.rebuild(agent.session.events as never, presenters);
+    app.model.rebuild(agent.session.events as never, presenters, { skipStreamDeltas: true });
     app.onSessionEvent();
     app.appendCommandOutput(`Resumed session ${agent.id}.`);
     seedProjections();
@@ -1967,7 +1970,7 @@ async function run(
       // gauge both re-seed so in-flight todos survive the switch.
       seedProjections();
       app.model.clear();
-      app.model.rebuild(next.session.events as never, presenters);
+      app.model.rebuild(next.session.events as never, presenters, { skipStreamDeltas: true });
       app.onSessionEvent();
       void services.sessions.flush(next.session).catch(() => {});
       updateContextPressure();

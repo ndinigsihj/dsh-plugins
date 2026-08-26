@@ -154,10 +154,26 @@ export class TranscriptModel {
     this.bump();
   }
 
-  /** Rebuild transcript from an already-materialized session log (resume path). */
-  rebuild(events: readonly SessionEvent[], presenters: ToolPresenters): void {
+  /** Rebuild transcript from an already-materialized session log (resume path).
+   * `skipStreamDeltas` folds from assistant/message final states instead of
+   * replaying every persisted streaming delta: a large resumed log expands
+   * to hundreds of thousands of chunk events whose only contribution here is
+   * re-deriving text the final message already contains (2026-08-26
+   * resume-perf analysis, docs/resume-memory-render-analysis.md §3-B).
+   * Interrupted streams that never reached a final message lose their
+   * partial bubble — cosmetic, and the session log keeps everything. Live
+   * streaming still applies chunks; this flag is for bulk replay only. */
+  rebuild(
+    events: readonly SessionEvent[],
+    presenters: ToolPresenters,
+    opts: { skipStreamDeltas?: boolean } = {},
+  ): void {
     this.clear();
-    for (const event of events) this.apply(event, presenters);
+    const skipDeltas = opts.skipStreamDeltas === true;
+    for (const event of events) {
+      if (skipDeltas && event.type === "assistant/chunk") continue;
+      this.apply(event, presenters);
+    }
   }
 
   apply(event: SessionEvent, presenters: ToolPresenters): void {
