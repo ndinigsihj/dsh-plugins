@@ -250,7 +250,7 @@ export class StatusLine implements Component {
   invalidate(): void {}
 }
 
-function selectListTheme(p: Palette): SelectListTheme {
+export function selectListTheme(p: Palette): SelectListTheme {
   return {
     selectedPrefix: (s) => p.reverse(` ${s} `),
     selectedText: (s) => p.bold(s),
@@ -961,6 +961,89 @@ export type SessionPreviewLoader = (sessionId: string) => Promise<string | null>
  * Renders a `search> …` line above a SelectList; typing filters by title or
  * id, Up/Down move, Enter resumes, Esc (or a second Esc with text) closes.
  */
+/** Framed card for the ask-user questionnaire: question + optional
+ * description on top, the embedded CheckboxList/SelectList body, key hints
+ * at the bottom. Same visual family as ApprovalCard; anchored bottom-center.
+ * Keyboard handling delegates to the inner list (escape/enter/space map to
+ * its onCancel/onSubmit), so focus semantics match the bare lists. */
+export class QuestionCard implements Component {
+  private readonly palette: Palette;
+  private readonly headerTag: string;
+  private readonly question: string;
+  private readonly description: string | undefined;
+  private readonly list: Component;
+  private readonly hint: string | undefined;
+
+  constructor(
+    palette: Palette,
+    item: { header?: string; question: string; description?: string },
+    list: Component,
+    hint?: string,
+  ) {
+    this.palette = palette;
+    this.headerTag = item.header ?? "Question";
+    this.question = item.question;
+    this.description = item.description;
+    this.list = list;
+    this.hint = hint;
+  }
+
+  handleInput(data: string): void {
+    this.list.handleInput?.(data);
+  }
+
+  render(width: number): string[] {
+    // Never exceed the available width; degrade instead of overflow.
+    const cardWidth = Math.max(0, Math.min(width - 2, QUESTION_CARD_MAX));
+    const inner = cardWidth - 4;
+
+    const content: string[] = [""];
+    for (const line of wrapTextWithAnsi(this.question, inner)) {
+      content.push(this.palette.bold(line));
+    }
+    if (this.description !== undefined && this.description.trim() !== "") {
+      content.push("");
+      for (const line of wrapTextWithAnsi(this.description, inner)) {
+        content.push(this.palette.dim(line));
+      }
+    }
+    content.push("");
+    content.push(...this.list.render(inner));
+    if (this.hint !== undefined) content.push(this.palette.dim(`  ${this.hint}`));
+    content.push("");
+
+    return [
+      this.topRule(cardWidth),
+      ...content.map((l) => this.bodyLine(l, cardWidth)),
+      this.bottomRule(cardWidth),
+    ];
+  }
+
+  invalidate(): void {
+    this.list.invalidate?.();
+  }
+
+  /** One content row padded to the card interior, flanked by dim borders. */
+  private bodyLine(text: string, cardWidth: number): string {
+    const pad = Math.max(0, cardWidth - 4 - visibleWidth(text));
+    return `${this.palette.dim("│ ")}${text}${" ".repeat(pad)}${this.palette.dim(" │")}`;
+  }
+
+  private topRule(cardWidth: number): string {
+    const title = this.palette.fg(`❓ ${this.headerTag}`, "cyan");
+    const left = this.palette.dim("╭─ ");
+    const right = this.palette.dim(" ─╮");
+    const fill = Math.max(0, cardWidth - visibleWidth(left) - visibleWidth(title) - visibleWidth(right));
+    return `${left}${title}${this.palette.dim("─".repeat(fill))}${right}`;
+  }
+
+  private bottomRule(cardWidth: number): string {
+    const left = this.palette.dim("╰─");
+    const right = this.palette.dim("─╯");
+    return `${left}${this.palette.dim("─".repeat(Math.max(0, cardWidth - visibleWidth(left) - visibleWidth(right))))}${right}`;
+  }
+}
+
 class SessionPicker implements Component {
   private readonly queryText: Text;
   private readonly previewText: Text;
@@ -1137,6 +1220,7 @@ class SessionPicker implements Component {
 
 /** Width cap and label column for the approval card. */
 const APPROVAL_CARD_MAX = 76;
+const QUESTION_CARD_MAX = 80;
 const APPROVAL_LABEL_PAD = 10;
 
 /**
@@ -1438,7 +1522,8 @@ function enableShiftClickExtend(tui: TuiAltScreen): void {
 /** Multi-select question overlay: the harness `multiSelect` wire flag asks
  * for several of the options at once. Space toggles, a selects/deselects
  * all, Enter submits the checked labels (possibly empty), Esc cancels. */
-class CheckboxList implements Component {
+/** Multi-select list with checkbox glyphs; embedded in QuestionCard. */
+export class CheckboxList implements Component {
   private readonly palette: Palette;
   private readonly question: string;
   private readonly options: Array<{ label: string; description?: string }>;
@@ -1491,7 +1576,8 @@ class CheckboxList implements Component {
   }
 
   render(width: number): string[] {
-    const lines = [this.palette.dim(this.question), ""];
+    const lines: string[] = [];
+    if (this.question !== "") lines.push(this.palette.dim(this.question), "");
     this.options.forEach((option, i) => {
       const cursor = i === this.cursor ? this.palette.fg("❯ ", "cyan") : "  ";
       const box = this.checked[i] === true ? this.palette.fg("[x]", "green") : this.palette.dim("[ ]");
@@ -2273,8 +2359,11 @@ export class TuiApp {
   askQuestion(item: AskQuestionRequest["questions"][number]): Promise<string[] | null> {
     if (item.multiSelect === true && (item.options?.length ?? 0) > 0) {
       return new Promise((resolve) => {
-        const list = new CheckboxList(this.p, item.question, item.options ?? []);
-        const handle = this.tui.showOverlay(list, { anchor: "bottom-left", margin: 1 });
+        // Question text lives on the card frame ("" suppresses the list's
+        // own dim title so it is not rendered twice).
+        const list = new CheckboxList(this.p, "", item.options ?? []);
+        const card = new QuestionCard(this.p, { header: item.header, question: item.question }, list);
+        const handle = this.tui.showOverlay(card, { anchor: "bottom-center", margin: 1 });
         list.onSubmit = (selected) => {
           handle.hide();
           resolve(selected);
@@ -2283,7 +2372,7 @@ export class TuiApp {
           handle.hide();
           resolve(null);
         };
-        this.tui.setFocus(list);
+        this.tui.setFocus(card);
       });
     }
     return new Promise((resolve) => {
@@ -2296,7 +2385,13 @@ export class TuiApp {
         items.push({ value: "OK", label: "OK" });
       }
       const select = new SelectList(items, Math.min(items.length, 8), selectListTheme(this.p));
-      const handle = this.tui.showOverlay(select, { anchor: "bottom-left", margin: 1 });
+      const card = new QuestionCard(
+        this.p,
+        { header: item.header, question: item.question },
+        select,
+        "↑↓ choose · enter confirm · esc cancel",
+      );
+      const handle = this.tui.showOverlay(card, { anchor: "bottom-center", margin: 1 });
       select.onSelect = (sel) => {
         handle.hide();
         resolve([sel.value]);
@@ -2305,7 +2400,7 @@ export class TuiApp {
         handle.hide();
         resolve(null);
       };
-      this.tui.setFocus(select);
+      this.tui.setFocus(card);
     });
   }
 
