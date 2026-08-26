@@ -128,6 +128,15 @@ resume 路径的 rebuild 直接消费 `assistant/message` 终态，跳过
 回归测试：`appends rows at follow-end and mounts them`、
 `streams into a mounted row after resume`、`backfills tool results in place`。
 
+### 4.1.2 二次修复：启动即崩（slot↔row 错位）
+
+首版脏集合同步按 seq 排序建槽，但 banner/command-notice 行带**负 seq**
+且按插入顺序排在末尾——排序无法还原插入顺序，槽位与行永久错位，
+`buildRowComponent(rowsCache[i])` 读到 undefined 启动即崩。
+修复：seq→index 的权威映射收归模型（`pushRow` 时 O(1) 记录），区域层经
+`model.rowAt/rowCount/rowBySeq` 消费，不再自维护平行索引。
+回归测试：`survives banner/notice rows interleaved before live turns`。
+
 ### 4.2 待实机确认（需 iTerm2 交互，headless 无法覆盖）
 
 | 场景 | 期望 |

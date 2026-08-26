@@ -734,8 +734,6 @@ export class TranscriptArea extends Container {
   private winEnd = 0;
   /** Rendered line count per seq, kept across reconciles and remounts. */
   private readonly heightsBySeq = new Map<number, number>();
-  /** seq → rowsCache index, maintained alongside slots for dirty-row lookup. */
-  private readonly rowIndexBySeq = new Map<number, number>();
   /** First visible row index, recorded by applyWindow for the compensation
    * pass in render(). */
   private visStart = 0;
@@ -786,11 +784,13 @@ export class TranscriptArea extends Container {
   }
 
   /** Model changed. `snapshot` is the model's live internal array, so length
-   * comparisons are useless (the alias grows together) — growth and in-place
-   * edits alike arrive through the dirty-seq set (every row creation marks
-   * itself), while a changed array *reference* signals a history swap
-   * (/clear → rebuild). New seqs append stub slots; known seqs get their
-   * mounted component updated. */
+   * comparisons are useless (the alias grows together) — an array identity
+   * change is the history-swap signal (/clear → rebuild), while row growth
+   * and in-place edits alike arrive through the dirty-seq set. New seqs
+   * append stub slots positioned by the model's authoritative push-order
+   * index (notice/banner rows carry negative seqs and interleave at the
+   * tail, so seq-sorting cannot reconstruct positions); known seqs get
+   * their mounted component updated. */
   sync(): void {
     const snapshot = this.model.snapshot;
     const revision = this.model.currentRevision;
@@ -801,25 +801,20 @@ export class TranscriptArea extends Container {
       // History swap (/clear → rebuild): discard everything, keep nothing.
       this.bySeq.clear();
       this.heightsBySeq.clear();
-      this.rowIndexBySeq.clear();
       this.winStart = 0;
       this.winEnd = 0;
       this.slots = [];
       this.rowsCache = snapshot;
     }
-    if (dirty.size > 0) {
-      const ordered = [...dirty].sort((a, b) => a - b);
-      for (const seq of ordered) {
-        if (this.rowIndexBySeq.has(seq)) continue;
-        const idx = this.slots.length;
-        this.rowIndexBySeq.set(seq, idx);
-        this.slots.push({
-          seq,
-          comp: new HeightStub(this.heightsBySeq.get(seq) ?? UNMEASURED_ROW_LINES),
-          real: false,
-        });
-      }
-      this.visStart = Math.min(this.visStart, Math.max(0, this.slots.length - 1));
+    while (this.slots.length < this.model.rowCount) {
+      const i = this.slots.length;
+      const row = this.model.rowAt(i);
+      if (row === undefined) break; // alias lag: next frame catches up
+      this.slots.push({
+        seq: row.seq,
+        comp: new HeightStub(this.heightsBySeq.get(row.seq) ?? UNMEASURED_ROW_LINES),
+        real: false,
+      });
     }
     // Push in-place mutations into their mounted components. This is what
     // makes live turns visible after a resume: chunk folds and result
@@ -827,8 +822,7 @@ export class TranscriptArea extends Container {
     for (const seq of dirty) {
       const comp = this.bySeq.get(seq);
       if (comp === undefined) continue; // stubbed — mounts fresh from the row
-      const idx = this.rowIndexBySeq.get(seq);
-      const row = idx !== undefined ? this.rowsCache[idx] : undefined;
+      const row = this.model.rowBySeq(seq);
       if (row !== undefined && row.seq === seq) comp.update(row);
     }
   }
@@ -850,7 +844,8 @@ export class TranscriptArea extends Container {
       const slot = this.slots[i]!;
       const wanted = i >= start && i < end;
       if (wanted && !slot.real) {
-        const row = this.rowsCache[i]!;
+        const row = this.model.rowAt(i);
+        if (row === undefined) continue; // alias lag: next frame catches up
         const comp = buildRowComponent(this.p, row, this.isExpanded, this.getWidth);
         this.bySeq.set(slot.seq, comp);
         slot.comp = comp;

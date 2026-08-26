@@ -99,6 +99,11 @@ export class TranscriptModel {
    * in-place changes; missing this was the "resumed session stops
    * displaying live turns" regression of 2026-08-26). */
   private readonly dirtySeqs = new Set<number>();
+  /** seq → position in rows, maintained at push time. The authoritative
+   * ordering map for the UI layer: notice/banner rows carry negative seqs
+   * and interleave by insertion order, so seq-sorted views cannot reconstruct
+   * positions (2026-08-26 boot-crash follow-up). */
+  private readonly rowIndex = new Map<number, number>();
 
   get snapshot(): ReadonlyArray<TranscriptRow> {
     return this.rows;
@@ -106,6 +111,29 @@ export class TranscriptModel {
 
   get currentRevision(): number {
     return this.revision;
+  }
+
+  /** Live row count — the UI slot list sizes itself to this. */
+  get rowCount(): number {
+    return this.rows.length;
+  }
+
+  /** Authoritative row by position (slots and rows share insertion order). */
+  rowAt(index: number): TranscriptRow | undefined {
+    return this.rows[index];
+  }
+
+  /** Authoritative row by seq (push-time index map, notice-safe). */
+  rowBySeq(seq: number): TranscriptRow | undefined {
+    const idx = this.rowIndex.get(seq);
+    return idx === undefined ? undefined : this.rows[idx];
+  }
+
+  /** Register a push: index bookkeeping + dirty marking in one place. */
+  private pushRow(row: TranscriptRow): void {
+    this.rows.push(row);
+    this.rowIndex.set(row.seq, this.rows.length - 1);
+    this.markDirty(row.seq);
   }
 
   /** Drain the in-place mutation set (append-only growth is tracked by the
@@ -127,14 +155,14 @@ export class TranscriptModel {
 
   /** Append a non-session row (command output). */
   addNotice(text: string): void {
-    this.rows.push({ kind: "notice", text, seq: this.noticeSeq });
+    this.pushRow({ kind: "notice", text, seq: this.noticeSeq });
     this.noticeSeq -= 1;
     this.bump();
   }
 
   /** Append the boot-time welcome block (client-side only, never exported). */
   addBanner(text: string): void {
-    this.rows.push({ kind: "banner", text, seq: this.noticeSeq });
+    this.pushRow({ kind: "banner", text, seq: this.noticeSeq });
     this.noticeSeq -= 1;
     this.bump();
   }
@@ -172,6 +200,7 @@ export class TranscriptModel {
     this.openAssistant = null;
     this.toolByCall.clear();
     this.dirtySeqs.clear();
+    this.rowIndex.clear();
     this.lastSeq = -1;
     this.noticeSeq = -1;
     this.bump();
@@ -209,15 +238,13 @@ export class TranscriptModel {
     if (typeName === "compaction/end") {
       const data = (event as unknown as { data?: { error?: string } }).data;
       if (data?.error !== undefined) {
-        this.rows.push({ kind: "error", text: `Compaction failed: ${data.error}`, seq: event.seq });
-        this.markDirty(event.seq);
+        this.pushRow({ kind: "error", text: `Compaction failed: ${data.error}`, seq: event.seq });
       } else {
-        this.rows.push({
+        this.pushRow({
           kind: "notice",
           text: "… earlier context was compacted …",
           seq: event.seq,
         });
-        this.markDirty(event.seq);
       }
       this.bump();
       return;
@@ -245,16 +272,14 @@ export class TranscriptModel {
         // Injected context (runtime snapshots, reminders) is plugin-sourced;
         // render it dim, distinct from a human user message.
         if (data.source?.kind === "plugin") {
-          this.rows.push({ kind: "context", text: joined, seq: event.seq });
-          this.markDirty(event.seq);
+          this.pushRow({ kind: "context", text: joined, seq: event.seq });
         } else {
-          this.rows.push({
+          this.pushRow({
             kind: "user",
             text: joined,
             images: imageLabels.length > 0 ? imageLabels : undefined,
             seq: event.seq,
           });
-          this.markDirty(event.seq);
         }
         this.bump();
         break;
@@ -285,8 +310,7 @@ export class TranscriptModel {
         const { text, reasoning } = splitContent(message.content ?? []);
         if (this.openAssistant === null) {
           if (text === "" && reasoning === "") break;
-          this.rows.push({ kind: "assistant", text, reasoning, done: true, seq: event.seq });
-          this.markDirty(event.seq);
+          this.pushRow({ kind: "assistant", text, reasoning, done: true, seq: event.seq });
         } else {
           this.openAssistant.text = text;
           this.openAssistant.reasoning = reasoning;
@@ -308,9 +332,8 @@ export class TranscriptModel {
           seq: event.seq,
           callView: presenters.presentCall(data.name, args),
         };
-        this.rows.push(row);
+        this.pushRow(row);
         this.toolByCall.set(data.callId, row);
-        this.markDirty(row.seq);
         this.bump();
         break;
       }
@@ -348,19 +371,17 @@ export class TranscriptModel {
         if (reason === undefined) break;
         let notice = "";
         if (reason.kind === "error") {
-          this.rows.push({
+          this.pushRow({
             kind: "error",
             text: `${reason.error?.code ?? "error"}: ${reason.error?.message ?? "unknown"}`,
             seq: event.seq,
           });
-          this.markDirty(event.seq);
         } else if (reason.kind === "max-tokens") notice = "Turn ended: max tokens reached.";
         else if (reason.kind === "aborted") notice = "Turn stopped.";
         else if (reason.kind === "rejected") notice = "Turn rejected.";
         else if (reason.kind === "interrupted") notice = "Turn interrupted.";
         else if (reason.kind !== "completed") notice = `Turn ended: ${reason.kind}.`;
-        if (notice !== "") this.rows.push({ kind: "notice", text: notice, seq: event.seq });
-          this.markDirty(event.seq);
+        if (notice !== "") this.pushRow({ kind: "notice", text: notice, seq: event.seq });
         this.bump();
         break;
       }
@@ -379,8 +400,7 @@ export class TranscriptModel {
       done: false,
       seq,
     };
-    this.rows.push(row);
-    this.markDirty(seq);
+    this.pushRow(row);
     return row;
   }
 }

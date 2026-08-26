@@ -197,6 +197,24 @@ describe("TranscriptArea windowing", () => {
     assert.ok(model.snapshot.some((r) => r.kind === "tool"));
   });
 
+  it("survives banner/notice rows interleaved before live turns", () => {
+    // Boot-order regression: addBanner/addNotice push unmarked rows after the
+    // rebuild sync; the slot list must still align with the model's push
+    // order (negative seqs sort FIRST by value but sit LAST in insertion
+    // order — seq-sorting here used to misalign and crash buildRowComponent).
+    const { area, model, scroll } = makeArea(50);
+    scroll.updateLayout(Number.POSITIVE_INFINITY, 40, () => {});
+    area.render(80); // boot sync drains rebuild marks
+    model.addBanner("whale");
+    model.addNotice("Resumed session x.");
+    model.apply(userMessage(1000, "late") as never, presenters);
+    model.apply(assistantMessage(1001, "reply") as never, presenters);
+    area.sync();
+    const text = flatten(area.render(80)).join("\n");
+    assert.ok(text.includes("late"), "live user row lost after notice interleave");
+    assert.ok(text.includes("reply"), "live assistant row lost after notice interleave");
+  });
+
   it("appends rows at follow-end and mounts them", () => {
     const { area, model, scroll } = makeArea(50);
     scroll.updateLayout(Number.POSITIVE_INFINITY, 40, () => {});
