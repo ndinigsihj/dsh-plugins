@@ -46,6 +46,8 @@
     text: >-
       You are a coding agent powered by the {{model}} model. Your working directory is {{cwd}}.
 
+      When a todo list is active, call todo_write to mark each item completed the moment it is done; before finishing a turn, ensure no completed task is left in_progress/pending and close the list (all completed) once all work is complete.
+
 # 二轮起自动注入工作区 AGENTS.md/CLAUDE.md + ~/.dsh/AGENTS.md（standard 语义）。
 # 首轮被 tool-bootstrap 剥掉，promotion 后自动恢复。
 - id: agent-instructions

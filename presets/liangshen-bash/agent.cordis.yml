@@ -45,7 +45,10 @@
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
-    text: You are a helpful software engineer assistant.
+    text: >-
+      You are a helpful software engineer assistant.
+
+      When a todo list is active, call todo_write to mark each item completed the moment it is done; before finishing a turn, ensure no completed task is left in_progress/pending and close the list (all completed) once all work is complete.
     complete: true
     includeRuntimeContext: false
 
