@@ -91,6 +91,9 @@ const Config = z.object({});
 
 type CordisContext = {
   get<T = unknown>(key: string): T | undefined;
+  // Present on the runtime ctx (tui-startup already relies on it); typed here
+  // so the runner can publish services for sibling plugins.
+  provide(key: string, value: unknown): void;
   // `never[]` is deliberate: parameters check contravariantly, so listeners
   // may declare their concrete payload types while the bus stays untyped here
   // (no `any`).
@@ -2405,6 +2408,15 @@ async function run(
       services.appExit(1);
     }
   }
+
+  // Publish the terminal-owning handoff so sibling plugins (dsh-rewind) can
+  // restart into another session without duplicating teardown. An execve that
+  // skips stopTerminal() strands our kitty-protocol push on the terminal's
+  // stack — the shell then keeps receiving CSI-u keypresses (`:3A` on every
+  // arrow key) until the tab is reset (2026-08-26 exit-leak report).
+  ctx.provide("tuiHandoff", {
+    relaunchToResume: (id: string) => relaunchToResume(id),
+  });
 
   async function runCommand(line: string): Promise<void> {
     if (line === "/exit" || line === "/quit") {

@@ -1858,6 +1858,9 @@ export class TuiApp {
   async stopAndExit(exit: (code: number) => void, note?: string): Promise<void> {
     if (this.stopping) return;
     this.stopping = true;
+    // Immediate feedback: the settle wait below can take up to
+    // IDLE_EXIT_GRACE_MS, and a silent screen reads as a hang.
+    this.showNotice("exiting…");
     try {
       if (this.agent.status === "running") this.agent.cancel();
       await Promise.race([
@@ -1867,6 +1870,12 @@ export class TuiApp {
           t.unref?.(); // must not hold the process open if appExit isn't a hard exit
         }),
       ]);
+      // Swallow keys typed during the shutdown window. drainInput pops the
+      // kitty protocol first (so late key releases stop generating CSI-u)
+      // and then idles out pending pty input; without it, whatever was typed
+      // while we were settling is handed to the shell verbatim as garbage
+      // commands. stop() afterwards is idempotent on already-disabled modes.
+      await this.clipboardTerminal.drainInput(300, 50);
       this.tui.stop();
       if (note !== undefined && note !== "") process.stdout.write(note);
       exit(0);

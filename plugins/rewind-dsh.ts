@@ -542,6 +542,23 @@ function apply(ctx: Context): void {
       const summary = lines.length === 0 ? "no file changes to restore" : lines.join(" | ");
 
       // 4) execve 重启（进程在此被替换；后续不会真正 resolve）。
+      // 优先委托 tui-runner 发布的 tuiHandoff 服务：它先恢复终端（stopTerminal：
+      // pop kitty 协议、退 raw mode、关 bracketed paste）再 execve。直接替换
+      // 进程会把本 TUI 推入的 kitty flags=7 留在终端协议栈上，之后每次重启
+      // 再叠一层，退出只 pop 一层——shell 从此收到 CSI-u 按键编码
+      // （2026-08-26 退出泄漏报告：↑键出现 ":3A" 尾巴）。
+      const handoff = getService<{
+        relaunchToResume(id: string): Promise<void>;
+      }>(ctx, "tuiHandoff");
+      if (handoff !== undefined) {
+        await handoff.relaunchToResume(child.id);
+        // 服务版成功时进程已被替换、不会走到这里；返回即视为启动失败。
+        return {
+          kind: "error",
+          text: `rewind prepared (${summary}) but relaunch failed — resume manually with /resume ${child.id}`,
+        };
+      }
+      // 兜底：旧 runner 未发布服务时自行 execve，先做最小终端恢复。
       relaunchToResume(child.id, cwd);
       // 兜底：execve 不可用/失败时，留在当前进程并提示。
       return {
@@ -612,6 +629,19 @@ function isNotFound(error: unknown): boolean {
   );
 }
 
+/** 兜底路径的最小终端恢复：tuiHandoff 服务不可用（旧 runner 共存）时，
+ * 本插件自己 execve 前至少要退 raw mode、pop kitty 协议栈并关掉
+ * bracketed paste——否则这些模式会越过 execve 留在终端上。三条序列对
+ * 未启用的模式均为 no-op；pop-on-empty 按 spec 也是 no-op，不会误伤外层。 */
+function restoreTerminalForHandoff(): void {
+  try {
+    process.stdin.setRawMode?.(false);
+  } catch {
+    /* stdin 非 TTY 时忽略 */
+  }
+  process.stdout.write("\x1b[<u\x1b[>4;0m\x1b[?2004l");
+}
+
 /** execve 重启到子会话（发布版 resumeCommand 的等价实现）。 */
 function relaunchToResume(sessionId: string, cwd: string): void {
   try {
@@ -619,6 +649,7 @@ function relaunchToResume(sessionId: string, cwd: string): void {
   } catch {
     /* 忽略：chdir 失败也继续重启 */
   }
+  restoreTerminalForHandoff();
   process.env.DSH_TUI_RESUME_SESSION = sessionId;
   process.env.DSH_CC_RESUME_SESSION = sessionId;
   // 剥掉本次启动自带的 --resume 再显式追加新目标：startup 层解析为
