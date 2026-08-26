@@ -34,7 +34,21 @@ if [ "$(node -p "require('./package.json').version")" != "$ver" ]; then
     p.version = process.argv[1];
     fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
   " "$ver"
-  git add package.json
+  # Keep package-lock.json root metadata in sync so a later stable `npm i`
+  # does not dirty the lockfile merely because the version/engines drifted.
+  node -e "
+    const fs = require('fs');
+    const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+    const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+    lock.version = pkg.version;
+    if (lock.packages && lock.packages['']) {
+      lock.packages[''].version = pkg.version;
+      if (pkg.engines) lock.packages[''].engines = pkg.engines;
+      else delete lock.packages[''].engines;
+    }
+    fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 2) + '\n');
+  "
+  git add package.json package-lock.json
   git commit -m "Release $tag"
 fi
 git tag -a "$tag" -m "$tag"
