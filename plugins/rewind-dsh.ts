@@ -17,12 +17,12 @@
  *   /rewind            → 列出历史 user 消息（seq + 摘要），提示 /rewind <seq>
  *   /rewind <seq>      → 1) 计算 boundary（回退到该消息所在 turn 之前）
  *                        2) sessions.fork(source, boundary, childId) 生成子会话
- *                           （现行语义：store.create 即时注册并经持久层写路径
- *                           落盘，无需也不允许再手动 create+append——2026-08-26）
- *                        3) 逆向恢复文件：源日志里 seq>boundary 的 write/edit
+ *                           （现行语义：store.create 注册并进持久层写缓冲，
+ *                           无需也不允许再手动 create+append——2026-08-26）
+ *                        3) sessions.flush(child)：write-behind 缓冲强制落盘
+ *                        4) 逆向恢复文件：源日志里 seq>boundary 的 write/edit
  *                           反向应用回滚到边界点（方案 2 核心，纯函数可单测）
- *                        4) 设置 DSH_TUI_RESUME_SESSION / DSH_CC_RESUME_SESSION
- *                           并 execve 重启同一 dsh（boot 时 TUI 读到 sessionId 自动 resume）
+ *                        5) execve 重启（argv 剥旧 --resume）+ 环境变量指向子会话
  *
  * 挂载（endless-tui profile，~/.dsh/profiles/endless-tui/cordis.patch.yml）：
  *
@@ -74,6 +74,9 @@ interface SessionsService {
     boundary?: number,
     childSessionId?: string,
   ): SessionLike;
+  /** Force the write-behind batch out for one session (present in current dsh;
+   * guarded at the call site so an older deployment degrades loudly). */
+  flush?(session: unknown): Promise<void>;
 }
 
 interface CommandResult {
@@ -516,7 +519,20 @@ function apply(ctx: Context): void {
         }
       }
 
-      // 3) fork 已通过 store 写路径落盘（见头部注释 2），直接汇报并重启。
+      // 3) execve 前强制落盘子会话：持久层是 write-behind 批量缓冲（fork 的
+      //    seed 未必已到磁盘），不 flush 则新进程找不到 resume 目标
+      //    （2026-08-26 活体复现："session ... not found" 后直接退出）。
+      try {
+        if (typeof sessions.flush !== "function") throw new Error("sessions.flush unavailable");
+        await sessions.flush(child as never);
+      } catch (error) {
+        return {
+          kind: "error",
+          text: `failed to flush forked session: ${error instanceof Error ? error.message : String(error)} — files may already be restored; rewind aborted`,
+        };
+      }
+
+      // 4) 汇报并重启。
       const lines: string[] = [];
       if (restored.length > 0) lines.push(`restored files: ${restored.join(", ")}`);
       if (failed.length > 0) lines.push(`failed to restore: ${failed.join(", ")}`);

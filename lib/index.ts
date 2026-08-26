@@ -784,7 +784,8 @@ async function run(
   // Effective route for NEW sessions: patch-layer config pins (provider/model)
   // win over the harness's current default selection.
   const selection = services.agentDefaultModel.currentSelection();
-  const resumeId = ctx.get<{ resume?: string }>("tuiStartup")?.resume;
+  const bootedResumeId = ctx.get<{ resume?: string }>("tuiStartup")?.resume;
+  let resumeId = bootedResumeId;
   const agentOptions = {
     provider: own.provider ?? selection.provider,
     model: own.model ?? selection.model,
@@ -904,8 +905,13 @@ async function run(
   }
   const composed = await composePreset(services.agentPresets, requestedPreset, warnPreset);
 
-  const created = resumeId !== undefined
-    ? await services.agents.resume({
+  // A missing/failed resume target (e.g. a rewind handoff whose flush lost
+  // the race) must degrade to a fresh session — dying here strands the user
+  // outside the TUI with only a stderr line.
+  let created: Awaited<ReturnType<typeof services.agents.resume>> | undefined;
+  if (resumeId !== undefined) {
+    try {
+      created = await services.agents.resume({
         resumeSessionId: SessionId(resumeId),
         // OFFICIAL SHAPE — always pass the object. Undefined halves mean "the
         // session's own records supply the route"; omitting agentOptions
@@ -920,16 +926,24 @@ async function run(
           ...(resumeRouteOverride ?? liveRoute),
           reasoningEffort: resumeEffort ?? selection.reasoningEffort,
         }),
-      })
-    : await services.agents.create({
-        sessionId: SessionId(`session-${randomUUID()}`),
-        meta: {
-          cwd: process.cwd(),
-          ...(composed.agentPreset === undefined ? {} : { agentPreset: composed.agentPreset }),
-        },
-        agentOptions,
-        setup: makeSetup(composed, agentOptions),
       });
+    } catch (error) {
+      process.stderr.write(
+        `dsh-tui: resume ${resumeId} failed: ${error instanceof Error ? error.message : String(error)} — composing a fresh session\n`,
+      );
+      resumeId = undefined;
+      liveRoute = agentOptions;
+    }
+  }
+  created ??= await services.agents.create({
+    sessionId: SessionId(`session-${randomUUID()}`),
+    meta: {
+      cwd: process.cwd(),
+      ...(composed.agentPreset === undefined ? {} : { agentPreset: composed.agentPreset }),
+    },
+    agentOptions,
+    setup: makeSetup(composed, agentOptions),
+  });
   let agent: Agent = created.agent;
   await agent.whenIdle();
 
