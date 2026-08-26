@@ -53,11 +53,17 @@
 /rewind             → 列出历史 user 消息（seq + 摘要），提示 /rewind <seq>
 /rewind <seq>       → 1) computeRewindBoundary：回退到该消息所在 turn 之前
                       2) sessions.fork(source, boundary, childId)
+                         （现行语义：store.create 即时注册并经持久层写路径落盘）
                       3) 文件恢复：源日志 seq>boundary 的 write/edit 反向回滚（方案 2 核心）
-                      4) sessionPersistence.create+append 持久化子会话
-                      5) execve 重启：DSH_TUI_RESUME_SESSION / DSH_CC_RESUME_SESSION = childId
+                      4) execve 重启：DSH_TUI_RESUME_SESSION / DSH_CC_RESUME_SESSION = childId
                          → boot 时 TUI 读到 sessionId 自动 resume 子会话
 ```
+
+> **2026-08-26 修正**：原步骤 4「sessionPersistence.create+append」已删除。
+> 现行 dsh 的 `sessions.fork` 内部走 `store.create`，持久层 `installWritePath`
+> 会拦截该写入并登记 backend states——插件再手动 create 会报
+> `already exists in this backend`（活体验证于 tui-dev）。fork 即持久化，
+> 插件不再注入 sessionPersistence。
 
 ### 2.3 为什么用 execve 重启而不是进程内切换
 

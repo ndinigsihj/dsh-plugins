@@ -7,7 +7,7 @@
  *    那条缝走 host 中介的 DecisionEvents registry + Component 准入 + grant，
  *    对本地 patch-insert 的薄插件不可用（会被 internal/listener 守卫拒绝）。
  * 2. 本插件只消费 dsh 的**标准进程内服务**（agents / sessions /
- *    sessionPersistence / commands），与 approval-tui、rename-session 同级，
+ *    commands），与 approval-tui、rename-session 同级，
  *    可直接 patch-insert。
  * 3. `/rewind` 在命令注册表中注册，**覆盖**内置 rewind（注册表 handler 优先于
  *    TUI 本地命令名），从而把「回退对话 + 回滚文件」合二为一，且不碰 TUI 本体。
@@ -17,10 +17,11 @@
  *   /rewind            → 列出历史 user 消息（seq + 摘要），提示 /rewind <seq>
  *   /rewind <seq>      → 1) 计算 boundary（回退到该消息所在 turn 之前）
  *                        2) sessions.fork(source, boundary, childId) 生成子会话
+ *                           （现行语义：store.create 即时注册并经持久层写路径
+ *                           落盘，无需也不允许再手动 create+append——2026-08-26）
  *                        3) 逆向恢复文件：源日志里 seq>boundary 的 write/edit
  *                           反向应用回滚到边界点（方案 2 核心，纯函数可单测）
- *                        4) sessionPersistence.create+append 持久化子会话
- *                        5) 设置 DSH_TUI_RESUME_SESSION / DSH_CC_RESUME_SESSION
+ *                        4) 设置 DSH_TUI_RESUME_SESSION / DSH_CC_RESUME_SESSION
  *                           并 execve 重启同一 dsh（boot 时 TUI 读到 sessionId 自动 resume）
  *
  * 挂载（endless-tui profile，~/.dsh/profiles/endless-tui/cordis.patch.yml）：
@@ -28,7 +29,7 @@
  *   - insert:
  *       - id: dsh-rewind
  *         name: '/Users/vito/data/dev/dsh-plugins/plugins/rewind-dsh.ts'
- *         inject: [agents, sessions, sessionPersistence, commands]
+ *         inject: [agents, sessions, commands]
  */
 
 import { randomUUID } from "node:crypto";
@@ -37,7 +38,7 @@ import { join } from "node:path";
 import type { Context } from "@deepseek-ai/cordis";
 
 export const name = "dsh-rewind";
-export const inject = ["agents", "sessions", "sessionPersistence", "commands"];
+export const inject = ["agents", "sessions", "commands"];
 
 // 无配置项：与 approval-tui.ts 一致，不导出 Config（cordis 对缺省 Config 直接放行）。
 
@@ -73,11 +74,6 @@ interface SessionsService {
     boundary?: number,
     childSessionId?: string,
   ): SessionLike;
-}
-
-interface SessionPersistenceService {
-  create(meta: unknown): Promise<void>;
-  append(id: string, events: readonly SessionEvent[]): Promise<void>;
 }
 
 interface CommandResult {
@@ -401,11 +397,10 @@ export function buildReverseSteps(chronoSteps: readonly RestoreStep[]): RestoreS
 function apply(ctx: Context): void {
   const agents = getService<AgentsService>(ctx, "agents");
   const sessions = getService<SessionsService>(ctx, "sessions");
-  const persistence = getService<SessionPersistenceService>(ctx, "sessionPersistence");
   const commands = getService<CommandsService>(ctx, "commands");
 
-  if (agents === undefined || sessions === undefined || persistence === undefined || commands === undefined) {
-    ctx.logger?.warn("dsh-rewind: missing agents/sessions/sessionPersistence/commands — /rewind not registered");
+  if (agents === undefined || sessions === undefined || commands === undefined) {
+    ctx.logger?.warn("dsh-rewind: missing agents/sessions/commands — /rewind not registered");
     return;
   }
 
@@ -521,19 +516,7 @@ function apply(ctx: Context): void {
         }
       }
 
-      // 3) 持久化子会话（boot 时 --resume 加载）。
-      try {
-        await persistence.create(child.header as never);
-        await persistence.append(child.id, child.events);
-      } catch (error) {
-        // 持久化失败 = 重启后找不到该会话，必须中止（否则丢会话）。
-        return {
-          kind: "error",
-          text: `failed to persist forked session: ${error instanceof Error ? error.message : String(error)} — files may already be restored; rewind aborted`,
-        };
-      }
-
-      // 4) 汇报并重启。
+      // 3) fork 已通过 store 写路径落盘（见头部注释 2），直接汇报并重启。
       const lines: string[] = [];
       if (restored.length > 0) lines.push(`restored files: ${restored.join(", ")}`);
       if (failed.length > 0) lines.push(`failed to restore: ${failed.join(", ")}`);
@@ -542,7 +525,7 @@ function apply(ctx: Context): void {
       }
       const summary = lines.length === 0 ? "no file changes to restore" : lines.join(" | ");
 
-      // 5) execve 重启（进程在此被替换；后续不会真正 resolve）。
+      // 4) execve 重启（进程在此被替换；后续不会真正 resolve）。
       relaunchToResume(child.id, cwd);
       // 兜底：execve 不可用/失败时，留在当前进程并提示。
       return {
