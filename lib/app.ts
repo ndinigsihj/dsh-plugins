@@ -2450,7 +2450,14 @@ export class TuiApp {
   private async handleSubmit(text: string): Promise<void> {
     const trimmed = text.trim();
     const hasImages = this.pendingImagePaths.length > 0;
-    if (trimmed === "" && !hasImages) return;
+    if (trimmed === "" && !hasImages) {
+      // Empty Enter doubles as "jump to latest": scrolling up through a
+      // long transcript previously left only the wheel grind back down.
+      // scrollToEnd also restores follow-end so new turns auto-again.
+      this.transcriptScroll.scrollToEnd();
+      this.render();
+      return;
+    }
     if (hasImages && this.options.saveImages === undefined) {
       this.showNotice("Attachment storage unavailable in this boot — press esc to drop images.");
       return;
