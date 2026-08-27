@@ -124,7 +124,7 @@
 | A6 | `dsh-goal` + `/goal`（同会话目标状态） | 工具已挂无显示 | ✅ 落地（2026-08-24）：目标常驻条 `◎ objective · round N/M`（phase 着色：active 青/paused 白/blocked 红/complete 绿），读 goal 投影整值；goal/* 事件与 tool/turn 触发刷新，boot//new/model 切换同步重种 |
 | A7 | `sessionQuery.traceSession()`（会话血缘：ancestors→root + descendants 树） | 已挂载未消费 | `/trace`：当前会话的 fork 祖先/后代树；`/resume`/rewind 预览可标 `forked from …`；纯服务接线 |
 | A8 | `sessionQuery.traceEvent()/readEvent()/listEvents()`（事件级溯源、邻近窗口、轻量事件列表） | 已挂载未消费 | 工具卡 drill-down：查看被 shadowed 前的事件或相邻窗口；rewind 选择器可展示被替换链 |
-| A9 | `sessionQuery.searchSessions()/searchEvents()`（FTS5 会话全文） | 已挂载但 `openAt: never`（SQLite 不开，搜索恒报 `SESSION_QUERY_SEARCH_DISABLED`） | profile patch 给 `session-query-sqlite` 行配 `openAt: first-search` + 持久 `path`；加 `/search [query]` 跨会话搜索，返回 session hit + snippet（240 字）列表 |
+| A9 | `sessionQuery.searchSessions()/searchEvents()`（FTS5 会话全文） | 已挂载但 `openAt: never`（SQLite 不开，搜索恒报 `SESSION_QUERY_SEARCH_DISABLED`） | profile patch 给 `session-query-sqlite` 行配 `openAt: first-search` + 持久 `path`；加 `/search [query]` 跨会话搜索，返回 session hit + snippet（240 字）列表；搜索范围与命中定位分析见 §9.6 |
 | A10 | `dsh-command-feedback`（`/feedback <text>`） | base 已挂全局命令，走注册表 | 免费：slash 菜单应已能出；补 HELP_TEXT 一行 + 可选 notice；无需新挂载 |
 
 ### 9.2 B 组：小量接线
@@ -166,6 +166,55 @@ A1 → A2 → A3 → A4 → B2（并入 M3 图片附件）→ A5 → A6 → B1 �
 每项独立 commit，先小 spike 验服务语义再接 UI。
 
 2026-08-27 续盘候选顺序：A7/A8（纯接线，免费）→ A10（帮助文本）→ A9（spike 验 FTS 配置与 Node 22 sqlite 行为）→ B6（小）→ B7/B8/B9/B10（中）→ C 组按需。
+
+### 9.6 A9 全文检索：搜索范围与命中定位分析（2026-08-27）
+
+A9 继续探讨的定稿：`searchSessions` / `searchEvents` 的语义、可定位粒度与 TUI 呈现边界。
+
+#### 9.6.1 搜索范围：不只是当前会话
+
+| 方法 | 搜索范围 | 返回粒度 |
+|---|---|---|
+| `searchSessions(q)` | 跨会话：全部 live + persisted 的 session（可按 `cwd`、时间、availability、parent 过滤） | 按 session 分组，每个 session 只给 `bestMatch`（最强命中的一条事件） |
+| `searchEvents(q, sessionId)` | 单个指定 session 内 | 该 session 的**所有命中事件**，逐条返回 |
+
+TUI `/search` 天然两段式：
+
+1. 全局搜 → 列表显示 `session 标题 · 命中摘要 · 时间`（`bestMatch.snippet`）。
+2. 选中 session → 若为当前会话，`searchEvents` 列出全部命中；若为其他会话，`readEvent(sessionId, seq, before/after)` 读上下文预览，再 `/resume` 跳过去。
+
+#### 9.6.2 可定位性：事件级（seq），非字符偏移
+
+| 字段 | 含义 | 定位能力 |
+|---|---|---|
+| `hit.seq` | 命中所属 session 内的事件序号 | ✅ 精确到事件 |
+| `hit.snippet` | FTS5 highlight 摘出的纯文本片段（默认 ≤240 字符） | 显示命中上下文，但**不提供字符级 offset** |
+| `hit.type / surface` | 事件类型、current/shadowed/log-only | 决定是否可直接跳当前 transcript（如 shadowed 行当前不可见） |
+
+TUI 定位能力：
+
+- **当前会话内**：transcript 行本身带 `seq`（`TranscriptRow.seq`），`searchEvents` 返回 `seq` 后可滚动/高亮到对应行，再在行内按 snippet 首现二次匹配定位显示。
+- **跨会话**：不能直接跳目标 transcript（不在内存），但 `readEvent({ sessionId, seq, before, after })` 可取命中事件 + 前后窗口做 preview；确认后 `/resume <id>`，重建 transcript 后再按 `seq` 跳行。
+- **不提供的**：无"命中在整条 assistant 消息内第 N 个字符"的精确坐标；snippet 已环绕命中高亮片段，配合行内匹配足够定位到显示位置。
+
+#### 9.6.3 两个坑
+
+| 坑 | 说明 | 对策 |
+|---|---|---|
+| FTS5 是 token 匹配，不是子串 | `unicode61` 分词下 `AI` 搜不到 `BRAID`；语义是词/短语，不是 grep | 需要字面子串时用 `sessionQuery.filterEvents({ kind: 'text', text })`（字面量扫描），速度与高亮不如 FTS；UI 提示"全文检索是词匹配" |
+| 跨会话只给 bestMatch | `searchSessions` 每 session 只给最强一条，看全部命中需再 `searchEvents` | 两段式 UI 天然覆盖：先选会话，再看该会话全部命中 |
+
+#### 9.6.4 建议交互（仅设计，未排期）
+
+```
+/search <query>
+├─ 跨会话结果：session 列表（标题 + best snippet + 时间）
+│  ├─ 选中当前会话 → searchEvents 列出全部命中，滚动到 seq 行并高亮 snippet
+│  └─ 选中其他会话 → readEvent 预览窗口（命中 + 上下文）→ /resume <id> 后跳 seq
+└─ 支持 cwd: 过滤（默认当前 workspace？）
+```
+
+结论：**能定位**。跨会话定位到"事件 + 上下文"，当前会话还能进一步定位到 transcript 行内命中；服务端不提供字符级坐标，但对 TUI 交互不是障碍。落地前建议先做小 spike 验证 `searchSessions/searchEvents` 返回的 snippet 与 seq 在真实日志上的对应，再定 UI 细节。
 
 ## 10. api-gateway 与自建 relay 的边界（2026-08-24 问答定稿）
 
