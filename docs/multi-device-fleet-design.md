@@ -1,6 +1,6 @@
 # 多设备 dsh 舰队：共享记忆与远程指挥设计
 
-> 状态：设计稿 v2（2026-08-27 评审修订：hub 定岗、记忆双机制、approval 桥、水位持久化），未排期。
+> 状态：设计稿 v2（2026-08-27 评审修订：hub 定岗、记忆双机制、approval 桥（双跳）、水位持久化、前端操控语义、宪法与 skills 布放），未排期。
 > 本稿是整体设计（权威）；relay 改造细节见派生设计
 > `~/data/dev/dsh-relay/docs/relay-v1.1-fleet-design.md`，两稿冲突以本稿为准。
 >
@@ -110,7 +110,7 @@ fleet 协议，而不是推倒重来；mac→hub 这一跳直接沿用现状，�
 | 任务 | 只有 `user-input` 转发 | `dispatch(task, device)` / `status` / `cancel` / `result` / `task-query` |
 | 事件 | 单向回放 | 任务级事件流 + 完成/失败回执 |
 | 断线 | 降级本地 | 重连 + 增量补回放（水位持久化）+ 未完成任务可查 |
-| 审批 | 无（worker 进程 fail closed） | approval 桥：worker 审批请求经 wire 到 hub 既有审批面板（TUI/IM） |
+| 审批 | 无（worker 进程 fail closed） | approval 桥（两端各一段，同一对消息）：worker↔hub、hub↔mac，让审批面板最终弹在 TUI/IM 上 |
 | 内容 | 仅文本 | 附件/图片/结构化结果 |
 
 ### 5.2 controller 侧工具
@@ -143,10 +143,48 @@ fleet_dispatch({
 - 任务接收与执行（可复用 `agents`/`sessions`/`tools`）；
 - 结果/事件回传；
 - 独立 token 或 Tailscale ACL 白名单；
-- 审批桥：危险操作的 approval/request 经 wire 回 hub 的既有审批面板（TUI/IM）应答，
-  fail closed（无应答 = 拒绝，不挂起 turn）；
+- 审批桥：危险操作的 approval/request 经 wire 回 hub 的审批服务，再经 hub↔mac 一跳
+  弹到 TUI/IM 审批面板应答，fail closed（无应答 = 拒绝，不挂起 turn）；hub 是 headless，
+  hub↔mac 这段桥用与 worker↔hub 段同一对 approval-request/answer 消息，两端对称；
 - 无人值守任务（cron 触发）建议 worker 会话 approval policy 设 `never`：可预期地自动拒绝，
   任务所需权限通过 profile 沙箱配置预置，而不是运行时索要。
+
+### 5.4 TUI/IM 如何操控设备：切的是设备，不是 relay 连接
+
+v2 架构下 TUI 永远只有一条 relay 连接（mac→hub），worker 不在连接对象里；"切换访问
+多个 relay-server"的问题在传输层不存在，它变成 hub 内的语义层设备选择：
+
+| 方式 | 交互 | 实现 |
+|---|---|---|
+| 自然语言 | "在 linux-box 上跑 X" | hub agent 调 `fleet_dispatch{device:"linux-box",…}`；TUI 渲染工具卡 + 结果 |
+| 确定性命令 | `/fleet list`、`/fleet <device> <task>`、`/fleet cancel <taskId>` | 注册进 `ctx.commands`（控制面不走模型，与 P4 slash 命令同哲学） |
+| 会话级"当前设备" | `/device linux-box` 之后派活缺省用它；再 `/device windows-box` 即切换 | currentDevice 写入该会话状态（机制与 P4 `/bind` 同构） |
+
+IM 同理：bot 永远连 hub，每 chat 一个会话 + 同样的 `/fleet`、`/device` 命令。
+
+**边界（如实）**：fleet v1.1 是"任务式派活"（dispatch → result），不是"交互式整会话
+接管"。TUI 上能看到：fleet_dispatch 工具卡与最终结果；worker 的 ask_user 经现有桥
+双跳弹出（worker → hub userQuestions → hub relay-server → mac 面板）。看不到：worker
+侧逐条 tool/call、diff、流式 token——那些事件回灌 hub 的 mirror 会话进记忆库，不在
+mac TUI 渲染。若以后要"坐在 worker 面前"的实时体验，候选是 TUI 多会话视图
+（`/sessions` 列出 hub 上的 mirror 会话，只读或接管），属本设计之外的增量。
+
+### 5.5 worker 的宪法与 skills 布放
+
+| 资产 | worker 默认读什么 | 统一方式 | 结论 |
+|---|---|---|---|
+| 全局宪法（AGENTS.md/CLAUDE.md） | worker 机器自己的 `$DSH_HOME/AGENTS.md` | relay v1.1 宪法同步（已实现）：hub 侧基线经 context-inject 注入 worker 会话（source 改写为 relay/constitution） | 权威宪法只维护 hub 一份；worker 放最小引导或干脆不放 |
+| 项目级宪法 | worker checkout 里的 AGENTS.md/CLAUDE.md | 远端 agent-instructions 自己 reconcile checkout；与注入宪法并存 | 随 checkout 走，谁 checkout 谁就有；hub 注入兜底 |
+| 全局 skills | worker 机器自己的 `$DSH_HOME/skills` | **无 skill 桥**：skill 是工具 + 指令资源，由 skill-filesystem 按各进程文件系统发现 | 每台 worker 各有一份；统一靠部署同步 |
+| 项目级 skills | checkout 里的 `.dsh/skills`、`.agents/skills` | 随 checkout 走 | 谁 checkout 谁就有；周报类无 repo 任务只有 worker 全局 skills |
+
+要点：
+
+- 宪法是文本，可以过 wire；skill 是可执行工具 + 指令资源，注入文本不等于有了工具。
+  relay 没有 skill 桥，worker 模型能用的 skill = 该机器上实际存在的那些。
+- 全局 skills 统一方式：把 skills 目录以 git 仓库 checkout 或 rsync 分发到每台 worker
+  （注意 Windows 路径差异），与 `scripts/sync-agent-presets.sh` 同步 presets 的部署思路
+  一致；宪法则相反——不要往 worker 复制，靠注入避免多份漂移。
 
 ## 6. 每周周报用例
 
@@ -163,7 +201,7 @@ fleet_dispatch({
 |---|---|
 | 网络 | dsh/relay/worker 端口只绑 Tailscale 网卡，不开公网；Tailscale（WireGuard）已提供传输加密，TLS 后续只解决端内身份，v1 不强制 |
 | 鉴权 | relay 现有 token 保留；每个 worker 独立 token 或 Tailscale ACL 白名单；设备身份（clientId 白名单）列后续 |
-| 权限 | worker 危险操作经 approval 桥回 hub 审批面板，fail closed；controller 派发任务本身也走审批流；cron 无人值守任务用 approval policy `never` + 沙箱预设 |
+| 权限 | worker 危险操作经 approval 桥（worker↔hub、hub↔mac 两段）最终弹到 TUI/IM 审批面板，fail closed；controller 派发任务本身也走审批流；cron 无人值守任务用 approval policy `never` + 沙箱预设 |
 | 敏感记忆 | 出网边界 = fleet_dispatch 的 digest 组装点：sensitive 实体默认不进 task payload，其余按离库脱敏执行；不再依赖"进上下文"的隐式边界 |
 | 单点备份 | 中央库是全网记忆唯一真源：hub 上做 SQLite 定期备份 + 异机副本，备份失败要告警 |
 
