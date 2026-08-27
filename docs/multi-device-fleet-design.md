@@ -1,6 +1,6 @@
 # 多设备 dsh 舰队：共享记忆与远程指挥设计
 
-> 状态：设计稿 v2（2026-08-27 评审修订：hub 定岗、记忆双机制、approval 桥（双跳）、水位持久化、前端操控语义、宪法与 skills 布放），未排期。
+> 状态：设计稿 v2（2026-08-27 评审修订：hub 定岗、记忆双机制、approval 桥（双跳）、水位持久化、前端操控语义、宪法与 skills 布放、mac 本地 coding 双连接（方案 B）），未排期。
 > 本稿是整体设计（权威）；relay 改造细节见派生设计
 > `~/data/dev/dsh-relay/docs/relay-v1.1-fleet-design.md`，两稿冲突以本稿为准。
 >
@@ -14,7 +14,7 @@
 |---|---|
 | dsh 有没有现成 IM/多机编排 | ❌ 没有；需要基于现有 relay + endless 扩展 |
 | 多机"大脑"怎么组织 | **hub 即 controller**：一台 7×24 机器跑唯一大脑（agent + fleet-client + 中央 endless + IM 网关 + cron）；macOS TUI 是它的 relay 薄前端；各节点是 worker，不决定"做什么"，只在任务内决定"怎么做" |
-| 共享记忆怎么实现 | **中央库单写 + 双机制**：hub 持有唯一 endless DB；派活时 digest 随任务下发（被动注入），worker 执行中经 endless 工具桥 recall/remember 中央库（主动检索）；worker 进程不直连 DB |
+| 共享记忆怎么实现 | **全局单写 hub + 双机制**：hub 持有唯一 endless DB（mac 本地 coding 也经 memory 连接回灌，本地不挂 endless）；派活/开工时 digest 随会话注入（被动），执行中经 endless 工具桥 recall/remember 中央库（主动）；worker 进程不直连 DB |
 | macOS TUI / 手机 IM 是什么 | controller 的两个接入面（前端）；macOS 走现有 relay 薄前端，IM 复用 P4 bot 设计（endless DESIGN §21）；决策、记忆、审批全在 hub |
 | 第一业务线 | 每周国内半导体周报：hub cron 触发 → 派活 → 生成 → 推 IM → 记忆落库 |
 
@@ -22,7 +22,8 @@
 
 ```
  接入面（Tier 0 —— 都是 hub 的"前端"：无决策、无记忆）
-   macOS TUI ──relay v1.1 remote-client（薄前端，不挂 endless）──┐
+   macOS TUI ──remote-client·driver──▶ hub relay-server（指挥台会话，全流式）
+   macOS TUI ──remote-client·driver──▶ mac-worker（本机 coding，全流式，§5.6）
    手机 IM（TG/飞书）── bot 适配器（复用 P4 §21 设计）────────────┤
    hub cron ── headless runner（定时/手动触发）──────────────────┤
                                                                  ▼
@@ -35,16 +36,16 @@
                                    │ Tailscale（tailnet only）
        ┌──────────────┬────────────┼──────────────┬──────────────┐
        ▼              ▼            ▼              ▼              ▼
-  Linux dsh      Windows dsh   Mac mini dsh    macOS 本机      （未来设备）
-  worker         worker        worker          worker（可选）
-  relay-server   relay-server  relay-server    relay-server
+  Linux dsh      Windows dsh   Mac mini dsh    macOS 本机 worker       （未来设备）
+  worker         worker        worker          coding 实例 + fleet 实例
+  relay-server   relay-server  relay-server    relay-server ×2
 ```
 
 关键原则：
 
 - **hub 是唯一大脑**：7×24 机器跑 controller；macOS TUI、手机 IM、cron 都是它的前端，不各自决策。
 - **worker 不决定"做什么"**：任务选题、编排、验收由 controller 决定；worker 只在任务范围内自行决定"怎么做"（查什么源、跑什么工具）。
-- **记忆单写 hub**：所有节点的经验经 mirror 会话汇聚到中央 endless；macOS 薄前端不挂 endless，避免第二份记忆库。
+- **记忆单写 hub（含 mac 本地 coding，方案 B）**：所有节点——包括 mac 本机会话——的经验经 mirror 会话汇聚到中央 endless；mac 本地不挂 endless，存量本地库搬迁退役（§5.6）。
 - **relay 是神经**：mac→hub 走现有 remote-client（已实现）；hub→worker 走 fleet-client（派生设计）；事件回灌、工具桥、ask_user 桥复用现有机制。
 
 ## 3. 分层模型
@@ -60,9 +61,10 @@
 
 两者只是 hub 的接入面，同构且不承载决策：
 
-- **macOS TUI**：走现有 relay v1.1 remote-client 的薄前端 profile（不挂 endless），
-  把 hub 的 agent 会话镜像到本地渲染；输入转发、digest 注入、工具桥、宪法同步均已在
-  现有 1:1 relay 中实现，零新开发。
+- **macOS TUI**：双形态。指挥台形态走现有 remote-client 连 hub（不挂 endless），把 hub
+  的 agent 会话镜像到本地全流式渲染；本地 coding 形态走 remote-client 直连本机
+  mac-worker（driver 连接，localhost），hub 同时以 memory 连接旁挂同一会话把事件灌入
+  中央库——两种形态都全流式，记忆都单写 hub（方案 B，见 §5.6）。
 - **手机 IM**：复用 P4 bot 设计（endless DESIGN §21）——每个 chat 一个 agent 会话，
   消息进 hub、回复出 hub；能力与 TUI 完全同构。
 - 记忆、权限、审批都在 hub 一个地方；TUI/IM 只是同一审批面板与同一 `fleet_dispatch`
@@ -186,6 +188,29 @@ mac TUI 渲染。若以后要"坐在 worker 面前"的实时体验，候选是 T
   （注意 Windows 路径差异），与 `scripts/sync-agent-presets.sh` 同步 presets 的部署思路
   一致；宪法则相反——不要往 worker 复制，靠注入避免多份漂移。
 
+### 5.6 mac 本地 coding：driver + memory 双连接（方案 B，定稿）
+
+mac 上的项目（如 dsh-plugins）agent coding 走"本地执行 + hub 记忆"，而不是 hub 派活：
+
+```
+mac TUI ──driver（remote-client，localhost，全流式）──▶ mac-worker（relay-server，本机）
+hub fleet-client ──memory（只订阅，tailnet）──────────▶ 同一 mac-worker 会话
+```
+
+- **driver 连接（mac TUI）**：现有 remote-client 语义——user-input/steer/cancel、
+  ask_user 与 approval 弹窗、逐事件全流式渲染；体验与今天的本地直连零差别。
+- **memory 连接（hub）**：fleet-client 的 memory 模式——只收事件流灌 mirror → 中央库
+  capture；回答 worker 的 endless 工具桥（recall/remember 在 hub 本地执行）；在
+  session-start 把中央库 digest 经 context-inject 注入 worker 会话。不派任务、不驱动。
+- **单写维持**：mac 不再挂本地 endless；存量 `~/.endless` 库停止写入后整库搬迁到 hub
+  （URL-key 记忆无缝续用，path-key 记忆以全局 KB 形式可查，迁移细节待定）。
+- **宪法与 skills**：mac-worker 与 mac 同机，全局/项目级 AGENTS.md 与 skills 都是同一份，
+  无需同步或注入——这正是本地 coding 保留全体验的原因之一。
+- **降级语义**：hub 断线时 driver 照常干活（全流式），只是 recall/remember 报错、事件
+  暂不入库；hub 重连后按 resumeSeq 增量补回放，错过的记忆照常落库。
+- **与 fleet 派活的隔离**：hub 向 mac 派活走独立的 mac-fleet worker 实例（另一个端口/
+  会话），不与 coding 会话混用；同一 server 实例 v1.1 仍单会话。
+
 ## 6. 每周周报用例
 
 | 环节 | 放哪 |
@@ -207,7 +232,7 @@ mac TUI 渲染。若以后要"坐在 worker 面前"的实时体验，候选是 T
 
 ## 8. 实施路径
 
-1. **hub 定岗**：定一台 7×24 机器为 hub = controller；macOS 改为 relay 薄前端 profile（现有 remote-client，不挂 endless），本机文件操作按需加跑一个 mac-worker。
+1. **hub 定岗 + mac 双形态**：定一台 7×24 机器为 hub = controller；macOS 上跑 mac-worker（coding 实例 + fleet 实例）与 remote-client 两个形态（本地 coding 直连本机 driver；指挥台连 hub），mac 本地不挂 endless，存量库搬迁 hub（§5.6）。
 2. **relay 多节点化（派生设计）**：协议 v2（task-run/result、增量补回放、approval 桥、task-query）+ fleet-client（水位持久化），一切的地基。
 3. **中央记忆汇聚 + fleet_dispatch 工具**：所有 worker 事件回灌 endless；工具实现 project 绑定、内部 digest 组装与出网脱敏；先做"发提示词到指定 worker 并拿回结果"。
 4. **IM 网关**：Telegram/飞书 bot（复用 P4 §21 设计）接入 hub，成为与 TUI 平级的接入面。
@@ -217,9 +242,9 @@ mac TUI 渲染。若以后要"坐在 worker 面前"的实时体验，候选是 T
 
 | 资产 | 在本设计中的角色 |
 |---|---|
-| `dsh-relay` | 双重角色：remote-client（mac→hub 薄前端，已实现）+ fleet-client（hub→worker 控制面，派生设计）；事件回灌/工具桥/ask_user 桥/宪法同步直接复用 |
-| `endless-dsh` | hub 中央记忆库；capture/distill/inject/tools 全部复用，只把部署变成"单库汇聚"；macOS 薄前端不挂 endless |
-| `dsh-plugins` TUI | macOS 薄前端的渲染面（hub 会话镜像）与 hub 本地前端（可选） |
+| `dsh-relay` | remote-client 两种用途（mac→hub 指挥台 + mac→mac-worker driver，均为全流式）+ fleet-client 双模式（fleet 任务派发 + memory 只订阅）；事件回灌/工具桥/ask_user 桥复用 |
+| `endless-dsh` | hub 中央记忆库（全局单写）；capture/distill/inject/tools 全部复用；mac 不再挂本地 endless，存量库整库搬迁 |
+| `dsh-plugins` TUI | mac 两个形态的渲染面（hub 会话镜像 + 本机 coding 会话，均全流式）与 hub 本地前端（可选） |
 | IM bot（P4 §21 已定稿） | controller 的远程前端，复用同一 hub agent 与 fleet 工具 |
 | `dsh-schedule` | 不适合作跨设备定时；周报定时走 hub cron/timer |
 
@@ -228,7 +253,8 @@ mac TUI 渲染。若以后要"坐在 worker 面前"的实时体验，候选是 T
 | 问题 | 说明 |
 |---|---|
 | ~~controller 与 hub 是否同一台~~ | ✅ 已定：hub = controller（7×24）；macOS 为 relay 薄前端 |
-| worker 会话模型 | 每 worker 单会话串行 vs 每项目一进程一端口 vs v2 多连接复用；倾向"每项目一端口"先落地、多连接复用留 v2 |
+| worker 会话模型 | 同会话多连接（driver/memory/fleet 角色）已随方案 B 入范围；单 server 多会话并发仍留后续，暂按"每项目一端口/实例"部署 |
+| mac 存量记忆搬迁 | 本地 endless 停写后整库搬到 hub；URL-key 记忆无缝、path-key 记忆转为全局 KB 可查；搬迁脚本与验证待定 |
 | worker 是否需要离线自主 | 工具桥依赖连线；若要求 worker 离线可查记忆，才做方案 C（暂不做） |
 | relay 断线语义 | 已入协议：增量补回放 + task-query 对账；任务超时策略（默认不超时）仍待定 |
 | IM 审批交互 | approval/ask 需翻译成 Telegram inline keyboard / 飞书卡片按钮 |
