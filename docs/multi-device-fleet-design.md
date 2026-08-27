@@ -167,6 +167,10 @@ fleet_dispatch({
   切换；TUI 内的目标切换器（如 `/connect <device>`）列为后续增量。
 - IM 只有指挥台模式：bot 永远连 hub，每 chat 一个会话 + 同样的 `/fleet`、`/device`
   命令；IM 不驱动交互式 worker 会话（v1.1 边界）。
+- workspace 切换 = 换 worker 实例：relay 的 workspace 是 worker 进程 cwd（hello 无
+  workspace 字段），v1.1 按"每项目一个 relay-server 实例/端口"部署；同一项目内多目录
+  由 agent 自己进出。hello.workspace（server projectsRoot 白名单校验）与多会话并发
+  同批留后续。
 
 ### 5.5 worker 的宪法与 skills 布放
 
@@ -206,7 +210,8 @@ mac TUI ──remote-client（现有链路，localhost/远程，全流式）─�
 - **宪法与 skills**：本机 worker 与 mac 同一份文件，无需同步；远程 worker 沿用宪法
   注入与 skills 部署同步（§5.5）。
 - **降级语义**：hub/sink 断线时交互照常（全流式），只是 recall/remember 报错、事件
-  暂不入库；sink 重连后从本地 mirror 留底按 seq 补发，错过的记忆照常落库。
+  暂进 remote-client 的持久化转发缓冲；sink 重连后按序补发并重注 digest，错过的
+  记忆照常落库。
 - **与 fleet 派活的隔离**：hub 向 mac 派活走独立的 mac-fleet 实例（另一个端口/会话），
   不走 coding 的 relay 连接，互不污染。
 
@@ -253,7 +258,7 @@ mac TUI ──remote-client（现有链路，localhost/远程，全流式）─�
 |---|---|
 | ~~controller 与 hub 是否同一台~~ | ✅ 已定：hub = controller（7×24）；macOS 为 relay 薄前端 |
 | worker 会话模型 | relay-server 保持单连接单会话（B2 零改动）；单 server 多会话并发留后续，暂按"每项目一端口/实例"部署 |
-| 直连模式设备切换 | v1.1 用 profile / `DSH_RELAY_URL` 切换 remote-client 目标；TUI 内 `/connect <device>` 切换器列为后续增量 |
+| 直连模式设备/workspace 切换 | v1.1 用 profile / `DSH_RELAY_URL` 切换 remote-client 目标（workspace = worker 实例 cwd，每项目一端口）；TUI 内 `/connect <device>` 切换器与 hello.workspace 列为后续增量 |
 | mac 存量记忆搬迁 | 本地 endless 停写后整库搬到 hub；URL-key 记忆无缝、path-key 记忆转为全局 KB 可查；搬迁脚本与验证待定 |
 | worker 是否需要离线自主 | 工具桥依赖连线；若要求 worker 离线可查记忆，才做方案 C（暂不做） |
 | relay 断线语义 | 已入协议：增量补回放 + task-query 对账；任务超时策略（默认不超时）仍待定 |
