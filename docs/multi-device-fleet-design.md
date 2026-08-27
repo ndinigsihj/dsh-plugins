@@ -1,6 +1,6 @@
 # 多设备 dsh 舰队：共享记忆与远程指挥设计
 
-> 状态：设计稿 v2（2026-08-27 评审修订：hub 定岗、记忆双机制、approval 桥、水位持久化、前端操控语义、宪法与 skills 布放、交互链路不变 + memory-sink 外挂（方案 B2）），未排期。
+> 状态：设计稿 v2（2026-08-27 评审修订：hub 定岗、记忆双机制、approval 桥、水位持久化、前端操控语义、宪法与 skills 布放、memory-sink 外挂（方案 B2）、bootstrap+spawn workspace 切换），未排期。
 > 本稿是整体设计（权威）；relay 改造细节见派生设计
 > `~/data/dev/dsh-relay/docs/relay-v1.1-fleet-design.md`，两稿冲突以本稿为准。
 >
@@ -38,9 +38,9 @@
                                    │ Tailscale（tailnet only）
        ┌──────────────┬────────────┼──────────────┬──────────────┐
        ▼              ▼            ▼              ▼              ▼
-  Linux dsh      Windows dsh   Mac mini dsh    macOS 本机 worker       （未来设备）
-  worker         worker        worker          coding 实例 + fleet 实例
-  relay-server   relay-server  relay-server    relay-server ×2
+  Linux dsh      Windows dsh   Mac mini dsh    macOS 本机             （未来设备）
+  bootstrap      bootstrap     bootstrap       bootstrap（固定端口 A）
+  + spawn ×N     + spawn ×N    + spawn ×N      + spawn worker（按需）
 ```
 
 关键原则：
@@ -159,18 +159,21 @@ fleet_dispatch({
 | 模式 | 交互 | 体验 | 记忆 |
 |---|---|---|---|
 | 指挥台（连 hub） | 自然语言，或 `/fleet list`、`/fleet <device> <task>`、`/fleet cancel`、`/device`（会话级当前设备） | hub 会话全流式；fleet_dispatch 只有工具卡 + 结果（worker 内部细节不流式） | hub 原生落库 |
-| 交互直连（连任意 worker） | remote-client 直连目标 worker（本机 coding / 远程 coding），`/new`、`/resume` 切会话 | 与现有 relay 完全一致：token/tool/diff/ask_user/approval 全流式 | memorySink 外挂落 hub |
+| 交互直连（连任意 worker） | remote-client 直连目标 worker（本机 coding / 远程 coding）；`/workers`、`/spawn <dir>` 动态起 workspace worker；`/new`、`/resume` 切会话 | 与现有 relay 完全一致：token/tool/diff/ask_user/approval 全流式 | memorySink 外挂落 hub |
 
 - 指挥台模式不存在"切换 relay-server"问题：TUI 永远只连 hub，设备选择是 hub 内的语义
   路由（模型工具 + 命令 + `/device` 绑定），与 P4 slash 命令同哲学。
-- 交互直连模式的"切换设备" = 换 remote-client 目标：v1.1 用 profile / `DSH_RELAY_URL`
-  切换；TUI 内的目标切换器（如 `/connect <device>`）列为后续增量。
+- 交互直连模式的"切换设备/workspace"：先连设备 bootstrap（固定端口 A，tailnet IP 或
+  localhost），`/spawn <dir>` 请求它在目标目录起一个 workspace worker（临时端口 +
+  一次性 token，bootstrap 就绪探测通过后回给 TUI），TUI 再重连该 worker 干活；
+  `/workers` 查看、`/worker-stop` 回收。TUI 的一步式 `/open <device> <dir>` 命令
+  封装此流程。
 - IM 只有指挥台模式：bot 永远连 hub，每 chat 一个会话 + 同样的 `/fleet`、`/device`
   命令；IM 不驱动交互式 worker 会话（v1.1 边界）。
-- workspace 切换 = 换 worker 实例：relay 的 workspace 是 worker 进程 cwd（hello 无
-  workspace 字段），v1.1 按"每项目一个 relay-server 实例/端口"部署；同一项目内多目录
-  由 agent 自己进出。hello.workspace（server projectsRoot 白名单校验）与多会话并发
-  同批留后续。
+- workspace 切换 = bootstrap + spawn：relay 的 workspace 是 worker 进程 cwd，所以
+  "在目录里起 worker"就是"选 workspace"；bootstrap 校验目录在 roots 白名单内后
+  spawn 子进程（固定 profile 参数，不拼 shell），端口 0 临时分配 + 一次性 token。
+  hello.workspace 被 spawn 方案替代（确需进程内切换再议），多会话并发仍留后续。
 
 ### 5.5 worker 的宪法与 skills 布放
 
@@ -212,8 +215,8 @@ mac TUI ──remote-client（现有链路，localhost/远程，全流式）─�
 - **降级语义**：hub/sink 断线时交互照常（全流式），只是 recall/remember 报错、事件
   暂进 remote-client 的持久化转发缓冲；sink 重连后按序补发并重注 digest，错过的
   记忆照常落库。
-- **与 fleet 派活的隔离**：hub 向 mac 派活走独立的 mac-fleet 实例（另一个端口/会话），
-  不走 coding 的 relay 连接，互不污染。
+- **与 fleet 派活的隔离**：hub 向 mac 派活走独立 worker（hub 调 bootstrap 动态 spawn
+  或复用独立实例，另一个端口/会话），不走 coding 的 relay 连接，互不污染。
 
 ## 6. 每周周报用例
 
@@ -236,7 +239,7 @@ mac TUI ──remote-client（现有链路，localhost/远程，全流式）─�
 
 ## 8. 实施路径
 
-1. **hub 定岗 + mac 双模式**：定一台 7×24 机器为 hub = controller；macOS 上跑 mac-worker（coding 实例 + fleet 实例）、remote-client 双模式（指挥台连 hub / 交互直连本机 worker）+ memorySink；mac 本地不挂 endless，存量库搬迁 hub（§5.6）。
+1. **hub 定岗 + mac 双模式**：定一台 7×24 机器为 hub = controller；macOS 上跑 bootstrap worker（固定端口）+ 按需 spawn 的 workspace worker、remote-client 双模式（指挥台连 hub / 交互直连 worker）+ memorySink；mac 本地不挂 endless，存量库搬迁 hub（§5.6）。
 2. **relay 多节点化（派生设计）**：交互链路零改动；协议 v2（task-run/result、增量补回放、approval 桥、task-query）+ fleet-client（水位持久化）+ memory-sink 插件，一切的地基。
 3. **中央记忆汇聚 + fleet_dispatch 工具**：所有 worker 事件回灌 endless；工具实现 project 绑定、内部 digest 组装与出网脱敏；先做"发提示词到指定 worker 并拿回结果"。
 4. **IM 网关**：Telegram/飞书 bot（复用 P4 §21 设计）接入 hub，成为与 TUI 平级的接入面。
@@ -257,8 +260,8 @@ mac TUI ──remote-client（现有链路，localhost/远程，全流式）─�
 | 问题 | 说明 |
 |---|---|
 | ~~controller 与 hub 是否同一台~~ | ✅ 已定：hub = controller（7×24）；macOS 为 relay 薄前端 |
-| worker 会话模型 | relay-server 保持单连接单会话（B2 零改动）；单 server 多会话并发留后续，暂按"每项目一端口/实例"部署 |
-| 直连模式设备/workspace 切换 | v1.1 用 profile / `DSH_RELAY_URL` 切换 remote-client 目标（workspace = worker 实例 cwd，每项目一端口）；TUI 内 `/connect <device>` 切换器与 hello.workspace 列为后续增量 |
+| worker 会话模型 | relay-server 保持单连接单会话（B2 零改动）；workspace worker 由 bootstrap 按需 spawn；单 server 多会话并发留后续 |
+| ~~直连模式设备/workspace 切换~~ | ✅ 已定：bootstrap + spawn（§5.4）；TUI 的一步式 `/open <device> <dir>` 命令列入实施；hello.workspace 被替代，多会话并发仍留后续 |
 | mac 存量记忆搬迁 | 本地 endless 停写后整库搬到 hub；URL-key 记忆无缝、path-key 记忆转为全局 KB 可查；搬迁脚本与验证待定 |
 | worker 是否需要离线自主 | 工具桥依赖连线；若要求 worker 离线可查记忆，才做方案 C（暂不做） |
 | relay 断线语义 | 已入协议：增量补回放 + task-query 对账；任务超时策略（默认不超时）仍待定 |
