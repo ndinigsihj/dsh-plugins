@@ -139,7 +139,7 @@
 | B6 | `dsh-session-stats`（`sessionStats` 投影：turns/steps/llmMs/toolMs/ttftMs/decodeMs±tokens） | 未挂载 | 一行挂载；`/stats` 或状态行加 `llm 12s · tool 3s · ttft 1.2s · 32 tok/s decode`；值走 `sessionProjections.snapshot`，与 A3 不重复 |
 | B7 | `dsh-message-feedback`（每条 finalized assistant 消息持久 ±note，CAS 版本） | 未挂载 | 一行挂载（inject `storageDomain`/`sessionPersistence`/`sessions`，config `maxNoteBytes`）；transcript 行保留 `message.id`，行内键 `f` 评 +/-、可加 note；小 UI |
 | B8 | `dsh-workspace`（workspace 注册表：标题/顺序/归档/会话归属） | 未挂载 | 一行挂载（inject `storageDomain`/`sessionPersistence`）；`/workspace` 列出/新建/重命名/归档；TUI 的 workspace 概念从 `basename(cwd)` 升级为注册实体 |
-| B9 | `dsh-schedule`（会话级持久 after/at/every 提醒） | 未挂载 | 挂载后根 agent 自动获得 `schedule_*` 模型工具；TUI 可额外折叠 `schedule/change` 事件显示 `⏰ N reminders`；纯模型面也可先用 |
+| B9 | `dsh-schedule`（会话级持久 after/at/every 提醒） | 未挂载 | 挂载后根 agent 自动获得 `schedule_*` 模型工具；TUI 可额外折叠 `schedule/change` 事件显示 `⏰ N reminders`；纯模型面也可先用；语义与应用场景见 §9.7 |
 | B10 | `dsh-authorization`（OAuth/粘贴码式凭据获取） | 未挂载 | 挂载后 `ctx.authorization`；TUI `/login` 用现有 Ask/Notice 弹层渲染 text/secret/select prompt；当前无 OAuth provider 时低优先 |
 
 ### 9.3 C 组：可选/实验
@@ -215,6 +215,52 @@ TUI 定位能力：
 ```
 
 结论：**能定位**。跨会话定位到"事件 + 上下文"，当前会话还能进一步定位到 transcript 行内命中；服务端不提供字符级坐标，但对 TUI 交互不是障碍。落地前建议先做小 spike 验证 `searchSessions/searchEvents` 返回的 snippet 与 seq 在真实日志上的对应，再定 UI 细节。
+
+### 9.7 B9 dsh-schedule：概念与应用场景（2026-08-27）
+
+一句话定位：**dsh-schedule = "给这个 agent 会话自己设的闹钟"**。你（或模型）在对话里
+跟 agent 说"30 分钟后提醒我做 X"，到点后 agent 会在同一个会话里主动开口提醒——它不会像
+cron 那样在后台独立干活，也不会弹系统通知。
+
+#### 9.7.1 典型场景
+
+| 场景 | 具体例子 | 为什么适合 |
+|---|---|---|
+| 延迟跟进 | "20 分钟后提醒我检查测试结果" | 提醒落在原会话里，agent 记住上下文，能直接继续看结果 |
+| 会话内周期汇报 | 长任务中"每 30 分钟给我汇总一次进展" | agent 到点自己插话汇报，不需要你反复催 |
+| 跨重启的待办 | "2 小时后提醒我重新权衡这个方案"；中途进程关了 | `schedule/change` 写在会话日志里，resume 后 agent 会补处理 overdue |
+| 让 agent 自管理节奏 | 多步骤任务里"每步完成后 5 分钟提醒我 review" | 模型可以自己创建/删除提醒，控制权在对话内 |
+
+#### 9.7.2 完整画面
+
+```
+45 分钟后提醒我部署前再看一眼 migration
+→ agent 调 schedule_create({ after_seconds: 2700, prompt: "..." })
+→ 会话日志记一条 schedule/change
+
+45 分钟后（会话还开着、agent idle）：
+→ 调度器向 agent 队列塞一条提醒
+→ agent 主动回复："提醒你：现在该检查 migration 了。"
+→ 继续对话
+
+若 45 分钟前已关闭 TUI：
+→ 不响；下次 /resume 回来发现 overdue，补提醒一次
+```
+
+#### 9.7.3 与 cron 的边界（它不做什么）
+
+| 你可能想要的 | dsh-schedule 能不能 |
+|---|---|
+| 凌晨 3 点自动跑备份（当时没有会话） | ❌ 会话不活就不跑 |
+| 手机/桌面弹通知 | ❌ 只投递到会话 transcript |
+| `0 2 * * *` 这种 cron 表达式 | ❌ 只支持 after / at / every（≥5 分钟） |
+| 独立执行 shell 脚本 | ❌ 只投递给模型，让模型决定怎么做 |
+| 错过多个周期后逐个补跑 | ❌ every 只补最近一次，避免 backlog 堆积 |
+
+#### 9.7.4 判断标准
+
+- 想要"**这个 agent 到点了自己提醒我/自己继续**" → 合适。
+- 想要"**机器到点自动执行某个动作，和人/会话无关**" → 不合适，走系统 cron 或独立服务。
 
 ## 10. api-gateway 与自建 relay 的边界（2026-08-24 问答定稿）
 
