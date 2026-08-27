@@ -41,7 +41,10 @@ cd ~/dev/dsh-plugins-stable && npm i && scripts/link-global-dsh.sh
 ## 3. profile 变更明细
 
 `tui` 与 `tui-dev` 的 patch 同构，唯一差异是 dsh-plugins 四个挂载点的基路径；
-其余插件（dsh-relay、endless-*）不在本仓范围，两个 profile 都维持原路径不动。
+其余插件（dsh-relay 的 `relay-client`、endless-*）不在本仓范围，两个 profile 都维持原路径不动。
+dsh-relay 的 fleet 侧挂载（hub：`fleet-client` / `memory-sink`；worker：`remote-server`
++ bootstrap launcher）不在 TUI profile 内，挂载 YAML 与配置项以
+[dsh-relay README](../dev/dsh-relay/README.md) 为准。
 
 | 挂载点 | tui（日常 → 部署树） | tui-dev（开发 → 工作树） |
 |---|---|---|

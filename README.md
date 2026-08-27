@@ -105,6 +105,40 @@ has its own approval card and does not use it:
 | `plugins/rewind-dsh.ts` | `/rewind [<seq>]` — **standalone rewind**: fork + file-restore + relaunch, overriding the built-in rewind (see `docs/rewind-file-restore-plugin.md`) |
 | `approval-tui.ts` | `endless-tui` profile: route `approval/request` to the TUI question panel |
 
+## Relay / fleet（dsh-relay 集成）
+
+dsh-relay 的 `remote-client`、`fleet-client` 与 `memory-sink` 通过标准 harness 服务
+（`commands` / `tools` / `approval`）与 TUI 协作，**本仓库不需要写命令代码**：
+插件在 profile 里挂载后，`/workers`、`/spawn <dir>`、`/worker-stop`、`/fleet …`
+会自动出现在 TUI 的 `/` 菜单（commands 注册表 handler 优先于 TUI 本地命令）。
+
+mac TUI 的 `tui` / `tui-dev` profile 挂载 `remote-client`（示意）：
+
+```yaml
+- insert:
+    - id: relay-client
+      name: '/path/to/dsh-relay/src/client.ts'
+      inject: [loader, agents, sessions, userQuestions, endlessStorage, tools, timer, approval]
+      config:
+        url: !!js process.env.DSH_RELAY_URL ?? ''      # 空 = 本地直连
+        token: !!js process.env.DSH_RELAY_TOKEN ?? ''
+        memorySinkUrl: !!js process.env.DSH_RELAY_MEMORY_SINK_URL ?? ''   # 可选
+        memorySinkToken: !!js process.env.DSH_RELAY_MEMORY_SINK_TOKEN ?? ''
+```
+
+hub 侧的 `fleet-client` / `memory-sink`、worker 侧的 `remote-server` 挂载不在本仓库，
+完整 YAML 与配置项见 [dsh-relay README](../dev/dsh-relay/README.md)（实现 / 设计见
+`docs/relay-v1.1-fleet-design.md`）。
+
+| 命令 | 来源 | 说明 | 状态 |
+|---|---|---|---|
+| `/workers` | remote-client | 列出 bootstrap 上的 workspace worker | ✅ 已实现 |
+| `/spawn <dir>` | remote-client | spawn workspace worker 并重连 | ✅ 已实现 |
+| `/worker-stop <dir\|port>` | remote-client | 回收 worker | ✅ 已实现 |
+| `/open <device> <dir>` | remote-client | 一步式连设备 → spawn → 重连 | ⏳ 待 dsh-relay 实现 |
+| `/fleet …` | fleet-client | 列表 / 派发 / 取消 | ✅ 已实现 |
+| `/device <id>` | fleet-client | 会话级当前设备绑定 | ⏳ 待 dsh-relay 实现 |
+
 ## Agent presets (liangshen-plus / liangshen-bash)
 
 `presets/liangshen-plus/` is a combination agent preset that merges three
