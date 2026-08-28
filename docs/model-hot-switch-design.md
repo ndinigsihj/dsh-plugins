@@ -1,6 +1,6 @@
 # /model 热切换设计（ModelSelectionRef 可变 seam）
 
-> 状态：**设计稿 v1（2026-08-27）；seam 级 spike 通过（`experiments/model-hot-switch-spike.test.ts` 3/3），真实树自动化 spike 通过（`experiments/model-hot-switch-live-spike.mjs`），TUI 手工验证待做后实施**。
+> 状态：**已实施（2026-08-27）；seam 级 spike 通过（`experiments/model-hot-switch-spike.test.ts` 3/3），真实树自动化 spike 通过（`experiments/model-hot-switch-live-spike.mjs`）；TUI 手工验收待做（§5.2 清单）**。
 > 目标：把 `/model` 从「fork 全量日志 + 新 session + 回放历史」改成与 `/effort` 同源的
 > `installModelSelection` 可变引用热切换：同一 session、下一轮生效、不重建会话。
 > 关联：`docs/reasoning-effort-design.md`（effort 已骑同一 seam）、`docs/tui-feature-gap.md` M1c。

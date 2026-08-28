@@ -1933,9 +1933,44 @@ async function run(
   }
 
   /**
-   * /model live switch, official recipe: fork the whole log as seed, create a
-   * NEW session on the new route with the SAME preset, then replay history.
-   * The conversation continues untouched — only the request model changes.
+   * /model hot switch: same session via installModelSelection mutable ref.
+   * Takes effect next turn, keeps session id/history; falls back to the
+   * fork recipe when the seam is absent.
+   */
+  async function switchModelHot(provider: string, model: string): Promise<void> {
+    const ref = selectionRef;
+    if (ref === undefined || ref.current === undefined) {
+      await switchModelLive(provider, model);
+      return;
+    }
+    const carried = ref.current.reasoningEffort;
+    let nextEffort = carried;
+    const llm = services.llm;
+    if (carried !== undefined && llm?.resolveModelInfo !== undefined) {
+      try {
+        const info = await llm.resolveModelInfo(provider, model);
+        const efforts = info.reasoning?.efforts ?? [];
+        if (!efforts.some((e) => e.id === carried)) nextEffort = undefined;
+      } catch {
+        nextEffort = undefined; // metadata unavailable: drop the carried effort
+      }
+    }
+    ref.current = {
+      provider,
+      model,
+      ...(nextEffort === undefined ? {} : { reasoningEffort: nextEffort }),
+    };
+    liveRoute = { provider, model };
+    app.setModelLabel(`${liveRoute.provider}/${liveRoute.model}`);
+    void refreshEffortMeta();
+    app.appendCommandOutput(`Switched to ${provider}/${model} — takes effect next turn.`);
+  }
+
+  /**
+   * /model fork recipe (fallback when the mutable-selection seam is absent):
+   * fork the whole log as seed, create a NEW session on the new route with
+   * the SAME preset, then replay history. The conversation continues
+   * untouched — only the request model changes.
    */
   async function switchModelLive(provider: string, model: string): Promise<void> {
     const fork = services.sessions.fork;
@@ -2058,7 +2093,7 @@ async function run(
       app.showNotice(`Already riding ${active.provider}/${active.model}.`);
       return;
     }
-    await switchModelLive(route.provider, route.model);
+    await switchModelHot(route.provider, route.model);
   }
 
   /** Persist a preset choice through the settings seam (`agent-presets` ns). */
