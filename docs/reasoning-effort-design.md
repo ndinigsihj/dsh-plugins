@@ -3,6 +3,9 @@
 > 目标：TUI 显示并允许切换当前路由的思考强度，全部骑 harness 标准缝，零私有约定。
 > 状态：**设计稿，待定稿后实现**。
 > 证据均为安装包一手源码（node_modules/@deepseek-ai/*，rc.8 系）。
+>
+> 延伸：同一 `installModelSelection` 可变 seam 用于 `/model` provider/model 热切换，见
+> [model-hot-switch-design.md](./model-hot-switch-design.md)。
 
 ## 0. 结论先行
 
