@@ -6,7 +6,7 @@
 
 ## 状态(2026-08-23)
 
-MVP 与二期主体均已实现:boot 全屏、prompt 提交、流式渲染、reasoning、注入 context 置灰、错误卡片、状态行(ctx gauge)、审批弹窗(ApprovalCard)、提问面板(含多选)、工具卡片(diff/terminal/search/read/web)、`/help` `/clear` `/exit` `/sessions` `/resume`(+picker) `/model` `/export` `/preset` `/new` `/rewind`、命令+文件自动补全、Shift+点选扩展、todos/subagents 气氛行。其中多数已活体验证,但 M1 白送档命令、S1 补全等仍标"待活体复测";`/model` 会话中切换已改为 `installModelSelection` 热切换（2026-08-27，TUI 手工验收见 `docs/model-hot-switch-design.md` §5.2）——**以 `docs/tui-feature-gap.md` 各行的验收栏为准**。
+MVP 与二期主体均已实现:boot 全屏、prompt 提交、流式渲染、reasoning、注入 context 置灰、错误卡片、状态行(ctx gauge)、审批弹窗(ApprovalCard)、提问面板(含多选)、工具卡片(diff/terminal/search/read/web)、`/help` `/clear` `/exit` `/sessions` `/resume`(+picker) `/model` `/export` `/preset` `/new` `/rewind`、命令+文件自动补全、Shift+点选扩展、todos/subagents 气氛行。其中多数已活体验证,但 M1 白送档命令、S1 补全等仍标"待活体复测";`/model` 会话中切换已改为 `installModelSelection` 热切换并通过 TUI 手工验收（2026-08-29，见 `docs/model-hot-switch-design.md` §5.2）——**以 `docs/tui-feature-gap.md` 各行的验收栏为准**。
 
 **现状与分档的唯一真源是 `docs/tui-feature-gap.md`**(基线、spike、验收记录);本文只描述分层架构与服务契约。剩余按需项见该文档 M3 档。
 
