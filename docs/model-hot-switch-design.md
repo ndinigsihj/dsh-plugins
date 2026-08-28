@@ -1,6 +1,6 @@
 # /model 热切换设计（ModelSelectionRef 可变 seam）
 
-> 状态：**设计稿 v1（2026-08-27）；seam 级 spike 已通过（`experiments/model-hot-switch-spike.test.ts` 3/3），待真实 TUI spike 后实施**。
+> 状态：**设计稿 v1（2026-08-27）；seam 级 spike 通过（`experiments/model-hot-switch-spike.test.ts` 3/3），真实树自动化 spike 通过（`experiments/model-hot-switch-live-spike.mjs`），TUI 手工验证待做后实施**。
 > 目标：把 `/model` 从「fork 全量日志 + 新 session + 回放历史」改成与 `/effort` 同源的
 > `installModelSelection` 可变引用热切换：同一 session、下一轮生效、不重建会话。
 > 关联：`docs/reasoning-effort-design.md`（effort 已骑同一 seam）、`docs/tui-feature-gap.md` M1c。
@@ -83,7 +83,13 @@ interface ModelSelectionRef {
 
 落点：`experiments/model-hot-switch-spike.test.ts`。
 
-### 5.2 真实 TUI spike（后续）
+### 5.2 真实树 spike（✅ 自动化部分 2026-08-27；TUI 手工部分待做）
+
+`experiments/model-hot-switch-live-spike.mjs` 用 headless profile 真实 dsh 树 + `installModelSelection`
+创建真实 agent：第一轮 route A → 热改 `selection.current = route B` → 第二轮 `request/context`
+记录 B。已实测：A=`opencode-go/deepseek-v4-flash` → B=`deepseek-official/deepseek-v4-flash`，PASS。
+
+剩余 TUI 手工验证（需真实终端 + 可用 key）：
 
 | 步骤 | 预期 |
 |---|---|
