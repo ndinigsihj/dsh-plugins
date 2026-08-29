@@ -1,4 +1,4 @@
-# dsh-tui — 终端前端架构设计
+# im-dsh-tui — 终端前端架构设计
 
 > 目标:`dsh --profile tui` — 把 pi-tui 渲染器作为 Cordis 插件挂进 dsh 进程内部,直接消费 in-process 服务,成为交互式终端编码 agent。
 >
@@ -19,8 +19,8 @@ dsh CLI (launcher)                 # apps/cli: 解析 --profile tui,进程生命
 └─ ~/.dsh/profiles/tui/             # profile 目录: package.json (bundles) + cordis.patch.yml
    └─ bundle 层组合                   # 插件树 = 同一进程
       ├─ @deepseek-ai/dsh-base       # 核心: agent/session/llm/sandbox/approval/tools/projection...
-      ├─ @deepseek-ai/dsh-tui/startup   # (我们) 解析命令行 → provide tuiStartup
-      └─ @deepseek-ai/dsh-tui        # (我们) inject tuiStartup,拥有终端,消费 in-process 服务
+      ├─ im-dsh-tui/startup   # (我们) 解析命令行 → provide tuiStartup
+      └─ im-dsh-tui        # (我们) inject tuiStartup,拥有终端,消费 in-process 服务
 ```
 
 ## 2. 发布形态:bundle + profile
@@ -37,14 +37,14 @@ dsh CLI (launcher)                 # apps/cli: 解析 --profile tui,进程生命
     disabled: true
   - insert:
       - id: tui-startup
-        name: 'dsh-tui/startup'
+        name: 'im-dsh-tui/startup'
       - id: tui-runner
-        name: 'dsh-tui'
+        name: 'im-dsh-tui'
         inject: [tuiStartup]
   ```
 
 **Profile**(用户侧 `~/.dsh/profiles/tui/`):
-- `package.json`:`{ "dsh": { "profile": { "bundles": ["@deepseek-ai/dsh-base", "dsh-tui"] } } }`
+- `package.json`:`{ "dsh": { "profile": { "bundles": ["@deepseek-ai/dsh-base", "im-dsh-tui"] } } }`
 - `cordis.patch.yml`:用户覆写层
 - 开发期:patch 可直接 `insert` 指向本地绝对路径 TS/JS 文件,无需发布
 

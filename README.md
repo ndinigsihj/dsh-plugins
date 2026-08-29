@@ -1,4 +1,4 @@
-# dsh-tui
+# im-dsh-tui
 
 Interactive terminal front door for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness): a Cordis plugin bundle that mounts the `@earendil-works/pi-tui` renderer **inside the dsh process**, consuming the in-process services directly (`agent.send/steer`, `session/event` feed, `userQuestions`, `approval`, `commands`).
 
@@ -6,14 +6,14 @@ This is a faithful reconstruction of the TUI package DeepSeek removed before the
 
 ## How it works
 
-`dsh` is a launcher that boots a profile — an ordered stack of plugin-bundle patch layers. `dsh-tui` is a bundle (`dsh.bundle.patch`), mounted over `dsh-base`:
+`dsh` is a launcher that boots a profile — an ordered stack of plugin-bundle patch layers. `im-dsh-tui` is a bundle (`dsh.bundle.patch`), mounted over `dsh-base`:
 
 ```
 dsh --profile tui
 └─ ~/.dsh/profiles/tui/          (package.json bundles + cordis.patch.yml)
    ├─ @deepseek-ai/dsh-base       core: agent, session, llm, sandbox, approval, tools
-   ├─ dsh-tui/startup             parses this app's CLI, provides `tuiStartup`
-   └─ dsh-tui                     owns the terminal; consumes in-process services
+   ├─ im-dsh-tui/startup             parses this app's CLI, provides `tuiStartup`
+   └─ im-dsh-tui                     owns the terminal; consumes in-process services
 ```
 
 The active deployment profiles are **`tui`** (stable) and **`tui-dev`** (dev),

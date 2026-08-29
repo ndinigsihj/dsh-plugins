@@ -1,4 +1,4 @@
-# dsh-tui bundle patch: interactive terminal front door over dsh-base.
+# im-dsh-tui bundle patch: interactive terminal front door over dsh-base.
 #
 # Mirrors the shape of the dsh-headless bundle: a startup provider parses the
 # app's own command line, and the runner plugin consumes that provider and
@@ -17,8 +17,8 @@
 
 - insert:
     - id: tui-startup
-      name: 'dsh-tui/startup'
+      name: 'im-dsh-tui/startup'
 
     - id: tui-runner
-      name: 'dsh-tui'
+      name: 'im-dsh-tui'
       inject: [tuiStartup]
