@@ -349,8 +349,10 @@ WARNINGS:         []                                                            
 `~/.dsh/.agent-presets/liangshen-plus/` 只放 agent.cordis.yml + preset.yml（agent.cordis.yml
 用绝对路径引用 repo 插件 + 部署包复用物）。取舍：复用物（tool-bootstrap/compaction-epoch）
 **走部署包绝对路径**（随 @deepseek-harness-tui/dsh-tui 升级流动，无第二份拷贝，一致性风险=零
-拷贝漂移）；代价是 repo 文件与 endless-tui profile 路径耦合——与 profile 现有绝对路径引用
+拷贝漂移）；代价是 repo 文件与部署包路径耦合——与 profile 现有绝对路径引用
 （standard-bootstrap 引用部署包 tool-bootstrap）一致，可接受。
+> 注意：原耦合目标是 `endless-tui` profile，该 profile 已弃用；若后续移除它，
+> 这些部署包绝对路径需改指 `tui`/`tui-dev` 的 node_modules 或改为 vendored 拷贝（本期未动）。
 
 ### 6.2 M5 merge 决策（2026-08-20，用户拍板）
 
@@ -373,7 +375,7 @@ WARNINGS:         []                                                            
 4. swap 后 `str_replace_editor`（本地裸 fs）**是否保留**在目录里——保留则二轮起同时有沙箱 fs 与本地编辑器（liangshen 现状即保留），需确认无歧义。
 5. 首轮 persona 差异（standard 版 vs liangshen 的 `complete: true`）是否会扰动锚定——由 §5 组 A 直接回答，但结果未知。
 6. ~~二轮起 `dsh-agent-instructions` 注入的**时间点**~~ —— **M2 已答（组合冒烟）**：promotion 在 tool/call 的 `session/event`（调用瞬间）即生效，二轮 assembly/pre-step 一定带上注入（ROUND2 pre-step sources: `["agent-instructions"]`）。
-7. 真实 TUI 手工会话（`CC_TUI_PRESET=liangshen-plus dsh --profile endless-tui`）的二轮 schema/注入肉眼验证——M2 用 headless 组合等价验证，TUI 面留待 M3 手工会话。
+7. 真实 TUI 手工会话（`CC_TUI_PRESET=liangshen-plus dsh --profile tui`）的二轮 schema/注入肉眼验证——M2 用 headless 组合等价验证，TUI 面留待 M3 手工会话。
 
 ---
 
@@ -384,4 +386,4 @@ WARNINGS:         []                                                            
 - M4 实验：`presets/liangshen-plus/m4-runner.mjs`（headless 组合 boot + patches，env 配置见 driver）、`presets/liangshen-plus/m4-driver.mjs`（A/B/C/D 逐跑驱动 + JSONL 记录 + 汇总）、`experiments/m4/results-*.jsonl`（原始数据）
 - 复用（部署包绝对路径，S7 定案）：`@deepseek-harness-tui/dsh-tui/presets/liangshen/tool-bootstrap.mjs`、`.../compaction-epoch.mjs`、`.../custom-bash.mjs`
 - 包依赖：`@deepseek-ai/dsh-tool-bash`（沙箱 bash，rc.8）、`@deepseek-ai/dsh-tool-bash-persistent`（持久 bash，rc.7）、`@deepseek-ai/dsh-tools`（scope layer 注册）、`@deepseek-ai/dsh-agent-instructions`（注入）、`@deepseek-ai/dsh-sandbox`（`ESCALATION_TARGETS`）
-- 部署位：`~/.dsh/.agent-presets/liangshen-plus/`（agent.cordis.yml 绝对路径引用 repo）+ `CC_TUI_PRESET=liangshen-plus dsh --profile endless-tui` 切换
+- 部署位：`~/.dsh/.agent-presets/liangshen-plus/`（agent.cordis.yml 绝对路径引用 repo）+ `CC_TUI_PRESET=liangshen-plus dsh --profile tui` 切换

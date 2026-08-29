@@ -7,19 +7,24 @@
  * is available"）。官方 answerer 只存在于 dsh-host-apiproxy（web 部署
  * 层，弹浏览器确认框）；TUI 部署没有它，所以需要审批的操作全部失败。
  *
- * 本插件把审批请求转成 dsh-tui 已有的用户问答面板
+ * 本插件把审批请求转成第三方 dsh-tui（@deepseek-harness-tui/dsh-tui）
+ * 已有的用户问答面板
  * （AskUserQuestionPanel — 即 ask_user_question 工具的 UI 通道，由
  * dsh-tui 的 plugin.js 注册为 ctx.userQuestions 的 provider）：
  *
  *   ↑/↓ 选择   Enter 确认   Esc 取消
  *
- * 加入 endless-tui profile（~/.dsh/profiles/endless-tui/cordis.patch.yml）：
+ * 加入 legacy endless-tui profile（已弃用；当时在
+ * ~/.dsh/profiles/endless-tui/cordis.patch.yml）：
  *
  *   - insert:
  *       - id: approval-tui
  *         name: '/Users/vito/data/dev/dsh-plugins/approval-tui.ts'
  *
- * 依赖：运行时只需 dsh-tui 已加载的 @deepseek-ai/dsh-user-questions
+ * 注意：自研 TUI（tui/tui-dev）已在 lib/index.ts 内建 approval/request 审批卡，
+ * 本插件只服务于已弃用的 endless-tui，保留作历史参考。
+ *
+ * 依赖：运行时只需第三方 dsh-tui 已加载的 @deepseek-ai/dsh-user-questions
  * （dsh-tui bundle 自带）；无其他副作用。
  */
 

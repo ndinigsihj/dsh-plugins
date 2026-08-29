@@ -14,7 +14,7 @@
 | 开发入口 | `dsh --profile tui-dev` —— 新 profile，路径保持指向 `/Users/vito/data/dev/dsh-plugins` |
 | 发布动作 | `scripts/release.sh <version>`：校验 → bump → commit → tag → 切部署树 → 刷新依赖 |
 | 回滚 | `git -C ~/dev/dsh-plugins-stable checkout <旧tag>`，一条命令 |
-| `endless-tui` | 不动（旧社区 TUI profile，仅存档） |
+| `endless-tui` | 已弃用，不再参考（`@deepseek-harness-tui/dsh-tui` 为第三方包，仅作功能参考） |
 
 依据：插件为纯 TS、cordis loader 直接加载，无构建产物——「部署」就是
 「把干净快照放到另一处磁盘路径」。worktree 与 dev 仓共享对象库，

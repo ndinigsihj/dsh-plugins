@@ -1,6 +1,7 @@
 # Rewind 文件恢复插件 — 详细方案（方案 2：工具日志逆向恢复）
 
-> 目标：给 `@deepseek-harness-tui/dsh-tui`（0.8.4，`endless-tui` profile 使用的发布版）补上「rewind 时一并把文件回滚到该点」的能力——**不改 dsh-tui 本体**，以独立插件 + harness 标准服务实现，方案 2（从 session 日志做 write/edit 逆向恢复）。
+> 目标：给**自研 TUI** 提供「rewind 时一并把文件回滚到该点」的 `/rewind` 能力——**不改自研 TUI 本体**，以独立插件 + harness 标准服务实现，方案 2（从 session 日志做 write/edit 逆向恢复）。
+> 方案起初以 `@deepseek-harness-tui/dsh-tui`（**第三方** TUI，0.8.4，曾由 `endless-tui` profile 使用）为参考；该包现仅作功能参考，`endless-tui` 已弃用。
 >
 > 本文档是设计定稿前的完整方案，先落文档再 spike/实现（项目流程偏好）。所有结论均有包内源码证据，证据行标注了包内文件位置。
 
@@ -8,13 +9,13 @@
 
 ## 1. 结论先行（先回答：`tui/rewind-prompt` 是不是 dsh 本身的能力）
 
-**不是 dsh 核心（dsh-base）的能力，是 dsh-tui 插件包自己提供、由 host 中介的决策事件（DecisionEvents）接缝。**
+**不是 dsh 核心（dsh-base）的能力，是第三方 dsh-tui 插件包（`@deepseek-harness-tui/dsh-tui`）自己提供、由 host 中介的决策事件（DecisionEvents）接缝。**
 
-证据链（来自 `@deepseek-harness-tui/dsh-tui@0.8.4` 发布包，`endless-tui` profile 的 node_modules 内）：
+证据链（来自 `@deepseek-harness-tui/dsh-tui@0.8.4` 发布包，`endless-tui` profile 的 node_modules 内；第三方包，仅作参考）：
 
 | 事实 | 证据 |
 |---|---|
-| rewind 功能本体（双 Esc 选消息 → fork 新会话 → 重放）实现在 **dsh-tui 包的 channel adapter**，不在 dsh 核心 | `lib/types/dsh-adapter/channel.js` 的 `promptRewind` / `rewindTo` |
+| rewind 功能本体（双 Esc 选消息 → fork 新会话 → 重放）实现在 **dsh-tui（第三方）包的 channel adapter**，不在 dsh 核心 | `lib/types/dsh-adapter/channel.js` 的 `promptRewind` / `rewindTo` |
 | `tui/rewind-prompt` 是 dsh-tui 声明的一组 **TUI 决策事件**之一 | `lib/types/plugin-spec/tui-extension.js`：`TUI_DECISION_EVENT_NAMES = ['tui/input','tui/rewind-prompt','tui/rewind-done','tui/session-switch','tui/session-switched','tui/compact']`，API 版本 `tui.dsh/v1alpha1` |
 | 它是 host 中介的 **DecisionEvents registry** 分发，**不是裸 `ctx.on`** | `lib/types/dsh-adapter/extension-events.js`：`dispatchTuiDecision(...)`；`decision-guard.js`：`internal/listener` 钩子把 `ctx.on('tui/rewind-prompt', ...)` 也拦下来走 registry |
 | 拦截类决策事件需要 **权限 `session.rewind.intercept`**，且默认 deny、需 grant | `decision-guard.js`：`DECISION_EVENT_PERMISSIONS = { 'tui/rewind-prompt': 'session.rewind.intercept', ... }`；`grants.js`：`EXTENSION_GRANTS_FILE = 'extension-grants.json'`，default deny |
@@ -42,10 +43,10 @@
 | 会话 fork | `ctx.sessions.fork(source, boundary, childId)` | 生成子会话 seed + header（继承 cwd / parentSession / seedLength） |
 | 会话持久化 | `ctx.sessionPersistence.create + append` | 让 `--resume` 能在重启后加载子会话 |
 | 当前会话/agent | `ctx.agents.roots()[0].session` | 取源日志与 cwd |
-| 命令注册 | `ctx.commands.register` | `/rewind`，**覆盖内置 rewind**（注册表 handler 优先） |
+| 命令注册 | `ctx.commands.register` | `/rewind`，自研 TUI 无本地同名实现，经注册表执行 |
 | 文件恢复 | `node:fs`（cwd 下） | 方案 2 的逆向写回 |
 
-所以插件的 `/rewind` 命令自己实现「fork + 文件恢复 + 切到新会话」，效果等价于内置 rewind，还多带文件回滚。
+所以插件的 `/rewind` 命令自己实现「fork + 文件恢复 + 切到新会话」，效果等价于 dsh-tui（第三方）的内置 rewind 语义，还多带文件回滚；在自研 TUI 里它就是 `/rewind` 的实现。
 
 ### 2.2 工作流
 
@@ -71,11 +72,11 @@
 
 跨进程 handoff 是 TUI/launcher 自己的契约（`update.js`、`plugin.js` 的 `resumeCommand`）：`DSH_TUI_RESUME_SESSION=<id> dsh --profile <profile>`。插件 execve 重启同一 dsh（`process.execPath + process.argv.slice(1)`，已含 `--profile`），TUI 全新 boot 并 resume 子会话。这与本地重建版 `/resume` 的 `relaunchToResume` 是同一模式。
 
-### 2.4 与内置 rewind 的关系（「覆盖」如何成立）
+### 2.4 在自研 TUI 的定位
 
-- `dsh-commands` 注册表里 handler **优先于 TUI 本地命令名**（rename-session.ts 注释已确认：*"registry handlers win over local names"*）。
-- 因此插件注册 `/rewind` 后，**输入 `/rewind` 走的是我们的 handler**，内置 rewind（双 Esc / `/rewind`）被我们的能力覆盖——用户选择回退时就带上文件恢复。
-- 不修改 TUI 本体；双 Esc 快捷入口仍是内置行为（仅回对话），`/rewind` 是带文件恢复的完整路径。
+- 自研 TUI（`tui` / `tui-dev`）**没有本地 `/rewind` 实现**：`lib/index.ts#runCommand` 只把 `/rewind <seq>` 合成后交 `services.commands.execute`，实现全在 `plugins/rewind-dsh.ts`。
+- 因此不存在「覆盖内置 rewind」的问题——本插件就是自研 TUI 的 `/rewind`。
+- dsh-tui（第三方）的双击 Esc 是其私有 UI 行为；自研 TUI 的双击 Esc picker 走 `lib/index.ts` → `commands.execute('/rewind <seq>')` 同一条注册表链（见 `docs/m3-rewind-ui-design.md`）。
 
 ### 2.5 实现状态
 
@@ -85,7 +86,7 @@
 | 纯函数（boundary / diff 反向 / 恢复计划 / replaceOnce） | ✅ 已实现，可单测 |
 | 单元测试 + 端到端临时目录测试 | ✅ `plugins/rewind-dsh.test.ts`，24 个用例全绿 |
 | 类型检查（`tsc --noEmit`） | ✅ 通过（`tsconfig.json` 已把 `plugins/**/*.ts` 纳入 include） |
-| 挂载进 endless-tui profile | ⏳ 待做（见 §6 挂载指引） |
+| 挂载进 tui / tui-dev profile | ✅ 已并入（patch insert，见 §7） |
 
 ---
 
@@ -191,10 +192,10 @@ rewind 到 `boundarySeq`（fork 切割点，`channel.rewindTo` 会把它回退�
 
 | 变体 | 触发时机 | 体验 | 需要的准入 |
 |---|---|---|---|
-| **A：模式注入（官方缝）** | `tui/rewind-prompt` 时返回一个 mode `{ id:'restore-files', label:'Also restore files to this point' }`，确认面板多一项选择；用户选中后，`tui/rewind-done` 执行恢复 | 每次 rewind 用户显式决定是否连文件一起回滚（最贴合文档描述 *"e.g. 'also restore files'"*） | Component + DecisionEvents 契约 + **`session.rewind.intercept` 权限 + grant** |
+| **A：模式注入（dsh-tui 决策事件缝）** | `tui/rewind-prompt` 时返回一个 mode `{ id:'restore-files', label:'Also restore files to this point' }`，确认面板多一项选择；用户选中后，`tui/rewind-done` 执行恢复 | 每次 rewind 用户显式决定是否连文件一起回滚（最贴合文档描述 *"e.g. 'also restore files'"*） | Component + DecisionEvents 契约 + **`session.rewind.intercept` 权限 + grant** |
 | **B：事后观察（轻量）** | 只 `tui/rewind-done`（observe 类，无 intercept 权限）；**每次** rewind 后自动恢复，摘要 toast | 无二次选择，回滚即文件一起回滚；可能误伤「只想回对话不想回文件」的场景 | Component + DecisionEvents 契约（**无需** intercept 权限/grant） |
 
-> 设计建议：默认做 **A**（显式、可逆性可预期）；`session.rewind.intercept` grant 是本次方案唯一需要用户显式授予的新权限。若 grant 机制在 `endless-tui` profile 里调试成本过高，退到 **B**（自动恢复 + `tui/rewind-done` 摘要）作为首版，A 作为二期开关。
+> 设计建议：默认做 **A**（显式、可逆性可预期）；`session.rewind.intercept` grant 是本次方案唯一需要用户显式授予的新权限。若 grant 机制调试成本过高，退到 **B**（自动恢复 + `tui/rewind-done` 摘要）作为首版，A 作为二期开关。
 
 ### 6.2 插件包结构（参考）
 
@@ -264,30 +265,32 @@ ctx.on('tui/rewind-done', async (ev) => {
 
 ---
 
-## 7. 集成与挂载（endless-tui profile，独立 `/rewind` 插件）
+## 7. 集成与挂载（tui / tui-dev profile，独立 `/rewind` 插件）
 
-独立插件是**薄插件**，与 approval-tui、rename-session 同一挂法，**无需 Component/manifest/grants**。
+独立插件是**薄插件**，与 rename-session 同一挂法，**无需 Component/manifest/grants**。
+`endless-tui` profile 已弃用，不再作为挂载参考。
 
-在 `~/.dsh/profiles/endless-tui/cordis.patch.yml` 的 `- insert:` 列表里加一行：
+在 `~/.dsh/profiles/tui/cordis.patch.yml`（稳定）与 `~/.dsh/profiles/tui-dev/cordis.patch.yml`（开发）的 `- insert:` 列表里已经挂载（路径分别指向部署树/工作树）：
 
 ```yaml
 - insert:
     - id: dsh-rewind
-      name: '/Users/vito/data/dev/dsh-plugins/plugins/rewind-dsh.ts'
-      inject: [agents, sessions, sessionPersistence, commands]
+      name: '/Users/vito/data/dev/dsh-plugins/plugins/rewind-dsh.ts'   # tui-dev
+      # tui（稳定）：'/Users/vito/data/dev/dsh-plugins-stable/plugins/rewind-dsh.ts'
+      inject: [agents, sessions, commands]
 ```
 
-> 依赖：`agents` / `sessions` / `sessionPersistence` / `commands` 均来自 dsh-base（`endless-tui` 已含），无需额外配置。插件若缺任一服务，只在启动日志里 warn 并跳过注册，不影响 TUI。
+> 依赖：`agents` / `sessions` / `commands` 均来自 dsh-base（两个 profile 已含）；`sessionPersistence` 按 2026-08-26 修正不再注入。插件若缺任一服务，只在启动日志里 warn 并跳过注册，不影响 TUI。
 
 验证：
 
 ```sh
-cd ~/.dsh/profiles/endless-tui && npx dsh --profile endless-tui --dump-config   # 确认 dsh-rewind 已挂载
+cd ~/.dsh/profiles/tui && npx dsh --profile tui --dump-config   # 或 tui-dev，确认 dsh-rewind 已挂载
 ```
 
 运行后 `/rewind` 应显示历史 user 消息列表；`/rewind <seq>` 执行回退 + 文件恢复 + 重启。
 
-（注：原 §6 的 DecisionEvents 方案如未来想走「官方缝」，仍需要 Component + grants，但独立插件路线已覆盖同样需求，不再依赖它。）
+（注：如未来想走 dsh-tui 的 DecisionEvents 决策事件缝，仍需要 Component + grants，但独立插件路线已覆盖同样需求，不再依赖它；「官方」一词仅指 dsh 本身。）
 
 ---
 
@@ -310,7 +313,7 @@ cd ~/.dsh/profiles/endless-tui && npx dsh --profile endless-tui --dump-config   
 | 风险 | 等级 | 缓解 |
 |---|---|---|
 | execve 重启后 `sessionPersistence` 读不到子会话（create/append 未落盘） | 中 | 先持久化成功再 execve；失败则返回 error、不重启、留在当前会话 |
-| 内置双 Esc rewind 仍存在（只回对话），用户可能误用 | 低 | 文档/提示：带文件回滚请用 `/rewind <seq>`；不改 TUI 本体（偏好：不修改本体） |
+| 自研 TUI 的双击 Esc 与 `/rewind` 是否入口一致 | 低 | 已统一：双击 Esc picker 合成 `/rewind <seq>` 走同一条注册表链（`docs/m3-rewind-ui-design.md`），不再存在「只回对话」的旁路 |
 | write/EOF 边界导致非精确还原 | 低 | 算法校验 + 单测覆盖；fail-closed（不写半截文件） |
 | 恢复文件被用户随后手动改过（rewind 后立刻改） | 低 | `/rewind` 命令本身是显式动作；文档提示「恢复会覆盖当前工作区文件」 |
 | `bash` 改文件不可恢复 | 中 | 日志里 `bash` 类操作跳过并警告；二期可用 git 兜底（`/rewind-git`） |
@@ -326,7 +329,7 @@ cd ~/.dsh/profiles/endless-tui && npx dsh --profile endless-tui --dump-config   
 | 1 | 独立插件 `plugins/rewind-dsh.ts`（`/rewind` 命令 + fork + 持久化 + 文件恢复 + execve 重启） | ✅ 已实现 |
 | 2 | 纯函数 + 单测 + 临时目录端到端测试 | ✅ `plugins/rewind-dsh.test.ts` 24 用例全绿 |
 | 3 | 类型检查（tsconfig 纳入 `plugins/**/*.ts`） | ✅ |
-| 4 | 挂载进 endless-tui profile（patch insert） | ⏳ 待用户执行/验证（见 §7） |
+| 4 | 挂载进 tui / tui-dev profile（patch insert） | ✅ 已并入（见 §7） |
 | 5 | 真实环境端到端验证（改文件 → `/rewind <seq>` → 文件回滚 + 重启） | ⏳ 待做（交互验证） |
 | 6 | 收尾 commit | ⏳ |
 
@@ -338,7 +341,7 @@ cd ~/.dsh/profiles/endless-tui && npx dsh --profile endless-tui --dump-config   
 
 | 维度 | 方案 2（本方案，日志逆向） | 方案 1（git 兜底） |
 |---|---|---|
-| 依赖 | 无（只要 dsh-tui 的日志有 meta.diffs） | 工作区是 git 仓库且有提交/暂存历史 |
+| 依赖 | 无（只要 dsh 会话日志有 meta.diffs） | 工作区是 git 仓库且有提交/暂存历史 |
 | 覆盖 | write/edit（精确）+ str_replace（最佳努力） | 已提交/已暂存的全部改动（含 bash） |
 | 未提交改动 | ✅ 日志里有就恢复 | ❌ git 没记录就救不回 |
 | 实现量 | 中（独立插件，无 Component 准入） | 低（git checkout/reset） |
@@ -350,7 +353,7 @@ cd ~/.dsh/profiles/endless-tui && npx dsh --profile endless-tui --dump-config   
 
 ## 12. 验收标准（端到端，独立 `/rewind` 路线）
 
-1. 在 `endless-tui` profile 里跑一轮：agent 用 `write`/`edit` 改 2 个文件 → 输入 `/rewind` 列出历史 → 选改动前那条 user 消息的 seq → `/rewind <seq>` → 进程重启进子会话，**文件内容回到边界点**（`diff` 与期望一致）。
+1. 在 `tui` / `tui-dev` profile 里跑一轮：agent 用 `write`/`edit` 改 2 个文件 → 输入 `/rewind` 列出历史 → 选改动前那条 user 消息的 seq → `/rewind <seq>` → 进程重启进子会话，**文件内容回到边界点**（`diff` 与期望一致）。
 2. 新建文件被删回不存在；`str_replace_editor` 改动的文件在唯一命中时恢复。
 3. 不带参数 `/rewind` 只列历史、不碰文件。
 4. 无 git 的工作区同样可用。

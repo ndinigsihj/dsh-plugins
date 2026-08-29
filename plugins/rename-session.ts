@@ -1,16 +1,16 @@
 /**
- * tui-rename-session: a thin extension plugin for the published
- * `@deepseek-harness-tui/dsh-tui` bundle that adds a `/rename <title>`
- * command to set the current session's title explicitly.
+ * tui-rename-session: a thin dsh command plugin for the self-built TUI that
+ * adds a `/rename <title>` command to set the current session's title.
  *
- * It does not touch dsh-tui itself: it only consumes two standard harness
+ * It does not touch the TUI front end: it only consumes two standard harness
  * services — `sessionTitle` (from `@deepseek-ai/dsh-session-title`, whose
  * `rename()` accepts an explicit user title, pins it against automatic
  * retitling, and appends the durable `session/title` event) and `commands`
- * (from `@deepseek-ai/dsh-commands`, whose registry merges plugin commands
- * into the TUI's `/` menu — registry handlers win over local names).
+ * (from `@deepseek-ai/dsh-commands`, whose registry feeds the TUI's `/`
+ * menu). The self-built TUI has no local `/rename` implementation, so the
+ * command runs through the registry.
  *
- * Mount in a profile patch:
+ * Mount in tui / tui-dev profile patch:
  *   - id: tui-rename-session
  *     name: '<abs path>/plugins/rename-session.ts'
  *     inject: [sessionTitle, commands, agents]

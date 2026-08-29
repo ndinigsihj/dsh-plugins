@@ -7,7 +7,7 @@
 
 ## 1. 现状
 
-当前 `/model` 走官方 switchModel recipe（`lib/index.ts#switchModelLive`）：
+当前 `/model` 走 dsh-tui（第三方参考实现）的 switchModel recipe（`lib/index.ts#switchModelLive`）：
 
 | 步骤 | 行为 |
 |---|---|

@@ -13,7 +13,7 @@
 - 重连状态面板 —— 插件无服务面暴露状态，只有日志；
 - 工具启停/禁用管理 UI —— 注册表 restrict 是组合期语义，不适合运行时开关。
 
-## 2 标准服务语义（依据包 README 与 dsh-tools README，未读官方 TUI 源码）
+## 2 标准服务语义（依据包 README 与 dsh-tools README，未读第三方 dsh-tui 源码）
 
 | 事实 | 来源 |
 |---|---|

@@ -1,8 +1,10 @@
-# dsh-tui × DeepSeek Harness rc.8 — 能力对照与官方适配现状
+# dsh-tui（第三方） × DeepSeek Harness rc.8 — 能力对照与上游适配现状
 
-> 目标：评估 `@deepseek-harness-tui/dsh-tui`（`endless-tui` profile 当前装 **0.8.4**，升级目标 **0.8.5**）能否发挥 [DeepSeek Harness v0.1.0-rc.8](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.0-rc.8) 的新能力，以及官方 dsh-tui 仓库的适配进展。
+> 目标：评估 `@deepseek-harness-tui/dsh-tui`（**第三方** TUI 包，`endless-tui` profile 曾装 **0.8.4**，升级目标 **0.8.5**）能否发挥 [DeepSeek Harness v0.1.0-rc.8](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.0-rc.8) 的新能力，以及该第三方 dsh-tui 仓库的适配进展。
 >
-> 全部结论来自一手证据：npm 发布的 rc.8 包 + `@deepseek-harness-tui/dsh-tui@0.8.5` 编译产物（`lib/types/*.js`）+ GitHub API（官方 release notes、issue/PR、main 分支源码）。证据行标注了来源。
+> **术语**：本文「官方」仅指 dsh（DeepSeek Harness）本身；`@deepseek-harness-tui/dsh-tui` 是第三方包，现仅作自研 TUI 的功能参考。`endless-tui` profile 已弃用，本文属于历史评估。
+>
+> 全部结论来自一手证据：npm 发布的 rc.8 包 + `@deepseek-harness-tui/dsh-tui@0.8.5` 编译产物（`lib/types/*.js`）+ GitHub API（dsh-tui 上游 release notes、issue/PR、main 分支源码）。证据行标注了来源。
 >
 > 关联文档：[`rewind-file-restore-plugin.md`](rewind-file-restore-plugin.md)（rewind 文件回撤插件方案，已在实现）。
 
@@ -14,8 +16,8 @@
 |---|---|
 | dsh-tui 0.8.5 能否发挥 rc.8 全部新能力 | 🟡 **部分**：多模态"聊天带图 + @文件"✅；`@会话`引用、`/goal`/`/plan` 带图 ❌；Codex/Claude 子代理只有列表无管理 UI；Windows PTY 无 TUI 面板 |
 | 升级到 rc.8 是否破坏现有使用 | 🟢 不破坏：peer 范围兼容、契约校验只警告不硬失败（见 §4） |
-| 官方是否有 rc.8 适配 | ❌ **没有**：契约仍是 rc.7 单线，无 issue/PR/commit 提及 rc.8（见 §5） |
-| 建议 | 🟢 可升；可接受 ~23 行启动 drift 警告；审批面板官方 PR #383 未合，本地 approval-tui 已覆盖 |
+| 第三方 dsh-tui 是否有 rc.8 适配 | ❌ **没有**：契约仍是 rc.7 单线，无 issue/PR/commit 提及 rc.8（见 §5） |
+| 建议 | 🟢 可升；可接受 ~23 行启动 drift 警告；审批面板 dsh-tui PR #383 未合，本地 approval-tui 已覆盖 |
 
 ---
 
@@ -57,7 +59,7 @@
 
 命令路径：`PromptInput` 提交时 `text.startsWith('/')` → `onRunCommand(name, rawInput)` → `runCommand` switch（`/goal` `/plan` 不在内置 case）→ default → `runExternalCommand` → `executeRegistryCommand` → `commandService.execute(agent, '/goal [Image #1]', ...)`。**纯文本，不带图**。
 
-> 结论：rc.8 让 **dsh 侧** `/goal` `/plan` 能接收图文，但 **TUI 的命令提交路径没把图喂进去**。这是 TUI 本体的分发点缺口，按"优先插件/不改本体"的偏好，**难以用薄插件补**（它不是裸事件/标准服务接缝，是 channel 内部逻辑）；要么等官方，要么改 dsh-tui 本体（PR）或自己 fork。
+> 结论：rc.8 让 **dsh 侧** `/goal` `/plan` 能接收图文，但 **TUI 的命令提交路径没把图喂进去**。这是 TUI 本体的分发点缺口，按"优先插件/不改本体"的偏好，**难以用薄插件补**（它不是裸事件/标准服务接缝，是 channel 内部逻辑）；要么等 dsh-tui 上游，要么改 dsh-tui 本体（PR）或自己 fork。
 
 ---
 
@@ -70,14 +72,14 @@
 ### 4.2 契约校验行为（只警告，不硬失败）
 - 0.8.5 契约：`lib/types/dsh-adapter/contract.js` `UPSTREAM_VALIDATED_VERSION = '0.1.0-rc.7'`，逐包 `rcNumber(installed) === 7`。
 - 装 rc.8 后所有 blessed 包 `8 ≠ 7` → 启动 `console.warn("[dsh-tui] upstream drift: ...")` **约 23 行**（仅警告）。
-- 官方 CI `verify:upstream-contract` 会挂（官方自己声明的门禁行为）。
+- dsh-tui 的 CI `verify:upstream-contract` 会挂（其自己声明的门禁行为）。
 
 ### 4.3 端到端 API 面（对 endless 栈）
 已独立核实（见 endless-dsh 侧文档 §2）：消费的 15 个包只有 `dsh-llm`（纯新增）+ `dsh-session`（纯新增）类型变化，其余 13 个 0 变化。
 
 ---
 
-## 5. 官方 dsh-tui 仓库适配现状
+## 5. dsh-tui 仓库（第三方）适配现状
 
 来源：GitHub API（`ccch1mneyyy/dsh-TUI`，main 分支）。
 
@@ -87,11 +89,11 @@
 | **rc.8 适配** | ❌ **零**：无 open PR、无 issue、无 commit 提及 rc.8 |
 | 契约基线 | main 与 0.8.5 都是 `UPSTREAM_VALIDATED_VERSION = '0.1.0-rc.7'`（**单线**） |
 | peer 范围 | main 仍是 23 个包全 `^0.1.0-rc.7` |
-| 相关 PR #383（**open，未合并**） | "优化权限审批面板显示"：write/edit 审批弹窗从原始 JSON 改成**文件路径 + diff 预览**（write 绿色 `+`、edit 红绿 diff、8 行预览）。**与本地 approval-tui 同领域，官方在推进** |
+| 相关 PR #383（**open，未合并**） | "优化权限审批面板显示"：write/edit 审批弹窗从原始 JSON 改成**文件路径 + diff 预览**（write 绿色 `+`、edit 红绿 diff、8 行预览）。**与本地 approval-tui 同领域，dsh-tui 在推进** |
 | 相关 PR #330（**open**） | `/agents` 支持进入只读子代理会话（对应子代理管理方向） |
-| 相关 PR #354（**closed，merged: False**） | "支持 0.1.0-rc.6 核心线" **未合并**：官方连 rc.6 双线都没进 main，更谈不上 rc.8 |
+| 相关 PR #354（**closed，merged: False**） | "支持 0.1.0-rc.6 核心线" **未合并**：dsh-tui 连 rc.6 双线都没进 main，更谈不上 rc.8 |
 
-> 说明：#354 我先前误报为"已合并"，核实 PR API 为 `merged: False`（分支 `feat/rc6-compat` 被关未合）。官方目前**只认 rc.7 单线**。
+> 说明：#354 我先前误报为"已合并"，核实 PR API 为 `merged: False`（分支 `feat/rc6-compat` 被关未合）。dsh-tui 目前**只认 rc.7 单线**。
 
 ---
 
@@ -100,7 +102,7 @@
 ### 6.1 升不升
 **可以升**。原因：peer 兼容、API 不破坏、契约只警告。收益：多模态聊天带图、web_search 并发、fork 性能、SQLite 不是你的后端。
 
-### 6.2 可执行动作（在新会话做，按偏好）
+### 6.2 可执行动作（历史建议；`endless-tui` 已弃用，仅作存档）
 ```bash
 cd ~/.dsh/profiles/endless-tui
 # 1. dsh-base → rc.8（package.json 或 pnpm up 指定）
@@ -113,9 +115,9 @@ pnpm up "@deepseek-harness-tui/dsh-tui@^0.8.5"
 ### 6.3 风险清单
 | 风险 | 影响 | 处置 |
 |---|---|---|
-| ~23 行启动 drift 警告 | 无害，仅噪音 | 接受，或等官方 rc.8 适配，或 fork `contract.ts`（偏离官方校验，需自担验证） |
+| ~23 行启动 drift 警告 | 无害，仅噪音 | 接受，或等 dsh-tui 上游 rc.8 适配，或 fork `contract.ts`（偏离 dsh-tui 校验，需自担验证） |
 | `dsh-llm` retry 2→5 | distill 失败重试变多，最长等待变长 | endless-distill 有 `timeoutMs:30s` + `AbortSignal` 兜底，可接受 |
-| 审批面板官方 PR #383 未合 | 官方 write/edit 可读化尚未发布 | 本地 approval-tui 已覆盖工具+原因显示；如需 diff 预览可跟进 PR #383 |
+| 审批面板 dsh-tui PR #383 未合 | dsh-tui 的 write/edit 可读化尚未发布 | 本地 approval-tui 已覆盖工具+原因显示；如需 diff 预览可跟进 PR #383 |
 
 ---
 

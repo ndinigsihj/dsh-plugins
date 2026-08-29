@@ -3,16 +3,16 @@
  *
  * 设计目标（详见 docs/rewind-file-restore-plugin.md）：
  *
- * 1. **不依赖 @deepseek-harness-tui/dsh-tui 的 tui/rewind-prompt 决策事件**——
- *    那条缝走 host 中介的 DecisionEvents registry + Component 准入 + grant，
- *    对本地 patch-insert 的薄插件不可用（会被 internal/listener 守卫拒绝）。
+ * 1. **不依赖第三方 dsh-tui（@deepseek-harness-tui/dsh-tui）的 tui/rewind-prompt
+ *    决策事件**——那条缝走 host 中介的 DecisionEvents registry + Component 准入 +
+ *    grant，对本地 patch-insert 的薄插件不可用（会被 internal/listener 守卫拒绝）。
  * 2. 本插件只消费 dsh 的**标准进程内服务**（agents / sessions /
- *    commands），与 approval-tui、rename-session 同级，
+ *    commands），与 rename-session 同级，
  *    可直接 patch-insert。
- * 3. `/rewind` 在命令注册表中注册，**覆盖**内置 rewind（注册表 handler 优先于
- *    TUI 本地命令名），从而把「回退对话 + 回滚文件」合二为一，且不碰 TUI 本体。
+ * 3. `/rewind` 是**自研 TUI 的 /rewind 实现**：自研 TUI 没有本地同名命令，
+ *    输入经命令注册表执行；本插件把「回退对话 + 回滚文件」合二为一，且不碰 TUI 本体。
  *
- * 工作流（与内置 rewindTo 同构，但走跨进程 handoff）：
+ * 工作流（与 dsh-tui 参考实现的 rewindTo 语义同构，但走跨进程 handoff）：
  *
  *   /rewind            → 列出历史 user 消息（seq + 摘要），提示 /rewind <seq>
  *   /rewind <seq>      → 1) 计算 boundary（回退到该消息所在 turn 之前）
@@ -24,11 +24,12 @@
  *                           反向应用回滚到边界点（方案 2 核心，纯函数可单测）
  *                        5) execve 重启（argv 剥旧 --resume）+ 环境变量指向子会话
  *
- * 挂载（endless-tui profile，~/.dsh/profiles/endless-tui/cordis.patch.yml）：
+ * 挂载（tui / tui-dev profile；endless-tui 已弃用）：
  *
  *   - insert:
  *       - id: dsh-rewind
- *         name: '/Users/vito/data/dev/dsh-plugins/plugins/rewind-dsh.ts'
+ *         name: '/Users/vito/data/dev/dsh-plugins/plugins/rewind-dsh.ts'   # tui-dev
+ *         # tui（稳定）：'/Users/vito/data/dev/dsh-plugins-stable/plugins/rewind-dsh.ts'
  *         inject: [agents, sessions, commands]
  */
 

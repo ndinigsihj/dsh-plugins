@@ -16,10 +16,11 @@ dsh --profile tui
    └─ dsh-tui                     owns the terminal; consumes in-process services
 ```
 
-Two deployment profiles share this repo's code: **`tui`** mounts the self-built
-pi-tui front end (`lib/`), while **`endless-tui`** runs the official TUI package
-with thin extension plugins from this repo mounted alongside it (`approval-tui.ts`,
-rewind, rename — see "Extension plugins").
+The active deployment profiles are **`tui`** (stable) and **`tui-dev`** (dev),
+both mounting the self-built pi-tui front end (`lib/`) from this repo. The
+`@deepseek-harness-tui/dsh-tui` package is a **third-party** TUI, used only as a
+functional reference while building this front end; the legacy `endless-tui`
+profile that ran it is deprecated and no longer referenced.
 
 ## Prerequisites
 
@@ -94,16 +95,20 @@ usage). It turns yellow at `>=80%`, which is also the `thresholdRatio` where
 
 ## Extension plugins
 
-Thin Cordis plugins (no dsh-tui modification) mounted into a profile's
-`cordis.patch.yml` via absolute-path `insert`. `approval-tui.ts` serves the
-**official-TUI profile** (`endless-tui`); the self-built front end in `lib/`
-has its own approval card and does not use it:
+Thin Cordis plugins (no self-built TUI modification) mounted into a profile's
+`cordis.patch.yml` via absolute-path `insert`. They are part of the self-built
+TUI: they register dsh-standard commands through the `commands` registry and
+consume standard harness services (`sessionTitle`, `sessions`, `sessionPersistence`,
+`ctx.fs`). `approval-tui.ts` was written for the now-deprecated `endless-tui`
+profile (which ran the third-party `@deepseek-harness-tui/dsh-tui`); it is kept
+only as legacy — the self-built front end in `lib/` has its own approval card
+and does not use it:
 
 | File | Purpose |
 |---|---|
-| `plugins/rename-session.ts` | `/rename <title>` — set session title (pins against auto-retitle) |
-| `plugins/rewind-dsh.ts` | `/rewind [<seq>]` — **standalone rewind**: fork + file-restore + relaunch, overriding the built-in rewind (see `docs/rewind-file-restore-plugin.md`) |
-| `approval-tui.ts` | `endless-tui` profile: route `approval/request` to the TUI question panel |
+| `plugins/rename-session.ts` | `/rename <title>` — self-built TUI command; consumes standard `sessionTitle.rename()` via the `commands` registry |
+| `plugins/rewind-dsh.ts` | `/rewind [<seq>]` — self-built TUI command: fork + file-restore + relaunch (see `docs/rewind-file-restore-plugin.md`) |
+| `approval-tui.ts` | legacy `endless-tui` profile (deprecated): route `approval/request` to the TUI question panel |
 
 ## Relay / fleet（dsh-relay 集成）
 
@@ -164,7 +169,7 @@ behaviors into one composition (design: `docs/liangshen-plus-preset-design.md`):
 | `smoke-live.mjs` / `smoke-live-driver.mjs` | Real-LLM 3-round live smoke |
 | `m4-runner.mjs` / `m4-driver.mjs` | M4 anchoring replication runner (A/B/C/D/E, results in `experiments/m4/`) |
 
-Use: `CC_TUI_PRESET=liangshen-plus dsh --profile endless-tui` then `/new`
+Use: `CC_TUI_PRESET=liangshen-plus dsh --profile tui` then `/new`
 (preset mounts at session creation; resumed sessions keep their old preset).
 Manual smoke checklist: `docs/liangshen-plus-manual-smoke.md`.
 
@@ -189,7 +194,7 @@ Known tradeoff: with `includeRuntimeContext: false` the model sees the
 | `preset.yml` | Display name/description for `/preset` |
 | `smoke-boot.mjs` | No-LLM smoke boot (reuses `presets/liangshen-plus/smoke-driver.mjs`) |
 
-Use: `CC_TUI_PRESET=liangshen-bash dsh --profile endless-tui` then `/new`.
+Use: `CC_TUI_PRESET=liangshen-bash dsh --profile tui` then `/new`.
 M4 comparison (groups E/C/A) via `M4_GROUPS=E,C,A node presets/liangshen-plus/m4-runner.mjs`.
 
 ## Tested

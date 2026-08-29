@@ -1,12 +1,12 @@
-# 自研 TUI 吸收官方 dsh-TUI 常用功能 — 差距分析与路线
+# 自研 TUI 吸收 @deepseek-harness-tui/dsh-tui 常用功能 — 差距分析与路线
 
 > 背景：对 `@deepseek-harness-tui/dsh-tui` 的使用体验持续不满意，评估将其常用功能吸收进本仓库的 pi-tui 版 TUI（`lib/app.ts` 等，约 1,900 行 TS）的成本。
 >
-> 对照基线：官方 npm 包 **0.8.1** 编译产物（本机全局 node_modules 一手核对，305 个 JS 文件 ≈ 51k 行）+ 其 README 快捷键/命令表；pi-tui `^0.84.1`（`node_modules/@earendil-works/pi-tui/dist/*.d.ts` 类型声明一手核对）。
+> 对照基线：第三方 npm 包 **0.8.1**（`@deepseek-harness-tui/dsh-tui`）编译产物（本机全局 node_modules 一手核对，305 个 JS 文件 ≈ 51k 行）+ 其 README 快捷键/命令表；pi-tui `^0.84.1`（`node_modules/@earendil-works/pi-tui/dist/*.d.ts` 类型声明一手核对）。
 >
-> 关联文档：[`rc8-capability-assessment.md`](rc8-capability-assessment.md)（官方对 rc.8 的适配现状）、[`rewind-file-restore-plugin.md`](rewind-file-restore-plugin.md)（/rewind 插件方案）。
+> 关联文档：[`rc8-capability-assessment.md`](rc8-capability-assessment.md)（第三方 dsh-tui 对 rc.8 的适配现状）、[`rewind-file-restore-plugin.md`](rewind-file-restore-plugin.md)（/rewind 插件方案）。
 >
-> **实现原则（2026-08-22 定）**：实现首先遵循 dsh 本体 / harness 标准服务的语义与机制，**不要求**与 `@deepseek-harness-tui/dsh-tui` 保持一致。官方实现只作交互参考与语义对照；凡 dsh 有原生机制的一律走原生（如 `ctx.settings` 命名空间、agentPresets roster、会话日志事实、commands 注册表），不为"跟官方一致"引入其私有约定（数据目录、环境变量等）。
+> **实现原则（2026-08-22 定）**：实现首先遵循 dsh 本体 / harness 标准服务的语义与机制，**不要求**与 `@deepseek-harness-tui/dsh-tui` 保持一致。该第三方包只作交互参考与语义对照；凡 dsh 有原生机制的一律走原生（如 `ctx.settings` 命名空间、agentPresets roster、会话日志事实、commands 注册表），不为"跟它一致"引入其私有约定（数据目录、环境变量等）。**术语**：本文「官方」仅指 dsh（DeepSeek Harness）本身；`@deepseek-harness-tui/dsh-tui` 一律称第三方 dsh-tui 或 dsh-tui。
 
 ---
 
@@ -14,22 +14,22 @@
 
 | 问题 | 结论 |
 |---|---|
-| 能否直接搬官方代码 | ❌ 渲染器不同（自移植 Ink core/React reconciler vs pi-tui），只能照交互逻辑重写 UI 层 |
-| 数据/服务层是否同构 | ✅ 两边都是 cordis 插件、消费同一批 `@deepseek-ai/dsh-*` 标准服务；官方命令自称"均走 DSH 官方链路"，意味着其能力在本 TUI 同样可取 |
-| 吸收常用功能的成本 | 第一二档（白送 + 小活）合计约 **2–4 人日**，日常体验可达官方七八成 |
+| 能否直接搬 dsh-tui 代码 | ❌ 渲染器不同（自移植 Ink core/React reconciler vs pi-tui），只能照交互逻辑重写 UI 层 |
+| 数据/服务层是否同构 | ✅ 两边都是 cordis 插件、消费同一批 `@deepseek-ai/dsh-*` 标准服务；dsh-tui 命令自称"均走 DSH 官方链路"，意味着其能力在本 TUI 同样可取 |
+| 吸收常用功能的成本 | 第一二档（白送 + 小活）合计约 **2–4 人日**，日常体验可达 dsh-tui 的七八成 |
 | 原 biggest risk（@ 文件补全） | 已排除：pi-tui Editor 内置完整 AutocompleteProvider 框架（见 §5） |
 | 建议 | 按 §7 分档推进；先花半天做补全接线 spike 消掉最后一处不确定性 |
 
 ## 2. 两边基本盘
 
-| | 本仓库 TUI | 官方 `@deepseek-harness-tui/dsh-tui` 0.8.1 |
+| | 本仓库 TUI | 第三方 `@deepseek-harness-tui/dsh-tui` 0.8.1 |
 |---|---|---|
 | 渲染器 | pi-tui（第三方成熟库，命令式组件） | 自移植 Ink core（React 19 + react-reconciler） |
 | 规模 | ~3,200 行 TS（`lib/`） | 305 个编译后 JS 文件，~51,000 行（另有 vendor/dsh-std workspace 包） |
 | 挂载方式 | cordis 插件 patch-insert 进 profile | cordis 插件 bundle.patch + plugin-host/extensions 平台 |
 | 已有能力 | 流式 markdown、思考折叠行、工具卡（presenter 视图）、`/resume` 搜索选择器、ask_user_question 单选 overlay、审批对话框、ctx% 占用、子代理状态行（5s 轮询）、execve 重启式 resume、OSC52→原生剪贴板 | 下表全集 |
 
-## 3. 官方功能面盘点
+## 3. dsh-tui 功能面盘点
 
 来源：README 快捷键/本地命令表 + `lib/types/components/` 组件清单。
 
@@ -55,7 +55,7 @@
 | 中活 | `/` + `@` 命令与文件补全菜单 | ~1d | pi-tui 原生框架（§5）；主要工作是接 commands 注册表数据源 + 样式 |
 | 中活 | 双击 Esc 时间回溯 UI | ~1d | fork/回滚逻辑 rewind-dsh 已有，缺触发方式 + 选择器 UI |
 | 大活 | 会话全文搜索、消息选择模式、鼠标选区复制、图片粘贴附件 | 每项 1–3d | 依赖 pi-tui 能力边界，需逐个验证后再排 |
-| 不做 | 鲸鱼顶栏/主题/i18n//update/VS Code companion/plugin-host 扩展平台 | — | 官方包的产品化外壳，非常用功能，与本 TUI 轻量定位冲突 |
+| 不做 | 鲸鱼顶栏/主题/i18n//update/VS Code companion/plugin-host 扩展平台 | — | dsh-tui 的产品化外壳，非常用功能，与本 TUI 轻量定位冲突 |
 
 ## 5. 关键发现：pi-tui 自带补全框架
 
@@ -65,13 +65,13 @@
 - `CombinedAutocompleteProvider` 开箱支持 slash 命令补全（`SlashCommand` 含 argumentHint、参数级 `getArgumentCompletions`）与文件补全（basePath + 可选 fd/rg 快速路径）；
 - Provider 协议自带 triggerCharacters、光标行列感知（`cursorLine/cursorCol`）与 `applyCompletion` 回填。
 
-官方是在 Ink 上手搓了这一整套；本 TUI 侧近乎白送，剩余工作只有两件：把 commands 注册表喂给 provider、调整补全下拉样式。降级为半天 spike（S1）。
+dsh-tui 是在 Ink 上手搓了这一整套；本 TUI 侧近乎白送，剩余工作只有两件：把 commands 注册表喂给 provider、调整补全下拉样式。降级为半天 spike（S1）。
 
 ## 6. 可直接复用的既有资产
 
 | 资产 | 说明 |
 |---|---|
-| `plugins/rename-session.ts` | `/rename <title>`，走 `sessionTitle.rename()` 标准服务，注册表 handler 优先于 TUI 本地名 |
+| `plugins/rename-session.ts` | `/rename <title>`，走 `sessionTitle.rename()` 标准服务；自研 TUI 无本地同名实现，经命令注册表执行 |
 | `plugins/rewind-dsh.ts` + `.test.ts` | `/rewind <seq>`：sessions.fork 回退对话 + 工具日志逆向恢复文件 + execve 重启 resume；纯函数已单测 |
 | `lib/app.ts#ApprovalCard` | 卡片式审批对话框（⚠ 标题 + tool/reason + 单键 a/r，待决调用行同步 ⚠ 高亮；allowed-once 是 seam 唯一授权项） |
 | `lib/index.ts#relaunchToResume` | flush → chdir → execve 重启带 `--resume`，`/new` 与回溯类功能可直接复用该机制 |
@@ -82,14 +82,14 @@
 |---|---|---|
 | M0 圈清单 | 已定（2026-08-22）：本期范围 = /preset /new /resume 的会话生命周期，见 M1a | 本文档标注勾选结果 |
 | M1a ✅ 会话生命周期 | 已落地（2026-08-22，同日按实现原则重构）：`lib/presets.ts` 结构化接入 `agentPresets`（零新依赖）；blank 判定走 recompose + `agent-preset/selected` 日志事实，非 blank 经 `ctx.settings` 写 `agent-presets` 命名空间默认值（roster defaultId 热生效）；部署钉选 = 本插件 patch 层 `preset:` config；/new 为 in-process 建 agent + 全量重绑定，/resume 保持 execve 重启（跨 cwd 持久化正确性） | tsc 通过；presets 纯函数冒烟通过 |
-| M1b ✅ /model + /resume 收敛 | 已落地（2026-08-22）：/model 选择器走 `llm.listProviders/listModels`；/resume 与 /sessions 默认只列当前工作区（header.cwd 过滤），跨项目仍可 `/resume <id>`；未知命令不再静默无反馈；/resume 标签改用 readTitleSnapshots（去掉 50 次全量 readSession 的解码+回放校验，多 MB 日志下 30s→秒级）；resume 路由 = 用户规则（优先于官方 #67）：会话记录路由始终优先，**部署钉选只作用于新会话、不覆盖 resume**，记录缺失或已不存在才回退默认；路由真值统一为 `liveRoute`（boot//model 切换//new 都写它），状态栏标签与 /model current 判定同源 | tsc 通过；待活体复测 |
+| M1b ✅ /model + /resume 收敛 | 已落地（2026-08-22）：/model 选择器走 `llm.listProviders/listModels`；/resume 与 /sessions 默认只列当前工作区（header.cwd 过滤），跨项目仍可 `/resume <id>`；未知命令不再静默无反馈；/resume 标签改用 readTitleSnapshots（去掉 50 次全量 readSession 的解码+回放校验，多 MB 日志下 30s→秒级）；resume 路由 = 用户规则（优先于 dsh-tui #67）：会话记录路由始终优先，**部署钉选只作用于新会话、不覆盖 resume**，记录缺失或已不存在才回退默认；路由真值统一为 `liveRoute`（boot//model 切换//new 都写它），状态栏标签与 /model current 判定同源 | tsc 通过；待活体复测 |
 | M1b-fix ✅ /resume 窗口缺陷 | 缺陷（2026-08-23 发现）：`loadSessionItems` 先 `slice(0,30)` 截断再隐藏无标题——workflow 并发测试在同一 workspace 持久化约 19 个**带标题**的 continuable 子代理会话（首条消息是 spliced 目标文本，LLM 起了标题），一夜之间刷满最新 30 槽位，8/22 及更早的全部交互会话（含长 session）被无声挤出列表，表象为"只剩 29 个"。数据零删失，`/resume <id>` 始终不受窗口限制。修正设计：① picker 过滤 `header.origin === "subagent"`（core `filterSessions` 无 origin 子句，插件侧过滤；运行时 header 携带该字段）；② 先对全量本地记录读 readTitleSnapshots（projectMany 折叠，秒级）、隐藏无标题空壳后再截断 30——空壳不再白占槽位；③ `/sessions` 输出补 "N older hidden" 提示，截断不再无声 | tsc 通过；真实数据冒烟通过（本工作区 20 条带标题交互会话全部回到窗口，含全部长 session） |
-| M1c ✅ /model 会话中切换 | 已落地（2026-08-22 fork 官方 recipe；2026-08-27 改为热切换）：同一会话安装 `installModelSelection` 可变引用，写 `selectionRef.current` 下一轮生效；保留 fork 作无 seam 降级；effort 透传，新路由不支持则清空；路由真值 = `liveRoute`（同步改），选择器 current 标记据此显示。设计：`docs/model-hot-switch-design.md`；spike：`experiments/model-hot-switch-spike.test.ts` + `model-hot-switch-live-spike.mjs` | tsc 通过；真实树 spike 通过；✅ TUI 手工验收通过（2026-08-29，session-d6d6d6b1-…） |
+| M1c ✅ /model 会话中切换 | 已落地（2026-08-22 fork dsh-tui recipe；2026-08-27 改为热切换）：同一会话安装 `installModelSelection` 可变引用，写 `selectionRef.current` 下一轮生效；保留 fork 作无 seam 降级；effort 透传，新路由不支持则清空；路由真值 = `liveRoute`（同步改），选择器 current 标记据此显示。设计：`docs/model-hot-switch-design.md`；spike：`experiments/model-hot-switch-spike.test.ts` + `model-hot-switch-live-spike.mjs` | tsc 通过；真实树 spike 通过；✅ TUI 手工验收通过（2026-08-29，session-d6d6d6b1-…） |
 | S1 ✅ 补全（2026-08-22 落地，原定半天 spike） | Editor 接 `CombinedAutocompleteProvider`：命令源 = `services.commands.list(agent)` 全量注册表 + 本地别名（resume/preset 带参数补全，走既有 picker 数据），文件源 = cwd（pi-tui 原生 `@`/`#` 自动触发 + Tab 上下文分支：斜杠上下文→命令菜单，否则→文件补全；列表打开时 ↑/↓ 选、Tab 应用、Enter 应用并提交斜杠命令、Esc 取消）。顺带修两处全局按键交互：空闲 Esc 放行给编辑器（补全菜单可用 Esc 关闭，此前被全局 handler 吞掉）、空闲 Ctrl+C 改为双击退出（此前单按即退出，会误伤关菜单） | 冒烟通过（/前缀模糊过滤、/resume 参数补全、@ 不抛错）；待活体验证 |
 | M1 ✅ 白送档（2026-08-22 落地） | `/new`（M1a）；`/compact` 转发核心注册表 command-compact（dsh-base 已挂，compaction/end 事件进 transcript；顺带修正 execute 调用签名 images/signal 位）；`/cost` = projections `tokenUsage` 扁平四桶（wire view 即桶对象、无 `totals` 包裹层，2026-08-23 对安装包源码核实并修正；全零桶视作零样本走 meter 回退）+ billed/grand 汇总（无定价数据，token 口径），无投影时回退 tokenMeter 估算；`/tokens` = `contextPressure` 的 window/next-request/pct/last-reported + meter total；Ctrl+O 全局折叠思考与工具详情（默认收起，错误行保持可见，redrawAll 重绘）；rename/rewind 已随 tui profile 迁移并入 | tsc 通过；待活体复测 |
 | M2 小活档 ✅ | 已落地（2026-08-22）：会话浏览器预览（/resume 选中即显 turns/route/时间范围/首问；300ms 防抖 + 按会话缓存 + 代际防竞态）、`/export` Markdown（lib/export.ts 纯序列化，工具卡有界渲染）、多选问卷（接通 multiSelect 线字段 → CheckboxList，space/a/enter/esc）、状态行增强（流式 ~t/s 滑窗粗估 + out token 明细；可牺牲前缀语义，ctx gauge 永不截断） | 导出 markdown 可读；问卷 Space 多选提交正确；待活体复测 |
 | M3 中活档 ✅ | 图片附件已随 B2 落地；双击 Esc 回溯 UI 已落地（2026-08-26，设计 docs/m3-rewind-ui-design.md）：任意 idle Esc 武装 600ms 窗口（D1=A；取消/移除图片等 consume 路径不武装），双击弹 `pickRewindPoint` 选择器（`[seq] 摘要` 与 /rewind 列表同规则同截断），选中合成 `/rewind <seq>` 走 commands.execute 原路下发——fork + 文件逆向恢复 + execve resume 全部留在插件，引擎零改动；未挂 dsh-rewind 时 notice 降级。落地后连修四点：粘键 `ctrl+alt+[` 映射、resume 数据源兜底、触发键 consume、fork flush + argv 剥旧 --resume + 失败降级新会话 | tsc 通过；✅ 活体验证通过（2026-08-26，含 V2 全链路：fork 重启 + 边界截断） |
-| E1 思考强度 ✅ | 已落地（2026-08-23，实现 afd8f92）：`/effort` 选择器（resolveModelInfo 列档位、current/default 标注、会话作用域单写 ref、下一轮生效）+ 状态栏 `think <name>`（cyan）+ 欢迎屏 meta 追加；boot//new 先解析后渲染 banner，`/model` 切换后异步刷新。全骑官方缝：agentDefaultModel 读写 + resolveModelInfo + installModelSelection ref。设计：`docs/reasoning-effort-design.md` | tsc 通过；待活体复测 |
+| E1 思考强度 ✅ | 已落地（2026-08-23，实现 afd8f92）：`/effort` 选择器（resolveModelInfo 列档位、current/default 标注、会话作用域单写 ref、下一轮生效）+ 状态栏 `think <name>`（cyan）+ 欢迎屏 meta 追加；boot//new 先解析后渲染 banner，`/model` 切换后异步刷新。全骑 dsh 标准缝：agentDefaultModel 读写 + resolveModelInfo + installModelSelection ref。设计：`docs/reasoning-effort-design.md` | tsc 通过；待活体复测 |
 | 不做 | §4 "不做" 行所列产品化外壳 | — |
 
 排序原则：先白送后小活，中活仅在 spike 通过后进入；每阶段独立 commit。
@@ -100,8 +100,8 @@
 |---|---|---|
 | pi-tui Editor 光标 API 与 provider 签名的实际匹配度未经运行验证 | S1 可能超时 | S1 就是为此设的 spike，半天封顶 |
 | `/compact` 经 commands 注册表转发的行为未知（可能要求特定 agent 状态） | M1 排期偏差 | 先手动验证，不通改走 sessions 服务直连 |
-| 官方 0.8.x 迭代快，差距清单会漂移 | 追不全 | 只追"常用功能"档位，不追全集；版本差异在本文档记录基线 |
-| rc.7→rc.8 peer 契约 drift（启动警告等） | 与官方包共用时的已知问题 | 见 [`rc8-capability-assessment.md`](rc8-capability-assessment.md) §4；本 TUI 直连 rc.8 服务不受影响 |
+| dsh-tui 0.8.x 迭代快，差距清单会漂移 | 追不全 | 只追"常用功能"档位，不追全集；版本差异在本文档记录基线 |
+| rc.7→rc.8 peer 契约 drift（启动警告等） | 与 dsh-tui 包共用时的已知问题 | 见 [`rc8-capability-assessment.md`](rc8-capability-assessment.md) §4；本 TUI 直连 rc.8 服务不受影响 |
 
 ## 9. host 0.1.1-rc.2 能力盘点：可用未接清单（2026-08-24，续盘 2026-08-27）
 
@@ -134,7 +134,7 @@
 | B1 | `dsh-file-reference-local`（@file 标准语法 + 模糊索引） | 补全用 pi-tui 自带 cwd 遍历 | ✅ 落地（2026-08-25）：FileReferenceAutocomplete 组合 provider——命令与语法仍由 pi-tui 处理，@ 上下文候选项替换为 harness 发现阶段结果（空/失败回退 cwd walk；applyCompletion 原样委托，item/prefix 保持内层约定）；挂载进 tui-dev |
 | B2 | `dsh-attachment(-local)`（内容寻址附件存储） | 整链未挂 | ✅ 落地（2026-08-25，设计 docs/image-attachment-design.md）：`/img <path>…` 队列 + 粘贴图片路径自动入队 + ambient chips 行（esc 移除）；提交时 saveImage 逐张入库、失败整条退回；消息组装 text+image blocks；转录/导出 `[图片 id]` 占位。attachment-local 挂载进 tui-dev |
 | B3 | `dsh-session-reference`（跨会话快照引用） | 未用 | ✅ 落地（2026-08-25）：@ 菜单并入 session 候选（`remoteExportCandidates` cwd 亲和排序，`⌗ label · cwd · 时间`），选中插入规范 `@[label](dsh-session:…)` mention；resolver 自挂 pre-step 在请求时展开快照（预算/去重/排除自身均服务内建）；挂载进 tui-dev |
-| B4 | `dsh-mcp-client`（MCP 服务器桥接） | 全链未挂 | ✅ 落地（2026-08-26，设计 docs/mcp-inventory-design.md）：mcp-everything（官方测试器）挂进 tui-dev 验链路；`/tools [filter]` 每次现读 agent-scope `schemas()`——天然反映 MCP 再同步/重连后的目录，mcp__ 工具按 server 聚合逐条带截断描述、原生折叠名单 |
+| B4 | `dsh-mcp-client`（MCP 服务器桥接） | 全链未挂 | ✅ 落地（2026-08-26，设计 docs/mcp-inventory-design.md）：mcp-everything（MCP 官方测试器）挂进 tui-dev 验链路；`/tools [filter]` 每次现读 agent-scope `schemas()`——天然反映 MCP 再同步/重连后的目录，mcp__ 工具按 server 聚合逐条带截断描述、原生折叠名单 |
 | B5 | `dsh-plan-mode`（计划评审退出） | preset 已挂走通用审批卡 | ✅ 落地（2026-08-25）：exit_plan_mode 的 ask 特化为 PlanReviewCard（📋 标题 + 计划正文内嵌 14 行预览/全文指向转录卡；a 批准并退出 / r 继续规划 / esc 取消）；Approve 按服务比对常量原样返回，非批准由服务自述叙事；挂载面不变（base 已有）|
 | B6 | `dsh-session-stats`（`sessionStats` 投影：turns/steps/llmMs/toolMs/ttftMs/decodeMs±tokens） | 未挂载 | 一行挂载；`/stats` 或状态行加 `llm 12s · tool 3s · ttft 1.2s · 32 tok/s decode`；值走 `sessionProjections.snapshot`，与 A3 不重复 |
 | B7 | `dsh-message-feedback`（每条 finalized assistant 消息持久 ±note，CAS 版本） | 未挂载 | 一行挂载（inject `storageDomain`/`sessionPersistence`/`sessions`，config `maxNoteBytes`）；transcript 行保留 `message.id`，行内键 `f` 评 +/-、可加 note；小 UI |

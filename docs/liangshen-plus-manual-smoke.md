@@ -6,20 +6,22 @@
 >
 > M2（2026-08-20）已用 headless 组合 + assemble/pre-step 瀑布完成等价验证
 > （见设计文档 §6.1）；本节是真实 LLM 会话的人工复核。
+>
+> 注：本流程面向自研 TUI（`tui`/`tui-dev`）；`endless-tui` 已弃用，不再作为冒烟目标。
 
 ## 0. 前置检查
 
 | 检查 | 命令 | 期望 |
 |---|---|---|
 | preset 已部署 | `ls ~/.dsh/.agent-presets/liangshen-plus/` | `agent.cordis.yml` + `preset.yml` 存在 |
-| preset 可发现 | `dsh --profile endless-tui --dump-config`（或 M2 冒烟） | 组合正常，无报错 |
+| preset 可发现 | `dsh --profile tui --dump-config`（或 M2 冒烟） | 组合正常，无报错 |
 | 单测绿（可选） | `cd ~/dev/dsh-plugins && node --test presets/liangshen-plus/phase-swap-bash.test.mjs` | 9/9 通过 |
 
 ## 1. 启动（stderr 重定向，避免 TUI 吞错误）
 
 ```bash
 cd /Users/vito/data/dev/dsh-plugins
-CC_TUI_PRESET=liangshen-plus dsh --profile endless-tui 2>/tmp/liangshen-plus-tui.err
+CC_TUI_PRESET=liangshen-plus dsh --profile tui 2>/tmp/liangshen-plus-tui.err
 ```
 
 - **必须先 `/new` 开全新会话**（2026-08-20 实证）：TUI 会恢复最近会话

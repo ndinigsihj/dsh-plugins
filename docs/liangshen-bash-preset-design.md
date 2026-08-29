@@ -56,7 +56,9 @@ schema 里有 `sandbox_permissions` 参数，但看不到"当前文件策略 / �
 
 - repo 版本化：`presets/liangshen-bash/agent.cordis.yml` + `preset.yml`（本仓库）。
 - 复用物（tool-bootstrap/instruction-hint/skill-search/custom-bash/compaction-epoch）走部署包绝对路径
-  `/Users/vito/.dsh/profiles/endless-tui/node_modules/@deepseek-harness-tui/dsh-tui/presets/liangshen/`。
+  `/Users/vito/.dsh/profiles/endless-tui/node_modules/@deepseek-harness-tui/dsh-tui/presets/liangshen/`
+  （> 注意：`endless-tui` 已弃用；该路径是历史部署点，若移除 profile 需改指 `tui`/`tui-dev` 的
+  node_modules 或 vendored，本期未动）。
 - phase-swap-bash 插件引用 repo 现有文件 `presets/liangshen-plus/phase-swap-bash.mjs`（单一来源，
   不拷贝；若日后需解耦再迁 `presets/shared/`，届时同步改 plus 与新 preset 的引用）。
 - 部署位：`~/.dsh/.agent-presets/liangshen-bash/`（agent.cordis.yml + preset.yml，
