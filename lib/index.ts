@@ -2093,6 +2093,22 @@ async function run(
       app.showNotice(`Already riding ${active.provider}/${active.model}.`);
       return;
     }
+    // dsh-relay 集成：relay 模式下 relayClient 会把模型选择发到 worker；
+    // 本地仍走 hot switch，保证状态栏与降级后一致性。
+    const relayClient = ctx.get<{
+      switchModel(provider: string, model: string, reasoningEffort?: string): Promise<{ ok: boolean; error?: string }>;
+    }>("relayClient");
+    if (relayClient !== undefined) {
+      const result = await relayClient.switchModel(
+        route.provider,
+        route.model,
+        selectionRef?.current?.reasoningEffort,
+      );
+      if (!result.ok) {
+        app.showNotice(`Model switch to worker failed: ${result.error ?? "unknown error"}`);
+        return;
+      }
+    }
     await switchModelHot(route.provider, route.model);
   }
 
