@@ -250,7 +250,7 @@ mac TUI ──remote-client（现有链路，localhost/远程，全流式）─�
 | 资产 | 在本设计中的角色 |
 |---|---|
 | `dsh-relay` | remote-client 两种模式（hub 指挥台 + 任意 worker 交互 coding，均全流式）+ memorySink 外挂 + fleet-client 任务派发；relay-server 交互语义零改动，只加 fleet 任务与审批桥 |
-| `endless-dsh` | hub 中央记忆库（全局单写）；capture/distill/inject/tools 全部复用；mac 不再挂本地 endless，存量库整库搬迁 |
+| `dsh-endless` | hub 中央记忆库（全局单写）；capture/distill/inject/tools 全部复用；mac 不再挂本地 endless，存量库整库搬迁 |
 | `dsh-plugins` TUI | mac 两个形态的渲染面（hub 会话镜像 + 本机 coding 会话，均全流式）与 hub 本地前端（可选） |
 | IM bot（P4 §21 已定稿） | controller 的远程前端，复用同一 hub agent 与 fleet 工具 |
 | `dsh-schedule` | 不适合作跨设备定时；周报定时走 hub cron/timer |

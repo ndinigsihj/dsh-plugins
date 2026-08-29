@@ -34,7 +34,7 @@
 - 取消流式生成后，已展示的回复前缀带入后续提问和 fork（对应 dsh-session `turn/end` 新增 `interrupted?: true`）。
 - `web_search` 支持并发查询；子代理 `reportDelivery` 及时反馈并唤醒父任务。
 - 大历史会话的 fork 性能大幅改善。
-- SQLite 后端读写/fork 性能提升但**存储格式不兼容**（`endless-tui` 用的是 JSONL，不受影响，见 endless-dsh 侧评估）。
+- SQLite 后端读写/fork 性能提升但**存储格式不兼容**（`endless-tui` 用的是 JSONL，不受影响，见 dsh-endless 侧评估）。
 
 ---
 
@@ -75,7 +75,7 @@
 - dsh-tui 的 CI `verify:upstream-contract` 会挂（其自己声明的门禁行为）。
 
 ### 4.3 端到端 API 面（对 endless 栈）
-已独立核实（见 endless-dsh 侧文档 §2）：消费的 15 个包只有 `dsh-llm`（纯新增）+ `dsh-session`（纯新增）类型变化，其余 13 个 0 变化。
+已独立核实（见 dsh-endless 侧文档 §2）：消费的 15 个包只有 `dsh-llm`（纯新增）+ `dsh-session`（纯新增）类型变化，其余 13 个 0 变化。
 
 ---
 
@@ -123,4 +123,4 @@ pnpm up "@deepseek-harness-tui/dsh-tui@^0.8.5"
 
 ## 7. 相关文档
 - [`rewind-file-restore-plugin.md`](rewind-file-restore-plugin.md)：rewind 文件回撤插件方案（独立 `/rewind` 命令插件，绕开 DecisionEvents）。
-- `~/dev/endless-dsh/docs/rc8-upgrade-assessment.md`：endless-dsh × rc.8 升级评估 + 多模态记忆设计草案。
+- `~/dev/dsh-endless/docs/rc8-upgrade-assessment.md`：dsh-endless × rc.8 升级评估 + 多模态记忆设计草案。
