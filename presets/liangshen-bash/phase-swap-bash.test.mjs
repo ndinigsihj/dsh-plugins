@@ -4,7 +4,7 @@
  * 使用 repo 的 node_modules（`/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai`）。
  * 原 endless-tui profile（第三方 @deepseek-harness-tui/dsh-tui）已删除，本测试不再依赖它。
  *
- * 运行：node --test presets/liangshen-plus/phase-swap-bash.test.mjs
+ * 运行：node --test presets/liangshen-bash/phase-swap-bash.test.mjs
  *
  * 覆盖：
  *  1. 首轮（未 promote）agent 看到 persistent bash（仅 command 参数）

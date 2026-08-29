@@ -1,13 +1,13 @@
 # `liangshen-bash` 组合 preset：liangshen 全量基底 + 二轮 bash 提权 + 二轮 AGENTS.md 注入。
 #
-# 以部署包 @deepseek-harness-tui/dsh-tui 内置 liangshen preset 为基底做 6 处改动
+# 以 vendor 的 liangshen preset（来源 @deepseek-harness-tui/dsh-tui）为基底做 6 处改动
 # （设计文档 docs/liangshen-bash-preset-design.md §1）：
-#   1-4. 本地复用物路径改部署包绝对路径（tool-bootstrap / instruction-hint /
+#   1-4. 本地复用物路径改 repo vendored 路径（tool-bootstrap / instruction-hint /
 #        custom-bash / skill-search，S7 部署位决策，零语义变化）。
 #   5. 新增 phase-swap-bash 行：首轮 tool/call（promotion）后把该 agent 的 bash 从
 #      persistent 换成沙箱 dsh-tool-bash（sandbox_permissions 提权）。
 #   6. 新增 agent-instructions 行：二轮起 AGENTS.md/CLAUDE.md 自动进上下文
-#      （部署栈 host 层本就注册同名源，此行让意图显式、与 liangshen-plus 对齐）。
+#      （部署栈 host 层本就注册同名源，此行让意图显式、自包含）。
 # persona 保持 liangshen 的 Minimal 版（complete:true + includeRuntimeContext:false），
 # 其余行与 liangshen 逐字一致。
 #
@@ -32,9 +32,9 @@
 # dsh-tool-bash。per-agent shadow 语义：对该 agent 的 ctx 调 dsh-tool-bash.apply()，
 # 注册进该 agent 的 scope layer，shadow 掉全局 persistent bash，其他 session/子代理
 # 不受影响；swap 失败 warn once + 保持 persistent bash。插件单一来源：repo
-# presets/liangshen-plus/phase-swap-bash.mjs（liangshen-plus 与本 preset 共用）。
+# presets/liangshen-bash/phase-swap-bash.mjs（本 preset 版本化）。
 - id: phase-swap-bash
-  name: '/Users/vito/data/dev/dsh-plugins/presets/liangshen-plus/phase-swap-bash.mjs'
+  name: '/Users/vito/data/dev/dsh-plugins/presets/liangshen-bash/phase-swap-bash.mjs'
   config:
     enableRunInBackground: true
 
@@ -125,7 +125,7 @@
     sampleOverCapGlobResults: false
 
 # str_replace_editor：2026-08-25 起走宿主沙箱化 ctx.fs（原配本地 fs-local
-# 已移除——越界写无审批，见 session-259d6388 与 liangshen-plus 同日修复）。
+# 已移除——越界写无审批，见 session-259d6388（2026-08-25 同日修复）。
 # str_replace_editor 走宿主沙箱化 ctx.fs：workspace-write 边界=会话不可变
 # cwd，越界写 → 拒绝 → 提权审批。（原 bootstrap-filesystem 隔离组+本地裸
 # fs-local 已删：isolate 组内无 fs 提供者会使工具无法激活，且裸 fs 曾致

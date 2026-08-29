@@ -3,11 +3,11 @@
  *
  * 运行：SMOKE_PRESET=liangshen-bash node presets/liangshen-bash/smoke-boot.mjs
  *
- * 与 presets/liangshen-plus/smoke-boot.mjs 的差异（共两处）：
+ * 设计：
  *   1. 默认 preset 为 liangshen-bash（env SMOKE_PRESET 仍可覆盖）。
  *   2. session 持久化 root 改到 /tmp：headless 进程跑在 workspace-write 文件沙箱下
  *      ~/.dsh/sessions 不可写（EPERM）；冒烟不需要跨进程恢复，/tmp 足够。
- * 其余逻辑（bundle 组合、patch 顺序、driver 挂载）与 plus 版完全一致。
+ * 其余逻辑（bundle 组合、patch 顺序、driver 挂载）与 headless 冒烟通用模式一致。
  */
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
@@ -18,7 +18,7 @@ import {
 
 // dsh CLI 安装锚点（bundle 解析基准，同 CLI 的 INSTALL_ANCHOR）
 const INSTALL_ANCHOR = "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/package.json";
-const SMOKE_DRIVER = "/Users/vito/data/dev/dsh-plugins/presets/liangshen-plus/smoke-driver.mjs";
+const SMOKE_DRIVER = "/Users/vito/data/dev/dsh-plugins/presets/liangshen-bash/smoke-driver.mjs";
 
 const profile = loadProfile("dsh", "headless", INSTALL_ANCHOR);
 const bundlePatches = profile.layers.flatMap((layer) => layer.patches);

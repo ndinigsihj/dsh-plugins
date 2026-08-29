@@ -5,8 +5,7 @@ These `.mjs` files are vendored from the third-party package
 `~/.dsh/profiles/endless-tui`), which is used only as a functional reference.
 
 They are the S7 reuse pieces (tool-bootstrap / custom-bash / instruction-hint /
-skill-search / compaction-epoch) referenced by the liangshen-plus and
-liangshen-bash agent presets. Vendoring them keeps the presets working after
+skill-search / compaction-epoch) referenced by the liangshen-bash agent preset. Vendoring them keeps the presets working after
 the `endless-tui` profile was removed.
 
 - Origin: `@deepseek-harness-tui/dsh-tui@0.8.7`

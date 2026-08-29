@@ -141,43 +141,15 @@ hub 侧的 `fleet-client` / `memory-sink`、worker 侧的 `remote-server` 挂载
 | `/fleet …` | fleet-client | 列表 / 派发 / 取消 | ✅ 已实现 |
 | `/device <id>` | fleet-client | 会话级当前设备绑定 | ⏳ 待 dsh-relay 实现 |
 
-## Agent presets (liangshen-plus / liangshen-bash)
-
-`presets/liangshen-plus/` is a combination agent preset that merges three
-behaviors into one composition (design: `docs/liangshen-plus-preset-design.md`):
-
-1. **Round-1 anchoring** — the first request only exposes the Minimal tool pair
-   (`persistent bash` + `str_replace_editor`), free of injected workspace/skill
-   context, so the session anchors on direct tool use (verified 5/5-style
-   behavior; M4 replication §5.6).
-2. **Round-2+ AGENTS.md injection** — `dsh-agent-instructions` is restored after
-   the first durable tool call, so workspace/`~/.dsh/AGENTS.md` instructions
-   reach the model from round 2 on.
-3. **Round-2+ bash privilege swap** — `phase-swap-bash.mjs` shadows the shared
-   persistent bash with the sandboxed `dsh-tool-bash` (per-agent scope layer),
-   re-adding `sandbox_permissions`/`justification` escalation after anchoring.
-
-| File | Purpose |
-|---|---|
-| `agent.cordis.yml` | The preset composition (source of truth; deployed to `~/.dsh/.agent-presets/liangshen-plus/`) |
-| `phase-swap-bash.mjs` | The swap plugin (per-agent shadow, rc.8 verified) |
-| `phase-swap-bash.test.mjs` | 9 unit tests (node --test) |
-| `smoke-boot.mjs` / `smoke-driver.mjs` | No-LLM composition smoke (round-1 catalog, round-2 swap+injection) |
-| `smoke-live.mjs` / `smoke-live-driver.mjs` | Real-LLM 3-round live smoke |
-| `m4-runner.mjs` / `m4-driver.mjs` | M4 anchoring replication runner (A/B/C/D/E, results in `experiments/m4/`) |
-
-Use: `CC_TUI_PRESET=liangshen-plus dsh --profile tui` then `/new`
-(preset mounts at session creation; resumed sessions keep their old preset).
-Manual smoke checklist: `docs/liangshen-plus-manual-smoke.md`.
-
-### liangshen-bash
+## Agent presets (liangshen-bash)
 
 `presets/liangshen-bash/` keeps the liangshen preset **verbatim** (Minimal
 persona with `includeRuntimeContext: false`, `instruction-hint`, `skill-search`)
-and adds only two rows (design: `docs/liangshen-bash-preset-design.md`):
+and adds only two behaviors (design: `docs/liangshen-bash-preset-design.md`):
 
-1. **Round-2+ bash privilege swap** — the shared `phase-swap-bash.mjs` plugin
-   (same single source as liangshen-plus).
+1. **Round-2+ bash privilege swap** — `phase-swap-bash.mjs` shadows the shared
+   persistent bash with the sandboxed `dsh-tool-bash` (per-agent scope layer),
+   re-adding `sandbox_permissions`/`justification` escalation after anchoring.
 2. **Explicit round-2 AGENTS.md injection** — an `dsh-agent-instructions` row
    (the host layer already provides this source, so the row makes the intent
    explicit and self-contained).
@@ -189,10 +161,11 @@ Known tradeoff: with `includeRuntimeContext: false` the model sees the
 |---|---|
 | `agent.cordis.yml` | Preset composition (liangshen base + 2 rows; deployed to `~/.dsh/.agent-presets/liangshen-bash/`) |
 | `preset.yml` | Display name/description for `/preset` |
-| `smoke-boot.mjs` | No-LLM smoke boot (reuses `presets/liangshen-plus/smoke-driver.mjs`) |
+| `phase-swap-bash.mjs` | The swap plugin (per-agent shadow) |
+| `phase-swap-bash.test.mjs` | Unit tests (node --test) |
+| `smoke-boot.mjs` / `smoke-driver.mjs` | No-LLM composition smoke (round-1 catalog, round-2 swap+injection) |
 
 Use: `CC_TUI_PRESET=liangshen-bash dsh --profile tui` then `/new`.
-M4 comparison (groups E/C/A) via `M4_GROUPS=E,C,A node presets/liangshen-plus/m4-runner.mjs`.
 
 ## Tested
 
