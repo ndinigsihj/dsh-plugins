@@ -20,7 +20,7 @@
 # str_replace_editor），promotion 后放行完整目录。必须保持 FIRST（waterfall 逆序
 # 应用 + prepend:true 的最外层变换纪律，照抄 tool-bootstrap.mjs 头注释）。
 - id: tool-bootstrap
-  name: '/Users/vito/.dsh/profiles/endless-tui/node_modules/@deepseek-harness-tui/dsh-tui/presets/liangshen/tool-bootstrap.mjs'
+  name: '/Users/vito/data/dev/dsh-plugins/vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/tool-bootstrap.mjs'
   config:
     bootstrapTools: [bash, str_replace_editor]
     promoteOn: tool-call
@@ -63,7 +63,7 @@
 # "这些指令文件存在；行动前先读它们"——模型按需自行用 fs 工具读取。
 # 与上方 agent-instructions 的 digest 并存（C 组实测双源无冲突；hint 略冗余但无害）。
 - id: instruction-hint
-  name: '/Users/vito/.dsh/profiles/endless-tui/node_modules/@deepseek-harness-tui/dsh-tui/presets/liangshen/instruction-hint.mjs'
+  name: '/Users/vito/data/dev/dsh-plugins/vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/instruction-hint.mjs'
   config:
     promoteOn: tool-call
     includeSubagents: true
@@ -112,7 +112,7 @@
 
 # Windows-only bash（本期只做 darwin；win32 第二优先级 D4）。
 - id: custom-bash
-  name: '/Users/vito/.dsh/profiles/endless-tui/node_modules/@deepseek-harness-tui/dsh-tui/presets/liangshen/custom-bash.mjs'
+  name: '/Users/vito/data/dev/dsh-plugins/vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/custom-bash.mjs'
   disabled: !!js process.platform !== 'win32'
 
 # ── filesystem ──────────────────────────────────────────────────────────────
@@ -147,7 +147,7 @@
   name: '@deepseek-ai/dsh-skill-filesystem'
 
 - id: skill-search
-  name: '/Users/vito/.dsh/profiles/endless-tui/node_modules/@deepseek-harness-tui/dsh-tui/presets/liangshen/skill-search.mjs'
+  name: '/Users/vito/data/dev/dsh-plugins/vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/skill-search.mjs'
 
 # ── goals ───────────────────────────────────────────────────────────────────
 - id: tool-goal

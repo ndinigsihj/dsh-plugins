@@ -345,14 +345,11 @@ WARNINGS:         []                                                            
    无 tool:*，ROUND2 完整放行）。liangshen 原版同样有此文本泄漏（同机制），可选用
    相同插件补丁。
 
-**部署位（S7 定案）**：插件 + preset + 冒烟脚本版本化在 repo `presets/liangshen-plus/`；
+**部署位（S7 定案，2026-08-29 修订）**：插件 + preset + 冒烟脚本版本化在 repo `presets/liangshen-plus/`；
 `~/.dsh/.agent-presets/liangshen-plus/` 只放 agent.cordis.yml + preset.yml（agent.cordis.yml
-用绝对路径引用 repo 插件 + 部署包复用物）。取舍：复用物（tool-bootstrap/compaction-epoch）
-**走部署包绝对路径**（随 @deepseek-harness-tui/dsh-tui 升级流动，无第二份拷贝，一致性风险=零
-拷贝漂移）；代价是 repo 文件与部署包路径耦合——与 profile 现有绝对路径引用
-（standard-bootstrap 引用部署包 tool-bootstrap）一致，可接受。
-> 注意：原耦合目标是 `endless-tui` profile，该 profile 已弃用；若后续移除它，
-> 这些部署包绝对路径需改指 `tui`/`tui-dev` 的 node_modules 或改为 vendored 拷贝（本期未动）。
+用绝对路径引用 repo 插件 + 复用物）。取舍：复用物（tool-bootstrap/compaction-epoch）
+**走 repo vendored 路径**（`vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/`，来源
+`@deepseek-harness-tui/dsh-tui@0.8.7`）；原 `endless-tui` profile 已删除，不再有外部 profile 路径耦合。
 
 ### 6.2 M5 merge 决策（2026-08-20，用户拍板）
 
@@ -384,6 +381,6 @@ WARNINGS:         []                                                            
 - 设计：`presets/liangshen-plus/agent.cordis.yml`（repo 版本化 + 部署 `~/.dsh/.agent-presets/liangshen-plus/`）、`presets/liangshen-plus/phase-swap-bash.mjs`（repo 版本化）
 - 冒烟：`presets/liangshen-plus/smoke-driver.mjs`（无 LLM 两轮目录驱动）、`presets/liangshen-plus/smoke-boot.mjs`（headless 组合 + patches 启动）、`presets/liangshen-plus/phase-swap-bash.test.mjs`（9 单测）、`docs/liangshen-plus-manual-smoke.md`（TUI 手工会话步骤）
 - M4 实验：`presets/liangshen-plus/m4-runner.mjs`（headless 组合 boot + patches，env 配置见 driver）、`presets/liangshen-plus/m4-driver.mjs`（A/B/C/D 逐跑驱动 + JSONL 记录 + 汇总）、`experiments/m4/results-*.jsonl`（原始数据）
-- 复用（部署包绝对路径，S7 定案）：`@deepseek-harness-tui/dsh-tui/presets/liangshen/tool-bootstrap.mjs`、`.../compaction-epoch.mjs`、`.../custom-bash.mjs`
+- 复用（vendored，2026-08-29 起）：`vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/tool-bootstrap.mjs`、`.../compaction-epoch.mjs`、`.../custom-bash.mjs`（来源 `@deepseek-harness-tui/dsh-tui@0.8.7`）
 - 包依赖：`@deepseek-ai/dsh-tool-bash`（沙箱 bash，rc.8）、`@deepseek-ai/dsh-tool-bash-persistent`（持久 bash，rc.7）、`@deepseek-ai/dsh-tools`（scope layer 注册）、`@deepseek-ai/dsh-agent-instructions`（注入）、`@deepseek-ai/dsh-sandbox`（`ESCALATION_TARGETS`）
 - 部署位：`~/.dsh/.agent-presets/liangshen-plus/`（agent.cordis.yml 绝对路径引用 repo）+ `CC_TUI_PRESET=liangshen-plus dsh --profile tui` 切换

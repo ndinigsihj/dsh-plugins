@@ -19,8 +19,8 @@
  * 绝不 brick 会话。
  */
 
-import { createEpochPromotion } from '/Users/vito/.dsh/profiles/endless-tui/node_modules/@deepseek-harness-tui/dsh-tui/presets/liangshen/compaction-epoch.mjs'
-import * as sandboxBash from '/Users/vito/.dsh/profiles/endless-tui/node_modules/.pnpm/node_modules/@deepseek-ai/dsh-tool-bash/lib/index.js'
+import { createEpochPromotion } from '/Users/vito/data/dev/dsh-plugins/vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/compaction-epoch.mjs'
+import * as sandboxBash from '/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-tool-bash/lib/index.js'
 
 /** Cordis plugin name used by loader diagnostics. */
 export const name = 'phase-swap-bash'

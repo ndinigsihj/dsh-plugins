@@ -3,9 +3,9 @@
  * 被 smoke-live.mjs 的 patch insert 挂载。
  */
 import { randomUUID } from "node:crypto";
-import { installModelSelection } from "/Users/vito/.dsh/profiles/endless-tui/node_modules/.pnpm/node_modules/@deepseek-ai/dsh-agent/lib/index.js";
-import { createUserMessage } from "/Users/vito/.dsh/profiles/endless-tui/node_modules/.pnpm/node_modules/@deepseek-ai/dsh-llm/lib/index.js";
-import { SessionId } from "/Users/vito/.dsh/profiles/endless-tui/node_modules/.pnpm/node_modules/@deepseek-ai/dsh-session/lib/index.js";
+import { installModelSelection } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-agent/lib/index.js";
+import { createUserMessage } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-llm/lib/index.js";
+import { SessionId } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-session/lib/index.js";
 
 export const name = "liangshen-plus-live-driver";
 export const inject = [];

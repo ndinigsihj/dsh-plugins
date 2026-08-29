@@ -1,8 +1,8 @@
 /**
- * phase-swap-bash 集成单测（真实 rc.8 运行时）。
+ * phase-swap-bash 集成单测（真实 dsh 运行时）。
  *
- * 使用部署包（endless-tui profile 的 rc.8/rc.7）而不是 repo 的 rc.6，
- * 因为 phase-swap-bash 插件运行在 @deepseek-harness-tui/dsh-tui@0.8.6 里。
+ * 使用 repo 的 node_modules（`/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai`）。
+ * 原 endless-tui profile（第三方 @deepseek-harness-tui/dsh-tui）已删除，本测试不再依赖它。
  *
  * 运行：node --test presets/liangshen-plus/phase-swap-bash.test.mjs
  *
@@ -17,9 +17,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 // ── 部署包绝对路径（rc.8 运行时）─────────────────────────────────────────────
-const DEP = "/Users/vito/.dsh/profiles/endless-tui/node_modules/.pnpm/node_modules/@deepseek-ai";
-const CORDIS = "/Users/vito/.dsh/profiles/endless-tui/node_modules/.pnpm/node_modules/@deepseek-ai/cordis/lib/index.js";
-const SCOPE = "/Users/vito/.dsh/profiles/endless-tui/node_modules/.pnpm/node_modules/@deepseek-ai/dsh-scope/lib/index.js";
+const DEP = "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai";
+const CORDIS = "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/cordis/lib/index.js";
+const SCOPE = "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-scope/lib/index.js";
 
 const { Context } = await import(CORDIS);
 const { createScope, scopeOf } = await import(SCOPE);

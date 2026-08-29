@@ -21,7 +21,7 @@
 # str_replace_editor），promotion 后放行完整目录。必须保持 FIRST（waterfall 逆序
 # 应用 + prepend:true 的最外层变换纪律，照抄 tool-bootstrap.mjs 头注释）。
 - id: tool-bootstrap
-  name: '/Users/vito/.dsh/profiles/endless-tui/node_modules/@deepseek-harness-tui/dsh-tui/presets/liangshen/tool-bootstrap.mjs'
+  name: '/Users/vito/data/dev/dsh-plugins/vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/tool-bootstrap.mjs'
   config:
     bootstrapTools: [bash, str_replace_editor]
     promoteOn: tool-call
@@ -99,7 +99,7 @@
 
 # Windows-only bash（本期只做 darwin；win32 第二优先级 D4）。
 - id: custom-bash
-  name: '/Users/vito/.dsh/profiles/endless-tui/node_modules/@deepseek-harness-tui/dsh-tui/presets/liangshen/custom-bash.mjs'
+  name: '/Users/vito/data/dev/dsh-plugins/vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/custom-bash.mjs'
   disabled: !!js process.platform !== 'win32'
 
 # ── filesystem ──────────────────────────────────────────────────────────────

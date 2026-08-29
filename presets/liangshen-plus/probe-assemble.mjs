@@ -8,7 +8,7 @@
  * 日志：/tmp/liangshen-plus-probe.log（每行一个 JSON）
  */
 import { appendFileSync } from "node:fs";
-import { createEpochPromotion } from '/Users/vito/.dsh/profiles/endless-tui/node_modules/@deepseek-harness-tui/dsh-tui/presets/liangshen/compaction-epoch.mjs'
+import { createEpochPromotion } from '/Users/vito/data/dev/dsh-plugins/vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/compaction-epoch.mjs'
 
 export const name = 'probe-assemble'
 export const inject = []
