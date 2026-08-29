@@ -38,7 +38,7 @@
 ### 2.3 影响面
 
 - 部署 profile 使用绝对路径 `/Users/vito/data/dev/dsh-plugins/lib/...`，不依赖包名 → **无需改 `~/.dsh/profiles/*`**；
-- stable 快照 `dsh-plugins-stable` 同样有 `package.json`/README/`cordis.patch.yml`，在阶段 C（stable）同步同样的改法。
+- `dsh-plugins-stable` 是同一仓库的 tag worktree（`scripts/release.sh` 发版时 `checkout --detach <tag>` 更新），**不手动改 stable**；包名与文档改动会随下一个 release tag 自动带上。
 
 ### 2.4 验证（dev）
 
@@ -105,7 +105,7 @@ push 前不合并 stable；push 属于用户明确批准后的动作。
 
 1. 阶段 A（dev TUI 包名）→ 验证 → 提交；
 2. 阶段 B（endless 改名 + 所有引用）→ 验证 → 三个仓库分别提交；
-3. stable（dsh-plugins-stable）同步阶段 A 的包名改动（用户验证 dev 后执行）；
+3. 发版：dev 验证通过后由 `scripts/release.sh <ver>` 打 tag 并 checkout 到 stable（自动带上包名/文档改动），不手动编辑 stable；
 4. 阶段 C（push）等用户指令。
 
 回滚：目录改名用 `git mv` 反向即可；profile 路径批量替换前先备份（或依赖 git 历史）；若启动失败，`git checkout` 恢复对应仓库 + 手工还原 `~/.dsh/profiles/*` 三份路径。
