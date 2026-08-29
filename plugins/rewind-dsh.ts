@@ -41,7 +41,7 @@ import type { Context } from "@deepseek-ai/cordis";
 export const name = "dsh-rewind";
 export const inject = ["agents", "sessions", "commands"];
 
-// 无配置项：与 approval-tui.ts 一致，不导出 Config（cordis 对缺省 Config 直接放行）。
+// 无配置项：与 rename-session 等薄插件一致，不导出 Config（cordis 对缺省 Config 直接放行）。
 
 /* ------------------------------------------------------------------ *
  * 类型（结构性子集，避免引入过多依赖类型）                              *

@@ -23,10 +23,10 @@
 
 **对「薄插件」模式的关键影响**（也是本次方案最需要先确认的点）：
 
-> 现有 `approval-tui.ts`（走 `ctx.on('approval/request', ...)` 瀑布）和 `plugins/rename-session.ts`（走 `commands.register` 标准服务）能当「薄插件」直接 patch-insert，是因为那两个接缝是**裸 cordis 事件/服务**。
+> 薄插件如 `plugins/rename-session.ts`（走 `commands.register` 标准服务）能直接 patch-insert，是因为那些接缝是**裸 cordis 事件/服务**（过去的 `approval-tui.ts` 走 `ctx.on('approval/request', ...)` 瀑布同理；该插件已随 endless-tui 弃用删除）。
 > 而 `tui/rewind-prompt` / `tui/rewind-done` 走的是 **DecisionEvents registry + Component 准入 + grant**——一个裸 `.ts` patch-insert 插件 `ctx.on('tui/rewind-prompt', ...)` 会被 `internal/listener` 守卫**拒绝并打 warning**（源码原话：*"use the mediated DecisionEvents activation surface; the listener was NOT registered"*）。
 
-所以方案 2 不能照抄 `approval-tui.ts` 的挂法，必须在设计里补上 **Component manifest + grants** 这一层。这没有推翻插件模式（仍不改本体），但把「薄插件」升级为「标准 Component 插件」。
+所以方案 2 不能照抄薄挂法，必须在设计里补上 **Component manifest + grants** 这一层。这没有推翻插件模式（仍不改本体），但把「薄插件」升级为「标准 Component 插件」。
 
 **→ 正因为如此，最终采取更轻的路线：独立 `/rewind` 命令插件，完全不碰 `tui/rewind-prompt`。见 §2（已实现，`plugins/rewind-dsh.ts`）。**
 

@@ -17,7 +17,7 @@
 | dsh-tui 0.8.5 能否发挥 rc.8 全部新能力 | 🟡 **部分**：多模态"聊天带图 + @文件"✅；`@会话`引用、`/goal`/`/plan` 带图 ❌；Codex/Claude 子代理只有列表无管理 UI；Windows PTY 无 TUI 面板 |
 | 升级到 rc.8 是否破坏现有使用 | 🟢 不破坏：peer 范围兼容、契约校验只警告不硬失败（见 §4） |
 | 第三方 dsh-tui 是否有 rc.8 适配 | ❌ **没有**：契约仍是 rc.7 单线，无 issue/PR/commit 提及 rc.8（见 §5） |
-| 建议 | 🟢 可升；可接受 ~23 行启动 drift 警告；审批面板 dsh-tui PR #383 未合，本地 approval-tui 已覆盖 |
+| 建议 | 🟢 可升；可接受 ~23 行启动 drift 警告；审批面板 dsh-tui PR #383 未合，当时本地 approval-tui（已随 endless-tui 弃用删除）已覆盖 |
 
 ---
 
@@ -89,7 +89,7 @@
 | **rc.8 适配** | ❌ **零**：无 open PR、无 issue、无 commit 提及 rc.8 |
 | 契约基线 | main 与 0.8.5 都是 `UPSTREAM_VALIDATED_VERSION = '0.1.0-rc.7'`（**单线**） |
 | peer 范围 | main 仍是 23 个包全 `^0.1.0-rc.7` |
-| 相关 PR #383（**open，未合并**） | "优化权限审批面板显示"：write/edit 审批弹窗从原始 JSON 改成**文件路径 + diff 预览**（write 绿色 `+`、edit 红绿 diff、8 行预览）。**与本地 approval-tui 同领域，dsh-tui 在推进** |
+| 相关 PR #383（**open，未合并**） | "优化权限审批面板显示"：write/edit 审批弹窗从原始 JSON 改成**文件路径 + diff 预览**（write 绿色 `+`、edit 红绿 diff、8 行预览）。**与当时本地 approval-tui（已删除）同领域，dsh-tui 在推进** |
 | 相关 PR #330（**open**） | `/agents` 支持进入只读子代理会话（对应子代理管理方向） |
 | 相关 PR #354（**closed，merged: False**） | "支持 0.1.0-rc.6 核心线" **未合并**：dsh-tui 连 rc.6 双线都没进 main，更谈不上 rc.8 |
 
@@ -117,7 +117,7 @@ pnpm up "@deepseek-harness-tui/dsh-tui@^0.8.5"
 |---|---|---|
 | ~23 行启动 drift 警告 | 无害，仅噪音 | 接受，或等 dsh-tui 上游 rc.8 适配，或 fork `contract.ts`（偏离 dsh-tui 校验，需自担验证） |
 | `dsh-llm` retry 2→5 | distill 失败重试变多，最长等待变长 | endless-distill 有 `timeoutMs:30s` + `AbortSignal` 兜底，可接受 |
-| 审批面板 dsh-tui PR #383 未合 | dsh-tui 的 write/edit 可读化尚未发布 | 本地 approval-tui 已覆盖工具+原因显示；如需 diff 预览可跟进 PR #383 |
+| 审批面板 dsh-tui PR #383 未合 | dsh-tui 的 write/edit 可读化尚未发布 | 当时本地 approval-tui（已删除）已覆盖工具+原因显示；如需 diff 预览可跟进 PR #383 |
 
 ---
 

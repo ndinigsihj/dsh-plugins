@@ -98,17 +98,14 @@ usage). It turns yellow at `>=80%`, which is also the `thresholdRatio` where
 Thin Cordis plugins (no self-built TUI modification) mounted into a profile's
 `cordis.patch.yml` via absolute-path `insert`. They are part of the self-built
 TUI: they register dsh-standard commands through the `commands` registry and
-consume standard harness services (`sessionTitle`, `sessions`, `sessionPersistence`,
-`ctx.fs`). `approval-tui.ts` was written for the now-deprecated `endless-tui`
-profile (which ran the third-party `@deepseek-harness-tui/dsh-tui`); it is kept
-only as legacy — the self-built front end in `lib/` has its own approval card
-and does not use it:
+consume standard harness services (`sessionTitle`, `sessions`, `ctx.fs`).
+The old `approval-tui.ts` (for the deprecated `endless-tui` profile) was
+removed — the self-built front end in `lib/` has its own approval card:
 
 | File | Purpose |
 |---|---|
 | `plugins/rename-session.ts` | `/rename <title>` — self-built TUI command; consumes standard `sessionTitle.rename()` via the `commands` registry |
 | `plugins/rewind-dsh.ts` | `/rewind [<seq>]` — self-built TUI command: fork + file-restore + relaunch (see `docs/rewind-file-restore-plugin.md`) |
-| `approval-tui.ts` | legacy `endless-tui` profile (deprecated): route `approval/request` to the TUI question panel |
 
 ## Relay / fleet（dsh-relay 集成）
 
