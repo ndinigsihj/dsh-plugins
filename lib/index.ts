@@ -1317,6 +1317,23 @@ async function run(
     seedProjections();
   }
   await refreshEffortMeta(); // resolve route efforts before the banner renders
+  // relay 模式（attach-client）：worker 会话事件流才是模型权威。resume 后
+  // attach-client 从回放的 request/context 恢复 route 并 emit 到这里，静默
+  // 同步本地状态栏（不发 wire 帧、不刷 command output）。
+  ctx.on("relay/model-restored", (payload: { provider?: unknown; model?: unknown; reasoningEffort?: unknown }) => {
+    if (typeof payload.provider !== "string" || typeof payload.model !== "string") return;
+    const route = { provider: payload.provider, model: payload.model };
+    if (selectionRef !== undefined) {
+      selectionRef.current = {
+        provider: route.provider,
+        model: route.model,
+        ...(typeof payload.reasoningEffort === "string" ? { reasoningEffort: payload.reasoningEffort } : {}),
+      };
+    }
+    liveRoute = route;
+    app.setModelLabel(`${liveRoute.provider}/${liveRoute.model}`);
+    void refreshEffortMeta();
+  });
   showBootBanner();
   updateContextPressure();
   refreshSubagents();
