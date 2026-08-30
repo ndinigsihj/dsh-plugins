@@ -4,6 +4,13 @@
 > 本稿是整体设计（权威）；relay 改造细节见派生设计
 > `~/data/dev/dsh-relay/docs/relay-v1.1-fleet-design.md`，两稿冲突以本稿为准。
 >
+> **⚠️ 2026-08-30 网络层被取代**：本稿的 relay/fleet 网络层部分（§4–§5、§8 第 2 项、
+> `relay-server 单连接单会话`、memory-sink 外挂、fleet-client/`relay-v1.1-fleet-design.md`）
+> 已被 `dsh-relay/docs/relay-v2-hub-router-design.md`（relay v2 hub router，wire v3）取代：
+> 全网络单入站 hub（`:9877`）、worker/TUI/IM 全部出站注册、多会话多路复用、中央记忆单写
+> （废除 memory-sink/local-sink 旁路）。本稿的**整体架构结论**（hub = controller、共享记忆单写、
+> TUI/IM 同构前端、周报用例、安全边界）仍有效；**网络层冲突一律以 relay-v2 稿为准**。
+>
 > 目标场景：macOS（TUI 薄前端）+ 家里 Linux / Windows / Mac mini（各跑一个 dsh worker）+ 手机 IM（Telegram/飞书），
 > 通过 Tailscale 互联；一台 7×24 hub 作为唯一大脑（controller），共享一份记忆/知识库，能向任意设备派活，
 > 并能从 macOS TUI 与手机下达同样的指令。
