@@ -2330,6 +2330,15 @@ async function run(
       app.showNotice("No llm service in this deployment.");
       return;
     }
+    const relayClient = ctx.get<{
+      currentDevice(): string;
+      isAttached(): boolean;
+      switchModel(provider: string, model: string, reasoningEffort?: string): Promise<{ ok: boolean; error?: string }>;
+    }>("relayClient");
+    if (relayClient !== undefined && relayClient.currentDevice() !== "" && !relayClient.isAttached()) {
+      app.showNotice("No worker session yet — run /new or /resume on the workspace first.");
+      return;
+    }
     const active = activeRoute();
     const routes: Array<{ provider: string; model: string }> = [];
     const items: Array<{ value: string; label: string; description?: string }> = [];
@@ -2372,9 +2381,6 @@ async function run(
     }
     // dsh-relay 集成：relay 模式下 relayClient 会把模型选择发到 worker；
     // 本地仍走 hot switch，保证状态栏与降级后一致性。
-    const relayClient = ctx.get<{
-      switchModel(provider: string, model: string, reasoningEffort?: string): Promise<{ ok: boolean; error?: string }>;
-    }>("relayClient");
     if (relayClient !== undefined) {
       const result = await relayClient.switchModel(
         route.provider,
