@@ -1077,14 +1077,22 @@ async function run(
           try {
             const workspaces = await relayClient.listWorkspaces(launcher);
             const needle = prefix.trim();
-            return workspaces
+            const rows = workspaces
               .filter((w) => needle === "" || w.path.startsWith(needle))
-              .slice(0, 20)
-              .map((w) => ({
-                value: w.path,
-                label: w.path,
-                description: w.kind === "running" ? `running · ${w.deviceId ?? ""}` : "directory",
-              }));
+              .slice(0, 20);
+            if (rows.length === 0) {
+              app.showNotice(
+                workspaces.length === 0
+                  ? "No workspaces available on this worker."
+                  : "No matching workspaces on this worker.",
+              );
+              return null;
+            }
+            return rows.map((w) => ({
+              value: w.path,
+              label: w.path,
+              description: w.kind === "running" ? `running · ${w.deviceId ?? ""}` : "directory",
+            }));
           } catch {
             return null;
           }
