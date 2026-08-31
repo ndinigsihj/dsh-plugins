@@ -1173,6 +1173,14 @@ async function run(
       },
     });
     services.commands.register({
+      name: "workspace",
+      description: "Worker mode: pick/switch workspace: /workspace [dir]",
+      handler: ({ rawInput }) => {
+        void doWorkspace(`/workspace ${rawInput}`);
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
       name: "effort",
       description: "Pick the reasoning effort for this session",
       handler: () => {
@@ -2179,17 +2187,93 @@ async function run(
 
   /** /detach — 退出 worker 模式，回到本地（当前会话保留在 worker，本地可续本地会话）。 */
   async function doDetach(): Promise<void> {
-    const relayClient = ctx.get<{ detach(): void; currentDevice(): string }>("relayClient");
+    const relayClient = ctx.get<{
+      detach(): void;
+      currentDevice(): string;
+      listDevices(): Promise<Array<{ deviceId: string; workspace?: string }>>;
+      stopWorkspace(deviceId: string, childDeviceId: string): Promise<{ ok: boolean; error?: string }>;
+    }>("relayClient");
     if (relayClient === undefined) {
       app.showNotice("/detach is only available in relay-capable profiles.");
       return;
     }
-    if (relayClient.currentDevice() === "") {
+    const childDeviceId = relayClient.currentDevice();
+    if (childDeviceId === "") {
       app.showNotice("Already in local mode.");
       return;
     }
     relayClient.detach();
+    // /detach 回收：刚离开的是 workspace child 且仍在线时才请求回收（hub 仅空闲才转发）。
+    const devices = await relayClient.listDevices();
+    const child = devices.find((d) => d.deviceId === childDeviceId && d.workspace !== undefined);
+    if (child !== undefined) {
+      const baseDeviceId = childDeviceId.slice(0, childDeviceId.indexOf("--")) || childDeviceId;
+      const stop = await relayClient.stopWorkspace(baseDeviceId, childDeviceId);
+      app.showNotice(
+        stop.ok ? `Detached — workspace child ${childDeviceId} reclaimed.` : `Detached — ${stop.error ?? "workspace child not reclaimed"}.`,
+      );
+      return;
+    }
     app.showNotice("Detached — back to local mode.");
+  }
+
+  /** /workspace — worker 模式内选择/切换 workspace（launcher 子 worker）。 */
+  async function doWorkspace(line: string): Promise<void> {
+    const relayClient = ctx.get<{
+      currentDevice(): string;
+      listWorkspaces(deviceId: string): Promise<Array<{ path: string; kind: "dir" | "running"; deviceId?: string }>>;
+      spawnWorkspace(deviceId: string, workspace: string): Promise<{ ok: boolean; deviceId?: string; error?: string }>;
+      switchDevice(deviceId: string): void;
+    }>("relayClient");
+    if (relayClient === undefined) {
+      app.showNotice("/workspace is only available in relay-capable profiles.");
+      return;
+    }
+    const current = relayClient.currentDevice();
+    if (current === "") {
+      app.showNotice("Already in local mode — /attach first to enter worker mode.");
+      return;
+    }
+    if (agent.status === "running") {
+      app.showNotice("Agent is running — Esc cancels it first.");
+      return;
+    }
+    // 当前可能是 workspace child：切 workspace 都走其 launcher（"--" 前为 base）。
+    const launcherDeviceId = current.includes("--") ? current.slice(0, current.indexOf("--")) : current;
+    const arg = line.trim().split(/\s+/)[1] ?? "";
+    let workspace = "";
+    if (arg === "") {
+      app.showNotice("Loading workspaces…");
+      const workspaces = await relayClient.listWorkspaces(launcherDeviceId);
+      if (workspaces.length === 0) {
+        app.showNotice("No workspaces available on this worker.");
+        return;
+      }
+      const items = workspaces.map((w, i) => ({
+        value: String(i),
+        label: w.path,
+        description: w.kind === "running" ? `running · ${w.deviceId ?? ""}` : "directory",
+      }));
+      const picked = await app.pickSession(items);
+      if (picked === null) {
+        app.showNotice("Workspace selection cancelled.");
+        return;
+      }
+      workspace = workspaces[Number(picked)]?.path ?? "";
+    } else {
+      workspace = arg;
+    }
+    if (workspace === "") {
+      app.showNotice("Unknown workspace.");
+      return;
+    }
+    const result = await relayClient.spawnWorkspace(launcherDeviceId, workspace);
+    if (!result.ok) {
+      app.showNotice(`/workspace failed: ${result.error ?? "unknown error"}`);
+      return;
+    }
+    relayClient.switchDevice(result.deviceId ?? "");
+    app.showNotice(`Workspace set to ${workspace} — /new or /resume on ${result.deviceId}.`);
   }
 
   /** /model — pick a route and switch THIS session onto it (history intact). */
@@ -2450,7 +2534,7 @@ async function run(
       }
       try {
         app.showNotice("Loading worker sessions…");
-        const sessions = await relayClient.listSessions(device);
+        const sessions = await relayClient!.listSessions(device);
         if (sessions.length === 0) {
           app.showNotice("No sessions on this worker.");
           return;
