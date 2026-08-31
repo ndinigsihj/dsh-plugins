@@ -1700,6 +1700,59 @@ async function literalPathCandidates(
     }));
 }
 
+/** pi-tui 的 CombinedAutocompleteProvider 把显式 Tab 当作路径补全（即使光标在
+ * 斜杠命令参数里）。这个包装器先把强制 Tab 路由到命令自己的
+ * getArgumentCompletions（如 /workspace 的远端目录），没有参数补全或为空时
+ * 才回退到 inner 的本地文件补全。 */
+class CommandAwareAutocompleteProvider implements AutocompleteProvider {
+  // Explicit fields: Node strip-only TS rejects parameter properties.
+  private readonly inner: CombinedAutocompleteProvider;
+  private readonly commands: AutocompleteCommand[];
+
+  constructor(inner: CombinedAutocompleteProvider, commands: AutocompleteCommand[]) {
+    this.inner = inner;
+    this.commands = commands;
+  }
+
+  async getSuggestions(
+    lines: string[],
+    cursorLine: number,
+    cursorCol: number,
+    options: { signal: AbortSignal; force?: boolean },
+  ): Promise<AutocompleteSuggestions | null> {
+    const currentLine = lines[cursorLine] ?? "";
+    const textBeforeCursor = currentLine.slice(0, cursorCol);
+    if (options.force && textBeforeCursor.startsWith("/") && textBeforeCursor.includes(" ")) {
+      const spaceIndex = textBeforeCursor.indexOf(" ");
+      const commandName = textBeforeCursor.slice(1, spaceIndex);
+      const argumentPrefix = textBeforeCursor.slice(spaceIndex + 1);
+      const command = this.commands.find((c) => c.name === commandName);
+      if (command?.getArgumentCompletions !== undefined) {
+        const items = await command.getArgumentCompletions(argumentPrefix);
+        if (items !== null && items.length > 0) {
+          return { items, prefix: argumentPrefix };
+        }
+        return null; // 有参数补全但结果为空：不落到本地文件补全
+      }
+    }
+    return this.inner.getSuggestions(lines, cursorLine, cursorCol, options);
+  }
+
+  applyCompletion(
+    lines: string[],
+    cursorLine: number,
+    cursorCol: number,
+    item: { value: string; label: string; description?: string },
+    prefix: string,
+  ): { lines: string[]; cursorLine: number; cursorCol: number } {
+    return this.inner.applyCompletion(lines, cursorLine, cursorCol, item as never, prefix);
+  }
+
+  shouldTriggerFileCompletion(lines: string[], cursorLine: number, cursorCol: number): boolean {
+    return this.inner.shouldTriggerFileCompletion?.(lines, cursorLine, cursorCol) ?? true;
+  }
+}
+
 /** Provider composition: pi-tui keeps command + grammar handling; when an
  * @-context is active and the harness discovery seam is wired, its
  * candidates REPLACE the cwd-walk results — inner stays the fallback for
@@ -1708,11 +1761,11 @@ async function literalPathCandidates(
 class FileReferenceAutocomplete implements AutocompleteProvider {
   // Explicit fields: Node strip-only TS rejects parameter properties
   // (ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX) — they require emit.
-  private readonly inner: CombinedAutocompleteProvider;
+  private readonly inner: AutocompleteProvider;
   private readonly files: TuiAppOptions["fileCompletions"];
   private readonly sessions: TuiAppOptions["sessionCompletions"] | undefined;
   constructor(
-    inner: CombinedAutocompleteProvider,
+    inner: AutocompleteProvider,
     files?: TuiAppOptions["fileCompletions"],
     sessions?: TuiAppOptions["sessionCompletions"],
   ) {
@@ -1730,7 +1783,7 @@ class FileReferenceAutocomplete implements AutocompleteProvider {
     const base = await this.inner.getSuggestions(lines, cursorLine, cursorCol, options);
     if (
       (this.files === undefined && this.sessions === undefined) ||
-      !this.inner.shouldTriggerFileCompletion(lines, cursorLine, cursorCol)
+      !(this.inner.shouldTriggerFileCompletion?.(lines, cursorLine, cursorCol) ?? true)
     ) {
       return base;
     }
@@ -1888,7 +1941,11 @@ export class TuiApp {
         process.cwd(),
       );
       this.editor.setAutocompleteProvider(
-        new FileReferenceAutocomplete(provider, options.fileCompletions, options.sessionCompletions),
+        new FileReferenceAutocomplete(
+          new CommandAwareAutocompleteProvider(provider, options.autocomplete.commands),
+          options.fileCompletions,
+          options.sessionCompletions,
+        ),
       );
       this.editor.setAutocompleteMaxVisible?.(8);
     }

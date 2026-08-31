@@ -1061,6 +1061,35 @@ async function run(
         },
       },
       { name: "model", description: "Switch this session's model (history carries over)" },
+      {
+        name: "workspace",
+        description: "Worker mode: switch workspace on the attached launcher",
+        argumentHint: "[dir]",
+        getArgumentCompletions: async (prefix) => {
+          const relayClient = ctx.get<{
+            currentDevice(): string;
+            listWorkspaces(deviceId: string): Promise<Array<{ path: string; kind: "dir" | "running"; deviceId?: string }>>;
+          }>("relayClient");
+          if (relayClient === undefined) return null;
+          const current = relayClient.currentDevice();
+          if (current === "") return null;
+          const launcher = current.includes("--") ? current.slice(0, current.indexOf("--")) : current;
+          try {
+            const workspaces = await relayClient.listWorkspaces(launcher);
+            const needle = prefix.trim();
+            return workspaces
+              .filter((w) => needle === "" || w.path.startsWith(needle))
+              .slice(0, 20)
+              .map((w) => ({
+                value: w.path,
+                label: w.path,
+                description: w.kind === "running" ? `running · ${w.deviceId ?? ""}` : "directory",
+              }));
+          } catch {
+            return null;
+          }
+        },
+      },
       { name: "tools", description: "List registered tools (native + MCP)", argumentHint: "[filter]" },
     ];
     for (const local of locals) {
@@ -2203,9 +2232,13 @@ async function run(
       return;
     }
     relayClient.detach();
-    // /detach 回收：刚离开的是 workspace child 且仍在线时才请求回收（hub 仅空闲才转发）。
+    // /detach 回收：仅当刚离开的是 workspace child（deviceId 含 "--"）且仍在线时
+    // 才请求回收（hub 仅空闲才转发）。base worker 也带 workspace 字段，不能仅凭它判断。
+    const isWorkspaceChild = childDeviceId.includes("--");
     const devices = await relayClient.listDevices();
-    const child = devices.find((d) => d.deviceId === childDeviceId && d.workspace !== undefined);
+    const child = isWorkspaceChild
+      ? devices.find((d) => d.deviceId === childDeviceId && d.workspace !== undefined)
+      : undefined;
     if (child !== undefined) {
       const baseDeviceId = childDeviceId.slice(0, childDeviceId.indexOf("--")) || childDeviceId;
       const stop = await relayClient.stopWorkspace(baseDeviceId, childDeviceId);
