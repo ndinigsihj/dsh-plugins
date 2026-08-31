@@ -1144,6 +1144,14 @@ async function run(
       },
     });
     services.commands.register({
+      name: "device",
+      description: "List/switch relay worker device: /device [id]",
+      handler: ({ rawInput }) => {
+        void doDevice(rawInput);
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
       name: "effort",
       description: "Pick the reasoning effort for this session",
       handler: () => {
@@ -1334,6 +1342,11 @@ async function run(
     app.setModelLabel(`${liveRoute.provider}/${liveRoute.model}`);
     void refreshEffortMeta();
   });
+  // relay 模式：attach-client 在 attach/切换时上报当前设备，状态栏显示（本地直连无事件）。
+  ctx.on("relay/device-changed", (payload: { deviceId?: unknown }) => {
+    if (typeof payload?.deviceId !== "string" || payload.deviceId === "") return;
+    app.setDeviceLabel(payload.deviceId);
+  });
   showBootBanner();
   updateContextPressure();
   refreshSubagents();
@@ -1440,11 +1453,12 @@ async function run(
     refreshGoal();
   }
 
-  /** /new — fresh session in-process: create + rebind, keep this terminal. */
-  async function startNewSession(): Promise<void> {
+  /** /new — fresh session in-process: create + rebind, keep this terminal.
+   * @returns true 成功；false 被 veto 或创建失败（/device 用返回值回滚）。 */
+  async function startNewSession(): Promise<boolean> {
     if (agent.status === "running") {
       app.showNotice("Agent is running — Esc cancels it first.");
-      return;
+      return false;
     }
     try {
       await services.sessions.flush(agent.session);
@@ -1471,10 +1485,12 @@ async function run(
         `New session ${result.agent.id}` +
           (fresh.agentPreset === undefined ? "." : ` (preset ${fresh.agentPreset}).`),
       );
+      return true;
     } catch (error) {
       app.showNotice(
         `/new failed: ${error instanceof Error ? error.message : String(error)} — staying on ${agent.id}`,
       );
+      return false;
     }
   }
 
@@ -2055,6 +2071,70 @@ async function run(
         `Model switch failed: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
+  }
+
+  /** /device — relay 模式下列出/切换目标 worker（切换 = 连接新 server，一切重头）。 */
+  async function doDevice(rawInput: string): Promise<void> {
+    const relayClient = ctx.get<{
+      listDevices(): Promise<Array<{ deviceId: string; platform?: string; capabilities?: string[]; streams: number }>>;
+      switchDevice(deviceId: string): void;
+      reattach(): void;
+      currentDevice(): string;
+    }>("relayClient");
+    if (relayClient === undefined) {
+      app.showNotice("/device is only available in relay mode.");
+      return;
+    }
+    if (agent.status === "running") {
+      app.showNotice("Agent is running — Esc cancels it first.");
+      return;
+    }
+    const current = relayClient.currentDevice();
+    let target = "";
+    let devices: Array<{ deviceId: string; platform?: string; capabilities?: string[]; streams: number }> = [];
+    const arg = rawInput.trim();
+    if (arg === "") {
+      devices = await relayClient.listDevices();
+      if (devices.length === 0) {
+        app.showNotice("No online devices.");
+        return;
+      }
+      const items = devices.map((d, i) => ({
+        value: String(i),
+        label: `${d.deviceId}${d.deviceId === current ? "  ← current" : ""}`,
+        description:
+          [d.platform, (d.capabilities ?? []).join(","), `${d.streams} stream${d.streams === 1 ? "" : "s"}`]
+            .filter(Boolean)
+            .join(" · ") || undefined,
+      }));
+      const picked = await app.pickSession(items);
+      if (picked === null) {
+        app.showNotice("Device selection cancelled.");
+        return;
+      }
+      target = devices[Number(picked)]?.deviceId ?? "";
+    } else {
+      target = arg;
+      devices = await relayClient.listDevices(); // 直连参数：校验目标在线，避免 attach-target-missing
+    }
+    if (target === "" || target === current) {
+      app.showNotice(target === "" ? "Unknown device." : `Already on ${current}.`);
+      return;
+    }
+    if (!devices.some((d) => d.deviceId === target)) {
+      app.showNotice(`Device ${target} is not online.`);
+      return;
+    }
+    relayClient.switchDevice(target);
+    const ok = await startNewSession();
+    if (!ok) {
+      // 回滚：新会话创建失败 → 恢复原设备并重挂当前会话（wire 已 detach）。
+      relayClient.switchDevice(current);
+      relayClient.reattach();
+      app.showNotice(`/device failed — stayed on ${current}.`);
+      return;
+    }
+    app.showNotice(`Switched to device ${target} — fresh session.`);
   }
 
   /** /model — pick a route and switch THIS session onto it (history intact). */

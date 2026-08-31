@@ -1812,6 +1812,8 @@ export class TuiApp {
   private readonly todosLine: Text;
   private agent: AgentSurface;
   private modelLabel: string;
+  /** Relay 模式当前设备（attach-client 经 relay/device-changed 设置；本地直连为空）。 */
+  private deviceLabel = "";
   private statusValue: "idle" | "running" = "idle";
   private contextInfo: ContextOccupancy | null = null;
   private cacheRate: number | null = null;
@@ -1929,6 +1931,11 @@ export class TuiApp {
 
   setModelLabel(label: string): void {
     this.modelLabel = label;
+    this.updateStatus();
+  }
+
+  setDeviceLabel(label: string): void {
+    this.deviceLabel = label;
     this.updateStatus();
   }
 
@@ -2311,6 +2318,7 @@ export class TuiApp {
     const dot = running ? this.p.fg("●", "yellow") : this.p.fg("●", "green");
     const sep = this.p.dim(" · ");
     const left = [`${dot} ${this.p.dim(this.modelLabel)}`];
+    if (this.deviceLabel !== "") left.push(this.p.dim(this.deviceLabel));
     // Bare effort name — no prefix, keep the bar lean (banner carries labels).
     if (this.thinkLabel !== null) left.push(this.p.fg(this.thinkLabel, "cyan"));
     if (this.cacheRate !== null) left.push(this.p.dim(`cache ${this.cacheRate}%`));
