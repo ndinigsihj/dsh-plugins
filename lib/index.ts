@@ -2412,8 +2412,70 @@ async function run(
     }
   }
 
+  /** worker 模式 /resume：attach 到 worker 的显式会话 id（本地新镜像，worker 重放历史）。
+   * 不混合本地：只操作 worker 会话。 */
+  async function resumeWorkerSession(deviceId: string, sessionId: string): Promise<void> {
+    const relayClient = ctx.get<{ attachSession(d: string, s: string): void; detach(): void }>("relayClient");
+    if (relayClient === undefined) return;
+    if (agent.status === "running") {
+      app.showNotice("Agent is running — Esc cancels it first.");
+      return;
+    }
+    relayClient.attachSession(deviceId, sessionId);
+    const ok = await startNewSession(); // 新镜像 agent → reattach 到 worker sessionId
+    if (!ok) {
+      relayClient.detach(); // 清 override + 回本地
+      app.showNotice("Worker resume failed — back to local mode.");
+      return;
+    }
+    app.showNotice(`Resumed worker session ${sessionId.slice(0, 13)}…`);
+  }
+
   async function doResume(line: string): Promise<void> {
+    const relayClient = ctx.get<{
+      currentDevice(): string;
+      listSessions(deviceId: string): Promise<Array<{ id: string; cwd?: string; createdAt: number; title?: string }>>;
+    }>("relayClient");
+    const device = relayClient?.currentDevice() ?? ""; // "" = 本地模式
     const id = line.trim().split(/\s+/)[1];
+    if (device !== "") {
+      // worker 模式：/resume 只列/续 worker 会话（不混合本地）。
+      if (id !== undefined) {
+        if (id === agent.id) {
+          app.showNotice("already in this session");
+          return;
+        }
+        await resumeWorkerSession(device, id);
+        return;
+      }
+      try {
+        app.showNotice("Loading worker sessions…");
+        const sessions = await relayClient.listSessions(device);
+        if (sessions.length === 0) {
+          app.showNotice("No sessions on this worker.");
+          return;
+        }
+        const items = sessions.map((s) => ({
+          value: s.id,
+          label: truncate(s.title ?? s.id, 60),
+          description: `${relativeTime(s.createdAt)} · ${s.cwd ?? ""}`,
+        }));
+        const picked = await app.pickSession(items);
+        if (picked === null) {
+          app.showNotice("Resume cancelled.");
+          return;
+        }
+        if (picked === agent.id) {
+          app.showNotice("already in this session");
+          return;
+        }
+        await resumeWorkerSession(device, picked);
+      } catch (error) {
+        app.showNotice(`dsh-tui: worker resume failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      return;
+    }
+    // 本地模式：现有逻辑（本地会话列表 + relaunch）。
     if (id !== undefined) {
       if (id === agent.id) {
         app.showNotice("already in this session");
