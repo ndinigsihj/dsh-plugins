@@ -746,13 +746,15 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
 }
 
 /** Plugin config (patch layer): `preset` pins the deployment's preset;
- * `provider`/`model` pin the model route. All optional. */
-function parseConfig(config: unknown): { preset?: string; provider?: string; model?: string } {
+ * `provider`/`model` pin the model route; `mirrorRoot` pins the relay mirror
+ * session cwd to a fixed root (同 id 不跨 cwd 根重复, docs relay-v2-tui-mirror-root).
+ * All optional. */
+function parseConfig(config: unknown): { preset?: string; provider?: string; model?: string; mirrorRoot?: string } {
   if (config === null || typeof config !== "object" || Array.isArray(config)) return {};
   const cfg = config as Record<string, unknown>;
   const str = (v: unknown): string | undefined =>
     typeof v === "string" && v.trim() !== "" ? v.trim() : undefined;
-  return { preset: str(cfg.preset), provider: str(cfg.provider), model: str(cfg.model) };
+  return { preset: str(cfg.preset), provider: str(cfg.provider), model: str(cfg.model), mirrorRoot: str(cfg.mirrorRoot) };
 }
 
 function apply(ctx: CordisContext, config?: unknown): void {
@@ -766,7 +768,7 @@ function apply(ctx: CordisContext, config?: unknown): void {
 
 async function run(
   ctx: CordisContext,
-  own: { preset?: string; provider?: string; model?: string },
+  own: { preset?: string; provider?: string; model?: string; mirrorRoot?: string },
 ): Promise<void> {
   await ctx.get<{ await(): Promise<void> }>("loader")?.await();
 
@@ -952,7 +954,8 @@ async function run(
   created ??= await services.agents.create({
     sessionId: SessionId(`session-${randomUUID()}`),
     meta: {
-      cwd: process.cwd(),
+      // relay 模式：镜像固定根（own.mirrorRoot），避免同 id 跨 cwd 根重复（设计 2b）。
+      cwd: own.mirrorRoot ?? process.cwd(),
       ...(composed.agentPreset === undefined ? {} : { agentPreset: composed.agentPreset }),
     },
     agentOptions,
@@ -1471,7 +1474,7 @@ async function run(
       const result = await services.agents.create({
         sessionId: SessionId(`session-${randomUUID()}`),
         meta: {
-          cwd: process.cwd(),
+          cwd: own.mirrorRoot ?? process.cwd(), // 同 boot：relay 镜像固定根（设计 2b）
           ...(fresh.agentPreset === undefined ? {} : { agentPreset: fresh.agentPreset }),
         },
         agentOptions,
