@@ -899,6 +899,8 @@ async function run(
    * a slow resolve for an old route must never overwrite a newer one). */
   let effortMetaKey = "";
   let effortGeneration = 0;
+  /** worker 模式（已 attach）标志：本地 /new 用 process.cwd()，worker /new 用 mirrorRoot（2b）。 */
+  let workerMode = false;
   let resumeTrace = "no-resume";
   if (resumeId !== undefined) {
     const facts = await bootResumeFacts(resumeId);
@@ -954,8 +956,8 @@ async function run(
   created ??= await services.agents.create({
     sessionId: SessionId(`session-${randomUUID()}`),
     meta: {
-      // relay 模式：镜像固定根（own.mirrorRoot），避免同 id 跨 cwd 根重复（设计 2b）。
-      cwd: own.mirrorRoot ?? process.cwd(),
+      // boot 默认本地模式：cwd 跟随启动目录；worker 模式的新会话在 startNewSession 里用 mirrorRoot。
+      cwd: process.cwd(),
       ...(composed.agentPreset === undefined ? {} : { agentPreset: composed.agentPreset }),
     },
     agentOptions,
@@ -1147,10 +1149,26 @@ async function run(
       },
     });
     services.commands.register({
-      name: "device",
-      description: "List/switch relay worker device: /device [id]",
+      name: "attach",
+      description: "Local→worker attach / worker device switch: /attach [id]",
       handler: ({ rawInput }) => {
-        void doDevice(rawInput);
+        void doAttach(rawInput);
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "device",
+      description: "alias of /attach (worker device switch)",
+      handler: ({ rawInput }) => {
+        void doAttach(rawInput);
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "detach",
+      description: "Return to local mode (leave the worker)",
+      handler: () => {
+        void doDetach();
         return { kind: "success" };
       },
     });
@@ -1345,11 +1363,14 @@ async function run(
     app.setModelLabel(`${liveRoute.provider}/${liveRoute.model}`);
     void refreshEffortMeta();
   });
-  // relay 模式：attach-client 在 attach/切换时上报当前设备，状态栏显示（本地直连无事件）。
+  // 本地/worker 双模式：attach-client 上报当前设备；"" = 本地模式 → 显示 local。
   ctx.on("relay/device-changed", (payload: { deviceId?: unknown }) => {
-    if (typeof payload?.deviceId !== "string" || payload.deviceId === "") return;
-    app.setDeviceLabel(payload.deviceId);
+    const id = typeof payload?.deviceId === "string" ? payload.deviceId : "";
+    workerMode = id !== "";
+    app.setDeviceLabel(id === "" ? "local" : id);
   });
+  // boot 默认本地模式：状态栏先显示 local（attach 事件到达后再覆盖）。
+  app.setDeviceLabel("local");
   showBootBanner();
   updateContextPressure();
   refreshSubagents();
@@ -1474,7 +1495,8 @@ async function run(
       const result = await services.agents.create({
         sessionId: SessionId(`session-${randomUUID()}`),
         meta: {
-          cwd: own.mirrorRoot ?? process.cwd(), // 同 boot：relay 镜像固定根（设计 2b）
+          // worker 模式：镜像固定根（2b），避免同 id 跨 cwd 根重复；本地模式跟 process.cwd()。
+          cwd: workerMode && own.mirrorRoot !== undefined ? own.mirrorRoot : process.cwd(),
           ...(fresh.agentPreset === undefined ? {} : { agentPreset: fresh.agentPreset }),
         },
         agentOptions,
@@ -2076,23 +2098,26 @@ async function run(
     }
   }
 
-  /** /device — relay 模式下列出/切换目标 worker（切换 = 连接新 server，一切重头）。 */
-  async function doDevice(rawInput: string): Promise<void> {
+  /** /attach — 本地/worker 双模式：本地模式进入 worker（新 worker 会话），worker 模式换设备。
+   * currentDevice() === "" = 本地模式。 */
+  async function doAttach(rawInput: string): Promise<void> {
     const relayClient = ctx.get<{
       listDevices(): Promise<Array<{ deviceId: string; platform?: string; capabilities?: string[]; streams: number }>>;
+      attach(deviceId: string): void;
+      detach(): void;
       switchDevice(deviceId: string): void;
       reattach(): void;
       currentDevice(): string;
     }>("relayClient");
     if (relayClient === undefined) {
-      app.showNotice("/device is only available in relay mode.");
+      app.showNotice("/attach is only available in relay-capable profiles.");
       return;
     }
     if (agent.status === "running") {
       app.showNotice("Agent is running — Esc cancels it first.");
       return;
     }
-    const current = relayClient.currentDevice();
+    const current = relayClient.currentDevice(); // "" = 本地模式
     let target = "";
     let devices: Array<{ deviceId: string; platform?: string; capabilities?: string[]; streams: number }> = [];
     const arg = rawInput.trim();
@@ -2112,7 +2137,7 @@ async function run(
       }));
       const picked = await app.pickSession(items);
       if (picked === null) {
-        app.showNotice("Device selection cancelled.");
+        app.showNotice("Selection cancelled.");
         return;
       }
       target = devices[Number(picked)]?.deviceId ?? "";
@@ -2128,16 +2153,43 @@ async function run(
       app.showNotice(`Device ${target} is not online.`);
       return;
     }
-    relayClient.switchDevice(target);
-    const ok = await startNewSession();
-    if (!ok) {
-      // 回滚：新会话创建失败 → 恢复原设备并重挂当前会话（wire 已 detach）。
-      relayClient.switchDevice(current);
-      relayClient.reattach();
-      app.showNotice(`/device failed — stayed on ${current}.`);
+    if (current === "") {
+      // 本地模式 → attach：arm + 开新 worker 会话（agent/created 触发 attach 到 target）。
+      relayClient.attach(target);
+      const ok = await startNewSession();
+      if (!ok) {
+        relayClient.detach(); // 新会话失败 → 回本地
+        app.showNotice(`/attach failed — stayed local.`);
+        return;
+      }
+      app.showNotice(`Attached to ${target} — fresh worker session.`);
+    } else {
+      // worker 模式 → 换设备（新会话）。
+      relayClient.switchDevice(target);
+      const ok = await startNewSession();
+      if (!ok) {
+        relayClient.switchDevice(current);
+        relayClient.reattach();
+        app.showNotice(`/attach failed — stayed on ${current}.`);
+        return;
+      }
+      app.showNotice(`Switched to device ${target} — fresh session.`);
+    }
+  }
+
+  /** /detach — 退出 worker 模式，回到本地（当前会话保留在 worker，本地可续本地会话）。 */
+  async function doDetach(): Promise<void> {
+    const relayClient = ctx.get<{ detach(): void; currentDevice(): string }>("relayClient");
+    if (relayClient === undefined) {
+      app.showNotice("/detach is only available in relay-capable profiles.");
       return;
     }
-    app.showNotice(`Switched to device ${target} — fresh session.`);
+    if (relayClient.currentDevice() === "") {
+      app.showNotice("Already in local mode.");
+      return;
+    }
+    relayClient.detach();
+    app.showNotice("Detached — back to local mode.");
   }
 
   /** /model — pick a route and switch THIS session onto it (history intact). */
