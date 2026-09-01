@@ -2232,7 +2232,7 @@ async function run(
       relayClient.attach(target);
       const ok = await startNewSession();
       if (!ok) {
-        relayClient.detach(); // 新会话失败 → 回本地
+        void relayClient.detach(); // 新会话失败 → 回本地
         currentWorkspacePath = "";
         app.showNotice(`/attach failed — stayed local.`);
         return;
@@ -2256,7 +2256,7 @@ async function run(
   /** /detach — 退出 worker 模式，回到本地（当前会话保留在 worker，本地可续本地会话）。 */
   async function doDetach(): Promise<void> {
     const relayClient = ctx.get<{
-      detach(): void;
+      detach(): Promise<void>;
       currentDevice(): string;
       listDevices(): Promise<Array<{ deviceId: string; workspace?: string }>>;
       stopWorkspace(deviceId: string, childDeviceId: string): Promise<{ ok: boolean; error?: string }>;
@@ -2270,7 +2270,7 @@ async function run(
       app.showNotice("Already in local mode.");
       return;
     }
-    relayClient.detach();
+    await relayClient.detach();
     currentWorkspacePath = "";
     // /detach 回收：仅当刚离开的是 workspace child（deviceId 含 "--"）且仍在线时
     // 才请求回收（hub 仅空闲才转发）。base worker 也带 workspace 字段，不能仅凭它判断。
@@ -2616,7 +2616,7 @@ async function run(
     relayClient.attachSession(deviceId, sessionId);
     const ok = await startNewSession(); // 新镜像 agent → reattach 到 worker sessionId
     if (!ok) {
-      relayClient.detach(); // 清 override + 回本地
+      void relayClient.detach(); // 清 override + 回本地
       app.showNotice("Worker resume failed — back to local mode.");
       return;
     }
