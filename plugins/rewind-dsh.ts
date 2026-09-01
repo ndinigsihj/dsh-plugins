@@ -532,6 +532,16 @@ function apply(ctx: Context): void {
       if (!Number.isInteger(seq) || seq < 0) {
         return { kind: "error", text: "usage: /rewind <seq>" };
       }
+      // Relay worker 会话：fork/文件恢复/execve 都是本地会话语义，远端文件
+      // 不在本机，child.header.cwd（mirrorRoot）也常不存在——直接拒绝，避免
+      // 走到 relaunch 后 chdir 失败把 TUI 卡死（2026-09-02 复现）。
+      const relayClient = getService<{ currentDevice(): string }>(ctx, "relayClient");
+      if (relayClient !== undefined && relayClient.currentDevice() !== "") {
+        return {
+          kind: "error",
+          text: "rewind is not supported on relay worker sessions yet (files live on the remote worker) — use /resume to switch sessions",
+        };
+      }
       // Relay sessions can have sparse seq (local mirror only carries the
       // remote window), so index by seq — never by array position.
       const picked = eventAtSeq(events, seq);

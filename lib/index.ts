@@ -1991,6 +1991,11 @@ async function run(
    * history yet, so an empty agent log falls back to sessionQuery's.
    */
   async function doRewindPicker(): Promise<void> {
+    const relayClient = ctx.get<{ currentDevice(): string }>("relayClient");
+    if (relayClient !== undefined && relayClient.currentDevice() !== "") {
+      app.showNotice("Rewind isn't supported on relay worker sessions yet (files are on the remote worker).");
+      return;
+    }
     let items = rewindCandidates(agent.session.events ?? []);
     if (items.length === 0 && services.sessionQuery !== undefined) {
       try {
