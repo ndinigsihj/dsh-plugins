@@ -2295,7 +2295,7 @@ async function run(
     const relayClient = ctx.get<{
       currentDevice(): string;
       listDevices(): Promise<Array<{ deviceId: string; workspace?: string }>>;
-      listWorkspaces(deviceId: string): Promise<Array<{ path: string; kind: "dir" | "running"; deviceId?: string }>>;
+      listWorkspaces(deviceId: string, path?: string): Promise<Array<{ path: string; kind: "dir" | "running"; deviceId?: string }>>;
       spawnWorkspace(deviceId: string, workspace: string): Promise<{ ok: boolean; deviceId?: string; error?: string }>;
       switchDevice(deviceId: string): void;
     }>("relayClient");
@@ -2317,23 +2317,47 @@ async function run(
     const arg = line.trim().split(/\s+/)[1] ?? "";
     let workspace = "";
     if (arg === "") {
-      app.showNotice("Loading workspaces…");
-      const workspaces = await relayClient.listWorkspaces(launcherDeviceId);
-      if (workspaces.length === 0) {
-        app.showNotice("No workspaces available on this worker.");
-        return;
+      let browsing: string | undefined; // undefined = roots 总览
+      let done = false;
+      while (!done) {
+        app.showNotice(browsing === undefined ? "Loading workspaces…" : `Loading ${browsing}…`);
+        const workspaces = await relayClient.listWorkspaces(launcherDeviceId, browsing);
+        if (workspaces.length === 0 && browsing === undefined) {
+          app.showNotice("No workspaces available on this worker.");
+          return;
+        }
+        const items: Array<{ value: string; label: string; description?: string }> = [];
+        if (browsing !== undefined) {
+          items.push(
+            { value: "__use__", label: "✓ 使用当前目录", description: browsing },
+            { value: "__back__", label: "↑ 返回 roots 总览", description: "回到根目录列表" },
+          );
+        }
+        items.push(
+          ...workspaces.map((w) => ({
+            value: w.kind === "running" && w.deviceId !== undefined ? `__run__:${w.deviceId}` : `__dir__:${w.path}`,
+            label: w.kind === "running" ? `${basename(w.path)} (running)` : `${basename(w.path)}/`,
+            description: w.kind === "running" ? `running · ${w.deviceId ?? ""}` : w.path,
+          })),
+        );
+        const picked = await app.pickSession(items);
+        if (picked === null) {
+          app.showNotice("Workspace selection cancelled.");
+          return;
+        }
+        const value = items[Number(picked)]?.value ?? "";
+        if (value === "__use__") {
+          workspace = browsing ?? "";
+          done = true;
+        } else if (value === "__back__") {
+          browsing = undefined;
+        } else if (value.startsWith("__run__:")) {
+          workspace = workspaces.find((w) => w.deviceId === value.slice("__run__:".length))?.path ?? "";
+          done = true;
+        } else if (value.startsWith("__dir__:")) {
+          browsing = value.slice("__dir__:".length);
+        }
       }
-      const items = workspaces.map((w, i) => ({
-        value: String(i),
-        label: w.path,
-        description: w.kind === "running" ? `running · ${w.deviceId ?? ""}` : "directory",
-      }));
-      const picked = await app.pickSession(items);
-      if (picked === null) {
-        app.showNotice("Workspace selection cancelled.");
-        return;
-      }
-      workspace = workspaces[Number(picked)]?.path ?? "";
     } else {
       workspace = arg;
     }
