@@ -901,6 +901,10 @@ async function run(
   let effortGeneration = 0;
   /** worker 模式（已 attach）标志：本地 /new 用 process.cwd()，worker /new 用 mirrorRoot（2b）。 */
   let workerMode = false;
+  /** 当前内存里的模型选择：ref 优先，其次 liveRoute，最后启动默认。 */
+  function currentModelSelection(): { provider: string; model: string; reasoningEffort?: string } {
+    return selectionRef?.current ?? liveRoute ?? agentOptions;
+  }
   let resumeTrace = "no-resume";
   if (resumeId !== undefined) {
     const facts = await bootResumeFacts(resumeId);
@@ -1263,10 +1267,16 @@ async function run(
     agent: agentSurface(agent),
     modelLabel: `${liveRoute.provider}/${liveRoute.model}`,
     presenters,
-    onPrompt: (text, images) => {
+    onPrompt: async (text, images) => {
       if (text.startsWith("/")) {
         void runCommand(text);
         return;
+      }
+      const relayClient = ctx.get<{ currentDevice(): string; isAttached(): boolean }>("relayClient");
+      if (relayClient !== undefined && relayClient.currentDevice() !== "" && !relayClient.isAttached()) {
+        // worker 模式且还没有流：首句输入自动在 worker 上建新会话（与本地首句建会话对齐）。
+        const ok = await startNewSession();
+        if (!ok) return;
       }
       const content = [{ type: "text", text }] as unknown as Parameters<
         typeof createUserMessage
@@ -1534,6 +1544,14 @@ async function run(
     } catch {
       /* flush failure still switches */
     }
+    const route = currentModelSelection();
+    const relayClient = ctx.get<{
+      setNextModel(model: { provider: string; model: string; reasoningEffort?: string }): void;
+    }>("relayClient");
+    if (workerMode && relayClient !== undefined) {
+      // fresh attach 时把这个内存模型带到 worker（只影响本次新会话）。
+      relayClient.setNextModel(route);
+    }
     const requested = own.preset;
     const fresh = await composePreset(services.agentPresets, requested, (m) => app.showNotice(m));
     try {
@@ -1544,11 +1562,11 @@ async function run(
           cwd: workerMode && own.mirrorRoot !== undefined ? own.mirrorRoot : process.cwd(),
           ...(fresh.agentPreset === undefined ? {} : { agentPreset: fresh.agentPreset }),
         },
-        agentOptions,
-        setup: makeSetup(fresh, agentOptions),
+        agentOptions: route,
+        setup: makeSetup(fresh, route),
       });
       await adoptAgent(result.agent);
-      liveRoute = agentOptions; // /new rides the same default route
+      liveRoute = { provider: route.provider, model: route.model }; // /new rides the chosen route
       await refreshEffortMeta(); // new route metadata for the banner below
       showBootBanner(); // fresh blank session: welcome block again
       app.appendCommandOutput(
@@ -2314,7 +2332,7 @@ async function run(
       return;
     }
     relayClient.switchDevice(result.deviceId ?? "");
-    app.showNotice(`Workspace set to ${workspace} — /new or /resume on ${result.deviceId}.`);
+    app.showNotice(`Workspace set to ${workspace} — 直接输入首句、/new 或 /resume on ${result.deviceId}.`);
   }
 
   /** /model — pick a route and switch THIS session onto it (history intact). */
@@ -2333,12 +2351,9 @@ async function run(
     const relayClient = ctx.get<{
       currentDevice(): string;
       isAttached(): boolean;
+      setNextModel(model: { provider: string; model: string; reasoningEffort?: string }): void;
       switchModel(provider: string, model: string, reasoningEffort?: string): Promise<{ ok: boolean; error?: string }>;
     }>("relayClient");
-    if (relayClient !== undefined && relayClient.currentDevice() !== "" && !relayClient.isAttached()) {
-      app.showNotice("No worker session yet — run /new or /resume on the workspace first.");
-      return;
-    }
     const active = activeRoute();
     const routes: Array<{ provider: string; model: string }> = [];
     const items: Array<{ value: string; label: string; description?: string }> = [];
@@ -2381,12 +2396,19 @@ async function run(
     }
     // dsh-relay 集成：relay 模式下 relayClient 会把模型选择发到 worker；
     // 本地仍走 hot switch，保证状态栏与降级后一致性。
+    const effort = selectionRef?.current?.reasoningEffort;
+    if (relayClient !== undefined && relayClient.currentDevice() !== "" && !relayClient.isAttached()) {
+      // worker 模式且还没有会话：跟本地一样只改内存 ref，并预置到下一次 fresh attach。
+      relayClient.setNextModel({
+        provider: route.provider,
+        model: route.model,
+        ...(effort === undefined ? {} : { reasoningEffort: effort }),
+      });
+      await switchModelHot(route.provider, route.model);
+      return;
+    }
     if (relayClient !== undefined) {
-      const result = await relayClient.switchModel(
-        route.provider,
-        route.model,
-        selectionRef?.current?.reasoningEffort,
-      );
+      const result = await relayClient.switchModel(route.provider, route.model, effort);
       if (!result.ok) {
         app.showNotice(`Model switch to worker failed: ${result.error ?? "unknown error"}`);
         return;
