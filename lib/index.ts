@@ -1991,11 +1991,6 @@ async function run(
    * history yet, so an empty agent log falls back to sessionQuery's.
    */
   async function doRewindPicker(): Promise<void> {
-    const relayClient = ctx.get<{ currentDevice(): string }>("relayClient");
-    if (relayClient !== undefined && relayClient.currentDevice() !== "") {
-      app.showNotice("Rewind isn't supported on relay worker sessions yet (files are on the remote worker).");
-      return;
-    }
     let items = rewindCandidates(agent.session.events ?? []);
     if (items.length === 0 && services.sessionQuery !== undefined) {
       try {
@@ -2948,6 +2943,8 @@ async function run(
   // arrow key) until the tab is reset (2026-08-26 exit-leak report).
   ctx.provide("tuiHandoff", {
     relaunchToResume: (id: string) => relaunchToResume(id),
+    // relay rewind：worker 端已 fork 出 child，前端 detach 旧流并 resume child。
+    resumeRemoteChild: (deviceId: string, childId: string) => resumeWorkerSession(deviceId, childId),
   });
 
   // 让 dsh-rewind 与双击 Esc picker 共享同一会话源：relay /resume 后当前

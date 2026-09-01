@@ -532,14 +532,34 @@ function apply(ctx: Context): void {
       if (!Number.isInteger(seq) || seq < 0) {
         return { kind: "error", text: "usage: /rewind <seq>" };
       }
-      // Relay worker 会话：fork/文件恢复/execve 都是本地会话语义，远端文件
-      // 不在本机，child.header.cwd（mirrorRoot）也常不存在——直接拒绝，避免
-      // 走到 relaunch 后 chdir 失败把 TUI 卡死（2026-09-02 复现）。
-      const relayClient = getService<{ currentDevice(): string }>(ctx, "relayClient");
+      // Relay worker 会话：rewind 在 worker 端执行（fork + 本地文件恢复），
+      // 成功后前端 detach 旧流并 resume worker 返回的 child session。
+      const relayClient = getService<{
+        currentDevice(): string;
+        rewind(seq: number): Promise<{ ok: boolean; childSessionId?: string; summary?: string; error?: string }>;
+      }>(ctx, "relayClient");
       if (relayClient !== undefined && relayClient.currentDevice() !== "") {
+        const result = await relayClient.rewind(seq);
+        if (!result.ok) {
+          return { kind: "error", text: `rewind failed: ${result.error ?? "unknown error"}` };
+        }
+        const childId = result.childSessionId;
+        if (childId === undefined) {
+          return { kind: "error", text: "rewind succeeded but worker returned no child session" };
+        }
+        const handoff = getService<{
+          resumeRemoteChild(deviceId: string, childId: string): Promise<void>;
+        }>(ctx, "tuiHandoff");
+        if (handoff === undefined) {
+          return {
+            kind: "success",
+            text: `rewind prepared (${result.summary ?? "no file changes"}) — resume manually with /resume ${childId}`,
+          };
+        }
+        await handoff.resumeRemoteChild(relayClient.currentDevice(), childId);
         return {
-          kind: "error",
-          text: "rewind is not supported on relay worker sessions yet (files live on the remote worker) — use /resume to switch sessions",
+          kind: "success",
+          text: `rewind prepared (${result.summary ?? "no file changes"}) — switched to ${childId}`,
         };
       }
       // Relay sessions can have sparse seq (local mirror only carries the
