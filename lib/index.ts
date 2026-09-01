@@ -1547,6 +1547,23 @@ async function run(
     refreshGoal();
   }
 
+  /** 建 worker 会话前校验当前内存模型在远端 worker 目录里；不可用则提示并拒绝创建。 */
+  async function ensureWorkerModelAvailable(deviceId: string): Promise<boolean> {
+    const relayClient = ctx.get<{
+      listModelCatalog(deviceId: string): Promise<Array<{ id: string; models: Array<{ id: string }> }>>;
+    }>("relayClient");
+    if (relayClient === undefined) return true;
+    const route = currentModelSelection();
+    const catalog = await relayClient.listModelCatalog(deviceId);
+    const provider = catalog.find((p) => p.id === route.provider);
+    const available = provider !== undefined && provider.models.some((m) => m.id === route.model);
+    if (!available) {
+      app.showNotice(`模型 ${route.provider}/${route.model} 在 ${deviceId} 不可用 — 请先 /model 重选。`);
+      return false;
+    }
+    return true;
+  }
+
   /** /new — fresh session in-process: create + rebind, keep this terminal.
    * @returns true 成功；false 被 veto 或创建失败（/device 用返回值回滚）。 */
   async function startNewSession(): Promise<boolean> {
@@ -1558,6 +1575,14 @@ async function run(
       await services.sessions.flush(agent.session);
     } catch {
       /* flush failure still switches */
+    }
+    if (workerMode) {
+      const deviceRelay = ctx.get<{ currentDevice(): string }>("relayClient");
+      const deviceId = deviceRelay?.currentDevice() ?? "";
+      if (deviceId !== "") {
+        const ok = await ensureWorkerModelAvailable(deviceId);
+        if (!ok) return false;
+      }
     }
     const route = currentModelSelection();
     const relayClient = ctx.get<{
@@ -2380,19 +2405,36 @@ async function run(
     const relayClient = ctx.get<{
       currentDevice(): string;
       isAttached(): boolean;
+      listModelCatalog(deviceId: string): Promise<Array<{ id: string; name?: string; models: Array<{ id: string; name?: string; description?: string }> }>>;
       setNextModel(model: { provider: string; model: string; reasoningEffort?: string }): void;
       switchModel(provider: string, model: string, reasoningEffort?: string): Promise<{ ok: boolean; error?: string }>;
     }>("relayClient");
     const active = activeRoute();
     const routes: Array<{ provider: string; model: string }> = [];
     const items: Array<{ value: string; label: string; description?: string }> = [];
-    const providers = llm.listProviders();
-    const catalogs = await Promise.all(
-      providers.map(async (p) => ({
-        provider: p,
-        models: await llm.listModels(p.id).catch(() => []),
-      })),
-    );
+    let catalogs: Array<{
+      provider: { id: string; name?: string };
+      models: Array<{ id: string; name?: string; description?: string }>;
+    }>;
+    if (relayClient !== undefined && relayClient.currentDevice() !== "") {
+      // relay 模式：列表必须来自远端 worker 的真实 LLM 目录，避免选出远端没有的 provider。
+      const remoteProviders = await relayClient.listModelCatalog(relayClient.currentDevice());
+      if (remoteProviders.length === 0) {
+        app.showNotice("No model catalog available on this worker.");
+        return;
+      }
+      catalogs = remoteProviders.map((p) => ({
+        provider: { id: p.id, name: p.name },
+        models: p.models,
+      }));
+    } else {
+      catalogs = await Promise.all(
+        llm.listProviders().map(async (p) => ({
+          provider: p,
+          models: await llm.listModels(p.id).catch(() => []),
+        })),
+      );
+    }
     for (const { provider, models } of catalogs) {
       for (const model of models) {
         const index = routes.length;
