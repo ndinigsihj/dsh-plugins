@@ -10,6 +10,7 @@ import {
   buildReverseSteps,
   computeRewindBoundary,
   diffsFromMeta,
+  eventAtSeq,
   filePathFromArgs,
   replaceOnce,
 } from "./rewind-dsh.ts";
@@ -52,6 +53,35 @@ test("boundary: message after a completed turn (between turns)", () => {
     ev(3, "user/message"), // 两个 turn 之间（罕见）→ boundary = 3
   ];
   assert.equal(computeRewindBoundary(events, 3), 3);
+});
+
+test("eventAtSeq: sparse relay session finds by seq, not array index", () => {
+  const events = [
+    ev(100, "turn/start"),
+    ev(101, "user/message"),
+    ev(16315, "user/message"), // relay mirror 里的 seq 可能从大数开始
+  ];
+  assert.equal(eventAtSeq(events, 16315)?.seq, 16315);
+  assert.equal(eventAtSeq(events, 42), undefined);
+});
+
+test("boundary: sparse relay session (array index ≠ seq)", () => {
+  const events = [
+    ev(16300, "turn/start"),
+    ev(16301, "user/message"),
+    ev(16302, "assistant/message"),
+    ev(16303, "turn/end"),
+    ev(16304, "turn/start"),
+    ev(16305, "user/message"), // 选中 16305
+    ev(16306, "assistant/message"),
+    ev(16307, "turn/end"),
+  ];
+  assert.equal(computeRewindBoundary(events, 16305), 16303);
+  assert.equal(computeRewindBoundary(events, 16301), 16299); // 回退到该 turn 之前
+  assert.equal(computeRewindBoundary(events, 42), undefined); // 越界
+  // 第一个 turn（seq 0）之后、且 seq 稀疏：boundary 落到 -1 → undefined
+  const firstTurn = [ev(0, "turn/start"), ev(16301, "user/message")];
+  assert.equal(computeRewindBoundary(firstTurn, 16301), undefined);
 });
 
 /* ---------------- replaceOnce / applyReverseSteps ---------------- */

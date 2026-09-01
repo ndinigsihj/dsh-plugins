@@ -3295,10 +3295,16 @@ async function run(
     },
   );
 
-  // Agent status → footer.
-  const disposeStatus = ctx.on("agent/status", (payload: { status: "idle" | "running" }) => {
-    app.setStatus(payload.status);
-  });
+  // Agent status → footer + the local mirror's agent.status. Relay (attach-client)
+  // emits this from remote turn/start|end; without mirroring onto agent.status the
+  // app's Esc handler sees "idle" and Esc can never cancel a remote run.
+  const disposeStatus = ctx.on(
+    "agent/status",
+    (payload: { agent?: { status: "idle" | "running" }; status: "idle" | "running" }) => {
+      app.setStatus(payload.status);
+      if (payload.agent !== undefined) payload.agent.status = payload.status;
+    },
+  );
 
   ctx.effect(() => () => {
     disposeApproval();

@@ -116,17 +116,25 @@ function getService<T>(ctx: Context, key: string): T | undefined {
  * 若先遇到 turn/end（所选消息在两个 turn 之间），boundary = 所选 seq。
  * 返回 undefined 表示不可回退（所选是第一条消息 / 越界）。
  */
+/** Locate an event by its seq — never by array position. Relay mirror
+ *  sessions can carry a sparse window (events are appended as they arrive,
+ *  seqs are global and contiguous on the worker, not necessarily at index 0). */
+export function eventAtSeq(
+  events: readonly SessionEvent[],
+  seq: number,
+): SessionEvent | undefined {
+  return events.find((event) => event.seq === seq);
+}
+
 export function computeRewindBoundary(
   events: readonly SessionEvent[],
   pickedSeq: number,
 ): number | undefined {
-  if (!Number.isSafeInteger(pickedSeq) || pickedSeq < 0 || pickedSeq >= events.length) {
-    return undefined;
-  }
-  const picked = events[pickedSeq];
-  if (picked === undefined || picked.seq !== pickedSeq) return undefined;
+  if (!Number.isSafeInteger(pickedSeq) || pickedSeq < 0) return undefined;
+  const pickedIndex = events.findIndex((event) => event.seq === pickedSeq);
+  if (pickedIndex === -1) return undefined;
   let boundary = pickedSeq;
-  for (let i = pickedSeq; i >= 0; i--) {
+  for (let i = pickedIndex; i >= 0; i--) {
     const event = events[i];
     if (event === undefined) break;
     if (event.type === "turn/start") {
@@ -492,8 +500,10 @@ function apply(ctx: Context): void {
       if (!Number.isInteger(seq) || seq < 0) {
         return { kind: "error", text: "usage: /rewind <seq>" };
       }
-      const picked = events[seq];
-      if (picked === undefined || picked.seq !== seq) {
+      // Relay sessions can have sparse seq (local mirror only carries the
+      // remote window), so index by seq — never by array position.
+      const picked = eventAtSeq(events, seq);
+      if (picked === undefined) {
         return { kind: "error", text: `no event at seq ${seq}` };
       }
       if (picked.type !== "user/message") {
