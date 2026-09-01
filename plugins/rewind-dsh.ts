@@ -536,10 +536,17 @@ function apply(ctx: Context): void {
       // 成功后前端 detach 旧流并 resume worker 返回的 child session。
       const relayClient = getService<{
         currentDevice(): string;
-        rewind(seq: number): Promise<{ ok: boolean; childSessionId?: string; summary?: string; error?: string }>;
+        rewind(messageId: string): Promise<{ ok: boolean; childSessionId?: string; summary?: string; error?: string }>;
       }>(ctx, "relayClient");
       if (relayClient !== undefined && relayClient.currentDevice() !== "") {
-        const result = await relayClient.rewind(seq);
+        // 前端 mirror 的 seq 与 worker 原始 seq 不对齐（mirror 跳过
+        // agent/inbox/spliced 且本地重编号），wire 用稳定的 user/message id。
+        const target = events.find((e) => e.seq === seq && e.type === "user/message");
+        const messageId = (target?.data as { id?: unknown } | undefined)?.id;
+        if (typeof messageId !== "string" || messageId === "") {
+          return { kind: "error", text: `rewind failed: no message id for seq ${seq}` };
+        }
+        const result = await relayClient.rewind(messageId);
         if (!result.ok) {
           return { kind: "error", text: `rewind failed: ${result.error ?? "unknown error"}` };
         }
