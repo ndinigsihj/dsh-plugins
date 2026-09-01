@@ -1547,23 +1547,6 @@ async function run(
     refreshGoal();
   }
 
-  /** 建 worker 会话前校验当前内存模型在远端 worker 目录里；不可用则提示并拒绝创建。 */
-  async function ensureWorkerModelAvailable(deviceId: string): Promise<boolean> {
-    const relayClient = ctx.get<{
-      listModelCatalog(deviceId: string): Promise<Array<{ id: string; models: Array<{ id: string }> }>>;
-    }>("relayClient");
-    if (relayClient === undefined) return true;
-    const route = currentModelSelection();
-    const catalog = await relayClient.listModelCatalog(deviceId);
-    const provider = catalog.find((p) => p.id === route.provider);
-    const available = provider !== undefined && provider.models.some((m) => m.id === route.model);
-    if (!available) {
-      app.showNotice(`模型 ${route.provider}/${route.model} 在 ${deviceId} 不可用 — 请先 /model 重选。`);
-      return false;
-    }
-    return true;
-  }
-
   /** /new — fresh session in-process: create + rebind, keep this terminal.
    * @returns true 成功；false 被 veto 或创建失败（/device 用返回值回滚）。 */
   async function startNewSession(): Promise<boolean> {
@@ -1576,22 +1559,7 @@ async function run(
     } catch {
       /* flush failure still switches */
     }
-    if (workerMode) {
-      const deviceRelay = ctx.get<{ currentDevice(): string }>("relayClient");
-      const deviceId = deviceRelay?.currentDevice() ?? "";
-      if (deviceId !== "") {
-        const ok = await ensureWorkerModelAvailable(deviceId);
-        if (!ok) return false;
-      }
-    }
     const route = currentModelSelection();
-    const relayClient = ctx.get<{
-      setNextModel(model: { provider: string; model: string; reasoningEffort?: string }): void;
-    }>("relayClient");
-    if (workerMode && relayClient !== undefined) {
-      // fresh attach 时把这个内存模型带到 worker（只影响本次新会话）。
-      relayClient.setNextModel(route);
-    }
     const requested = own.preset;
     const fresh = await composePreset(services.agentPresets, requested, (m) => app.showNotice(m));
     try {
