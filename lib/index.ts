@@ -2945,6 +2945,18 @@ async function run(
     relaunchToResume: (id: string) => relaunchToResume(id),
   });
 
+  // 让 dsh-rewind 与双击 Esc picker 共享同一会话源：relay /resume 后当前
+  // agent 是带回放历史的 mirror，而 agents.roots()[0] 可能仍是启动时的旧
+  // root（session 为空），导致选中的 seq 在 /rewind 侧找不到。
+  ctx.provide("rewindSource", {
+    get id() {
+      return agent.id;
+    },
+    get events() {
+      return agent.session.events ?? [];
+    },
+  });
+
   async function runCommand(line: string): Promise<void> {
     if (line === "/exit" || line === "/quit") {
       await stopAndExit();

@@ -485,12 +485,28 @@ function apply(ctx: Context): void {
     recordInput: true,
     handler: async (invocation: CommandInvocation): Promise<CommandResult> => {
       const arg = invocation.rawInput.trim();
-      const root = liveRootAgent(agents);
+      // 自研 TUI 暴露当前 agent 的会话源（与双击 Esc picker 同一份 events）。
+      // relay /resume 后 agents.roots()[0] 可能仍是启动时旧 root，会漏掉
+      // 回放出来的 seq；rewindSource 优先，缺省再退回 liveRootAgent。
+      const source = getService<{ id: string; events: readonly SessionEvent[] }>(ctx, "rewindSource");
+      let root: AgentLike | undefined;
+      let events: SessionEvent[];
+      if (source !== undefined) {
+        events = [...source.events];
+        const live = agents.list?.().find((a) => a.id === source.id);
+        root = live ?? {
+          id: source.id,
+          session: { id: source.id, events },
+          status: "idle",
+        };
+      } else {
+        root = liveRootAgent(agents);
+        events = root === undefined ? [] : [...root.session.events];
+      }
       if (root === undefined) {
         return { kind: "error", text: "no live root session" };
       }
       // 快照：fork/恢复期间日志继续增长也不能影响计划。
-      const events = [...root.session.events];
 
       // 无参数：列出历史 user 消息。
       if (arg === "") {
