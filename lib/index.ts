@@ -509,6 +509,12 @@ function recordedEffortOf(
   return undefined;
 }
 
+/** Distilled agent status shown to the app. The real Agent's `status` is a
+ *  read-only getter (assigning it throws), so the app surface rides this
+ *  variable, updated from `agent/status` events (local harness and relay
+ *  attach-client both emit it). */
+let surfaceStatus: "idle" | "running" = "idle";
+
 /** Narrow the real Agent handle to the surface the app drives. */
 function agentSurface(agent: {
   id: string;
@@ -520,12 +526,13 @@ function agentSurface(agent: {
   cancel(cause: { kind: "user" }): void;
   whenIdle(): Promise<void>;
 }): AgentSurface {
+  surfaceStatus = agent.status;
   return {
     id: agent.id,
     // Live getter: the harness mutates agent.status; a copied value would
     // freeze at boot-time "idle" and break every running-state check.
     get status() {
-      return agent.status;
+      return surfaceStatus;
     },
     followup: (m) => agent.followup(m),
     steer: (m) => agent.steer(m),
@@ -3295,16 +3302,13 @@ async function run(
     },
   );
 
-  // Agent status → footer + the local mirror's agent.status. Relay (attach-client)
-  // emits this from remote turn/start|end; without mirroring onto agent.status the
-  // app's Esc handler sees "idle" and Esc can never cancel a remote run.
-  const disposeStatus = ctx.on(
-    "agent/status",
-    (payload: { agent?: { status: "idle" | "running" }; status: "idle" | "running" }) => {
-      app.setStatus(payload.status);
-      if (payload.agent !== undefined) payload.agent.status = payload.status;
-    },
-  );
+  // Agent status → footer + the app-facing surface status. Relay (attach-client)
+  // emits this from remote turn/start|end; the real Agent.status is a read-only
+  // getter so writing it throws and kills the wire loop — ride surfaceStatus.
+  const disposeStatus = ctx.on("agent/status", (payload: { status: "idle" | "running" }) => {
+    app.setStatus(payload.status);
+    surfaceStatus = payload.status;
+  });
 
   ctx.effect(() => () => {
     disposeApproval();
