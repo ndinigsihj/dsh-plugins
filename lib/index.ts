@@ -901,9 +901,17 @@ async function run(
   let effortGeneration = 0;
   /** worker 模式（已 attach）标志：本地 /new 用 process.cwd()，worker /new 用 mirrorRoot（2b）。 */
   let workerMode = false;
+  /** 当前 worker 的 workspace 绝对路径（本地模式为空；/attach、/workspace、/detach 时更新）。 */
+  let currentWorkspacePath = "";
   /** 当前内存里的模型选择：ref 优先，其次 liveRoute，最后启动默认。 */
   function currentModelSelection(): { provider: string; model: string; reasoningEffort?: string } {
     return selectionRef?.current ?? liveRoute ?? agentOptions;
+  }
+  /** 把 worker 的绝对 workspace 压成 `~/...`（macOS /Users/<u>、Linux /home/<u> 均识别）。 */
+  function homeRelativeDir(path: string): string {
+    const m = path.match(/^(\/Users\/[^/]+|\/home\/[^/]+)(\/.*)?$/);
+    if (m === null) return path;
+    return m[2] === undefined ? "~" : `~${m[2]}`;
   }
   let resumeTrace = "no-resume";
   if (resumeId !== undefined) {
@@ -1418,14 +1426,21 @@ async function run(
     app.setModelLabel(`${liveRoute.provider}/${liveRoute.model}`);
     void refreshEffortMeta();
   });
-  // 本地/worker 双模式：attach-client 上报当前设备；"" = 本地模式 → 显示 local。
+  // 本地/worker 双模式：attach-client 上报当前设备；"" = 本地模式。
   ctx.on("relay/device-changed", (payload: { deviceId?: unknown }) => {
     const id = typeof payload?.deviceId === "string" ? payload.deviceId : "";
     workerMode = id !== "";
-    app.setDeviceLabel(id === "" ? "local" : id);
+    if (id === "") {
+      currentWorkspacePath = "";
+      app.setDeviceLabel("");
+      return;
+    }
+    const host = id.includes("--") ? id.slice(0, id.indexOf("--")) : id;
+    const dir = currentWorkspacePath === "" ? "" : homeRelativeDir(currentWorkspacePath);
+    app.setDeviceLabel(dir === "" ? host : `${host}:${dir}`);
   });
-  // boot 默认本地模式：状态栏先显示 local（attach 事件到达后再覆盖）。
-  app.setDeviceLabel("local");
+  // boot 默认本地模式：状态栏 workspace 槽显示本地 cwd（attach 事件到达后再覆盖）。
+  app.setDeviceLabel("");
   showBootBanner();
   updateContextPressure();
   refreshSubagents();
@@ -2165,7 +2180,7 @@ async function run(
    * currentDevice() === "" = 本地模式。 */
   async function doAttach(rawInput: string): Promise<void> {
     const relayClient = ctx.get<{
-      listDevices(): Promise<Array<{ deviceId: string; platform?: string; capabilities?: string[]; streams: number }>>;
+      listDevices(): Promise<Array<{ deviceId: string; platform?: string; capabilities?: string[]; streams: number; workspace?: string }>>;
       attach(deviceId: string): void;
       detach(): void;
       switchDevice(deviceId: string): void;
@@ -2182,7 +2197,7 @@ async function run(
     }
     const current = relayClient.currentDevice(); // "" = 本地模式
     let target = "";
-    let devices: Array<{ deviceId: string; platform?: string; capabilities?: string[]; streams: number }> = [];
+    let devices: Array<{ deviceId: string; platform?: string; capabilities?: string[]; streams: number; workspace?: string }> = [];
     const arg = rawInput.trim();
     if (arg === "") {
       devices = await relayClient.listDevices();
@@ -2216,12 +2231,16 @@ async function run(
       app.showNotice(`Device ${target} is not online.`);
       return;
     }
+    const previousWorkspacePath = currentWorkspacePath;
+    const targetInfo = devices.find((d) => d.deviceId === target);
+    currentWorkspacePath = targetInfo?.workspace ?? "";
     if (current === "") {
       // 本地模式 → attach：arm + 开新 worker 会话（agent/created 触发 attach 到 target）。
       relayClient.attach(target);
       const ok = await startNewSession();
       if (!ok) {
         relayClient.detach(); // 新会话失败 → 回本地
+        currentWorkspacePath = "";
         app.showNotice(`/attach failed — stayed local.`);
         return;
       }
@@ -2233,6 +2252,7 @@ async function run(
       if (!ok) {
         relayClient.switchDevice(current);
         relayClient.reattach();
+        currentWorkspacePath = previousWorkspacePath;
         app.showNotice(`/attach failed — stayed on ${current}.`);
         return;
       }
@@ -2258,6 +2278,7 @@ async function run(
       return;
     }
     relayClient.detach();
+    currentWorkspacePath = "";
     // /detach 回收：仅当刚离开的是 workspace child（deviceId 含 "--"）且仍在线时
     // 才请求回收（hub 仅空闲才转发）。base worker 也带 workspace 字段，不能仅凭它判断。
     const isWorkspaceChild = childDeviceId.includes("--");
@@ -2280,6 +2301,7 @@ async function run(
   async function doWorkspace(line: string): Promise<void> {
     const relayClient = ctx.get<{
       currentDevice(): string;
+      listDevices(): Promise<Array<{ deviceId: string; workspace?: string }>>;
       listWorkspaces(deviceId: string): Promise<Array<{ path: string; kind: "dir" | "running"; deviceId?: string }>>;
       spawnWorkspace(deviceId: string, workspace: string): Promise<{ ok: boolean; deviceId?: string; error?: string }>;
       switchDevice(deviceId: string): void;
@@ -2331,8 +2353,15 @@ async function run(
       app.showNotice(`/workspace failed: ${result.error ?? "unknown error"}`);
       return;
     }
+    let resolvedWorkspace = workspace;
+    if (result.deviceId !== undefined) {
+      const devices = await relayClient.listDevices();
+      const info = devices.find((d) => d.deviceId === result.deviceId);
+      if (info?.workspace !== undefined) resolvedWorkspace = info.workspace;
+    }
+    currentWorkspacePath = resolvedWorkspace;
     relayClient.switchDevice(result.deviceId ?? "");
-    app.showNotice(`Workspace set to ${workspace} — 直接输入首句、/new 或 /resume on ${result.deviceId}.`);
+    app.showNotice(`Workspace set to ${resolvedWorkspace} — 直接输入首句、/new 或 /resume on ${result.deviceId}.`);
   }
 
   /** /model — pick a route and switch THIS session onto it (history intact). */

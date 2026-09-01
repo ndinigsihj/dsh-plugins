@@ -1865,7 +1865,7 @@ export class TuiApp {
   private readonly todosLine: Text;
   private agent: AgentSurface;
   private modelLabel: string;
-  /** Relay 模式当前设备（attach-client 经 relay/device-changed 设置；本地直连为空）。 */
+  /** Relay 模式位置标签（host:~/dir；本地为空，使用 workspaceName）。 */
   private deviceLabel = "";
   private statusValue: "idle" | "running" = "idle";
   private contextInfo: ContextOccupancy | null = null;
@@ -2375,7 +2375,6 @@ export class TuiApp {
     const dot = running ? this.p.fg("●", "yellow") : this.p.fg("●", "green");
     const sep = this.p.dim(" · ");
     const left = [`${dot} ${this.p.dim(this.modelLabel)}`];
-    if (this.deviceLabel !== "") left.push(this.p.dim(this.deviceLabel));
     // Bare effort name — no prefix, keep the bar lean (banner carries labels).
     if (this.thinkLabel !== null) left.push(this.p.fg(this.thinkLabel, "cyan"));
     if (this.cacheRate !== null) left.push(this.p.dim(`cache ${this.cacheRate}%`));
@@ -2387,7 +2386,8 @@ export class TuiApp {
     }
     // Session-total output (same source as /cost); hidden until first usage.
     if (this.outputTotal !== null) left.push(this.p.dim(`out ${formatTokens(this.outputTotal)}`));
-    left.push(this.p.dim(this.workspaceName));
+    // 位置槽：relay 模式显示 host:~/dir，本地模式显示本地 cwd basename。
+    left.push(this.p.dim(this.deviceLabel !== "" ? this.deviceLabel : this.workspaceName));
     let right = "";
     if (this.contextInfo !== null) {
       const { pct, usedTokens, windowTokens } = this.contextInfo;
