@@ -63,10 +63,26 @@ interface AgentLike {
   id: string;
   session: SessionLike;
   status: string;
+  meta?: { origin?: string };
 }
 
 interface AgentsService {
   roots(): AgentLike[];
+  /** Live agent roster; prefer the non-subagent root here because relay
+   *  (`attach-client`) adopts the current root agent, while roots()[0] can
+   *  still point at the boot-time root before /resume switches sessions. */
+  list?(): AgentLike[];
+}
+
+/** Subagents carry meta.origin === "subagent" (same rule attach-client uses). */
+function isSubagent(agent: AgentLike): boolean {
+  return agent.meta?.origin === "subagent";
+}
+
+/** The root agent the TUI is currently driving (live list wins over roots()). */
+function liveRootAgent(agents: AgentsService): AgentLike | undefined {
+  const live = agents.list?.().find((candidate) => !isSubagent(candidate));
+  return live ?? agents.roots()[0];
 }
 
 interface SessionsService {
@@ -469,7 +485,7 @@ function apply(ctx: Context): void {
     recordInput: true,
     handler: async (invocation: CommandInvocation): Promise<CommandResult> => {
       const arg = invocation.rawInput.trim();
-      const root = agents.roots()[0];
+      const root = liveRootAgent(agents);
       if (root === undefined) {
         return { kind: "error", text: "no live root session" };
       }
