@@ -2297,9 +2297,17 @@ async function run(
     if (child !== undefined) {
       const baseDeviceId = childDeviceId.slice(0, childDeviceId.indexOf("--")) || childDeviceId;
       const stop = await relayClient.stopWorkspace(baseDeviceId, childDeviceId);
-      app.showNotice(
-        stop.ok ? `Detached — workspace child ${childDeviceId} reclaimed.` : `Detached — ${stop.error ?? "workspace child not reclaimed"}.`,
-      );
+      if (stop.ok) {
+        app.showNotice(`Detached — workspace child ${childDeviceId} reclaimed.`);
+      } else if (stop.error === "unknown child") {
+        // 该 child 不是 launcher spawn 的（外部/手动启动）：前端已 detach，
+        // 但 launcher 无法回收它，进程继续运行。
+        app.showNotice(
+          `Detached — child ${childDeviceId} is not managed by this launcher (started externally); it stays running. Use /workspace to spawn managed children.`,
+        );
+      } else {
+        app.showNotice(`Detached — ${stop.error ?? "workspace child not reclaimed"}.`);
+      }
       return;
     }
     app.showNotice("Detached — back to local mode.");
