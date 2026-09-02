@@ -1459,6 +1459,14 @@ async function run(
     } catch {
       /* flush failure still exits */
     }
+    // 先优雅关闭 relay 连接再退出：不关 ws 时 active socket 会让 appExit
+    // 的优雅退出卡在 exiting…，且连接半开会让 hub 上的 stream/owner 残留。
+    const relayClient = ctx.get<{ shutdown?(): Promise<void> }>("relayClient");
+    try {
+      await relayClient?.shutdown?.();
+    } catch {
+      /* shutdown failure still exits */
+    }
     await app.stopAndExit(services.appExit, resumeHint());
   }
 
