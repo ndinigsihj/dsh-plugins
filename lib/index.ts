@@ -1438,10 +1438,10 @@ async function run(
     const id = typeof payload?.deviceId === "string" ? payload.deviceId : "";
     workerMode = id !== "";
     if (id === "") {
-      currentWorkspacePath = "";
-      app.setDeviceLabel("");
-      return;
-    }
+    // 保留 currentWorkspacePath：降级只是清空设备标签，恢复后按原设备路径继续显示。
+    app.setDeviceLabel("");
+    return;
+  }
     const host = id.includes("--") ? id.slice(0, id.indexOf("--")) : id;
     const dir = currentWorkspacePath === "" ? "" : homeRelativeDir(currentWorkspacePath);
     app.setDeviceLabel(dir === "" ? host : `${host}:${dir}`);
