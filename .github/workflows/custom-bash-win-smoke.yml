@@ -1,0 +1,23 @@
+name: custom-bash-win-smoke
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "presets/liangshen-bash/custom-bash.mjs"
+      - "presets/liangshen-bash/custom-bash.test.mjs"
+      - "scripts/custom-bash-win-smoke.mjs"
+      - ".github/workflows/custom-bash-win-smoke.yml"
+
+jobs:
+  win-smoke:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Pure function contract tests
+        run: node --test presets/liangshen-bash/custom-bash.test.mjs
+      - name: Real Windows smoke (resolve/echo/WSL reject/missing-bash fail-open)
+        run: node scripts/custom-bash-win-smoke.mjs
