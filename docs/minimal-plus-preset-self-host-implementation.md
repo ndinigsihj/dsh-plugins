@@ -3,7 +3,7 @@
 > 2026-09-03：preset 由 `liangshen-bash` 更名 **`minimal-plus`**；本文正文统一用
 > `minimal-plus`，历史实施记录中的目录/名称在更名前均为 `liangshen-bash`。
 
-> 状态：已定稿，实施中（Phase 0/1/2/3 完成；Phase 2.5 纯函数完成、真实 Windows 冒烟阻塞；Phase 4 部署+本地 commit 完成，push 待用户批准）。
+> 状态：已定稿；**2026-09-03 用户决定此计划暂时告一段落**（Phase 0/1/2/3 完成；Phase 2.5 纯函数完成、真实 Windows 冒烟延后；Phase 4 部署+本地 commit 完成，push 待用户批准）。待其它问题解决后再回头继续。
 > 目标：把 `minimal-plus`（旧名 `liangshen-bash`）preset 对 `@deepseek-harness-tui/dsh-tui` 的 vendored 依赖去掉，改为自研实现（方案 B）。
 > 前置：已评估风险（tool-bootstrap 行为锚定不可单测、harness 契约漂移、降级守卫易丢失、维护责任转移）。本文档把风险转成可执行的契约测试 + 轨迹实测验收，未通过验收不允许关闭。
 
