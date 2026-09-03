@@ -2709,6 +2709,7 @@ async function run(
     const relayClient = ctx.get<{
       currentDevice(): string;
       listSessions(deviceId: string): Promise<Array<{ id: string; cwd?: string; createdAt: number; title?: string }>>;
+      deleteSession(deviceId: string, sessionId: string): Promise<{ ok: boolean; error?: string }>;
     }>("relayClient");
     const device = relayClient?.currentDevice() ?? ""; // "" = 本地模式
     const id = line.trim().split(/\s+/)[1];
@@ -2734,7 +2735,9 @@ async function run(
           label: truncate(s.title ?? s.id, 60),
           description: `${relativeTime(s.createdAt)} · ${s.cwd ?? ""}`,
         }));
-        const picked = await app.pickSession(items);
+        const picked = await app.pickSession(items, {
+          onRequestDelete: (deleteId) => deleteWorkerSessionFlow(device, deleteId),
+        });
         if (picked === null) {
           app.showNotice("Resume cancelled.");
           return;
@@ -2903,6 +2906,29 @@ async function run(
       );
     }
     process.stderr.write(`dsh-tui: rm session ${id}\n`);
+    return true;
+  }
+
+  /** worker 模式 /resume 选择器 Ctrl+D：确认后远程删除 worker 端会话。 */
+  async function deleteWorkerSessionFlow(deviceId: string, sessionId: string): Promise<boolean> {
+    const relayClient = ctx.get<{
+      deleteSession(deviceId: string, sessionId: string): Promise<{ ok: boolean; error?: string }>;
+    }>("relayClient");
+    if (relayClient === undefined) {
+      app.showNotice("Session deletion unavailable: no relay client.");
+      return false;
+    }
+    const outcome = await app.askApproval({
+      toolName: "/rm",
+      reason: `删除 worker 会话「${sessionId.slice(0, 13)}…」\n${sessionId}\nworker 端日志一并移除，不可恢复 —— a 确认 · r/esc 取消`,
+    });
+    if (outcome !== "allowed-once") return false;
+    const result = await relayClient.deleteSession(deviceId, sessionId);
+    if (!result.ok) {
+      app.showNotice(`Worker session delete failed: ${result.error ?? "unknown"}`);
+      return false;
+    }
+    app.showNotice(`Deleted worker session ${sessionId.slice(0, 13)}…`);
     return true;
   }
 
