@@ -34,8 +34,8 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { chmod, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
-import { resolve, sep } from "node:path";
+import { chmod, readFile, realpath, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { dirname, resolve, sep } from "node:path";
 import type { Context } from "@deepseek-ai/cordis";
 
 export const name = "dsh-rewind";
@@ -92,8 +92,9 @@ interface SessionsService {
     childSessionId?: string,
   ): SessionLike;
   /** Force the write-behind batch out for one session (present in current dsh;
-   * guarded at the call site so an older deployment degrades loudly). */
-  flush?(session: unknown): Promise<void>;
+   * guarded at the call site so an older deployment degrades loudly). Resolves
+   * boolean: false = no persistent listener participated. */
+  flush?(session: unknown): Promise<boolean | void>;
 }
 
 interface CommandResult {
@@ -189,6 +190,9 @@ export function replaceOnce(
   target: string,
   replacement: string,
 ): string | null {
+  // Empty target matches everywhere — the "unique occurrence" contract is
+  // unsatisfiable, so refuse rather than corrupt the file.
+  if (target === "") return null;
   let index = text.indexOf(target);
   if (index === -1) return null;
   const next = text.indexOf(target, index + target.length);
@@ -215,8 +219,13 @@ export function applyReverseSteps(
       continue;
     }
     if (step.oldText === null) {
-      // 纯新增内容（无改动前文本）：无法逆向，放弃。
-      return null;
+      // 纯新增内容（dsh-tool-fs 的纯插入 / 覆写空文件产生 oldText:null）：
+      // 反向就是删除 newText。replaceOnce 保证唯一命中，歧义/找不到即放弃。
+      if (step.newText === "") return null;
+      const removed = replaceOnce(text, step.newText, "");
+      if (removed === null) return null;
+      text = removed;
+      continue;
     }
     const replaced = replaceOnce(text, step.newText, step.oldText);
     if (replaced === null) return null;
@@ -294,13 +303,15 @@ function resultFailed(data: Record<string, unknown>): boolean {
   );
 }
 
-/** str_replace_editor insert 的反向移除片段。insert_line:0 时 value 前没有
- * 换行，反向要移除 `value\n`；>0 时反向移除 `\nvalue`（与工具实现一致）。 */
+/** str_replace_editor insert 的反向移除片段。insert_line:0 时反向要移除
+ * `value\n`（insert 在行首插入 value 后还会补一个换行分隔符）；insert_line>0
+ * 时反向要移除 `\nvalue`（value 前的分隔符）。value 自身首/尾带 \n 时同样
+ * 成立——它与工具的 split("\n")/join("\n") 语义逐字节对齐。 */
 function insertReverseFragment(args: Record<string, unknown>): string | undefined {
   const value = typeof args.new_str === "string" ? args.new_str : "";
   if (value === "") return undefined;
-  if (args.insert_line === 0) return value.endsWith("\n") ? value : `${value}\n`;
-  return value.startsWith("\n") ? value : `\n${value}`;
+  if (args.insert_line === 0) return `${value}\n`;
+  return `\n${value}`;
 }
 
 /** 从 tool/result.meta 提取 diffs（防御性窄化，malformed 返回 undefined）。 */
@@ -581,7 +592,13 @@ function apply(ctx: Context): void {
           text: `seq ${seq} is not a user message (it's ${picked.type}); pick a user message seq from /rewind`,
         };
       }
-      if (seq >= events.length - 1) {
+      // Relay mirrors can have sparse seqs (local window only), so "current"
+      // must mean the largest seq present — never the array length.
+      const lastSeq = events.reduce(
+        (max, e) => (typeof e.seq === "number" && e.seq > max ? e.seq : max),
+        -1,
+      );
+      if (seq >= lastSeq) {
         return { kind: "error", text: "cannot rewind to the current message" };
       }
 
@@ -615,7 +632,15 @@ function apply(ctx: Context): void {
       //    flush 必须发生在文件恢复之前：flush 失败时磁盘尚未被改动。
       try {
         if (typeof sessions.flush !== "function") throw new Error("sessions.flush unavailable");
-        await sessions.flush(child as never);
+        // flush 返回 false = 没有持久化 listener 参与；此时 fork 的 seed 仍
+        // 未落盘，继续 execve 会让新进程找不到 resume 目标——按失败处理。
+        const flushed = (await sessions.flush(child as never)) as unknown;
+        if (flushed === false) {
+          return {
+            kind: "error",
+            text: "failed to flush forked session (no persistent listener) — rewind aborted before any file changes",
+          };
+        }
       } catch (error) {
         return {
           kind: "error",
@@ -641,7 +666,7 @@ function apply(ctx: Context): void {
           failed.push(path);
           continue;
         }
-        const resolved = resolveUnder(cwd, path);
+        const resolved = await resolveUnderReal(cwd, path);
         if (resolved === undefined) {
           failed.push(`${path} (outside workspace)`);
           continue;
@@ -756,6 +781,30 @@ function resolveUnder(cwd: string, path: string): { abs: string } | undefined {
   const abs = path.startsWith("/") ? resolve(path) : resolve(cwd, path);
   const prefix = base.endsWith(sep) ? base : `${base}${sep}`;
   return abs === base || abs.startsWith(prefix) ? { abs } : undefined;
+}
+
+/** resolveUnder 的词法检查之外，再按 realpath 校验：workspace 内指向外部的
+ * symlink（文件或目录）会被词法检查放过，rewind 不能跟着它读写/删除 workspace
+ * 之外的文件。取目标最近存在的祖先做 realpath，落在 base 真实路径内才放行。 */
+export async function resolveUnderReal(
+  cwd: string,
+  path: string,
+): Promise<{ abs: string } | undefined> {
+  const lex = resolveUnder(cwd, path);
+  if (lex === undefined) return undefined;
+  const baseReal = await realpath(cwd).catch(() => resolve(cwd));
+  const prefix = baseReal.endsWith(sep) ? baseReal : `${baseReal}${sep}`;
+  let candidate = lex.abs;
+  let real: string | undefined;
+  for (;;) {
+    real = await realpath(candidate).catch(() => undefined);
+    if (real !== undefined) break;
+    const parent = dirname(candidate);
+    if (parent === candidate) break;
+    candidate = parent;
+  }
+  if (real === undefined) return undefined;
+  return real === baseReal || real.startsWith(prefix) ? lex : undefined;
 }
 
 async function readTextSafe(abs: string): Promise<string | null> {

@@ -169,6 +169,26 @@ test("includeSubagents：子代理独立 swap（各自 tool/call 后）", async 
   assert.ok(PARAM_KEYS(VIEW(sub.ctx).get("bash")).includes("sandbox_permissions"));
 });
 
+test("冷启动恢复：resume 已 promoted 会话时任意首个事件触发 swap", async () => {
+  const bootState = boot();
+  // 会话日志里已有 promotion tool/call（模拟 resume 一个已 promoted 会话）
+  const preEvents = [{ type: "tool/call", seq: 5, data: {} }];
+  const agent = makeAgent(bootState, "sess-resume", preEvents);
+  // 只发一个非 tool/call 事件；swap 必须通过 promotion.status() 的冷扫描发现已 promoted
+  const event = { type: "assistant/chunk", seq: 6, data: {} };
+  agent.session.events.push(event);
+  for (const listener of bootState.sessionListeners) {
+    listener(agent.session, event);
+  }
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+  const bash = VIEW(agent.ctx).get("bash");
+  assert.ok(
+    PARAM_KEYS(bash).includes("sandbox_permissions"),
+    `resume 已 promoted 会话应冷启动即 swap，实际参数: ${PARAM_KEYS(bash).join(",")}`,
+  );
+});
+
 test("失败降级：swap 抛错 → warn once + 不 rethrow + persistent 保留", async () => {
   // 不提供 sandboxPolicy → dsh-tool-bash.apply 会抛 "tool-bash: ... ctx.sandboxPolicy is missing"
   const bootState = boot("workspace-write", false);

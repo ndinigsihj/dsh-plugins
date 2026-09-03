@@ -116,8 +116,9 @@ export interface TuiAppOptions {
   modelLabel: string;
   presenters: ToolPresenters;
   /** User submitted a non-command line. Decide send-vs-steer and dispatch.
-   * images carries the already-saved attachments for this message. */
-  onPrompt(text: string, images?: ReadonlyArray<SavedImage>): void;
+   * images carries the already-saved attachments for this message. May be
+   * async; handleSubmit awaits it so a rejection restores the draft. */
+  onPrompt(text: string, images?: ReadonlyArray<SavedImage>): void | Promise<void>;
   /** Esc/Ctrl+C while a turn is running. */
   onCancel(): void;
   /** Double-Esc while idle (docs/m3-rewind-ui-design.md): open the rewind
@@ -230,7 +231,7 @@ export class StatusLine implements Component {
   }
 
   showNotice(text: string): void {
-    this.notice = text.split("\n");
+    this.notice = text.split("\n").map((line) => sanitizeDisplay(line));
   }
 
   /** Retire the transient text; parts underneath keep their current values. */
@@ -580,7 +581,7 @@ class ToolRow implements RowComponent {
     } else if (view !== undefined && view.card === "web") {
       if (view.kind === "search") {
         for (const s of view.sources) {
-          lines.push(`- ${s.title !== undefined ? sanitizeDisplay(s.title) : "(untitled)"} ${this.p.dim(s.url)}`);
+          lines.push(`- ${s.title !== undefined ? sanitizeDisplay(s.title) : "(untitled)"} ${this.p.dim(sanitizeDisplay(s.url))}`);
         }
         if (view.truncated) lines.push(this.p.dim("(sources truncated)"));
       } else {
@@ -1150,7 +1151,12 @@ class SessionPicker implements Component {
   }
 
   private buildSelect(items: SessionPickItem[]): SelectList {
-    const select = new SelectList(items, Math.min(Math.max(items.length, 3), 12), selectListTheme(this.p));
+    const sanitized = items.map((i) => ({
+      value: i.value,
+      label: sanitizeDisplay(i.label),
+      description: i.description === undefined ? undefined : sanitizeDisplay(i.description),
+    }));
+    const select = new SelectList(sanitized, Math.min(Math.max(items.length, 3), 12), selectListTheme(this.p));
     return select;
   }
 
@@ -1217,7 +1223,7 @@ class SessionPicker implements Component {
 
   private setPreview(text: string): void {
     this.previewValue = text;
-    this.previewText.setText(text);
+    this.previewText.setText(sanitizeDisplay(text));
     this.requestRender?.();
   }
 
@@ -1420,7 +1426,7 @@ class PlanReviewCard implements Component {
       );
     }
     content.push("");
-    content.push(...this.select.render(Math.max(24, inner)));
+    content.push(...this.select.render(Math.max(1, inner)));
     content.push(
       this.palette.dim(
         "  ↑↓ choose · enter confirm · a approve & exit · r keep planning · esc cancel",
@@ -1565,7 +1571,10 @@ export class CheckboxList implements Component {
   ) {
     this.palette = palette;
     this.question = question;
-    this.options = options;
+    this.options = options.map((o) => ({
+      label: sanitizeDisplay(o.label),
+      ...(o.description === undefined ? {} : { description: sanitizeDisplay(o.description) }),
+    }));
     this.checked = options.map(() => false);
   }
 
@@ -1728,11 +1737,16 @@ class CommandAwareAutocompleteProvider implements AutocompleteProvider {
       const argumentPrefix = textBeforeCursor.slice(spaceIndex + 1);
       const command = this.commands.find((c) => c.name === commandName);
       if (command?.getArgumentCompletions !== undefined) {
-        const items = await command.getArgumentCompletions(argumentPrefix);
-        if (items !== null && items.length > 0) {
-          return { items, prefix: argumentPrefix };
+        try {
+          const items = await command.getArgumentCompletions(argumentPrefix);
+          if (items !== null && items.length > 0) {
+            return { items, prefix: argumentPrefix };
+          }
+          return null; // 有参数补全但结果为空：不落到本地文件补全
+        } catch {
+          // 参数补全 rejection 不能污染后续 autocomplete 链；回退到本地文件补全。
+          return this.inner.getSuggestions(lines, cursorLine, cursorCol, options);
         }
-        return null; // 有参数补全但结果为空：不落到本地文件补全
       }
     }
     return this.inner.getSuggestions(lines, cursorLine, cursorCol, options);
@@ -1790,7 +1804,10 @@ class FileReferenceAutocomplete implements AutocompleteProvider {
     const atPrefix = atPrefixBeforeCursor(lines[cursorLine] ?? "", cursorCol);
     if (atPrefix === null) return base;
     try {
-      const query = atPrefix.startsWith(`@"`) ? atPrefix.slice(2, -1) : atPrefix.slice(1);
+      // Quoted prefix is `@"query…` — the regex never includes a closing
+      // quote, so strip exactly the opener (slice(2,-1) dropped the last
+      // typed character, e.g. @"my file → "my fil").
+      const query = atPrefix.startsWith(`@"`) ? atPrefix.slice(2) : atPrefix.slice(1);
       // Out-of-workspace paths (/ ~ ../) are invisible to the rooted
       // discovery index — complete them with a live readdir of the parent
       // directory so absolute references stay first-class.
@@ -2189,7 +2206,7 @@ export class TuiApp {
       const suffix = latest.status === "stopping" ? this.p.dim(" (stopping)") : "";
       this.jobsLine.setText(
         truncateToWidth(
-          `${this.p.fg("▣ jobs", "yellow")} ${this.p.dim(`×${jobs.length}`)} · ${this.p.dim(latest.label || latest.id)}${suffix}${this.p.dim(" · Ctrl+O expands")}`,
+          `${this.p.fg("▣ jobs", "yellow")} ${this.p.dim(`×${jobs.length}`)} · ${this.p.dim(sanitizeDisplay(latest.label || latest.id))}${suffix}${this.p.dim(" · Ctrl+O expands")}`,
           width,
         ),
       );
@@ -2203,7 +2220,7 @@ export class TuiApp {
     for (const job of shown) {
       const mark = job.status === "stopping" ? this.p.dim("●") : this.p.fg("●", "yellow");
       const tag = job.status === "stopping" ? this.p.dim(" (stopping)") : "";
-      lines.push(truncateToWidth(`${mark} ${job.label || job.id}${tag}`, width));
+      lines.push(truncateToWidth(`${mark} ${sanitizeDisplay(job.label || job.id)}${tag}`, width));
     }
     lines.push(this.p.dim("  Ctrl+O collapses"));
     this.jobsLine.setText(lines.join("\n"));
@@ -2224,7 +2241,7 @@ export class TuiApp {
       const latest = nameOf(running[running.length - 1]!);
       this.subagentsLine.setText(
         truncateToWidth(
-          `${this.p.fg("◉ subagents", "cyan")} ${this.p.dim(`×${running.length}`)} · ${this.p.dim(latest)}`,
+          `${this.p.fg("◉ subagents", "cyan")} ${this.p.dim(`×${running.length}`)} · ${this.p.dim(sanitizeDisplay(latest))}`,
           width,
         ),
       );
@@ -2237,7 +2254,7 @@ export class TuiApp {
     }
     for (const child of shown) {
       const bg = child.mode === "continuable" ? this.p.dim(" (bg)") : "";
-      lines.push(truncateToWidth(`${this.p.fg("●", "green")} ${nameOf(child)}${bg}`, width));
+      lines.push(truncateToWidth(`${this.p.fg("●", "green")} ${sanitizeDisplay(nameOf(child))}${bg}`, width));
     }
     lines.push(this.p.dim("  Ctrl+O collapses"));
     this.subagentsLine.setText(lines.join("\n"));
@@ -2374,9 +2391,9 @@ export class TuiApp {
     const running = this.statusValue === "running";
     const dot = running ? this.p.fg("●", "yellow") : this.p.fg("●", "green");
     const sep = this.p.dim(" · ");
-    const left = [`${dot} ${this.p.dim(this.modelLabel)}`];
+    const left = [`${dot} ${this.p.dim(sanitizeDisplay(this.modelLabel))}`];
     // Bare effort name — no prefix, keep the bar lean (banner carries labels).
-    if (this.thinkLabel !== null) left.push(this.p.fg(this.thinkLabel, "cyan"));
+    if (this.thinkLabel !== null) left.push(this.p.fg(sanitizeDisplay(this.thinkLabel), "cyan"));
     if (this.cacheRate !== null) left.push(this.p.dim(`cache ${this.cacheRate}%`));
     // Stream rate persists across the turn boundary: bright while live, dim
     // once idle so a standing number is never mistaken for an active stream.
@@ -2387,7 +2404,7 @@ export class TuiApp {
     // Session-total output (same source as /cost); hidden until first usage.
     if (this.outputTotal !== null) left.push(this.p.dim(`out ${formatTokens(this.outputTotal)}`));
     // 位置槽：relay 模式显示 host:~/dir，本地模式显示本地 cwd basename。
-    left.push(this.p.dim(this.deviceLabel !== "" ? this.deviceLabel : this.workspaceName));
+    left.push(this.p.dim(sanitizeDisplay(this.deviceLabel !== "" ? this.deviceLabel : this.workspaceName)));
     let right = "";
     if (this.contextInfo !== null) {
       const { pct, usedTokens, windowTokens } = this.contextInfo;
@@ -2499,8 +2516,8 @@ export class TuiApp {
       }
       const items: SelectItem[] = (item.options ?? []).map((o) => ({
         value: o.label,
-        label: o.label,
-        description: o.description,
+        label: sanitizeDisplay(o.label),
+        description: o.description === undefined ? undefined : sanitizeDisplay(o.description),
       }));
       if (items.length === 0) {
         items.push({ value: "OK", label: "OK" });
@@ -2555,7 +2572,7 @@ export class TuiApp {
     return new Promise((resolve) => {
       const list: SelectItem[] = items.map((i) => ({
         value: String(i.seq),
-        label: `[${i.seq}] ${i.summary}`,
+        label: `[${i.seq}] ${sanitizeDisplay(i.summary)}`,
       }));
       const select = new SelectList(
         list,
@@ -2630,6 +2647,9 @@ export class TuiApp {
     }
     if (matchesKey(data, "ctrl+d")) {
       if (overlayOpen) return undefined;
+      // pi-tui editor maps Ctrl+D to deleteCharForward; let a focused editor
+      // keep that meaning instead of hijacking the key to exit the TUI.
+      if (this.editor.focused) return undefined;
       void this.options.onExit();
       return { consume: true };
     }
@@ -2716,14 +2736,21 @@ export class TuiApp {
         this.renderImageLine();
       }
       this.editor.addToHistory(text);
-      // The user may have typed while images were saving; keep any new suffix
-      // instead of wiping the whole editor with setText("").
+      // pi-tui 的 submitValue() 在回调 onSubmit 之前就已经清空编辑器，所以
+      // 这里的 getText() 只包含保存图片期间用户新输入的内容（不含本次提交
+      // 文本）。成功发送就保留这段新输入作为下一段草稿；失败则把未发出的
+      // 消息（连同新输入）放回编辑器——不能让「draft kept」变成空编辑器。
       const afterSaveText = this.editor.getText();
-      if (afterSaveText.startsWith(text)) this.editor.setText(afterSaveText.slice(text.length));
-      else this.editor.setText(afterSaveText);
       try {
-        this.options.onPrompt(trimmed, saved);
+        await this.options.onPrompt(trimmed, saved);
       } catch (error) {
+        const draft =
+          afterSaveText === ""
+            ? text
+            : afterSaveText.startsWith(text)
+              ? afterSaveText
+              : `${text}${afterSaveText}`;
+        this.editor.setText(draft);
         this.pendingImagePaths = originalPaths;
         this.renderImageLine();
         this.showNotice(

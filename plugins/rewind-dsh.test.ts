@@ -13,6 +13,7 @@ import {
   eventAtSeq,
   filePathFromArgs,
   replaceOnce,
+  resolveUnderReal,
 } from "./rewind-dsh.ts";
 
 /* ---------------- computeRewindBoundary ---------------- */
@@ -117,10 +118,21 @@ test("applyReverseSteps: deleteAfter marks deletion", () => {
   assert.equal(applyReverseSteps(current, steps), "\u0000DELETE\u0000");
 });
 
-test("applyReverseSteps: null oldText (pure insert) → null (cannot reverse)", () => {
-  const current = "abc";
-  const steps = [{ op: "edit", newText: "x", oldText: null }];
+test("applyReverseSteps: null oldText (pure insert) → remove newText", () => {
+  // dsh-tool-fs 对纯插入/write 到空文件产出 oldText:null；反向是删除 newText。
+  assert.equal(applyReverseSteps("xabc", [{ op: "edit", newText: "x", oldText: null }]), "abc");
+  assert.equal(applyReverseSteps("abc", [{ op: "edit", newText: "abc", oldText: null }]), "");
+});
+
+test("applyReverseSteps: null oldText with ambiguous newText → null (fail closed)", () => {
+  const current = "TARGET\nkeep\nTARGET";
+  const steps = [{ op: "edit", newText: "TARGET", oldText: null }];
   assert.equal(applyReverseSteps(current, steps), null);
+});
+
+test("replaceOnce: empty target is always ambiguous → null", () => {
+  assert.equal(replaceOnce("foo", "", "x"), null);
+  assert.equal(replaceOnce("", "", ""), null);
 });
 
 test("applyReverseSteps: ambiguous match → null (fail closed)", () => {
@@ -154,6 +166,13 @@ function toolCall(seq: number, callId: string, name: string, argumentsJson: stri
   return { seq, type: "tool/call", data: { callId, name, arguments: argumentsJson } };
 }
 function toolResult(seq: number, callId: string, meta?: unknown, messageContent?: unknown) {
+  // Real shape: tool-result envelope's content is ContentBlock[]; callers that
+  // pass a bare string (older fixtures) get it normalized to a text block so
+  // the fixture matches the harness contract.
+  const inner =
+    typeof messageContent === "string"
+      ? [{ type: "text", text: messageContent }]
+      : messageContent;
   return {
     seq,
     type: "tool/result",
@@ -168,7 +187,7 @@ function toolResult(seq: number, callId: string, meta?: unknown, messageContent?
           {
             type: "tool-result",
             toolCallId: callId,
-            content: messageContent,
+            content: inner,
             isError: false,
           },
         ],
@@ -273,6 +292,33 @@ test("buildRestorePlan: insert_line 0 uses no leading newline in reverse fragmen
   assert.deepEqual(steps.get("f.ts")![0], { op: "str_replace_editor", newText: "X\n", oldText: "" });
 });
 
+test("buildRestorePlan: insert reverse fragment keeps trailing newline (insert_line 0)", () => {
+  const events = [
+    toolCall(10, "i0nl", "str_replace_editor", '{"command":"insert","path":"f.ts","insert_line":0,"new_str":"X\\n"}'),
+    toolResult(11, "i0nl", undefined, "ok"),
+  ];
+  const { steps } = buildRestorePlan(events, 9);
+  assert.deepEqual(steps.get("f.ts")![0], { op: "str_replace_editor", newText: "X\n\n", oldText: "" });
+});
+
+test("buildRestorePlan: insert reverse fragment keeps leading newline (insert_line > 0)", () => {
+  const events = [
+    toolCall(10, "i1nl", "str_replace_editor", '{"command":"insert","path":"f.ts","insert_line":2,"new_str":"\\nc"}'),
+    toolResult(11, "i1nl", undefined, "ok"),
+  ];
+  const { steps } = buildRestorePlan(events, 9);
+  assert.deepEqual(steps.get("f.ts")![0], { op: "str_replace_editor", newText: "\n\nc", oldText: "" });
+});
+
+test("applyReverseSteps: insert reverse restores exact file bytes", () => {
+  // insert_line:0 + new_str "X\n" → after text "X\n\nc"; reverse removes "X\n\n" → "c"
+  const steps0 = [{ op: "str_replace_editor", newText: "X\n\n", oldText: "" }];
+  assert.equal(applyReverseSteps("X\n\nc", steps0), "c");
+  // insert_line>0 + new_str "\nc" → after "a\n\nc\nb"; reverse removes "\n\nc" → "a\nb"
+  const steps1 = [{ op: "str_replace_editor", newText: "\n\nc", oldText: "" }];
+  assert.equal(applyReverseSteps("a\n\nc\nb", steps1), "a\nb");
+});
+
 test("buildRestorePlan: failed tool result is skipped, not restored", () => {
   const events = [
     toolCall(10, "f1", "write", '{"file_path":"a.txt","content":"v2"}'),
@@ -366,7 +412,7 @@ test("buildReverseSteps: empty → null", () => {
 
 /* ---------------- 端到端：事件 → 计划 → 反向应用 → 文件内容 ---------------- */
 
-import { mkdtempSync, writeFileSync, readFileSync, rmSync, existsSync, unlinkSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, rmSync, existsSync, unlinkSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -445,5 +491,24 @@ test("e2e: ambiguous match fails closed (file untouched)", () => {
     assert.equal(readFileSync(fPath, "utf8"), "A\nX\nA\nX\n"); // 未被写坏
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("resolveUnderReal: workspace-internal symlink to outside is rejected", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "dsh-rewind-real-"));
+  const outside = mkdtempSync(join(tmpdir(), "dsh-rewind-outside-"));
+  try {
+    const link = join(dir, "link");
+    symlinkSync(outside, link, "dir");
+    // 词法上在 workspace 内、但指向外部的 symlink → 拒绝
+    assert.equal(await resolveUnderReal(dir, "link/secret.txt"), undefined);
+    // 绝对路径直接越界 → 拒绝（词法层）
+    assert.equal(await resolveUnderReal(dir, outside), undefined);
+    // workspace 内普通文件 → 放行
+    writeFileSync(join(dir, "ok.txt"), "x");
+    assert.equal((await resolveUnderReal(dir, "ok.txt"))?.abs, join(dir, "ok.txt"));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
   }
 });

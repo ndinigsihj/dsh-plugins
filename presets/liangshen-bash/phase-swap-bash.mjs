@@ -19,8 +19,8 @@
  * 绝不 brick 会话。
  */
 
-import { createEpochPromotion } from '/Users/vito/data/dev/dsh-plugins/vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/compaction-epoch.mjs'
-import * as sandboxBash from '/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-tool-bash/lib/index.js'
+import { createEpochPromotion } from './vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/compaction-epoch.mjs'
+import * as sandboxBash from '@deepseek-ai/dsh-tool-bash'
 
 /** Cordis plugin name used by loader diagnostics. */
 export const name = 'phase-swap-bash'
@@ -75,7 +75,12 @@ export function apply(ctx, config) {
     const assembled = await next()
     if (promotion.status(context.agent).promoted) return assembled
     const sections = assembled.sections ?? []
-    const kept = sections.filter((section) => !(section.name ?? '').startsWith('tool:'))
+    // dsh-tools 的指引 sections 同时存在 `tool:*` 与 `tools:*`（如 tools:sdk、
+    // tools:code-only）两种前缀，全部在未 promote 时滤掉。
+    const kept = sections.filter((section) => {
+      const name = section.name ?? ''
+      return !name.startsWith('tool:') && !name.startsWith('tools:')
+    })
     return kept.length === sections.length ? assembled : { ...assembled, sections: kept }
   })
 
@@ -93,12 +98,11 @@ export function apply(ctx, config) {
   }
 
   ctx.on('session/event', async (session, event) => {
-    // Only act on the durable promotion signal itself, not every event.
-    if (event.type !== 'tool/call') return
     if (swapped.has(session.id)) return
     try {
-      // 事件时解析服务：inject=[] 纪律下不能用属性访问（ctx.agents 会抛
-      // "without inject"），显式 ctx.get 不需要 inject（同 dsh-tui rosterOf）。
+      // 不只响应新 tool/call：promotion.status() 会冷扫描 session 日志，
+      // 所以 resume 一个已经 promoted 的会话时，任意首个事件都能触发 swap，
+      // 不会一直保持 persistent bash 直到再次出现 tool/call（H5 冷启动回归）。
       const agent = ctx.get('agents')?.get(session.id)
       if (agent === undefined) return
       if (!promotion.status(agent).promoted) return

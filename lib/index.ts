@@ -19,6 +19,7 @@ import { z as zod } from "zod";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { TuiApp, formatTokens, type AgentSurface, type AutocompleteCommand, type GoalSummary, type RunningJob } from "./app.ts";
 import { createPalette } from "./palette.ts";
+import { sanitizeDisplay } from "./sanitize.ts";
 import { renderTranscriptMarkdown } from "./export.ts";
 import type { ToolPresenters, TodoItem } from "./transcript.ts";
 import {
@@ -494,7 +495,9 @@ function recordedRouteOf(
 
 /** The reasoning effort a session last rode: the latest `request/header`
  * snapshot's call config (effort IS logged there, unlike request/context).
- * undefined when none recorded or the snapshot omits it (provider default). */
+ * A header that omits `reasoningEffort` means the provider default applies —
+ * it must NOT fall back to an older explicit header (that would resurrect a
+ * stale effort after the user reset it). undefined when no header records it. */
 function recordedEffortOf(
   events: ReadonlyArray<unknown>,
 ): string | undefined {
@@ -504,7 +507,7 @@ function recordedEffortOf(
       | undefined;
     if (event?.type !== "request/header") continue;
     const effort = event.data?.header?.config?.reasoningEffort;
-    if (typeof effort === "string") return effort;
+    return typeof effort === "string" ? effort : undefined;
   }
   return undefined;
 }
@@ -880,7 +883,10 @@ async function run(
       return true; // uncheckable → assume present
     }
     if (!providers.some((p) => p.id === route.provider)) return false;
-    const models = await llm.listModels(route.provider).catch(() => []);
+    // listModels failure is a transient catalog hiccup, not proof the model is
+    // gone — treat it as uncheckable (assume present), matching listProviders.
+    const models = await llm.listModels(route.provider).catch(() => undefined);
+    if (models === undefined) return true;
     return models.some((m) => m.id === route.model);
   }
 
@@ -1184,7 +1190,9 @@ async function run(
       name: "new",
       description: "Start a fresh session",
       handler: () => {
-        void startNewSession();
+        void startNewSession().catch((error) => {
+          app.showNotice(`/new failed: ${error instanceof Error ? error.message : String(error)}`);
+        });
         return { kind: "success" };
       },
     });
@@ -1192,7 +1200,9 @@ async function run(
       name: "preset",
       description: "Switch agent presets: /preset [id]",
       handler: ({ rawInput }) => {
-        void doPreset(rawInput === "" ? "/preset" : `/preset ${rawInput}`);
+        void doPreset(rawInput === "" ? "/preset" : `/preset ${rawInput}`).catch((error) => {
+          app.showNotice(`/preset failed: ${error instanceof Error ? error.message : String(error)}`);
+        });
         return { kind: "success" };
       },
     });
@@ -1200,7 +1210,9 @@ async function run(
       name: "model",
       description: "Pick the default provider/model route",
       handler: () => {
-        void doModel();
+        void doModel().catch((error) => {
+          app.showNotice(`/model failed: ${error instanceof Error ? error.message : String(error)}`);
+        });
         return { kind: "success" };
       },
     });
@@ -1208,7 +1220,9 @@ async function run(
       name: "attach",
       description: "Local→worker attach / worker device switch: /attach [id]",
       handler: ({ rawInput }) => {
-        void doAttach(rawInput);
+        void doAttach(rawInput).catch((error) => {
+          app.showNotice(`/attach failed: ${error instanceof Error ? error.message : String(error)}`);
+        });
         return { kind: "success" };
       },
     });
@@ -1216,7 +1230,9 @@ async function run(
       name: "device",
       description: "alias of /attach (worker device switch)",
       handler: ({ rawInput }) => {
-        void doAttach(rawInput);
+        void doAttach(rawInput).catch((error) => {
+          app.showNotice(`/device failed: ${error instanceof Error ? error.message : String(error)}`);
+        });
         return { kind: "success" };
       },
     });
@@ -1224,7 +1240,9 @@ async function run(
       name: "detach",
       description: "Return to local mode (leave the worker)",
       handler: () => {
-        void doDetach();
+        void doDetach().catch((error) => {
+          app.showNotice(`/detach failed: ${error instanceof Error ? error.message : String(error)}`);
+        });
         return { kind: "success" };
       },
     });
@@ -1232,7 +1250,9 @@ async function run(
       name: "workspace",
       description: "Worker mode: pick/switch workspace: /workspace [dir]",
       handler: ({ rawInput }) => {
-        void doWorkspace(`/workspace ${rawInput}`);
+        void doWorkspace(`/workspace ${rawInput}`).catch((error) => {
+          app.showNotice(`/workspace failed: ${error instanceof Error ? error.message : String(error)}`);
+        });
         return { kind: "success" };
       },
     });
@@ -1240,7 +1260,9 @@ async function run(
       name: "effort",
       description: "Pick the reasoning effort for this session",
       handler: () => {
-        void doEffort();
+        void doEffort().catch((error) => {
+          app.showNotice(`/effort failed: ${error instanceof Error ? error.message : String(error)}`);
+        });
         return { kind: "success" };
       },
     });
@@ -1272,7 +1294,9 @@ async function run(
       name: "export",
       description: "Export this conversation to a Markdown file",
       handler: (invocation: { rawInput: string }) => {
-        void doExport(invocation.rawInput);
+        void doExport(invocation.rawInput).catch((error) => {
+          app.showNotice(`/export failed: ${error instanceof Error ? error.message : String(error)}`);
+        });
         return { kind: "success", text: "Export started." };
       },
     });
@@ -1284,7 +1308,9 @@ async function run(
     presenters,
     onPrompt: async (text, images) => {
       if (text.startsWith("/")) {
-        void runCommand(text);
+        void runCommand(text).catch((error) => {
+          app.showNotice(`${text.split(/\s+/)[0]} failed: ${error instanceof Error ? error.message : String(error)}`);
+        });
         return;
       }
       const relayClient = ctx.get<{ currentDevice(): string; isAttached(): boolean }>("relayClient");
@@ -1523,10 +1549,10 @@ async function run(
     const preset = currentPreset();
     const thinkName = effectiveEffortName();
     const meta = [
-      `${liveRoute.provider}/${liveRoute.model}`,
-      ...(preset === undefined ? [] : [`preset ${preset}`]),
-      ...(thinkName === undefined ? [] : [`think ${thinkName}`]),
-      process.cwd(),
+      sanitizeDisplay(`${liveRoute.provider}/${liveRoute.model}`),
+      ...(preset === undefined ? [] : [`preset ${sanitizeDisplay(preset)}`]),
+      ...(thinkName === undefined ? [] : [`think ${sanitizeDisplay(thinkName)}`]),
+      sanitizeDisplay(process.cwd()),
     ].join(" · ");
     const title = `✻ dsh-tui${version === "" ? "" : ` v${version}`} · deepseek harness`;
     const hint = "/help 命令一览 · @ 文件补全 · Ctrl+O 展开思考 · Esc 打断";
@@ -2003,7 +2029,12 @@ async function run(
     if (items.length === 0 && services.sessionQuery !== undefined) {
       try {
         const snap = await services.sessionQuery.readSession(agent.id);
-        if (snap !== undefined) items = rewindCandidates(snap.events);
+        if (snap !== undefined) {
+          items = rewindCandidates(snap.events);
+          // 内存日志为空（冷启动/resume）：把磁盘快照借给 rewindSource，
+          // 让后续 /rewind <seq> 的执行路径与 picker 看到同一份事件。
+          rewindFallbackEvents = snap.events;
+        }
       } catch {
         /* unreadable log — empty list handled below */
       }
@@ -2523,7 +2554,11 @@ async function run(
    * on the next session).
    */
   async function switchToPreset(roster: PresetRoster, id: string, row?: PresetRow): Promise<void> {
-    if (row !== undefined && row.broken !== undefined) {
+    if (row === undefined) {
+      app.showNotice(`Unknown preset "${id}" — run /preset with no argument to list them.`);
+      return;
+    }
+    if (row.broken !== undefined) {
       app.showNotice(`Preset "${id}" is broken: ${row.broken}`);
       return;
     }
@@ -2851,12 +2886,21 @@ async function run(
     }
     try {
       await rm(dir, { recursive: true, force: true });
-      await pruneProjectionCache(id);
     } catch (error) {
       app.showNotice(
         `rm failed: ${error instanceof Error ? error.message : String(error)}`,
       );
       return false;
+    }
+    try {
+      await pruneProjectionCache(id);
+    } catch (error) {
+      // Log is already gone; cache pruning is best-effort. Report the leftover
+      // but still return true — the session WAS deleted, so a retry must not
+      // claim failure and force the user into a phantom "No on-disk log" loop.
+      process.stderr.write(
+        `dsh-tui: rm session ${id}: projection cache prune failed: ${error instanceof Error ? error.message : String(error)}\n`,
+      );
     }
     process.stderr.write(`dsh-tui: rm session ${id}\n`);
     return true;
@@ -2966,12 +3010,17 @@ async function run(
   // 让 dsh-rewind 与双击 Esc picker 共享同一会话源：relay /resume 后当前
   // agent 是带回放历史的 mirror，而 agents.roots()[0] 可能仍是启动时的旧
   // root（session 为空），导致选中的 seq 在 /rewind 侧找不到。
+  // 冷启动内存日志为空时，picker 已从 sessionQuery 读盘列出候选；把读到的
+  // 快照暂存为 fallback，/rewind <seq> 走同一条 rewindSource 也能找到事件。
+  let rewindFallbackEvents: ReadonlyArray<unknown> | undefined;
   ctx.provide("rewindSource", {
     get id() {
       return agent.id;
     },
     get events() {
-      return agent.session.events ?? [];
+      const live = agent.session.events ?? [];
+      if (live.length > 0) return live;
+      return rewindFallbackEvents ?? [];
     },
   });
 
@@ -3335,10 +3384,18 @@ async function run(
   // Agent status → footer + the app-facing surface status. Relay (attach-client)
   // emits this from remote turn/start|end; the real Agent.status is a read-only
   // getter so writing it throws and kills the wire loop — ride surfaceStatus.
-  const disposeStatus = ctx.on("agent/status", (payload: { status: "idle" | "running" }) => {
-    app.setStatus(payload.status);
-    surfaceStatus = payload.status;
-  });
+  // The subscription is unscoped, so it also sees subagent status flips; only
+  // the adopted root agent may drive the status bar (dsh-agent injects
+  // `payload.agent`, while older emitters may omit it — accept those).
+  const disposeStatus = ctx.on(
+    "agent/status",
+    (payload: { status?: "idle" | "running"; agent?: { id?: unknown } }) => {
+      if (payload.agent !== undefined && payload.agent.id !== agent.id) return;
+      if (payload.status !== "idle" && payload.status !== "running") return;
+      app.setStatus(payload.status);
+      surfaceStatus = payload.status;
+    },
+  );
 
   ctx.effect(() => () => {
     disposeApproval();

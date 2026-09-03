@@ -58,12 +58,14 @@ schema 里有 `sandbox_permissions` 参数，但看不到"当前文件策略 / �
 ## 3. 部署位
 
 - repo 版本化：`presets/liangshen-bash/agent.cordis.yml` + `preset.yml`（本仓库）。
-- 复用物（tool-bootstrap/instruction-hint/skill-search/custom-bash/compaction-epoch）走 repo **vendored**
-  路径 `/Users/vito/data/dev/dsh-plugins/vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/`
-  （2026-08-29 起 vendor，原 `endless-tui` profile 已删除；来源 `@deepseek-harness-tui/dsh-tui@0.8.7`）。
+- 复用物（tool-bootstrap/instruction-hint/skill-search/custom-bash/compaction-epoch）随
+  **preset 目录自包含**：`presets/liangshen-bash/vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/`
+  （2026-08-29 起 vendor，2026-09-03 移入 preset 目录；来源 `@deepseek-harness-tui/dsh-tui@0.8.7`）。
+  组合文件用相对路径引用 `./vendor/...`，`sync-agent-presets.sh` 整树同步，使部署副本不再
+  指向 dev 工作树。
 - phase-swap-bash 插件随本 preset 版本化：`presets/liangshen-bash/phase-swap-bash.mjs`（单一来源）。
-- 部署位：`~/.dsh/.agent-presets/liangshen-bash/`（agent.cordis.yml + preset.yml，
-  无 .dsh-tui-managed.json）。
+- 部署位：`~/.dsh/.agent-presets/liangshen-bash/`（agent.cordis.yml + preset.yml + phase-swap-bash.mjs
+  + vendor/ + node_modules/@deepseek-ai 符号链接，无 .dsh-tui-managed.json）。
 
 ## 4. 命名（待用户拍板）
 
@@ -154,6 +156,6 @@ fail closed，只测"是否尝试"，不测"是否成功"）。与主批次分�
 
 - 设计：本文档
 - preset：`presets/liangshen-bash/agent.cordis.yml`、`presets/liangshen-bash/preset.yml`
-- 复用：`presets/liangshen-bash/phase-swap-bash.mjs`、`presets/liangshen-bash/smoke-driver.mjs`、`presets/liangshen-bash/smoke-boot.mjs`、vendored `vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/*`（5 个 mjs）
+- 复用：`presets/liangshen-bash/phase-swap-bash.mjs`、`presets/liangshen-bash/smoke-driver.mjs`、`presets/liangshen-bash/smoke-boot.mjs`、vendored `presets/liangshen-bash/vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/*`（5 个 mjs）
 - 单测：`presets/liangshen-bash/phase-swap-bash.test.mjs`
 - 历史：`liangshen-plus` preset 及其文档已删除；M4 原始数据仍在 `experiments/m4/`

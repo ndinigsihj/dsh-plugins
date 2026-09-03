@@ -358,9 +358,12 @@ export class TranscriptModel {
         const callId = String(resultBlock?.toolCallId ?? "");
         const row = this.toolByCall.get(callId);
         if (row !== undefined) {
+          const contentError = content.some(
+            (b) => (b as { isError?: unknown }).isError === true,
+          );
           row.resultView = presenters.presentResult(row.name, row.args, {
             content,
-            isError: data.error !== undefined,
+            isError: data.error !== undefined || contentError,
             meta: data.meta,
           });
           if (data.error !== undefined) row.error = data.error;
@@ -389,6 +392,14 @@ export class TranscriptModel {
         else if (reason.kind === "interrupted") notice = "Turn interrupted.";
         else if (reason.kind !== "completed") notice = `Turn ended: ${reason.kind}.`;
         if (notice !== "") this.pushRow({ kind: "notice", text: notice, seq: event.seq });
+        // An interrupted/aborted turn can end without an assistant/message
+        // finalizer; close any open streaming bubble so the NEXT turn's chunks
+        // start a fresh row instead of appending to this one ("Hel"+"Hi" bug).
+        if (this.openAssistant !== null) {
+          this.openAssistant.done = true;
+          this.markDirty(this.openAssistant.seq);
+          this.openAssistant = null;
+        }
         this.bump();
         break;
       }

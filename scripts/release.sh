@@ -79,6 +79,9 @@ if [ "$prevLock" != "$newLock" ]; then
   (cd "$STABLE" && npm i --no-fund --no-audit)
 fi
 (cd "$STABLE" && scripts/link-global-dsh.sh)
+# Presets advance with the release: sync the self-contained preset tree to
+# ~/.dsh/.agent-presets so the stable TUI stops loading the dev worktree.
+scripts/sync-agent-presets.sh
 
 echo "stable = $STABLE @ $tag"
 echo "running TUI sessions must exit and relaunch to pick up the new code."

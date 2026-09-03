@@ -269,3 +269,62 @@ describe("rebuild skipStreamDeltas", () => {
     assert.equal((assistants[0] as { text: string }).text, "streamed text");
   });
 });
+
+describe("turn lifecycle edge cases", () => {
+  it("aborted turn closes the open assistant row; next turn starts fresh", () => {
+    const model = new TranscriptModel();
+    const chunk = (seq: number, text: string): Ev => ({
+      type: "assistant/chunk",
+      seq,
+      data: { turn: 1, step: 0, chunk: { type: "text-delta", index: seq, text } },
+    });
+    model.apply(userMessage(1, "q1") as never, presenters);
+    model.apply(chunk(2, "Hel") as never, presenters);
+    model.apply(
+      { type: "turn/end", seq: 3, data: { reason: { kind: "aborted" } } } as never,
+      presenters,
+    );
+    model.apply(userMessage(4, "q2") as never, presenters);
+    model.apply(chunk(5, "Hi") as never, presenters);
+    const assistants = model.snapshot.filter((r) => r.kind === "assistant");
+    assert.equal(assistants.length, 2, "two aborted turns must not merge into one row");
+    assert.equal((assistants[0] as { text: string }).text, "Hel");
+    assert.equal((assistants[1] as { text: string }).text, "Hi");
+  });
+
+  it("tool/result with content-level isError renders as failed", () => {
+    const model = new TranscriptModel();
+    model.apply(
+      { type: "tool/call", seq: 1, data: { callId: "c1", name: "bash", arguments: "{}" } } as never,
+      presenters,
+    );
+    let receivedIsError: boolean | undefined;
+    const spy: ToolPresenters = {
+      presentCall: () => undefined,
+      presentResult: (_n: string, _a: unknown, result: { isError: boolean }) => {
+        receivedIsError = result.isError;
+        return undefined;
+      },
+    } as ToolPresenters;
+    model.apply(
+      {
+        type: "tool/result",
+        seq: 2,
+        data: {
+          message: {
+            content: [
+              {
+                type: "tool-result",
+                toolCallId: "c1",
+                content: [{ type: "text", text: "boom" }],
+                isError: true,
+              },
+            ],
+          },
+        },
+      } as never,
+      spy,
+    );
+    assert.equal(receivedIsError, true, "content[].isError must mark the result failed");
+  });
+});
