@@ -174,7 +174,7 @@
 | 首轮锚定回归 | Phase 3 轨迹实测为硬性闸门，不达标不开下一 phase |
 | 降级守卫丢失 | 测试专门覆盖 fail-open/reject/异常三条路径（表 4 #7） |
 | custom-bash 遗留 | 已确认保留 win32：纯函数在 darwin/CI 跑，真实 Windows 冒烟必须通过；无 Windows 环境则该 phase 显式阻塞 |
-| 维护责任 | 接受自研即接受长期维护；建议保留一份 vendor 原文件在 `docs/reference/` 作为语义参考（不入运行路径） |
+| 维护责任 | 接受自研即接受长期维护；vendor 参考副本已删除（2026-09-03 用户确认放弃 vendor），语义以契约测试 + 本文档为准 |
 
 ---
 
@@ -204,7 +204,7 @@
 | 项 | 记录 |
 | --- | --- |
 | Phase 0 | `compaction-epoch.mjs` 已 `git mv` 到 `presets/liangshen-bash/`；`phase-swap-bash.mjs` 导入改 `./compaction-epoch.mjs`；`presets/liangshen-bash/vendor/` 已删除 |
-| 参考副本 | 原 vendor 树复制到 `docs/reference/liangshen-bash-vendor/`（§6 风险缓解，仅语义参考、不入运行路径、不参与 sync） |
+| 参考副本 | 原 vendor 树曾复制到 `docs/reference/liangshen-bash-vendor/`（语义参考、不入运行路径、不参与 sync）；2026-09-03 用户确认放弃 vendor 后已删除 |
 | Phase 1 | 四个契约测试文件先红后绿：tool-bootstrap 10、instruction-hint 6、skill-search 8、custom-bash 8（合计 32 新断言） |
 | Phase 2 | 三个自研插件已落地并按相对路径接线；`sync-agent-presets.sh` 改复制本地 mjs、不再复制 vendor；`package.json` test 纳入四个新测试 |
 | 发现并修复 | 真实 harness 下 `phase-swap-bash` 的 spy ctx 基于 `agent.ctx` 未声明 `shell/systemPrompt/shellEnv`，swap 抛 `cannot get property "shell" without inject`；改为 `agent.ctx.inject(['tools','shell','systemPrompt','shellEnv'])` 且 spy ctx 基于 `injectedCtx` 派生（单测环境不拦截属性访问，因此只有 repo-local smoke 能暴露） |

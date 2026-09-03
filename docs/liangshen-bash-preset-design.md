@@ -60,8 +60,8 @@ schema 里有 `sandbox_permissions` 参数，但看不到"当前文件策略 / �
 - repo 版本化：`presets/liangshen-bash/agent.cordis.yml` + `preset.yml`（本仓库）。
 - 复用物（tool-bootstrap/instruction-hint/skill-search/custom-bash/compaction-epoch）随
   **preset 目录自包含**：`presets/liangshen-bash/*.mjs`（2026-09-03 起自研，原
-  vendored `@deepseek-harness-tui/dsh-tui@0.8.7` 副本移入 `docs/reference/liangshen-bash-vendor/`
-  仅作语义参考，不入运行路径）。组合文件用相对路径引用 `./*.mjs`，
+  vendored `@deepseek-harness-tui/dsh-tui@0.8.7` 副本已删除（2026-09-03 放弃 vendor）。
+  组合文件用相对路径引用 `./*.mjs`，
   `sync-agent-presets.sh` 整树同步，使部署副本不再指向 dev 工作树。
 - phase-swap-bash 插件随本 preset 版本化：`presets/liangshen-bash/phase-swap-bash.mjs`（单一来源）。
 - 部署位：`~/.dsh/.agent-presets/liangshen-bash/`（agent.cordis.yml + preset.yml + 本地自研 mjs
@@ -174,5 +174,5 @@ dsh-base host 层 promotion 后恢复），不影响 check3/锚定判定。
 - preset：`presets/liangshen-bash/agent.cordis.yml`、`presets/liangshen-bash/preset.yml`
 - 复用：`presets/liangshen-bash/phase-swap-bash.mjs`、`presets/liangshen-bash/smoke-driver.mjs`、`presets/liangshen-bash/smoke-boot.mjs`、自研 `presets/liangshen-bash/{tool-bootstrap,instruction-hint,skill-search,custom-bash,compaction-epoch}.mjs`（5 个 mjs）
 - 单测：`presets/liangshen-bash/{phase-swap-bash,tool-bootstrap,instruction-hint,skill-search,custom-bash}.test.mjs` + `test-helpers.mjs`
-- 历史/参考：`docs/reference/liangshen-bash-vendor/`（原 vendored 副本，仅语义参考，不入运行路径）
+- 历史：原始 M4 数据在 `experiments/m4/`；原 vendored 副本已删除（2026-09-03 放弃 vendor）
 - 历史：`liangshen-plus` preset 及其文档已删除；M4 原始数据仍在 `experiments/m4/`
