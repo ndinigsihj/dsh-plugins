@@ -1,10 +1,10 @@
 # `liangshen-bash` 组合 preset：liangshen 全量基底 + 二轮 bash 提权 + 二轮 AGENTS.md 注入。
 #
-# 以 vendored 的 liangshen preset（来源 @deepseek-harness-tui/dsh-tui）为基底做 6 处改动
-# （设计文档 docs/liangshen-bash-preset-design.md §1）：
-#   1-4. 本地复用物路径改 preset 目录内 vendored 相对路径（tool-bootstrap /
-#        instruction-hint / custom-bash / skill-search，S7 部署位决策，零语义变化；
-#        相对路径 + sync 整树同步，部署副本不引用 dev 工作树）。
+# 以 liangshen 语义为基底做 6 处改动（设计文档 docs/liangshen-bash-preset-design.md §1）：
+#   1-4. 本地复用物走 preset 目录内自研相对路径（tool-bootstrap / instruction-hint /
+#        custom-bash / skill-search；S7 部署位决策，相对路径 + sync 整树同步，部署
+#        副本不引用 dev 工作树；文件自研替换 vendor，契约见 docs/
+#        liangshen-bash-preset-self-host-implementation.md）。
 #   5. 新增 phase-swap-bash 行：首轮 tool/call（promotion）后把该 agent 的 bash 从
 #      persistent 换成沙箱 dsh-tool-bash（sandbox_permissions 提权）。
 #   6. 新增 agent-instructions 行：二轮起 AGENTS.md/CLAUDE.md 自动进上下文
@@ -21,7 +21,7 @@
 # str_replace_editor），promotion 后放行完整目录。必须保持 FIRST（waterfall 逆序
 # 应用 + prepend:true 的最外层变换纪律，照抄 tool-bootstrap.mjs 头注释）。
 - id: tool-bootstrap
-  name: './vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/tool-bootstrap.mjs'
+  name: './tool-bootstrap.mjs'
   config:
     bootstrapTools: [bash, str_replace_editor]
     promoteOn: tool-call
@@ -64,7 +64,7 @@
 # "这些指令文件存在；行动前先读它们"——模型按需自行用 fs 工具读取。
 # 与上方 agent-instructions 的 digest 并存（C 组实测双源无冲突；hint 略冗余但无害）。
 - id: instruction-hint
-  name: './vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/instruction-hint.mjs'
+  name: './instruction-hint.mjs'
   config:
     promoteOn: tool-call
     includeSubagents: true
@@ -113,7 +113,7 @@
 
 # Windows-only bash（本期只做 darwin；win32 第二优先级 D4）。
 - id: custom-bash
-  name: './vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/custom-bash.mjs'
+  name: './custom-bash.mjs'
   disabled: !!js process.platform !== 'win32'
 
 # ── filesystem ──────────────────────────────────────────────────────────────
@@ -148,7 +148,7 @@
   name: '@deepseek-ai/dsh-skill-filesystem'
 
 - id: skill-search
-  name: './vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/skill-search.mjs'
+  name: './skill-search.mjs'
 
 # ── goals ───────────────────────────────────────────────────────────────────
 - id: tool-goal

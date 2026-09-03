@@ -8,7 +8,7 @@
     "node": ">=22.19.0"
   },
   "scripts": {
-    "test": "node --test lib/goal-bar.test.ts lib/transcript-area.test.ts plugins/rewind-dsh.test.ts presets/liangshen-bash/phase-swap-bash.test.mjs"
+    "test": "node --test lib/goal-bar.test.ts lib/transcript-area.test.ts plugins/rewind-dsh.test.ts presets/liangshen-bash/phase-swap-bash.test.mjs presets/liangshen-bash/tool-bootstrap.test.mjs presets/liangshen-bash/instruction-hint.test.mjs presets/liangshen-bash/skill-search.test.mjs presets/liangshen-bash/custom-bash.test.mjs"
   },
   "dsh": {
     "bundle": {

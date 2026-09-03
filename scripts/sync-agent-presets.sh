@@ -6,8 +6,8 @@
 # up the same security posture (e.g. the 2026-08-25 filesystem sandbox fix).
 #
 # The preset directory is self-contained: the composition references its local
-# plugin/vendor files by RELATIVE paths, and this script copies the whole set
-# so the deployed preset never reaches back into a dev worktree. A
+# plugin files by RELATIVE paths, and this script copies the whole set so the
+# deployed preset never reaches back into a dev worktree. A
 # node_modules/@deepseek-ai symlink (same target as link-global-dsh.sh) makes
 # bare `@deepseek-ai/*` imports inside the copied modules resolvable from the
 # user-preset location.
@@ -25,11 +25,17 @@ if [ ! -d "$DEP_TARGET" ]; then
 fi
 
 for preset in liangshen-bash; do
-  mkdir -p "$DEST/$preset/vendor"
+  mkdir -p "$DEST/$preset"
   install -m 644 "presets/$preset/agent.cordis.yml" "$DEST/$preset/agent.cordis.yml"
   install -m 644 "presets/$preset/preset.yml" "$DEST/$preset/preset.yml"
+  install -m 644 "presets/$preset/compaction-epoch.mjs" "$DEST/$preset/compaction-epoch.mjs"
   install -m 644 "presets/$preset/phase-swap-bash.mjs" "$DEST/$preset/phase-swap-bash.mjs"
-  cp -R "presets/$preset/vendor/." "$DEST/$preset/vendor/"
+  install -m 644 "presets/$preset/tool-bootstrap.mjs" "$DEST/$preset/tool-bootstrap.mjs"
+  install -m 644 "presets/$preset/instruction-hint.mjs" "$DEST/$preset/instruction-hint.mjs"
+  install -m 644 "presets/$preset/skill-search.mjs" "$DEST/$preset/skill-search.mjs"
+  install -m 644 "presets/$preset/custom-bash.mjs" "$DEST/$preset/custom-bash.mjs"
+  # 自研化后不再部署 vendored 第三方树；清理历史部署残留
+  rm -rf "$DEST/$preset/vendor"
   # Bare @deepseek-ai imports (phase-swap-bash → dsh-tool-bash) from the user
   # preset dir cannot find node_modules by upward walk; alias the host deps.
   rm -rf "$DEST/$preset/node_modules"

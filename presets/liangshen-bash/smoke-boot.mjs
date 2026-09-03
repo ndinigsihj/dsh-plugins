@@ -19,6 +19,8 @@ import {
 // dsh CLI 安装锚点（bundle 解析基准，同 CLI 的 INSTALL_ANCHOR）
 const INSTALL_ANCHOR = "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/package.json";
 const SMOKE_DRIVER = "/Users/vito/data/dev/dsh-plugins/presets/liangshen-bash/smoke-driver.mjs";
+// 冒烟直接挂载 repo 内 preset 目录（自研文件），不依赖 ~/.dsh 部署位。
+const REPO_PRESETS = "/Users/vito/data/dev/dsh-plugins/presets";
 
 const profile = loadProfile("dsh", "headless", INSTALL_ANCHOR);
 const bundlePatches = profile.layers.flatMap((layer) => layer.patches);
@@ -39,7 +41,7 @@ const smokePatches = [
         name: "@deepseek-ai/dsh-agent-presets",
         config: {
           default: process.env.SMOKE_PRESET ?? "liangshen-bash",
-          roots: [],
+          roots: [{ path: REPO_PRESETS, trust: "system" }],
           includeUserRoot: true,
         },
       },

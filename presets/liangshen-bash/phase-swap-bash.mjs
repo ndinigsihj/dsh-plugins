@@ -23,7 +23,7 @@
  * 绝不 brick 会话。
  */
 
-import { createEpochPromotion } from './vendor/@deepseek-harness-tui/dsh-tui/presets/liangshen/compaction-epoch.mjs'
+import { createEpochPromotion } from './compaction-epoch.mjs'
 import * as sandboxBash from '@deepseek-ai/dsh-tool-bash'
 
 /** Cordis plugin name used by loader diagnostics. */
@@ -133,11 +133,15 @@ export function apply(ctx, config) {
       // 注意：直接 apply(agent.ctx) 会因 cordis 的 "without inject" 检查失败
       // （属性访问需要 inject 声明）——用 ctx.inject 建立注入子 ctx 再调。
       let sandboxDisposer
-      await agent.ctx.inject(['tools'], (injectedCtx) => {
+      // dsh-tool-bash 的 apply 需要 tools/shell/systemPrompt/shellEnv（另用
+      // ctx.get 取 sandboxPolicy/approval，不走 inject）；真实 harness 的 agent
+      // ctx 是 fiber 上下文，未注入的属性访问会抛 "without inject"。注入列表必须
+      // 与其 `inject` 声明一致，spy ctx 也要基于 injectedCtx 派生以保留声明。
+      await agent.ctx.inject(['tools', 'shell', 'systemPrompt', 'shellEnv'], (injectedCtx) => {
         // apply() 本身不返回 disposer；先用一个只捕获 definition 的 spy ctx
         // 跑一遍 apply 拿到工具定义，再注册进真实 agent scope 以捕获注销句柄。
         let definition
-        const spyCtx = agent.ctx.extend({
+        const spyCtx = injectedCtx.extend({
           tools: { register: (d) => { definition = d; return () => {} } },
           systemPrompt: { section() {}, tools() {} },
         })

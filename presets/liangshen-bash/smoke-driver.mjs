@@ -92,9 +92,12 @@ async function run(ctx) {
   const r2 = await agent.ctx.systemPrompt.assemble(context);
   const s2 = summary(r2);
   console.log("ROUND2 catalog:", JSON.stringify(s2));
+  console.log("WARNINGS:", JSON.stringify(warnings));
   assert.ok(s2.tools.includes("bash"), "R2 must expose bash");
   assert.ok(s2.tools.includes("str_replace_editor"), "R2 must expose str_replace_editor");
   assert.ok(s2.bashParams.includes("sandbox_permissions"), "R2 sandbox bash must expose sandbox_permissions");
+  assert.ok(s2.tools.includes("skill_search"), "R2 must expose skill_search (skill-search row)");
+  assert.ok(s2.tools.includes("skill_load"), "R2 must expose skill_load (skill-search row)");
 
   // R2 pre-step（注入恢复）
   const r2Pre = await agent.dispatch.waterfall(
@@ -105,6 +108,8 @@ async function run(ctx) {
   const r2Sources = (r2Pre.messages ?? []).map((m) => m.source?.kind);
   console.log("ROUND2 pre-step sources:", JSON.stringify(r2Sources));
   assert.ok(r2Sources.includes("agent-instructions"), "R2 must inject agent-instructions");
+  assert.ok(r2Sources.includes("instruction-hint"), "R2 must inject instruction-hint (self-hosted)");
+  assert.ok(r2Sources.includes("skill-catalog"), "R2 host must resume skill-catalog after promotion (design: host layer restores it)");
   console.log("WARNINGS:", JSON.stringify(warnings));
 
   process.exit(0);

@@ -70,9 +70,9 @@ tag 版本，开发窗口显示工作树版本。
    **顺序铁律：任何 npm i 之前先摘 `node_modules/@deepseek-ai` 符号链接，装完再由
    link 脚本重建**——npm 会把已存在的链接当作 extraneous 包穿透删除，清空全局
    dsh 依赖树（2026-08-24 实际事故，npm i -g 重装恢复）。
-5. 无条件重跑 `scripts/sync-agent-presets.sh`：把 preset 目录（组合 + 本地插件 +
-   vendored 文件）作为自包含树同步到 `~/.dsh/.agent-presets`，preset 不再引用 dev
-   工作树路径（2026-09-03 修复，发布隔离）。
+5. 无条件重跑 `scripts/sync-agent-presets.sh`：把 preset 目录（组合 + 本地自研插件
+   + compaction-epoch）作为自包含树同步到 `~/.dsh/.agent-presets`，preset 不再引用 dev
+   工作树路径（2026-09-03 修复，发布隔离；2026-09-03 起复用物由自研文件替换 vendor）。
 6. 打印结果行：`stable = ~/dev/dsh-plugins-stable @ v<version>`；提示运行中的 TUI 需退出重启（或 /resume 重进）才吃到新代码。
 
 边界约定：
