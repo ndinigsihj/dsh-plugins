@@ -1557,6 +1557,9 @@ export class CheckboxList implements Component {
   private readonly palette: Palette;
   private readonly question: string;
   private readonly options: Array<{ label: string; description?: string }>;
+  /** 原始（未消毒）label，用于回传 harness 的答案——渲染用消毒值，但答案
+   * 必须与模型/调用方提供的 label 精确一致（单选路径就是 raw value）。 */
+  private readonly answerLabels: string[];
   private readonly checked: boolean[];
   private cursor = 0;
   private scrollOffset = 0;
@@ -1571,6 +1574,7 @@ export class CheckboxList implements Component {
   ) {
     this.palette = palette;
     this.question = question;
+    this.answerLabels = options.map((o) => o.label);
     this.options = options.map((o) => ({
       label: sanitizeDisplay(o.label),
       ...(o.description === undefined ? {} : { description: sanitizeDisplay(o.description) }),
@@ -1639,7 +1643,7 @@ export class CheckboxList implements Component {
   }
 
   private selectedLabels(): string[] {
-    return this.options.filter((_, i) => this.checked[i] === true).map((o) => o.label);
+    return this.answerLabels.filter((_, i) => this.checked[i] === true);
   }
 }
 
@@ -2727,8 +2731,19 @@ export class TuiApp {
           // and the draft text so the user can fix and resend.
           saved = await this.options.saveImages!(originalPaths);
         } catch (error) {
+          // pi-tui 已清空编辑器，这里必须把未发出的消息放回编辑器（连同保存
+          // 期间用户新输入的内容），否则「message not sent」但草稿已丢。
+          const duringSave = this.editor.getText();
+          const draft =
+            duringSave === ""
+              ? text
+              : duringSave.startsWith(text)
+                ? duringSave
+                : `${text}${duringSave}`;
+          this.editor.setText(draft);
+          this.render();
           this.showNotice(
-            `Attachment failed: ${error instanceof Error ? error.message : String(error)} — message not sent.`,
+            `Attachment failed: ${error instanceof Error ? error.message : String(error)} — message not sent, draft kept.`,
           );
           return;
         }

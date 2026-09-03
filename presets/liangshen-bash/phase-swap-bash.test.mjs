@@ -103,6 +103,16 @@ async function fireToolCall(bootState, session) {
   await new Promise((resolve) => setImmediate(resolve));
 }
 
+/** 触发任意 session 事件（compaction/end 等）。 */
+async function fireEvent(bootState, session, event) {
+  session.events.push(event);
+  for (const listener of bootState.sessionListeners) {
+    listener(session, event);
+  }
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+}
+
 test("首轮：agent 看到 persistent bash（仅 command 参数）", () => {
   const bootState = boot();
   const agent = makeAgent(bootState, "sess-1");
@@ -186,6 +196,29 @@ test("冷启动恢复：resume 已 promoted 会话时任意首个事件触发 sw
   assert.ok(
     PARAM_KEYS(bash).includes("sandbox_permissions"),
     `resume 已 promoted 会话应冷启动即 swap，实际参数: ${PARAM_KEYS(bash).join(",")}`,
+  );
+});
+
+test("compaction 后回到 controlled phase：persistent 重新可见，再 promote 再 swap", async () => {
+  const bootState = boot();
+  const agent = makeAgent(bootState, "sess-compact");
+  await fireToolCall(bootState, agent.session);
+  assert.ok(PARAM_KEYS(VIEW(agent.ctx).get("bash")).includes("sandbox_permissions"));
+
+  await fireEvent(bootState, agent.session, { type: "compaction/end", seq: 100, data: {} });
+  const reverted = VIEW(agent.ctx).get("bash");
+  assert.deepEqual(
+    PARAM_KEYS(reverted),
+    ["command"],
+    `compaction 后应回到 persistent bash，实际参数: ${PARAM_KEYS(reverted).join(",")}`,
+  );
+  assert.ok(!PARAM_KEYS(reverted).includes("sandbox_permissions"), "persistent bash 不应含 sandbox_permissions");
+
+  // 新一轮 tool/call（seq 必须超过 compaction 边界）重新 promote → 再次 swap 回沙箱
+  await fireEvent(bootState, agent.session, { type: "tool/call", seq: 101, data: {} });
+  assert.ok(
+    PARAM_KEYS(VIEW(agent.ctx).get("bash")).includes("sandbox_permissions"),
+    "compaction 后的新 promotion 应重新 swap 回沙箱 bash",
   );
 });
 

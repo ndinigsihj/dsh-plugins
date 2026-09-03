@@ -14,6 +14,10 @@
  *    `view(scopeOf(agent.ctx))` 对该 agent 显示 shadow 后的工具，其他 agent 仍看到
  *    全局 persistent bash。所以 swap 只需对该 agent 的 ctx 调 `dsh-tool-bash.apply()`，
  *    无需 dispose 任何共享实例，天然 per-session 隔离。
+ *  - compaction 回 controlled phase 时，用 spy ctx 捕获 `dsh-tool-bash.apply()`
+ *    的工具定义后注册进真实 agent scope，从而拿到 disposer，注销该 agent scope
+ *    里的沙箱 bash 露出全局 persistent——同一 scope 内不能直接重注册同名工具
+ *    （"already registered"）。
  *
  * 失败降级：swap 抛错 → warn once + 保持 persistent bash（目录全开但无提权），
  * 绝不 brick 会话。
@@ -84,8 +88,12 @@ export function apply(ctx, config) {
     return kept.length === sections.length ? assembled : { ...assembled, sections: kept }
   })
 
-  /** Per-session swap memo: each promoted session swaps exactly once. */
-  const swapped = new Set()
+  /** Per-session swap memo: sessionId → sandbox-registration disposer. The
+   * disposer comes from registering the spy-captured tool definition into the
+   * real agent scope, so compaction can actually UNREGISTER the sandbox and
+   * return to the controlled (persistent bash) phase — re-registering the
+   * same name in the same agent scope would throw ("already registered"). */
+  const swapDisposers = new Map()
   let warned = false
   const warnOnce = (message) => {
     if (warned) return
@@ -98,13 +106,25 @@ export function apply(ctx, config) {
   }
 
   ctx.on('session/event', async (session, event) => {
-    if (swapped.has(session.id)) return
     try {
+      const agent = ctx.get('agents')?.get(session.id)
+      if (agent === undefined) return
+
+      if (event.type === 'compaction/end') {
+        // compaction 后回到 controlled phase：注销该 agent scope 里的沙箱
+        // bash，露出全局 persistent bash；下次 promotion 再重新 swap。
+        const disposer = swapDisposers.get(session.id)
+        if (disposer !== undefined) {
+          disposer()
+          swapDisposers.delete(session.id)
+        }
+        return
+      }
+
+      if (swapDisposers.has(session.id)) return
       // 不只响应新 tool/call：promotion.status() 会冷扫描 session 日志，
       // 所以 resume 一个已经 promoted 的会话时，任意首个事件都能触发 swap，
       // 不会一直保持 persistent bash 直到再次出现 tool/call（H5 冷启动回归）。
-      const agent = ctx.get('agents')?.get(session.id)
-      if (agent === undefined) return
       if (!promotion.status(agent).promoted) return
       // Register sandbox bash into THIS agent's scope layer, shadowing the
       // shared persistent bash for this session only. `dsh-tool-bash.apply`
@@ -112,12 +132,21 @@ export function apply(ctx, config) {
       // / ctx.tools up the chain from the agent ctx, exactly like standard.
       // 注意：直接 apply(agent.ctx) 会因 cordis 的 "without inject" 检查失败
       // （属性访问需要 inject 声明）——用 ctx.inject 建立注入子 ctx 再调。
-      await agent.ctx.inject(['tools', 'shell', 'systemPrompt', 'shellEnv'], (injectedCtx) => {
-        sandboxBash.apply(injectedCtx, swapConfig)
+      let sandboxDisposer
+      await agent.ctx.inject(['tools'], (injectedCtx) => {
+        // apply() 本身不返回 disposer；先用一个只捕获 definition 的 spy ctx
+        // 跑一遍 apply 拿到工具定义，再注册进真实 agent scope 以捕获注销句柄。
+        let definition
+        const spyCtx = agent.ctx.extend({
+          tools: { register: (d) => { definition = d; return () => {} } },
+          systemPrompt: { section() {}, tools() {} },
+        })
+        sandboxBash.apply(spyCtx, swapConfig)
+        sandboxDisposer = injectedCtx.tools.register(definition)
       })
       // Mark swapped only after the swap actually succeeded: a transient
       // failure must leave the session eligible for a future retry.
-      swapped.add(session.id)
+      if (sandboxDisposer !== undefined) swapDisposers.set(session.id, sandboxDisposer)
     } catch (error) {
       // Degrade: keep persistent bash (full directory but no escalation).
       warnOnce(
