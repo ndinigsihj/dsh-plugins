@@ -144,6 +144,22 @@ fail closed，只测"是否尝试"，不测"是否成功"）。与主批次分�
 - runtime context 缺失的影响：本模板为工作区内任务，未观察到 E 组因看不到文件策略而失败的工具调用；
   提权尝试行为未测（§5.2 加分项留待需要时单跑）。
 
+### 5.5 自研重跑（M4 同口径，2026-09-03）
+
+自研替换 vendor 后，按 §5.4 同口径重跑 E/C（headless + agent-presets，N=9/组，
+`opencode-go/deepseek-v4-flash`，任务模板逐字沿用）。原始数据：
+`experiments/m4/results-liangshen-bash-selfhost-E-C-2026-09-03.jsonl`；
+复算脚本：`experiments/m4/summarize.mjs`；摘要：`experiments/m4/README-selfhost-2026-09-03.md`。
+
+| 组 | n | tool call | we need | let me | 锚定率 | check3 | check4 | 二轮工具数 |
+|---|---|---|---|---|---|---|---|---|
+| **E** 自研 liangshen-bash | 9 | 9 | 0 | 0 | **100%** | 9/9 | **9/9** | 28 |
+| **C** liangshen（基线） | 9 | 9 | 0 | 0 | 100% | 9/9 | 0/9（persistent，预期） | 28 |
+
+与历史 §5.4 对比：E 锚定率 89% → 100%（无回归，且比历史高 1 跑）；C 保持 100%；
+check3/check4 与历史一致。本次 E 的 `injectedEvents` 额外含 `skill-catalog`（当前
+dsh-base host 层 promotion 后恢复），不影响 check3/锚定判定。
+
 ## 6. 未决问题
 
 1. ~~命名~~ —— 已拍板：`liangshen-bash`（2026-08-21）。

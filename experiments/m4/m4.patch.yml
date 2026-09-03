@@ -1,0 +1,24 @@
+# M4 对比实验 patch（headless 组合 + agent-presets，与历史 M4 同口径）。
+#
+# 用法：M4_GROUPS=E,C M4_RUNS=9 M4_OUT=/tmp/m4-new.jsonl \
+#   dsh --profile headless --patch experiments/m4/m4.patch.yml
+- id: headless-runner
+  disabled: true
+
+- id: headless-startup
+  disabled: true
+
+# dsh-base 的 tool-bash 会与 preset 的 bash 撞名 → 与 smoke/trajectory 同处置
+- id: tool-bash
+  disabled: true
+
+- insert:
+    - id: agent-presets
+      name: "@deepseek-ai/dsh-agent-presets"
+      config:
+        default: liangshen-bash
+        roots: []
+        includeUserRoot: true
+
+    - id: m4-trajectory-runner
+      name: /Users/vito/data/dev/dsh-plugins/experiments/m4/m4-runner.mjs
