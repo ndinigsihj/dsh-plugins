@@ -2,6 +2,10 @@
  * liangshen-bash smoke boot — 用 headless profile 的完整 bundle 组合 + patches 跑 smoke-driver。
  *
  * 运行：SMOKE_PRESET=liangshen-bash node presets/liangshen-bash/smoke-boot.mjs
+ * 可覆盖：
+ *   SMOKE_PRESET=liangshen-bash      要挂载的 preset id
+ *   SMOKE_PRESET_ROOT=<dir>          扫描根目录（默认 repo presets/；设成
+ *                                    ~/.dsh/.agent-presets 即可冒烟部署位副本）
  *
  * 设计：
  *   1. 默认 preset 为 liangshen-bash（env SMOKE_PRESET 仍可覆盖）。
@@ -19,8 +23,9 @@ import {
 // dsh CLI 安装锚点（bundle 解析基准，同 CLI 的 INSTALL_ANCHOR）
 const INSTALL_ANCHOR = "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/package.json";
 const SMOKE_DRIVER = "/Users/vito/data/dev/dsh-plugins/presets/liangshen-bash/smoke-driver.mjs";
-// 冒烟直接挂载 repo 内 preset 目录（自研文件），不依赖 ~/.dsh 部署位。
-const REPO_PRESETS = "/Users/vito/data/dev/dsh-plugins/presets";
+// 冒烟默认直挂 repo 内 preset 目录（自研文件），不依赖 ~/.dsh 部署位；
+// 设 SMOKE_PRESET_ROOT 可改扫部署位副本（Phase 4 部署冒烟）。
+const PRESET_ROOT = process.env.SMOKE_PRESET_ROOT ?? "/Users/vito/data/dev/dsh-plugins/presets";
 
 const profile = loadProfile("dsh", "headless", INSTALL_ANCHOR);
 const bundlePatches = profile.layers.flatMap((layer) => layer.patches);
@@ -41,7 +46,7 @@ const smokePatches = [
         name: "@deepseek-ai/dsh-agent-presets",
         config: {
           default: process.env.SMOKE_PRESET ?? "liangshen-bash",
-          roots: [{ path: REPO_PRESETS, trust: "system" }],
+          roots: [{ path: PRESET_ROOT, trust: "system" }],
           includeUserRoot: true,
         },
       },

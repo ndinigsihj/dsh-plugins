@@ -211,4 +211,4 @@
 | smoke | `smoke-boot.mjs` 增加 `roots:[repo presets]` 直挂本地自研文件；ROUND2 断言扩展：sandbox bash 生效、skill_search/skill_load 在目录、pre-step 含 instruction-hint + host 恢复的 skill-catalog；实测通过、无 warn |
 | Phase 2.5 | `custom-bash.mjs` 自研落地，8 个纯函数测试全绿（darwin/CI 可跑）；真实 Windows 冒烟待 Windows 环境，显式阻塞 |
 | Phase 3 | 已跑：`dsh --profile headless --patch presets/liangshen-bash/trajectory.patch.yml`（真实 LLM `opencode-go/deepseek-v4-flash`）5 个新会话全部通过 `tools==['bash','str_replace_editor']`、零注入、无未锚定开场；证据 `experiments/liangshen-bash-trajectory-2026-09-03/`（5/5） |
-| Phase 4 | 部署 sync 已执行：备份 `liangshen-bash.bak-vendored` 后同步到 `~/.dsh/.agent-presets`，无 vendor、本地 mjs 齐全、可导入；本地 commit `f905418` 完成；push 待用户批准 |
+| Phase 4 | 部署 sync 已执行：备份 `liangshen-bash.bak-vendored` 后同步到 `~/.dsh/.agent-presets`，无 vendor、本地 mjs 齐全、可导入；部署位冒烟通过（`SMOKE_PRESET_ROOT=~/.dsh/.agent-presets node presets/liangshen-bash/smoke-boot.mjs`，R1/R2 全过、无 warn）；本地 commit `f905418`/`37f0217` 完成；push 待用户批准 |
