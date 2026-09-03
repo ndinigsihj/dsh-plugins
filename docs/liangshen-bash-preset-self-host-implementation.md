@@ -1,6 +1,6 @@
 # liangshen-bash preset 自研实施/验收文档
 
-> 状态：已定稿，实施中（Phase 0/1/2 完成，Phase 2.5 纯函数完成、真实 Windows 冒烟阻塞；Phase 3/4 待跑）。
+> 状态：已定稿，实施中（Phase 0/1/2/3 完成；Phase 2.5 纯函数完成、真实 Windows 冒烟阻塞；Phase 4 部署+本地 commit 完成，push 待用户批准）。
 > 目标：把 `liangshen-bash` preset 对 `@deepseek-harness-tui/dsh-tui` 的 vendored 依赖去掉，改为自研实现（方案 B）。
 > 前置：已评估风险（tool-bootstrap 行为锚定不可单测、harness 契约漂移、降级守卫易丢失、维护责任转移）。本文档把风险转成可执行的契约测试 + 轨迹实测验收，未通过验收不允许关闭。
 
@@ -210,5 +210,5 @@
 | 发现并修复 | 真实 harness 下 `phase-swap-bash` 的 spy ctx 基于 `agent.ctx` 未声明 `shell/systemPrompt/shellEnv`，swap 抛 `cannot get property "shell" without inject`；改为 `agent.ctx.inject(['tools','shell','systemPrompt','shellEnv'])` 且 spy ctx 基于 `injectedCtx` 派生（单测环境不拦截属性访问，因此只有 repo-local smoke 能暴露） |
 | smoke | `smoke-boot.mjs` 增加 `roots:[repo presets]` 直挂本地自研文件；ROUND2 断言扩展：sandbox bash 生效、skill_search/skill_load 在目录、pre-step 含 instruction-hint + host 恢复的 skill-catalog；实测通过、无 warn |
 | Phase 2.5 | `custom-bash.mjs` 自研落地，8 个纯函数测试全绿（darwin/CI 可跑）；真实 Windows 冒烟待 Windows 环境，显式阻塞 |
-| Phase 3 | 未跑：需真实 `dsh --profile tui-dev` 5 个新会话 + LLM 轨迹检查 |
-| Phase 4 | 部署 sync 已执行：备份 `liangshen-bash.bak-vendored` 后同步到 `~/.dsh/.agent-presets`，无 vendor、本地 mjs 齐全、可导入；本地 commit 待完成（push 需用户批准） |
+| Phase 3 | 已跑：`dsh --profile headless --patch presets/liangshen-bash/trajectory.patch.yml`（真实 LLM `opencode-go/deepseek-v4-flash`）5 个新会话全部通过 `tools==['bash','str_replace_editor']`、零注入、无未锚定开场；证据 `experiments/liangshen-bash-trajectory-2026-09-03/`（5/5） |
+| Phase 4 | 部署 sync 已执行：备份 `liangshen-bash.bak-vendored` 后同步到 `~/.dsh/.agent-presets`，无 vendor、本地 mjs 齐全、可导入；本地 commit `f905418` 完成；push 待用户批准 |

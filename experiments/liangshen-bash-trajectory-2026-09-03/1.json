@@ -1,0 +1,16 @@
+{
+  "task": "列出当前目录",
+  "provider": "opencode-go",
+  "model": "deepseek-v4-flash",
+  "sessionId": "session-trajectory-16b771e2-1796-4b43-b836-79fabfc19e78",
+  "tools": [
+    "bash",
+    "str_replace_editor"
+  ],
+  "injected": [],
+  "firstLine": "",
+  "toolsOk": true,
+  "injectOk": true,
+  "openOk": true,
+  "pass": true
+}

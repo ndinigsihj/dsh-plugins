@@ -1,0 +1,16 @@
+{
+  "task": "当前目录里最大的文件是什么",
+  "provider": "opencode-go",
+  "model": "deepseek-v4-flash",
+  "sessionId": "session-trajectory-e2fbb059-a6e2-4cf2-b75c-0f269a3f3e39",
+  "tools": [
+    "bash",
+    "str_replace_editor"
+  ],
+  "injected": [],
+  "firstLine": "",
+  "toolsOk": true,
+  "injectOk": true,
+  "openOk": true,
+  "pass": true
+}

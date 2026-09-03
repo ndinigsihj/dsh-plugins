@@ -1,0 +1,26 @@
+# headless 跑 liangshen-bash 轨迹实测（Phase 3）用的 --patch 覆盖层。
+#
+# 用法：TRAJECTORY_TASK=... TRAJECTORY_OUT=... \
+#   dsh --profile headless --patch presets/liangshen-bash/trajectory.patch.yml
+- id: headless-runner
+  disabled: true
+
+- id: headless-startup
+  disabled: true
+
+# dsh-base 的 tool-bash 会与 preset 的 bash 撞名 → 与 smoke-boot 同处置
+- id: tool-bash
+  disabled: true
+
+- insert:
+    - id: agent-presets
+      name: "@deepseek-ai/dsh-agent-presets"
+      config:
+        default: liangshen-bash
+        roots:
+          - path: /Users/vito/data/dev/dsh-plugins/presets
+            trust: system
+        includeUserRoot: true
+
+    - id: liangshen-trajectory
+      name: /Users/vito/data/dev/dsh-plugins/presets/liangshen-bash/trajectory-driver.mjs

@@ -1,0 +1,16 @@
+{
+  "task": "告诉我现在几点了",
+  "provider": "opencode-go",
+  "model": "deepseek-v4-flash",
+  "sessionId": "session-trajectory-04a26e67-f82c-4874-ab07-e9e8dc72ecbc",
+  "tools": [
+    "bash",
+    "str_replace_editor"
+  ],
+  "injected": [],
+  "firstLine": "",
+  "toolsOk": true,
+  "injectOk": true,
+  "openOk": true,
+  "pass": true
+}

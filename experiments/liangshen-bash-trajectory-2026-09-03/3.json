@@ -1,0 +1,16 @@
+{
+  "task": "打印当前工作目录",
+  "provider": "opencode-go",
+  "model": "deepseek-v4-flash",
+  "sessionId": "session-trajectory-4322b423-dc9f-4421-80d1-b8af8f82121e",
+  "tools": [
+    "bash",
+    "str_replace_editor"
+  ],
+  "injected": [],
+  "firstLine": "",
+  "toolsOk": true,
+  "injectOk": true,
+  "openOk": true,
+  "pass": true
+}

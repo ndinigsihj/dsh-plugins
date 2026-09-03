@@ -1,0 +1,16 @@
+{
+  "task": "显示当前目录下有哪些文件",
+  "provider": "opencode-go",
+  "model": "deepseek-v4-flash",
+  "sessionId": "session-trajectory-620faf9d-58aa-451f-b7b7-8e0943955fa4",
+  "tools": [
+    "bash",
+    "str_replace_editor"
+  ],
+  "injected": [],
+  "firstLine": "",
+  "toolsOk": true,
+  "injectOk": true,
+  "openOk": true,
+  "pass": true
+}
