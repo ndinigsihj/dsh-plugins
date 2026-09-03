@@ -4,7 +4,7 @@
  * 覆盖文档 §2.5：windowsBashCandidates 排序/dedupe、WSL launcher 拒绝、
  * resolveShimTarget、bashCandidatesFromGit、resolveWindowsBash 跳过 WSL。
  *
- * 运行：node --test presets/liangshen-bash/custom-bash.test.mjs
+ * 运行：node --test presets/minimal-plus/custom-bash.test.mjs
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";

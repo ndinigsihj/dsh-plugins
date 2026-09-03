@@ -5,7 +5,7 @@
  * pre-step messages 过滤与 reject 放行、缺工具 fail-open、过滤器抛错 fail-open、
  * 配置校验入口（含 bootstrapMaxTokens 仅校验不生效）。
  *
- * 运行：node --test presets/liangshen-bash/tool-bootstrap.test.mjs
+ * 运行：node --test presets/minimal-plus/tool-bootstrap.test.mjs
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";

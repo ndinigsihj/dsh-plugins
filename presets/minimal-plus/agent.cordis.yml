@@ -1,23 +1,23 @@
-# `liangshen-bash` 组合 preset：liangshen 全量基底 + 二轮 bash 提权 + 二轮 AGENTS.md 注入。
+# `minimal-plus` 组合 preset：Minimal 全量基底 + 二轮 bash 提权 + 二轮 AGENTS.md 注入。
 #
-# 以 liangshen 语义为基底做 6 处改动（设计文档 docs/liangshen-bash-preset-design.md §1）：
+# 以 Minimal 语义为基底（前身 liangshen）做 6 处改动（设计文档 docs/minimal-plus-preset-design.md §1）：
 #   1-4. 本地复用物走 preset 目录内自研相对路径（tool-bootstrap / instruction-hint /
 #        custom-bash / skill-search；S7 部署位决策，相对路径 + sync 整树同步，部署
 #        副本不引用 dev 工作树；文件自研替换 vendor，契约见 docs/
-#        liangshen-bash-preset-self-host-implementation.md）。
+#        minimal-plus-preset-self-host-implementation.md）。
 #   5. 新增 phase-swap-bash 行：首轮 tool/call（promotion）后把该 agent 的 bash 从
 #      persistent 换成沙箱 dsh-tool-bash（sandbox_permissions 提权）。
 #   6. 新增 agent-instructions 行：二轮起 AGENTS.md/CLAUDE.md 自动进上下文
 #      （部署栈 host 层本就注册同名源，此行让意图显式、自包含）。
-# persona 保持 liangshen 的 Minimal 版（complete:true + includeRuntimeContext:false），
-# 其余行与 liangshen 逐字一致。
+# persona 保持 Minimal 版（前身 liangshen 同款）（complete:true + includeRuntimeContext:false），
+# 其余行与 Minimal 基线逐字一致。
 #
 # 已知取舍：includeRuntimeContext:false 剥掉 runtime context 快照（cwd/文件策略/审批
-# 策略），模型知道 bash schema 有 sandbox_permissions 但看不到策略状态——liangshen
+# 策略），模型知道 bash schema 有 sandbox_permissions 但看不到策略状态——Minimal-Plus
 # 语义的固有属性，见设计文档 §2。
 
 # ── bootstrap (must stay FIRST) ─────────────────────────────────────────────
-# 与 liangshen 完全一致：首轮只对模型暴露 Minimal 锚定对（persistent bash +
+# 与 Minimal 完全一致：首轮只对模型暴露 Minimal 锚定对（persistent bash +
 # str_replace_editor），promotion 后放行完整目录。必须保持 FIRST（waterfall 逆序
 # 应用 + prepend:true 的最外层变换纪律，照抄 tool-bootstrap.mjs 头注释）。
 - id: tool-bootstrap
@@ -33,14 +33,14 @@
 # dsh-tool-bash。per-agent shadow 语义：对该 agent 的 ctx 调 dsh-tool-bash.apply()，
 # 注册进该 agent 的 scope layer，shadow 掉全局 persistent bash，其他 session/子代理
 # 不受影响；swap 失败 warn once + 保持 persistent bash。插件单一来源：repo
-# presets/liangshen-bash/phase-swap-bash.mjs（本 preset 版本化）。
+# presets/minimal-plus/phase-swap-bash.mjs（本 preset 版本化）。
 - id: phase-swap-bash
   name: './phase-swap-bash.mjs'
   config:
     enableRunInBackground: true
 
 # ── identity ────────────────────────────────────────────────────────────────
-# Minimal persona（照抄 liangshen，byte-identical to Minimal preset）：`complete`
+# Minimal persona（照抄 Minimal 基线，byte-identical to Minimal preset）：`complete`
 # 防止 Harness identity 与 per-tool 指引改写 system prompt；includeRuntimeContext:false
 # 让任务与仓库规则只走 user message 与显式文件读取（固有取舍见文件头）。
 - id: persona
@@ -60,7 +60,7 @@
   config:
     maxBytes: 65536
 
-# liangshen 的 instruction-hint（保留）：promotion 后每会话注入一次短提示——
+# Minimal 基底的 instruction-hint（保留）：promotion 后每会话注入一次短提示——
 # "这些指令文件存在；行动前先读它们"——模型按需自行用 fs 工具读取。
 # 与上方 agent-instructions 的 digest 并存（C 组实测双源无冲突；hint 略冗余但无害）。
 - id: instruction-hint
@@ -141,7 +141,7 @@
   name: '@deepseek-ai/dsh-tool-jobs'
 
 # ── skills ──────────────────────────────────────────────────────────────────
-# liangshen 的按需技能工具（保留）：skill_search / skill_load，替代首轮全量
+# Minimal 基底的按需技能工具（保留）：skill_search / skill_load，替代首轮全量
 # skill-catalog 注入对轨迹的扰动（issue #6）；skill-catalog 注入 promotion 后
 # 仍由 host 层照常恢复。
 - id: skill-filesystem

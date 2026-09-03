@@ -1,11 +1,11 @@
 /**
- * 共享测试脚手架 — liangshen-bash preset 契约测试的真实 dsh 运行时 boot。
+ * 共享测试脚手架 — minimal-plus preset 契约测试的真实 dsh 运行时 boot。
  *
  * 与 phase-swap-bash.test.mjs 同款：直接加载 repo node_modules 里的
  * @deepseek-ai 运行时（cordis / dsh-scope / dsh-tools / dsh-tool-bash-persistent），
  * 不依赖已删除的 @deepseek-harness-tui/dsh-tui vendor 树。
  *
- * 运行：node --test presets/liangshen-bash/<file>.test.mjs
+ * 运行：node --test presets/minimal-plus/<file>.test.mjs
  */
 
 const DEP = "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai";

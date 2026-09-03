@@ -24,7 +24,7 @@ if [ ! -d "$DEP_TARGET" ]; then
   exit 1
 fi
 
-for preset in liangshen-bash; do
+for preset in minimal-plus; do
   mkdir -p "$DEST/$preset"
   install -m 644 "presets/$preset/agent.cordis.yml" "$DEST/$preset/agent.cordis.yml"
   install -m 644 "presets/$preset/preset.yml" "$DEST/$preset/preset.yml"

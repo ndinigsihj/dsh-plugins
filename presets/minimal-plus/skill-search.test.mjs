@@ -4,7 +4,7 @@
  * 覆盖文档 §2.4：两个工具注册形状（名称/描述/参数/schema 逐字）、查询匹配/
  * 空查询/上限、load 未命中/命中注入形状、失败降级。
  *
- * 运行：node --test presets/liangshen-bash/skill-search.test.mjs
+ * 运行：node --test presets/minimal-plus/skill-search.test.mjs
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";

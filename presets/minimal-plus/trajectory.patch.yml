@@ -1,7 +1,7 @@
-# headless 跑 liangshen-bash 轨迹实测（Phase 3）用的 --patch 覆盖层。
+# headless 跑 minimal-plus 轨迹实测（Phase 3）用的 --patch 覆盖层。
 #
 # 用法：TRAJECTORY_TASK=... TRAJECTORY_OUT=... \
-#   dsh --profile headless --patch presets/liangshen-bash/trajectory.patch.yml
+#   dsh --profile headless --patch presets/minimal-plus/trajectory.patch.yml
 - id: headless-runner
   disabled: true
 
@@ -16,11 +16,11 @@
     - id: agent-presets
       name: "@deepseek-ai/dsh-agent-presets"
       config:
-        default: liangshen-bash
+        default: minimal-plus
         roots:
           - path: /Users/vito/data/dev/dsh-plugins/presets
             trust: system
         includeUserRoot: true
 
     - id: liangshen-trajectory
-      name: /Users/vito/data/dev/dsh-plugins/presets/liangshen-bash/trajectory-driver.mjs
+      name: /Users/vito/data/dev/dsh-plugins/presets/minimal-plus/trajectory-driver.mjs

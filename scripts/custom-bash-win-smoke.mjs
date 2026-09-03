@@ -15,7 +15,7 @@ import {
   apply,
   isWindowsSubsystemLauncher,
   resolveWindowsBash,
-} from "../presets/liangshen-bash/custom-bash.mjs";
+} from "../presets/minimal-plus/custom-bash.mjs";
 
 if (process.platform !== "win32") {
   console.error("custom-bash-win-smoke: only runs on win32");

@@ -22,8 +22,8 @@ export const name = "m4-runner";
 export const inject = [];
 
 const DEPLOYED_PRESETS = {
-  E: "liangshen-bash",
-  C: "liangshen",
+  E: "minimal-plus",
+  C: "liangshen", // 2026-09-03 已随更名删除，仅历史；重跑 C 需先恢复基线
   A: "liangshen-plus", // 历史组已删除；保留键位以便脚本兼容旧 env
 };
 

@@ -4,7 +4,7 @@
  * 覆盖文档 §2.3：promoted 注入一次、未 promoted 不注入、探测存在/不存在、
  * 注入消息形状与 source.kind、异常降级、配置校验。
  *
- * 运行：node --test presets/liangshen-bash/instruction-hint.test.mjs
+ * 运行：node --test presets/minimal-plus/instruction-hint.test.mjs
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";

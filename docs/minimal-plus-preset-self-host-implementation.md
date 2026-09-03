@@ -1,7 +1,10 @@
-# liangshen-bash preset 自研实施/验收文档
+# minimal-plus preset 自研实施/验收文档（旧名 liangshen-bash）
+
+> 2026-09-03：preset 由 `liangshen-bash` 更名 **`minimal-plus`**；本文正文统一用
+> `minimal-plus`，历史实施记录中的目录/名称在更名前均为 `liangshen-bash`。
 
 > 状态：已定稿，实施中（Phase 0/1/2/3 完成；Phase 2.5 纯函数完成、真实 Windows 冒烟阻塞；Phase 4 部署+本地 commit 完成，push 待用户批准）。
-> 目标：把 `liangshen-bash` preset 对 `@deepseek-harness-tui/dsh-tui` 的 vendored 依赖去掉，改为自研实现（方案 B）。
+> 目标：把 `minimal-plus`（旧名 `liangshen-bash`）preset 对 `@deepseek-harness-tui/dsh-tui` 的 vendored 依赖去掉，改为自研实现（方案 B）。
 > 前置：已评估风险（tool-bootstrap 行为锚定不可单测、harness 契约漂移、降级守卫易丢失、维护责任转移）。本文档把风险转成可执行的契约测试 + 轨迹实测验收，未通过验收不允许关闭。
 
 ---
@@ -12,7 +15,7 @@
 
 | 文件 | 现状 | 处理 |
 | --- | --- | --- |
-| `presets/liangshen-bash/vendor/.../compaction-epoch.mjs` | 自研代码（非第三方），只是放在 vendor 目录 | **移出 vendor** → `presets/liangshen-bash/compaction-epoch.mjs`，零行为变化 |
+| `presets/minimal-plus/vendor/.../compaction-epoch.mjs` | 自研代码（非第三方），只是放在 vendor 目录 | **移出 vendor** → `presets/minimal-plus/compaction-epoch.mjs`，零行为变化 |
 | `.../tool-bootstrap.mjs`（300 行） | 第三方 | **自研替换**（唯一高复杂度项） |
 | `.../instruction-hint.mjs`（181 行） | 第三方 | 自研替换 |
 | `.../skill-search.mjs`（142 行） | 第三方 | 自研替换 |
@@ -86,9 +89,9 @@
 
 ### Phase 0：抽出自研文件（0.5 人日）
 
-- `git mv` compaction-epoch 到 `presets/liangshen-bash/compaction-epoch.mjs`。
+- `git mv` compaction-epoch 到 `presets/minimal-plus/compaction-epoch.mjs`。
 - 更新 `phase-swap-bash.mjs` 与后续自研文件的相对导入。
-- 删除 `presets/liangshen-bash/vendor/` 目录（整个第三方树）。
+- 删除 `presets/minimal-plus/vendor/` 目录（整个第三方树）。
 - 验证：`npm test` 仍 65 pass；`dsh --profile tui-dev` 冷启动一个会话不报 preset mount 失败。
 
 ### Phase 1：契约测试先行（2 人日）
@@ -97,27 +100,27 @@
 
 | 测试文件 | 覆盖 |
 | --- | --- |
-| `presets/liangshen-bash/tool-bootstrap.test.mjs` | fresh / promoted / compaction / resume 四态的 assembled.tools 与 sections；pre-step messages 过滤与 reject 放行；缺工具 fail-open；过滤器抛错 fail-open |
-| `presets/liangshen-bash/instruction-hint.test.mjs` | promoted 注入一次、未 promoted 不注入、探测文件存在/不存在、注入消息形状与 source.kind、异常降级 |
-| `presets/liangshen-bash/skill-search.test.mjs` | 两个工具注册形状、查询匹配/空查询/上限、load 未命中/命中注入形状、失败降级 |
-| `presets/liangshen-bash/custom-bash.test.mjs` | 纯函数测试：`windowsBashCandidates` 排序、`isWindowsSubsystemLauncher`、`resolveShimTarget`、`bashCandidatesFromGit`（不依赖真实 Windows 即可跑） |
-| `presets/liangshen-bash/smoke-boot.mjs` 扩展 | 组装上述四插件 + phase-swap 的完整 preset 冒烟 |
+| `presets/minimal-plus/tool-bootstrap.test.mjs` | fresh / promoted / compaction / resume 四态的 assembled.tools 与 sections；pre-step messages 过滤与 reject 放行；缺工具 fail-open；过滤器抛错 fail-open |
+| `presets/minimal-plus/instruction-hint.test.mjs` | promoted 注入一次、未 promoted 不注入、探测文件存在/不存在、注入消息形状与 source.kind、异常降级 |
+| `presets/minimal-plus/skill-search.test.mjs` | 两个工具注册形状、查询匹配/空查询/上限、load 未命中/命中注入形状、失败降级 |
+| `presets/minimal-plus/custom-bash.test.mjs` | 纯函数测试：`windowsBashCandidates` 排序、`isWindowsSubsystemLauncher`、`resolveShimTarget`、`bashCandidatesFromGit`（不依赖真实 Windows 即可跑） |
+| `presets/minimal-plus/smoke-boot.mjs` 扩展 | 组装上述四插件 + phase-swap 的完整 preset 冒烟 |
 
 验收：这些测试**先写、先红**（vendor 行为为基准可先抄断言），自研实现后**全绿**。
 
 ### Phase 2：实现三个自研插件（2–3 人日）
 
-- `presets/liangshen-bash/tool-bootstrap.mjs`
-- `presets/liangshen-bash/instruction-hint.mjs`
-- `presets/liangshen-bash/skill-search.mjs`
+- `presets/minimal-plus/tool-bootstrap.mjs`
+- `presets/minimal-plus/instruction-hint.mjs`
+- `presets/minimal-plus/skill-search.mjs`
 - 每个文件 < 300 行，导出 `name / apply / inject`（`inject` 保持原文件的声明：tool-bootstrap/instruction-hint 为空、skill-search 为 `['agents','tools','skills']`）。
 - `agent.cordis.yml` 五个本地行名从 `./vendor/...` 改为 `./tool-bootstrap.mjs` 等新路径。
 - 更新 `scripts/sync-agent-presets.sh` 复制新文件、不再复制 vendor。
-- 更新 `docs/deployment.md` 与 `docs/liangshen-bash-preset-design.md` 的文件清单。
+- 更新 `docs/deployment.md` 与 `docs/minimal-plus-preset-design.md` 的文件清单。
 
 ### Phase 2.5：自研 custom-bash（2 人日，win32）
 
-- `presets/liangshen-bash/custom-bash.mjs`：复刻 §2.5 全部契约。
+- `presets/minimal-plus/custom-bash.mjs`：复刻 §2.5 全部契约。
 - 纯函数单测（候选路径、WSL 拒绝、shim、git 树推导）在 mac/CI 跑。
 - 真实 Windows 冒烟（见 §2.5）**必须通过**才能收尾；无 Windows 环境则保持该 phase 阻塞，不得以「应该没问题」关闭。
 
@@ -203,7 +206,7 @@
 
 | 项 | 记录 |
 | --- | --- |
-| Phase 0 | `compaction-epoch.mjs` 已 `git mv` 到 `presets/liangshen-bash/`；`phase-swap-bash.mjs` 导入改 `./compaction-epoch.mjs`；`presets/liangshen-bash/vendor/` 已删除 |
+| Phase 0 | `compaction-epoch.mjs` 已 `git mv` 到 `presets/minimal-plus/`；`phase-swap-bash.mjs` 导入改 `./compaction-epoch.mjs`；`presets/minimal-plus/vendor/` 已删除 |
 | 参考副本 | 原 vendor 树曾复制到 `docs/reference/liangshen-bash-vendor/`（语义参考、不入运行路径、不参与 sync）；2026-09-03 用户确认放弃 vendor 后已删除 |
 | Phase 1 | 四个契约测试文件先红后绿：tool-bootstrap 10、instruction-hint 6、skill-search 8、custom-bash 8（合计 32 新断言） |
 | Phase 2 | 三个自研插件已落地并按相对路径接线；`sync-agent-presets.sh` 改复制本地 mjs、不再复制 vendor；`package.json` test 纳入四个新测试 |
@@ -211,5 +214,5 @@
 | smoke | `smoke-boot.mjs` 增加 `roots:[repo presets]` 直挂本地自研文件；ROUND2 断言扩展：sandbox bash 生效、skill_search/skill_load 在目录、pre-step 含 instruction-hint + host 恢复的 skill-catalog；实测通过、无 warn |
 | Phase 2.5 | `custom-bash.mjs` 自研落地，8 个纯函数测试全绿（darwin/CI 可跑）；真实 Windows 冒烟脚本与 CI workflow 已备好（`scripts/custom-bash-win-smoke.mjs` + `.github/workflows/custom-bash-win-smoke.yml`，windows-latest 覆盖 resolve/echo/WSL 拒绝/缺 bash fail-open），本地无 Windows 环境，待 push 后 runner 执行、显式阻塞 |
 | 验收 #7 降级实测 | `scripts/degrade-smoke.sh`：临时把 `bootstrapTools` 注入不存在的工具后跑真实 headless 挂载冒烟 → R1 暴露全量目录 + warn once，R2 仍正常（sandbox bash/注入全过），会话不 brick |
-| Phase 3 | 已跑：`dsh --profile headless --patch presets/liangshen-bash/trajectory.patch.yml`（真实 LLM `opencode-go/deepseek-v4-flash`）5 个新会话全部通过 `tools==['bash','str_replace_editor']`、零注入、无未锚定开场；证据 `experiments/liangshen-bash-trajectory-2026-09-03/`（5/5）。另按历史 M4 同口径重跑 E/C N=9：E 锚定 100%（9/9 tool call）、C 100%，check3/4 与历史一致（`experiments/m4/results-liangshen-bash-selfhost-E-C-2026-09-03.jsonl`）。tui-dev 字面交互执行不再需要（headless 口径已确认） |
-| Phase 4 | 部署 sync 已执行：备份 `liangshen-bash.bak-vendored` 后同步到 `~/.dsh/.agent-presets`，无 vendor、本地 mjs 齐全、可导入；部署位冒烟通过（`SMOKE_PRESET_ROOT=~/.dsh/.agent-presets node presets/liangshen-bash/smoke-boot.mjs`，R1/R2 全过、无 warn）；本地 commit `f905418`/`37f0217`/`4704c85` 完成；push 待用户批准 |
+| Phase 3 | 已跑：`dsh --profile headless --patch presets/minimal-plus/trajectory.patch.yml`（真实 LLM `opencode-go/deepseek-v4-flash`）5 个新会话全部通过 `tools==['bash','str_replace_editor']`、零注入、无未锚定开场；证据 `experiments/liangshen-bash-trajectory-2026-09-03/`（5/5）。另按历史 M4 同口径重跑 E/C N=9：E 锚定 100%（9/9 tool call）、C 100%，check3/4 与历史一致（`experiments/m4/results-liangshen-bash-selfhost-E-C-2026-09-03.jsonl`）。tui-dev 字面交互执行不再需要（headless 口径已确认） |
+| Phase 4 | 部署 sync 已执行：备份 `liangshen-bash.bak-vendored` 后同步到 `~/.dsh/.agent-presets`，无 vendor、本地 mjs 齐全、可导入；部署位冒烟通过（`SMOKE_PRESET_ROOT=~/.dsh/.agent-presets node presets/minimal-plus/smoke-boot.mjs`，R1/R2 全过、无 warn）；本地 commit `f905418`/`37f0217`/`4704c85` 完成；push 待用户批准 |

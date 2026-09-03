@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# liangshen-bash 降级路径实测（验收 #7）：
+# minimal-plus 降级路径实测（验收 #7）：
 # 临时构造一份 bootstrapTools 含不存在工具的 agent.cordis.yml，运行真实
 # headless 挂载冒烟，验证 tool-bootstrap 的 fail-open（缺工具 → warn once +
 # 暴露全量目录），会话不 brick，promotion 后两轮行为仍正常。
@@ -12,15 +12,15 @@ cd "$(dirname "$0")/.."
 ROOT="${DEGRADE_SMOKE_ROOT:-.tmp-degrade}"
 rm -rf "$ROOT"
 mkdir -p "$ROOT"
-cp -R presets/liangshen-bash "$ROOT/"
+cp -R presets/minimal-plus "$ROOT/"
 
 # 注入一个不存在的 bootstrap 工具 → keepTools 缺工具分支 → fail-open
-perl -0pi -e 's/bootstrapTools: \[bash, str_replace_editor\]/bootstrapTools: [bash, str_replace_editor, __missing__]/' "$ROOT/liangshen-bash/agent.cordis.yml"
+perl -0pi -e 's/bootstrapTools: \[bash, str_replace_editor\]/bootstrapTools: [bash, str_replace_editor, __missing__]/' "$ROOT/minimal-plus/agent.cordis.yml"
 
 echo "=== degrade composition bootstrapTools ==="
-grep -n "bootstrapTools" "$ROOT/liangshen-bash/agent.cordis.yml"
+grep -n "bootstrapTools" "$ROOT/minimal-plus/agent.cordis.yml"
 
-OUT="$(SMOKE_PRESET=liangshen-bash SMOKE_PRESET_ROOT="$ROOT" node presets/liangshen-bash/smoke-boot.mjs 2>&1)"
+OUT="$(SMOKE_PRESET=minimal-plus SMOKE_PRESET_ROOT="$ROOT" node presets/minimal-plus/smoke-boot.mjs 2>&1)"
 echo "$OUT"
 
 # 断言：R1 目录是全量（fail-open），且 warn 出现，且两轮冒烟仍通过（脚本 exit 0）

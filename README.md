@@ -141,11 +141,12 @@ hub 侧的 `fleet-client` / `memory-sink`、worker 侧的 `remote-server` 挂载
 | `/fleet …` | fleet-client | 列表 / 派发 / 取消 | ✅ 已实现 |
 | `/device <id>` | fleet-client | 会话级当前设备绑定 | ⏳ 待 dsh-relay 实现 |
 
-## Agent presets (liangshen-bash)
+## Agent presets (minimal-plus)
 
-`presets/liangshen-bash/` keeps the liangshen preset **verbatim** (Minimal
-persona with `includeRuntimeContext: false`, `instruction-hint`, `skill-search`)
-and adds only two behaviors (design: `docs/liangshen-bash-preset-design.md`):
+`presets/minimal-plus/` keeps the Minimal base (historically the liangshen
+preset) **verbatim** (Minimal persona with `includeRuntimeContext: false`,
+`instruction-hint`, `skill-search`)
+and adds only two behaviors (design: `docs/minimal-plus-preset-design.md`):
 
 1. **Round-2+ bash privilege swap** — `phase-swap-bash.mjs` shadows the shared
    persistent bash with the sandboxed `dsh-tool-bash` (per-agent scope layer),
@@ -159,13 +160,13 @@ Known tradeoff: with `includeRuntimeContext: false` the model sees the
 
 | File | Purpose |
 |---|---|
-| `agent.cordis.yml` | Preset composition (liangshen base + 2 rows; deployed to `~/.dsh/.agent-presets/liangshen-bash/`) |
+| `agent.cordis.yml` | Preset composition (Minimal base + 2 rows; deployed to `~/.dsh/.agent-presets/minimal-plus/`) |
 | `preset.yml` | Display name/description for `/preset` |
 | `phase-swap-bash.mjs` | The swap plugin (per-agent shadow) |
 | `phase-swap-bash.test.mjs` | Unit tests (node --test) |
 | `smoke-boot.mjs` / `smoke-driver.mjs` | No-LLM composition smoke (round-1 catalog, round-2 swap+injection) |
 
-Use: `CC_TUI_PRESET=liangshen-bash dsh --profile tui` then `/new`.
+Use: `CC_TUI_PRESET=minimal-plus dsh --profile tui` then `/new`.
 
 ## Tested
 

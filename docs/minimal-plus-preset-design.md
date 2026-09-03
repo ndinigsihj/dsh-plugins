@@ -1,5 +1,8 @@
-# liangshen-bash preset 设计方案（liangshen 全量基底 + 二轮提权 + 二轮 AGENTS.md 注入）
+# minimal-plus preset 设计方案（Minimal 全量基底 + 二轮提权 + 二轮 AGENTS.md 注入）
 
+> 2026-09-03：用户拍板将 preset 从 `liangshen-bash` 更名为 **`minimal-plus`**，并删除
+> `~/.dsh/.agent-presets/liangshen` 基线；本文出现的 `liangshen-bash` 均为改名前的旧名/历史记录。
+>
 > 目标（用户意图，2026-08-21 修正定稿）：**liangshen 的效果 + bash 提权 + 二轮 AGENTS.md 注入**。
 > 即完整还原 liangshen 基底（含 Minimal persona、`includeRuntimeContext: false`、
 > instruction-hint、skill-search 等全部行），只新增两个机制：phase-swap-bash（二轮沙箱 bash 提权）
@@ -9,16 +12,16 @@
 > 偏离了用户"liangshen 效果 + 提权"的原意；用户确认新增独立 preset 还原该意图并做对比测试。
 >
 > 2026-08-29：`liangshen-plus` preset 已删除，本文中 A 组数据仅作历史基线；phase-swap-bash
-> 已随本 preset 迁至 `presets/liangshen-bash/`（单一来源）。
+> 已随本 preset 迁至 `presets/minimal-plus/`（单一来源）。
 
 ---
 
 ## 0. 结论先行
 
-**结论：新增独立 preset `liangshen-bash`，以 liangshen 的 `agent.cordis.yml` 为基底做 6 处改动
+**结论：新增独立 preset `minimal-plus`（2026-09-03 更名前为 `liangshen-bash`），以 liangshen 的 `agent.cordis.yml` 为基底做 6 处改动
 （4 处本地路径改 vendored 路径 + 2 处新增行），persona 与其余全部行逐字不动。**
 
-| 维度 | liangshen | liangshen-plus | **liangshen-bash（本方案）** |
+| 维度 | liangshen | liangshen-plus | **minimal-plus（本方案）** |
 |---|---|---|---|
 | 首轮 | Minimal 锚定对，零注入 | 同左 | 同左（逐字节同 liangshen） |
 | persona | Minimal（`complete:true` + `includeRuntimeContext:false`） | **standard 版** | **Minimal（同 liangshen）** |
@@ -35,7 +38,7 @@
 | 2 | instruction-hint | 本地自研 `./instruction-hint.mjs`（组合文件内相对路径） | 同上 |
 | 3 | custom-bash | 本地自研 `./custom-bash.mjs`（组合文件内相对路径，win32 only） | 同上 |
 | 4 | skill-search | 本地自研 `./skill-search.mjs`（组合文件内相对路径） | 同上 |
-| 5 | **新增** phase-swap-bash | 挂在 tool-bootstrap 之后，引用 repo 版本化插件（`presets/liangshen-bash/phase-swap-bash.mjs`） | 提权本体 |
+| 5 | **新增** phase-swap-bash | 挂在 tool-bootstrap 之后，引用 repo 版本化插件（`presets/minimal-plus/phase-swap-bash.mjs`） | 提权本体 |
 | 6 | **新增** agent-instructions | `@deepseek-ai/dsh-agent-instructions`，`maxBytes: 65536`（同 standard） | 二轮 AGENTS.md 注入显式化 |
 
 第 1-4 处是纯路径替换，语义零变化；第 5-6 处是唯一新增行为。首轮上下文与 liangshen 逐字节相同，
@@ -57,32 +60,31 @@ schema 里有 `sandbox_permissions` 参数，但看不到"当前文件策略 / �
 
 ## 3. 部署位
 
-- repo 版本化：`presets/liangshen-bash/agent.cordis.yml` + `preset.yml`（本仓库）。
+- repo 版本化：`presets/minimal-plus/agent.cordis.yml` + `preset.yml`（本仓库）。
 - 复用物（tool-bootstrap/instruction-hint/skill-search/custom-bash/compaction-epoch）随
-  **preset 目录自包含**：`presets/liangshen-bash/*.mjs`（2026-09-03 起自研，原
+  **preset 目录自包含**：`presets/minimal-plus/*.mjs`（2026-09-03 起自研，原
   vendored `@deepseek-harness-tui/dsh-tui@0.8.7` 副本已删除（2026-09-03 放弃 vendor）。
   组合文件用相对路径引用 `./*.mjs`，
   `sync-agent-presets.sh` 整树同步，使部署副本不再指向 dev 工作树。
-- phase-swap-bash 插件随本 preset 版本化：`presets/liangshen-bash/phase-swap-bash.mjs`（单一来源）。
-- 部署位：`~/.dsh/.agent-presets/liangshen-bash/`（agent.cordis.yml + preset.yml + 本地自研 mjs
+- phase-swap-bash 插件随本 preset 版本化：`presets/minimal-plus/phase-swap-bash.mjs`（单一来源）。
+- 部署位：`~/.dsh/.agent-presets/minimal-plus/`（agent.cordis.yml + preset.yml + 本地自研 mjs
   + node_modules/@deepseek-ai 符号链接，无 vendor 树、无 .dsh-tui-managed.json）。
 
-## 4. 命名（待用户拍板）
+## 4. 命名（已拍板）
 
-| 候选 | 含义 | 备注 |
+| 阶段 | 名称 | 说明 |
 |---|---|---|
-| **liangshen-bash**（默认提案） | liangshen + bash 提权 | 与用户口头表述"liangshen+bash 提权"一致；二轮注入未入名（与 plus 一样靠描述承载） |
-| liangshen-full | 强调 liangshen 全量保留 | 不点名提权/注入 |
-| liangshen-native | 强调原生 liangshen 语义 | 同上 |
+| 2026-08-21 初定 | `liangshen-bash` | liangshen + bash 提权，与用户口头表述一致 |
+| 2026-09-03 更名 | **`minimal-plus`** | 用户拍板；突出 Minimal 基底 + 增强（提权/注入） |
 
-preset.yml 描述（默认提案）：
-`liangshen 全量基底（Minimal persona + instruction-hint + skill-search）+ 二轮沙箱 bash 提权 + 二轮 AGENTS.md 注入。`
+preset.yml 描述（当前）：
+`Minimal 全量基底（Minimal persona + instruction-hint + skill-search）+ 二轮沙箱 bash 提权 + 二轮 AGENTS.md 注入。`
 
 ## 5. 验证计划
 
 ### 5.1 无 LLM 冒烟（实现后立即执行）
 
-用 `presets/liangshen-bash/smoke-boot.mjs`（headless 组合 + agent-presets 挂载新 preset），
+用 `presets/minimal-plus/smoke-boot.mjs`（headless 组合 + agent-presets 挂载新 preset），
 验证点为本 preset 冒烟清单：
 
 | 检查 | 预期 |
@@ -97,7 +99,7 @@ preset.yml 描述（默认提案）：
 ### 5.2 M4 对比实验（组 E）
 
 曾用 m4-runner/m4-driver（均已随 `liangshen-plus` 删除，仅保留历史结果），新增组
-**E = liangshen-bash**，与 C（liangshen）同模板同模型对比，N=9/组：
+**E = minimal-plus**（当时名 `liangshen-bash`），与 C（liangshen）同模板同模型对比，N=9/组：
 A（liangshen-plus，已删除）为历史基线。
 
 | 验证点 | 预期 | 判定 |
@@ -127,7 +129,7 @@ fail closed，只测"是否尝试"，不测"是否成功"）。与主批次分�
 
 | 组 | n | tool call | we need | let me | 锚定率 | 二轮注入（check3） | 二轮沙箱 bash（check4） | 二轮工具数 |
 |---|---|---|---|---|---|---|---|---|
-| **E** liangshen-bash | 9 | 8 | 0 | 1 | 89% | 9/9 | **9/9** | 28（含 skill_search/skill_load） |
+| **E** liangshen-bash（当时名，现 minimal-plus） | 9 | 8 | 0 | 1 | 89% | 9/9 | **9/9** | 28（含 skill_search/skill_load） |
 | **C** liangshen（基线） | 9 | 9 | 0 | 0 | 100% | 9/9 | 0/9（persistent，预期） | 28 |
 | **A** liangshen-plus（历史基线，已删除） | 9 | 7 | 2 | 0 | 100% | 9/9 | 9/9 | 26（无 skill_search/skill_load） |
 
@@ -153,7 +155,7 @@ fail closed，只测"是否尝试"，不测"是否成功"）。与主批次分�
 
 | 组 | n | tool call | we need | let me | 锚定率 | check3 | check4 | 二轮工具数 |
 |---|---|---|---|---|---|---|---|---|
-| **E** 自研 liangshen-bash | 9 | 9 | 0 | 0 | **100%** | 9/9 | **9/9** | 28 |
+| **E** 自研 minimal-plus（旧名 liangshen-bash） | 9 | 9 | 0 | 0 | **100%** | 9/9 | **9/9** | 28 |
 | **C** liangshen（基线） | 9 | 9 | 0 | 0 | 100% | 9/9 | 0/9（persistent，预期） | 28 |
 
 与历史 §5.4 对比：E 锚定率 89% → 100%（无回归，且比历史高 1 跑）；C 保持 100%；
@@ -162,7 +164,7 @@ dsh-base host 层 promotion 后恢复），不影响 check3/锚定判定。
 
 ## 6. 未决问题
 
-1. ~~命名~~ —— 已拍板：`liangshen-bash`（2026-08-21）。
+1. ~~命名~~ —— 已拍板：`liangshen-bash`（2026-08-21），**2026-09-03 更名 `minimal-plus`**。
 2. ~~双 preset 同时挂载时 phase-swap-bash 插件的实例化语义~~ —— M4 E/C/A 同进程批次已答：
    各 preset 载入独立插件实例、按 scope 隔离，无冲突（§5.4 判定）。
 3. ~~M4 driver 组表新增 E~~ —— 已完成：`GROUP_PRESET` 加 E → liangshen-bash，A/C 回归本批
@@ -171,8 +173,8 @@ dsh-base host 层 promotion 后恢复），不影响 check3/锚定判定。
 ## 7. 相关文件
 
 - 设计：本文档
-- preset：`presets/liangshen-bash/agent.cordis.yml`、`presets/liangshen-bash/preset.yml`
-- 复用：`presets/liangshen-bash/phase-swap-bash.mjs`、`presets/liangshen-bash/smoke-driver.mjs`、`presets/liangshen-bash/smoke-boot.mjs`、自研 `presets/liangshen-bash/{tool-bootstrap,instruction-hint,skill-search,custom-bash,compaction-epoch}.mjs`（5 个 mjs）
-- 单测：`presets/liangshen-bash/{phase-swap-bash,tool-bootstrap,instruction-hint,skill-search,custom-bash}.test.mjs` + `test-helpers.mjs`
+- preset：`presets/minimal-plus/agent.cordis.yml`、`presets/minimal-plus/preset.yml`
+- 复用：`presets/minimal-plus/phase-swap-bash.mjs`、`presets/minimal-plus/smoke-driver.mjs`、`presets/minimal-plus/smoke-boot.mjs`、自研 `presets/minimal-plus/{tool-bootstrap,instruction-hint,skill-search,custom-bash,compaction-epoch}.mjs`（5 个 mjs）
+- 单测：`presets/minimal-plus/{phase-swap-bash,tool-bootstrap,instruction-hint,skill-search,custom-bash}.test.mjs` + `test-helpers.mjs`
 - 历史：原始 M4 数据在 `experiments/m4/`；原 vendored 副本已删除（2026-09-03 放弃 vendor）
-- 历史：`liangshen-plus` preset 及其文档已删除；M4 原始数据仍在 `experiments/m4/`
+- 历史：`liangshen-plus` preset 及其文档已删除；`liangshen` 基线 preset 已随更名删除（2026-09-03），M4 C 组数据仅存于 `experiments/m4/`

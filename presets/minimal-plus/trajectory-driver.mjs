@@ -1,9 +1,9 @@
 /**
- * liangshen-bash 轨迹实测 driver — headless 单会话，验证首个 request/header 锚定。
+ * minimal-plus 轨迹实测 driver — headless 单会话，验证首个 request/header 锚定。
  *
  * 用法（由 scripts/run-trajectory.sh 或手工）：
  *   TRAJECTORY_TASK="列出当前目录" TRAJECTORY_OUT=/tmp/traj-1.json \
- *     dsh --profile headless --patch presets/liangshen-bash/trajectory.patch.yml
+ *     dsh --profile headless --patch presets/minimal-plus/trajectory.patch.yml
  *
  * 与 smoke-driver 的区别：本 driver 真实调用 LLM 跑一个简单任务，然后从
  * session 事件里提取：
@@ -77,7 +77,7 @@ async function run(ctx) {
     agentOptions: { provider: selection.provider, model: selection.model },
     setup: async (agentCtx) => {
       installModelSelection(agentCtx, { current: selection, assembled: undefined });
-      await agentPresets.mount(agentCtx, "liangshen-bash");
+      await agentPresets.mount(agentCtx, "minimal-plus");
     },
   });
   await agent.whenIdle();

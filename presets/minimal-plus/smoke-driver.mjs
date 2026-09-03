@@ -1,7 +1,7 @@
 /**
- * liangshen-bash smoke driver — 无 LLM 的两轮目录冒烟。
+ * minimal-plus smoke driver — 无 LLM 的两轮目录冒烟。
  *
- * 在 headless 组合里创建 agent 并挂载 liangshen-bash preset，然后：
+ * 在 headless 组合里创建 agent 并挂载 minimal-plus preset，然后：
  *   R1. system-prompt/assemble → 首轮可见目录（应为 {bash persistent, str_replace_editor}）
  *   R1. agent/pre-step → 首轮注入（应无 agent-instructions / skill-catalog）
  *   ↳  append tool/call（promotion）→ phase-swap-bash 对该 agent swap
@@ -9,14 +9,14 @@
  *   R2. agent/pre-step → 二轮注入（应含 agent-instructions）
  *
  * 挂载方式：由 boot 脚本通过 patch insert 本插件 + agent-presets 行。
- * 运行：node presets/liangshen-bash/smoke-boot.mjs
+ * 运行：node presets/minimal-plus/smoke-boot.mjs
  */
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { installModelSelection } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-agent/lib/index.js";
 import { SessionId } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-session/lib/index.js";
 
-export const name = "liangshen-bash-smoke";
+export const name = "minimal-plus-smoke";
 export const inject = [];
 
 function summary(assembly) {
@@ -46,7 +46,7 @@ async function run(ctx) {
     throw new Error("smoke: missing agents/agentPresets/agentDefaultModel services");
   }
   const selection = defaultModel.currentSelection();
-  const presetName = process.env.SMOKE_PRESET ?? "liangshen-bash";
+  const presetName = process.env.SMOKE_PRESET ?? "minimal-plus";
   console.log(`SMOKE preset: ${presetName}`);
   const { agent } = await agents.create({
     sessionId: SessionId(`session-smoke-${randomUUID()}`),
