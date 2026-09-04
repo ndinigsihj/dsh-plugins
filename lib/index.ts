@@ -110,6 +110,7 @@ const HELP_TEXT = [
   "/sessions        list persisted sessions",
   "/resume <id>     resume a persisted session",
   "/bg <prompt>     start a background task on the worker (worker mode)",
+  "/background      alias of /bg",
   "/task <id>       check a background task status (worker mode)",
   "/tasks           list recent background tasks (worker mode)",
   "/rm <prefix>     delete a session (log + projection cache; confirmed)",
@@ -1265,6 +1266,16 @@ async function run(
       handler: ({ rawInput }) => {
         void doBg(rawInput.trim()).catch((error) => {
           app.showNotice(`/bg failed: ${error instanceof Error ? error.message : String(error)}`);
+        });
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "background",
+      description: "alias of /bg (start a background task)",
+      handler: ({ rawInput }) => {
+        void doBg(rawInput.trim()).catch((error) => {
+          app.showNotice(`/background failed: ${error instanceof Error ? error.message : String(error)}`);
         });
         return { kind: "success" };
       },

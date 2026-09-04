@@ -141,6 +141,7 @@ hub 侧的 `fleet-client` / `memory-sink`、worker 侧的 `remote-server` 挂载
 | `/fleet …` | fleet-client | 列表 / 派发 / 取消（hub controller 侧） | ✅ 已实现 |
 | `/device <id>` | fleet-client | 会话级当前设备绑定（TUI alias `/attach`） | ✅ 已实现 |
 | `/bg <prompt>` | attach-client | worker 模式发起后台任务 | ✅ 已实现 |
+| `/background <prompt>` | attach-client | alias of `/bg` | ✅ 已实现 |
 | `/task <id>` | attach-client | 查询后台任务状态 | ✅ 已实现 |
 | `/tasks` | attach-client | 列出最近后台任务 | ✅ 已实现 |
 
