@@ -2797,12 +2797,15 @@ async function run(
         app.showNotice(`task ${taskId}: unknown (worker may have restarted)`);
         return;
       }
-      const text =
+      const sessionNote = status.sessionId !== undefined ? ` (session ${status.sessionId})` : "";
+      const rawText =
         typeof status.result === "object" && status.result !== null &&
-        "text" in (status.result as { text?: unknown }) && typeof (status.result as { text?: unknown }).text === "string"
-          ? ((status.result as { text: string }).text)
+        "text" in (status.result as { text?: unknown }) ? (status.result as { text?: unknown }).text : undefined;
+      const text =
+        typeof rawText === "string" && rawText !== ""
+          ? rawText
           : JSON.stringify(status.result ?? status.error ?? "done");
-      app.showNotice(`task ${taskId}: done\n${text}`);
+      app.showNotice(`task ${taskId}: done${sessionNote}\n${text}`);
     } catch (error) {
       app.showNotice(`/task failed: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -2837,14 +2840,18 @@ async function run(
         const session = task.sessionId !== undefined ? task.sessionId.slice(0, 13) : "-";
         if (task.status === "running") return `${task.taskId}  running  ${session}`;
         if (task.status === "cancelled") return `${task.taskId}  cancelled  ${session}`;
-        const summary =
+        const rawText =
           typeof task.result === "object" && task.result !== null &&
-          "text" in (task.result as { text?: unknown }) && typeof (task.result as { text?: unknown }).text === "string"
-            ? truncate((task.result as { text: string }).text, 40)
-            : task.error ?? "done";
+          "text" in (task.result as { text?: unknown }) ? (task.result as { text?: unknown }).text : undefined;
+        const summary =
+          typeof rawText === "string" && rawText !== ""
+            ? truncate(rawText, 40)
+            : task.error ?? truncate(JSON.stringify(task.result ?? "done"), 40);
         return `${task.taskId}  ${task.status}  ${session}  ${summary}`;
       });
-      app.appendCommandOutput(`Tasks on ${device}:\n${lines.join("\n")}`);
+      app.appendCommandOutput(
+        `Tasks on ${device} (session 显示前 13 位，完整 id 用 /task <taskId> 查看):\n${lines.join("\n")}`,
+      );
     } catch (error) {
       app.showNotice(`/tasks failed: ${error instanceof Error ? error.message : String(error)}`);
     }
