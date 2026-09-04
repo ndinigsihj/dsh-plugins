@@ -1097,15 +1097,35 @@ async function run(
         getArgumentCompletions: async (prefix) => {
           const relayClient = ctx.get<{
             currentDevice(): string;
-            listWorkspaces(deviceId: string): Promise<Array<{ path: string; kind: "dir" | "running"; deviceId?: string }>>;
+            listWorkspaces(
+              deviceId: string,
+              path?: string,
+            ): Promise<Array<{ path: string; kind: "dir" | "running"; deviceId?: string }>>;
           }>("relayClient");
           if (relayClient === undefined) return null;
           const current = relayClient.currentDevice();
           if (current === "") return null;
           const launcher = current.includes("--") ? current.slice(0, current.indexOf("--")) : current;
           try {
-            const workspaces = await relayClient.listWorkspaces(launcher);
             const needle = prefix.trim();
+            // Tab 逐级浏览：needle 的父目录就是浏览目录；父目录不可浏览时回退 roots 总览。
+            let workspaces: Array<{ path: string; kind: "dir" | "running"; deviceId?: string }>;
+            if (needle === "") {
+              workspaces = await relayClient.listWorkspaces(launcher);
+            } else {
+              const parent = needle.endsWith("/")
+                ? needle.slice(0, -1)
+                : needle.slice(0, needle.lastIndexOf("/"));
+              if (parent === "" || parent === "/") {
+                workspaces = await relayClient.listWorkspaces(launcher);
+              } else {
+                workspaces = await relayClient.listWorkspaces(launcher, parent);
+                if (workspaces.length === 0) {
+                  // 父目录不在任何 launcher root 下（中间段不存在/未授权）→ 从总览过滤。
+                  workspaces = await relayClient.listWorkspaces(launcher);
+                }
+              }
+            }
             const rows = workspaces
               .filter((w) => needle === "" || w.path.startsWith(needle))
               .slice(0, 20);
