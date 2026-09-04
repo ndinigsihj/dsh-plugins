@@ -109,6 +109,9 @@ const HELP_TEXT = [
   "/export [file]   export this conversation to a Markdown file",
   "/sessions        list persisted sessions",
   "/resume <id>     resume a persisted session",
+  "/bg <prompt>     start a background task on the worker (worker mode)",
+  "/task <id>       check a background task status (worker mode)",
+  "/tasks           list recent background tasks (worker mode)",
   "/rm <prefix>     delete a session (log + projection cache; confirmed)",
   "/session         show the current session id",
   "/rewind          rewind to a past message (restores file edits)",
@@ -1252,6 +1255,36 @@ async function run(
       handler: ({ rawInput }) => {
         void doWorkspace(`/workspace ${rawInput}`).catch((error) => {
           app.showNotice(`/workspace failed: ${error instanceof Error ? error.message : String(error)}`);
+        });
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "bg",
+      description: "Worker mode: start a background task: /bg <prompt>",
+      handler: ({ rawInput }) => {
+        void doBg(rawInput.trim()).catch((error) => {
+          app.showNotice(`/bg failed: ${error instanceof Error ? error.message : String(error)}`);
+        });
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "task",
+      description: "Worker mode: check a background task: /task <taskId>",
+      handler: ({ rawInput }) => {
+        void doTask(rawInput.trim()).catch((error) => {
+          app.showNotice(`/task failed: ${error instanceof Error ? error.message : String(error)}`);
+        });
+        return { kind: "success" };
+      },
+    });
+    services.commands.register({
+      name: "tasks",
+      description: "Worker mode: list recent background tasks: /tasks",
+      handler: () => {
+        void doTasks().catch((error) => {
+          app.showNotice(`/tasks failed: ${error instanceof Error ? error.message : String(error)}`);
         });
         return { kind: "success" };
       },
@@ -2683,6 +2716,126 @@ async function run(
       );
     } catch (error) {
       app.showNotice(`dsh-tui: session list failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /** /bg：向当前 worker 发起后台任务（专用 task session，受理即返回）。 */
+  async function doBg(prompt: string): Promise<void> {
+    const relayClient = ctx.get<{
+      currentDevice(): string;
+      dispatchTask(deviceId: string, prompt: string): Promise<{ taskId: string; sessionId: string; error?: string }>;
+    }>("relayClient");
+    const device = relayClient?.currentDevice() ?? "";
+    if (relayClient === undefined || device === "") {
+      app.showNotice("/bg is only available after /attach enters worker mode.");
+      return;
+    }
+    if (prompt === "") {
+      app.showNotice("usage: /bg <prompt>");
+      return;
+    }
+    try {
+      const result = await relayClient.dispatchTask(device, prompt);
+      if (result.error !== undefined && result.error !== "") {
+        app.showNotice(`/bg failed: ${result.error}`);
+        return;
+      }
+      app.showNotice(
+        `task started: ${result.taskId} (session ${result.sessionId}); /task ${result.taskId} to check, /resume ${result.sessionId} to watch`,
+      );
+    } catch (error) {
+      app.showNotice(`/bg failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /** /task <id>：查询后台任务状态。 */
+  async function doTask(taskId: string): Promise<void> {
+    const relayClient = ctx.get<{
+      currentDevice(): string;
+      taskStatus(deviceId: string, taskId: string): Promise<{
+        status: string;
+        sessionId?: string;
+        result?: unknown;
+        error?: string;
+      }>;
+    }>("relayClient");
+    const device = relayClient?.currentDevice() ?? "";
+    if (relayClient === undefined || device === "") {
+      app.showNotice("/task is only available after /attach enters worker mode.");
+      return;
+    }
+    if (taskId === "") {
+      app.showNotice("usage: /task <taskId>");
+      return;
+    }
+    try {
+      const status = await relayClient.taskStatus(device, taskId);
+      if (status.error !== undefined && status.error !== "") {
+        app.showNotice(`/task ${taskId}: ${status.error}`);
+        return;
+      }
+      if (status.status === "running") {
+        app.showNotice(`task ${taskId}: running (session ${status.sessionId ?? "?"})`);
+        return;
+      }
+      if (status.status === "cancelled") {
+        app.showNotice(`task ${taskId}: cancelled`);
+        return;
+      }
+      if (status.status === "unknown") {
+        app.showNotice(`task ${taskId}: unknown (worker may have restarted)`);
+        return;
+      }
+      const text =
+        typeof status.result === "object" && status.result !== null &&
+        "text" in (status.result as { text?: unknown }) && typeof (status.result as { text?: unknown }).text === "string"
+          ? ((status.result as { text: string }).text)
+          : JSON.stringify(status.result ?? status.error ?? "done");
+      app.showNotice(`task ${taskId}: done\n${text}`);
+    } catch (error) {
+      app.showNotice(`/task failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /** /tasks：列出当前 worker 最近任务（running 优先，已完成的带结果摘要）。 */
+  async function doTasks(): Promise<void> {
+    const relayClient = ctx.get<{
+      currentDevice(): string;
+      listTasks(deviceId: string): Promise<Array<{
+        taskId: string;
+        status: string;
+        sessionId?: string;
+        result?: unknown;
+        error?: string;
+        createdAt?: number;
+        finishedAt?: number;
+      }>>;
+    }>("relayClient");
+    const device = relayClient?.currentDevice() ?? "";
+    if (relayClient === undefined || device === "") {
+      app.showNotice("/tasks is only available after /attach enters worker mode.");
+      return;
+    }
+    try {
+      const tasks = await relayClient.listTasks(device);
+      if (tasks.length === 0) {
+        app.showNotice("No tasks on this worker yet. Use /bg <prompt> to start one.");
+        return;
+      }
+      const lines = tasks.map((task) => {
+        const session = task.sessionId !== undefined ? task.sessionId.slice(0, 13) : "-";
+        if (task.status === "running") return `${task.taskId}  running  ${session}`;
+        if (task.status === "cancelled") return `${task.taskId}  cancelled  ${session}`;
+        const summary =
+          typeof task.result === "object" && task.result !== null &&
+          "text" in (task.result as { text?: unknown }) && typeof (task.result as { text?: unknown }).text === "string"
+            ? truncate((task.result as { text: string }).text, 40)
+            : task.error ?? "done";
+        return `${task.taskId}  ${task.status}  ${session}  ${summary}`;
+      });
+      app.appendCommandOutput(`Tasks on ${device}:\n${lines.join("\n")}`);
+    } catch (error) {
+      app.showNotice(`/tasks failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
