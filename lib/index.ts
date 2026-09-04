@@ -2443,7 +2443,9 @@ async function run(
           app.showNotice("Workspace selection cancelled.");
           return;
         }
-        const value = items[Number(picked)]?.value ?? "";
+        // pickSession 回传的就是选中项的 value（如 "__dir__:/path"），
+        // 不是索引 —— 直接用 picked，不能用 items[Number(picked)] 反查。
+        const value = picked;
         if (value === "__use__") {
           workspace = browsing ?? "";
           done = true;
