@@ -51,10 +51,10 @@ interface ModelSelectionRef {
 |---|---|
 | 入口 | running 否决保留（避免步骤中途切裂） |
 | 选择 | picker 不变 |
-| 切换 | `selectionRef.current = { provider, model, reasoningEffort: 经新路由校验后的 effort }` |
+| 切换 | `selectionRef.current = { provider, model }`（不带旧 effort） |
 | 会话 | **不变**：同一 session id、同一历史、不 fork、不 rebuild |
 | 路由真值 | `liveRoute` 立即更新；状态栏与 `/model` current 判定同源 |
-| effort | 随切换透传；新路由不支持当前档位 → 清空（回 provider 默认） |
+| effort | **不随切换透传**：换模型 → 回到新模型默认档；如需会话档再 `/effort` 选（2026-09-04 定稿） |
 | 近期请求 | 下一次 `agent/request` 起用新 route；`request/context` 应记录新 route |
 | resume | 会话日志最后一条 `request/context` 成为新 route → `bootResumeFacts` 恢复新模型 |
 | 默认 | 不写 `saveSelection`（与现状一致，会话级） |
@@ -66,7 +66,7 @@ interface ModelSelectionRef {
 |---|---|---|
 | R1 | seam 是否真的把新的 `provider/model` 应用到下一次请求（而不只是 variables） | spike：fake ctx 触发 `system-prompt/assemble` + `agent/request`，改 ref 后再触发，断言新 route |
 | R2 | `request/context` 是否记录新 route（resume 真源） | 真实 TUI：热切换后发一条消息，查日志最后一条 `request/context`；重启 resume 看 banner/状态栏 |
-| R3 | effort 在新路由不支持时的行为 | 用 `resolveModelInfo(new route)` 校验；不支持 → `reasoningEffort: undefined`，避免 harness 请求前置拒绝 |
+| R3 | 新路由的默认档是否正确生效 | 热切换后（旧 ref 带显式/隐式 effort 均验证）下一轮 `request/header` 的 effort = 新路由默认（或 `adapterDefaults.reasoningEffort: true`），不带旧档 |
 | R4 | 步骤中途切换撕裂 | 保留 running 否决；seam 的 `current/assembled` 快照本身防并发撕裂（spike 加一条：assemble 后立刻改 ref，request 仍用快照） |
 | R5 | 某些 route 相关初始化（工具/预设）只在 agents.create 时发生 | 真实 TUI 冒烟：热切换后新路由的 tools/skills 是否照常；若发现依赖创建时初始化，则本方案不成立，保留 fork |
 
@@ -95,7 +95,7 @@ interface ModelSelectionRef {
 |---|---|
 | TUI boot → `/model` 切到另一 provider/model | ✅ 状态栏即时变新 route |
 | 发一条消息 | ✅ `request/context` 记录新 route；日志可辨 |
-| `/effort` 切档后再 `/model` | ✅ effort 透传（`max` 带到新 route，新 route 支持则保留） |
+| `/effort` 切档后再 `/model` | ✅ 2026-08-29 旧行为：effort 透传；**2026-09-04 规则改为不携带**，换模型回到新模型默认档 |
 | 重启 `/resume` 该会话 | ✅ banner/状态栏恢复新 route |
 | 新路由工具调用 | ✅ tools 照常（R5 确认） |
 

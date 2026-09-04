@@ -64,8 +64,8 @@ dsh 本体已提供 effort 的完整读写机制，本特性是纯接线：
   - resume：路由仍记录优先（`recordedRouteOf`）；effort = 该会话最后一条 `request/header`
     快照 `header.config.reasoningEffort`（**effort 实际入日志，2026-08-23 对真实会话
     核实并修正 §5 的误判**；`recordedEffortOf` 扫描），无记录时回落 settings 默认。
-- `/model` 活体切换：捕获旧 ref 的 effort 透传进新 makeSetup（新路由不支持该档位时由
-  harness 请求前置拒绝兜底，picker 层下次打开按新路由重列）。
+- `/model` 活体切换：**不携带旧 effort**（2026-09-04 定稿）——换模型后回到新模型默认档，如需会话档再
+  对新模型用 `/effort` 选择。
 
 ## 4. 不做（v1）
 

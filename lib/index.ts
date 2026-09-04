@@ -2175,6 +2175,11 @@ async function run(
    * /model hot switch: same session via installModelSelection mutable ref.
    * Takes effect next turn, keeps session id/history; falls back to the
    * fork recipe when the seam is absent.
+   *
+   * Deliberately does NOT carry the previous route's reasoningEffort: the
+   * model changed, so effort semantics are no longer comparable. The new
+   * route rides its own default (materialized by the adapter at request
+   * time); the user re-picks via /effort when they want a session override.
    */
   async function switchModelHot(provider: string, model: string): Promise<void> {
     const ref = selectionRef;
@@ -2182,23 +2187,7 @@ async function run(
       await switchModelLive(provider, model);
       return;
     }
-    const carried = ref.current.reasoningEffort;
-    let nextEffort = carried;
-    const llm = services.llm;
-    if (carried !== undefined && llm?.resolveModelInfo !== undefined) {
-      try {
-        const info = await llm.resolveModelInfo(provider, model);
-        const efforts = info.reasoning?.efforts ?? [];
-        if (!efforts.some((e) => e.id === carried)) nextEffort = undefined;
-      } catch {
-        nextEffort = undefined; // metadata unavailable: drop the carried effort
-      }
-    }
-    ref.current = {
-      provider,
-      model,
-      ...(nextEffort === undefined ? {} : { reasoningEffort: nextEffort }),
-    };
+    ref.current = { provider, model };
     liveRoute = { provider, model };
     app.setModelLabel(`${liveRoute.provider}/${liveRoute.model}`);
     void refreshEffortMeta();
@@ -2234,9 +2223,8 @@ async function run(
       (m) => app.showNotice(m),
     );
     try {
-      // Carry the session's chosen effort across the route switch (design §3.3);
-      // an unsupported level is rejected pre-flight by the harness.
-      const carriedEffort = selectionRef?.current?.reasoningEffort;
+      // /model 语义 = 换模型回到新模型默认档：makeSetup 不带 reasoningEffort，
+      // 新会话由适配器按 route 物化默认档（与 switchModelHot 同规则）。
       const result = await services.agents.create({
         sessionId: SessionId(`session-${randomUUID()}`),
         seed,
@@ -2246,7 +2234,7 @@ async function run(
           ...(composed.agentPreset === undefined ? {} : { agentPreset: composed.agentPreset }),
         },
         agentOptions: { provider, model },
-        setup: makeSetup(composed, { provider, model, reasoningEffort: carriedEffort }),
+        setup: makeSetup(composed, { provider, model }),
       });
       const next = result.agent;
       await next.whenIdle();
@@ -2578,20 +2566,19 @@ async function run(
       return;
     }
     // dsh-relay 集成：relay 模式下 relayClient 会把模型选择发到 worker；
-    // 本地仍走 hot switch，保证状态栏与降级后一致性。
-    const effort = selectionRef?.current?.reasoningEffort;
+    // 本地仍走 hot switch，保证状态栏与降级后一致性。注意不携带旧 effort：
+    // /model 语义 = 换模型回到新模型默认档（switchModelHot 同规则）。
     if (relayClient !== undefined && relayClient.currentDevice() !== "" && !relayClient.isAttached()) {
       // worker 模式且还没有会话：跟本地一样只改内存 ref，并预置到下一次 fresh attach。
       relayClient.setNextModel({
         provider: route.provider,
         model: route.model,
-        ...(effort === undefined ? {} : { reasoningEffort: effort }),
       });
       await switchModelHot(route.provider, route.model);
       return;
     }
     if (relayClient !== undefined) {
-      const result = await relayClient.switchModel(route.provider, route.model, effort);
+      const result = await relayClient.switchModel(route.provider, route.model);
       if (!result.ok) {
         app.showNotice(`Model switch to worker failed: ${result.error ?? "unknown error"}`);
         return;
