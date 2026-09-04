@@ -2734,7 +2734,11 @@ async function run(
   async function doBg(prompt: string): Promise<void> {
     const relayClient = ctx.get<{
       currentDevice(): string;
-      dispatchTask(deviceId: string, prompt: string): Promise<{ taskId: string; sessionId: string; error?: string }>;
+      dispatchTask(
+        deviceId: string,
+        prompt: string,
+        model?: { provider: string; model: string; reasoningEffort?: string },
+      ): Promise<{ taskId: string; sessionId: string; error?: string }>;
     }>("relayClient");
     const device = relayClient?.currentDevice() ?? "";
     if (relayClient === undefined || device === "") {
@@ -2746,7 +2750,11 @@ async function run(
       return;
     }
     try {
-      const result = await relayClient.dispatchTask(device, prompt);
+      // 后台任务会话独立于交互会话，必须显式带上当前模型，否则 worker 用默认模型。
+      const result = await relayClient.dispatchTask(device, prompt, {
+        provider: liveRoute.provider,
+        model: liveRoute.model,
+      });
       if (result.error !== undefined && result.error !== "") {
         app.showNotice(`/bg failed: ${result.error}`);
         return;
