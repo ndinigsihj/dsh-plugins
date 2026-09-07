@@ -1,0 +1,135 @@
+# dsh-mattpocock-skills 适配规则
+# 规则引擎说明：sync.mjs 按顺序应用；每条 text.rewrites 的 pattern 是【字面文本】（非正则）。
+# 若某条规则在本次同步中 0 次命中，sync 报告会标为“需人工确认”（上游可能已改写法）。
+version: 0.1.0
+
+frontmatter:
+  allowedFields:
+    - name
+    - description
+    - whenToUse
+    - disable-model-invocation
+    - user-invocable
+  removeFields:
+    - argument-hint
+
+files:
+  remove:
+    - path: agents/
+      kind: directory
+
+# 别名表：上游改名时在此登记，lint/报告会校验引用一致性。
+aliases:
+  # 例：to-prd: to-spec
+  # 例：to-issues: to-tickets
+
+text:
+  rewrites:
+    # ---------- 模型侧斜杠调用 → dsh skill 工具措辞 ----------
+    - id: grill-me-load-grilling
+      pattern: "Run a `/grilling` session."
+      replacement: "Load the `grilling` skill (via the session skill tool: `skill` in standard, `skill_load` in minimal-plus) and run its interview."
+      skills: [grill-me]
+      kind: mechanical
+    - id: grill-with-docs-load-grilling
+      pattern: "Run a `/grilling` session, using the `/domain-modeling` skill."
+      replacement: "Load the `grilling` and `domain-modeling` skills (via the session skill tool: `skill` in standard, `skill_load` in minimal-plus) and run them together."
+      skills: [grill-with-docs]
+      kind: mechanical
+    - id: implement-use-tdd
+      pattern: "Use /tdd where possible, at pre-agreed seams."
+      replacement: "Use the `tdd` skill (load it via the session skill tool) where possible, at pre-agreed seams."
+      skills: [implement]
+      kind: mechanical
+    - id: implement-use-code-review
+      pattern: "Once done, use /code-review to review the work."
+      replacement: "Once done, use the `code-review` skill (load it via the session skill tool) to review the work."
+      skills: [implement]
+      kind: mechanical
+    - id: improve-architecture-run-codebase-design
+      pattern: "Run the `/codebase-design` skill"
+      replacement: "Run the `codebase-design` skill (load it via the session skill tool)"
+      skills: [improve-codebase-architecture]
+      global: true
+      kind: mechanical
+    - id: improve-architecture-run-grilling
+      pattern: "run the `/grilling` skill"
+      replacement: "run the `grilling` skill (load it via the session skill tool)"
+      skills: [improve-codebase-architecture]
+      global: true
+      kind: mechanical
+    - id: improve-architecture-run-domain-modeling
+      pattern: "run the `/domain-modeling` skill"
+      replacement: "run the `domain-modeling` skill (load it via the session skill tool)"
+      skills: [improve-codebase-architecture]
+      global: true
+      kind: mechanical
+    - id: triage-run-grilling-and-domain-modeling
+      pattern: "run the `/grilling` and `/domain-modeling` skills together"
+      replacement: "run the `grilling` and `domain-modeling` skills together (load them via the session skill tool)"
+      skills: [triage]
+      kind: mechanical
+    - id: wayfinder-run-grilling-and-domain-modeling
+      pattern: "Run a `/grilling` and `/domain-modeling` session"
+      replacement: "Run the `grilling` and `domain-modeling` skills (load them via the session skill tool)"
+      skills: [wayfinder]
+      kind: mechanical
+    - id: wayfinder-grilling-if-in-doubt
+      pattern: "If in doubt, use `/grilling` and `/domain-modeling`."
+      replacement: "If in doubt, use the `grilling` and `domain-modeling` skills (load them via the session skill tool)."
+      skills: [wayfinder]
+      kind: mechanical
+    - id: wayfinder-research-subagent
+      pattern: "spin up a `/research` subagent"
+      replacement: "spin up a `research` subagent (with the `research` skill loaded via the skill tool)"
+      skills: [wayfinder]
+      kind: mechanical
+
+    # ---------- /clear → 新会话（dsh 语境） ----------
+    - id: ask-matt-clear-between-tickets
+      pattern: "**`/clear`ing context between each one**"
+      replacement: "**starting a fresh session between each one**"
+      skills: [ask-matt]
+      kind: mechanical
+    - id: ask-matt-clear-option
+      pattern: "- **`/clear`** — empty the window, when nothing here matters to what's next."
+      replacement: "- **New session** — start from an empty window, when nothing here matters to what comes next."
+      skills: [ask-matt]
+      kind: mechanical
+    - id: ask-matt-dont-clear
+      pattern: "don't compact or clear until after"
+      replacement: "don't compact or start a new session until after"
+      skills: [ask-matt]
+      kind: mechanical
+    - id: phase-boundaries-clear-table
+      pattern: "| **`/clear`** | Empty the context window and start from nothing."
+      replacement: "| **New session** | Start from an empty context window. |"
+      onlyFiles: [ask-matt/PHASE-BOUNDARIES.md]
+      kind: mechanical
+    - id: phase-boundaries-clear-body
+      pattern: "If so, **`/clear`**. It is the cheapest move on the board: it takes no time and hands back the whole window. `/clear` also isn't terminal — the old session stays resumable."
+      replacement: "If so, **start a new session**. It is the cheapest move on the board: it takes no time and hands back the whole window. A new session also isn't terminal — the old session stays resumable."
+      onlyFiles: [ask-matt/PHASE-BOUNDARIES.md]
+      kind: mechanical
+    - id: phase-boundaries-harness-example
+      pattern: "Claude → Codex"
+      replacement: "Claude Code → dsh"
+      onlyFiles: [ask-matt/PHASE-BOUNDARIES.md]
+      kind: mechanical
+
+    # ---------- 子代理措辞 → dsh subagent 工具 ----------
+    - id: sub-agents-word
+      pattern: "sub-agents"
+      replacement: "subagents"
+      global: true
+      kind: mechanical
+    - id: sub-agent-word
+      pattern: "sub-agent"
+      replacement: "subagent"
+      global: true
+      kind: mechanical
+    - id: background-agent-word
+      pattern: "background agent"
+      replacement: "background subagent (the `subagent` tool)"
+      global: true
+      kind: mechanical

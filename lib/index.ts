@@ -3239,6 +3239,38 @@ async function run(
   });
 
   async function runCommand(line: string): Promise<void> {
+    // Unknown `/name` may be a user-invocable skill gesture: dsh-tool-skill
+    // expands it only when the line reaches the agent as a user message, so
+    // forward it there instead of reporting an unknown command.
+    async function tryForwardUserSkill(candidate: string): Promise<boolean> {
+      const skills = ctx.get<{
+        list(opts?: unknown): Promise<Array<{ name: string; invocation: { userInvocable: boolean } }>>;
+      }>("skills");
+      if (skills === undefined) return false;
+      const first = candidate.split(/\s+/)[0];
+      if (first === undefined) return false;
+      const token = first.slice(1);
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(token)) return false;
+      try {
+        const entries = await skills.list();
+        if (!entries.some((s) => s.name === token && s.invocation.userInvocable)) return false;
+      } catch {
+        return false;
+      }
+      const relayClient = ctx.get<{ currentDevice(): string; isAttached(): boolean }>("relayClient");
+      if (relayClient !== undefined && relayClient.currentDevice() !== "" && !relayClient.isAttached()) {
+        const ok = await startNewSession();
+        if (!ok) return true;
+      }
+      const content = [{ type: "text", text: candidate }] as unknown as Parameters<
+        typeof createUserMessage
+      >[0]["content"];
+      const msg = createUserMessage({ content, source: { kind: "user" } });
+      if (agent.status === "running") agent.steer(msg);
+      else agent.followup(msg);
+      return true;
+    }
+
     if (line === "/exit" || line === "/quit") {
       await stopAndExit();
       return;
@@ -3324,6 +3356,7 @@ async function run(
       }
       if (execution === undefined) {
         if (line === "/compact") app.clearNotice();
+        if (await tryForwardUserSkill(line)) return;
         app.showNotice(`Unknown command ${line.split(/\s+/)[0]} — /help lists what's available.`);
         return;
       }
@@ -3343,6 +3376,7 @@ async function run(
       }
       if (text !== undefined && text !== "") app.showNotice(text);
     } else {
+      if (await tryForwardUserSkill(line)) return;
       app.showNotice(`Unknown command ${line.split(/\s+/)[0]} — /help lists what's available.`);
     }
   }
