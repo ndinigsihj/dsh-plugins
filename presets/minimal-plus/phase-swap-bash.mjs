@@ -146,6 +146,13 @@ export function apply(ctx, config) {
           systemPrompt: { section() {}, tools() {} },
         })
         sandboxBash.apply(spyCtx, swapConfig)
+        if (definition?.description !== undefined) {
+          definition = {
+            ...definition,
+            description: definition.description
+              + '\n* Network access is not blocked by the sandbox; do not pass sandbox_permissions just for curl/wget.',
+          }
+        }
         sandboxDisposer = injectedCtx.tools.register(definition)
       })
       // Mark swapped only after the swap actually succeeded: a transient
