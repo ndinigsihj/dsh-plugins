@@ -6,6 +6,9 @@
  *   SMOKE_PRESET=minimal-plus-next  要挂载的 preset id
  *   SMOKE_PRESET_ROOT=<dir>          扫描根目录（默认 repo presets/；设成
  *                                    ~/.dsh/.agent-presets 即可冒烟部署位副本）
+ *   SMOKE_SESSION_ROOT=<dir>         会话根（默认 /tmp/minimal-plus-next-smoke-sessions）
+ *   SMOKE_EXTRA_PATCHES=<paths>      追加 overlay（逗号分隔；闸门 03 用它在 repo 原位
+ *                                    加载宿主侧 subagent-model-selection-settings）
  *
  * 设计：
  *   1. 默认 preset 为 minimal-plus-next（env SMOKE_PRESET 仍可覆盖）。
@@ -18,7 +21,7 @@ import { join } from "node:path";
 // 用 repo 的 dev 依赖树（link-global-dsh.sh → 全局 rc.1），而不是
 // ~/.dsh/profiles/node_modules 共享 farm——该 farm 由最近一次 boot 的宿主代
 // 自愈，stable 侧启动后会指回 rc.2，冒烟就会挂在旧 persona 字段上（2026-09-10 实测）。
-import { boot, loadProfile } from "@deepseek-ai/dsh-app-boot";
+import { boot, loadOverlayPatches, loadProfile } from "@deepseek-ai/dsh-app-boot";
 import { installAnchor } from "../../scripts/host-runtime.mjs";
 
 // 仓库根由本模块位置推导（presets/minimal-plus-next/ → repo 根），换 checkout/CI 无需改脚本。
@@ -39,8 +42,12 @@ const smokePatches = [
   { id: "headless-startup", disabled: true },
   // dsh-base 的 tool-bash 会与 preset 的 bash 撞名 → 按历史 endless-tui 组合的处置禁用（该 profile 已删除）
   { id: "tool-bash", disabled: true },
-  // 沙箱友好：session 根改 /tmp（见文件头注释）
-  { id: "session-persistence-jsonl", config: { root: "/tmp/minimal-plus-next-smoke-sessions" } },
+  // 沙箱友好：session 根改 /tmp（见文件头注释）；闸门（票据 03）用
+  // SMOKE_SESSION_ROOT 落临时 home，跑完随该 home 一起删除，真实目录零写。
+  {
+    id: "session-persistence-jsonl",
+    config: { root: process.env.SMOKE_SESSION_ROOT ?? "/tmp/minimal-plus-next-smoke-sessions" },
+  },
   // 挂 agent-presets 服务（dsh-base 不提供；旧 endless-tui 由第三方 dsh-tui bundle 提供，已删除）
   {
     insert: [
@@ -49,8 +56,10 @@ const smokePatches = [
         name: "@deepseek-ai/dsh-agent-presets",
         config: {
           default: process.env.SMOKE_PRESET ?? "minimal-plus-next",
+          // 只扫显式传入的根：默认 repo presets/，部署位冒烟传 ~/.dsh/.agent-presets。
+          // includeUserRoot=false 让冒烟不读用户的 ~/.dsh/.agent-presets 副本（票据 03 隔离面）。
           roots: [{ path: PRESET_ROOT, trust: "system" }],
-          includeUserRoot: true,
+          includeUserRoot: false,
         },
       },
       {
@@ -61,7 +70,15 @@ const smokePatches = [
   },
 ];
 
-const patches = [...bundlePatches, ...profile.patches, ...smokePatches];
+// 追加 overlay（闸门 03）：在 repo 原位经 loadOverlayPatches 加载，相对名字锚定正确；
+// 缺文件直接抛（显式命名的东西缺失是误配，不是「没有」）。
+const extraPatches = (process.env.SMOKE_EXTRA_PATCHES ?? "")
+  .split(",")
+  .map((file) => file.trim())
+  .filter((file) => file.length > 0)
+  .flatMap((file) => loadOverlayPatches("minimal-plus-next-smoke", file));
+
+const patches = [...bundlePatches, ...profile.patches, ...smokePatches, ...extraPatches];
 const configPath = join(profile.dir, "cordis.yml");
 
 const ctx = await boot("minimal-plus-next-smoke", configPath, patches);

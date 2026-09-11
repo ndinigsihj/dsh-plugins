@@ -1,0 +1,41 @@
+# 闸门自持组合（票据 03 / 计划 §2.1、§4.1）：dsh-base + 本仓库四个生产插件 + repo preset 根。
+#
+# 用途：`scripts/regression-gate.sh` 的零 LLM 组合层。设计约束：
+#   1. **不依赖相邻仓库**（dsh-relay / dsh-endless 不在本组合内），任意 checkout 与 CI 可跑；
+#   2. **不依赖本机绝对路径**：插件用相对本补丁的路径（加载器锚定补丁所在目录），
+#      preset 根由 GATE_PRESET_ROOT 注入（默认 repo 相对根 `presets`）；
+#   3. **不碰真实用户目录**：闸门把 DSH_HOME 指向临时 home，组合只读 repo 资产。
+#
+# 与真实 tui-dev profile 的差异（有意）：不加 relay-client / endless-*（相邻仓库依赖）、
+# 不加官方 tool-ask-user / session-reference / file-reference-local（用户层装饰，不属
+# 本闸门断言面）；子代理模型选择的「允许路由」由票据 12 的真实探测面覆盖。
+# 宿主侧 `subagent-model-selection-settings` 单例见同目录 subagent-settings.patch.yml
+# （零 LLM 冒烟经 SMOKE_EXTRA_PATCHES 单独加载；本文件只做组合导出与 id 递归计数）。
+
+- insert:
+    - id: tui-startup
+      name: '../../lib/startup.ts'
+
+    - id: tui-runner
+      name: '../../lib/index.ts'
+      config:
+        preset: !!js process.env.CC_TUI_PRESET ?? 'minimal-plus-next'
+
+    # repo preset 根（system 信任）：闸门不读 ~/.dsh/.agent-presets，避免部署位漂移
+    # 污染组合层断言；部署位一致性由 T1 的独立 sha 断言表达（见计划 §2.1）。
+    - id: gate-agent-presets
+      name: '@deepseek-ai/dsh-agent-presets'
+      config:
+        default: minimal-plus-next
+        roots:
+          - path: !!js process.env.GATE_PRESET_ROOT ?? 'presets'
+            trust: system
+        includeUserRoot: false
+
+    - id: tui-rename-session
+      name: '../../plugins/rename-session.ts'
+      inject: [sessionTitle, commands, agents]
+
+    - id: dsh-rewind
+      name: '../../plugins/rewind-dsh.ts'
+      inject: [agents, sessions, commands]

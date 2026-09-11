@@ -1,0 +1,46 @@
+{
+  "comment": "闸门 T1 零 LLM 冒烟的期望面（票据 03）。宿主换代时清单（gates/manifest.json）先变红 exit 2，重采基线时同步更新本文件。",
+  "presets": {
+    "minimal-plus-next": {
+      "round1": {
+        "tools": ["bash", "str_replace_editor"],
+        "bashParamsExcludes": ["sandbox_permissions"]
+      },
+      "round2": {
+        "tools": [
+          "ask_user_question",
+          "bash",
+          "create_goal",
+          "edit",
+          "exit_plan_mode",
+          "get_goal",
+          "glob",
+          "grep",
+          "interrupt_agent",
+          "job_kill",
+          "job_list",
+          "job_output",
+          "list_agents",
+          "ralph",
+          "read",
+          "read_image",
+          "send_message",
+          "skill",
+          "skill_load",
+          "skill_search",
+          "str_replace_editor",
+          "subagent",
+          "subagent_fork",
+          "todo_write",
+          "update_goal",
+          "web_fetch",
+          "web_search",
+          "workflow",
+          "write"
+        ],
+        "bashParamsIncludes": ["sandbox_permissions", "justification"],
+        "preStepSources": ["agent-instructions", "instruction-hint", "skill-catalog"]
+      }
+    }
+  }
+}

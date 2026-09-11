@@ -1,0 +1,13 @@
+# 宿主作用域：官方子代理模型选择的单例（minimal-plus-next 的
+# delegation/tool-subagent 开了 `modelSelectionSettings: true`，缺这行 preset 挂不起来）。
+#
+# 为什么单独一个补丁文件：闸门组合（gates/composition/gate.patch.yml）同时含本仓库
+# 四个生产插件的**相对路径**，只在 repo 原位加载时锚定正确；零 LLM 冒烟要的是
+# 「preset 层能在真实宿主里挂载」，只需这一行宿主行，所以把它独立出来，由
+# `SMOKE_EXTRA_PATCHES` 在 repo 原位加载（票据 03 的 T1 组合断言仍看 gate.patch.yml 全量）。
+#
+# 配置用插件默认值（enabled=false、无允许路由）：T1 零 LLM，不涉及路由集合；
+# 真实允许路由由票据 12 的探测面覆盖。
+- insert:
+    - id: subagent-model-selection-settings
+      name: '@deepseek-ai/dsh-tool-subagent/model-selection-settings'
