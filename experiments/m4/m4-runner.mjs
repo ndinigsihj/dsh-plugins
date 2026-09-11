@@ -6,7 +6,7 @@
  * 的记录结构重建，任务模板逐字沿用。
  *
  * 用法：
- *   M4_GROUPS=E M4_RUNS=9 M4_MODEL=opencode-go/deepseek-v4-flash M4_OUT=/tmp/m4-new.jsonl \
+ *   M4_GROUPS=E M4_RUNS=9 M4_MODEL=opencode-go/deepseek-v4-flash \
  *     dsh --profile headless --patch experiments/m4/m4.patch.yml
  *
  * 每组每次：真实 LLM 完成三步任务（查看目录 → 写 probe 文件 → bash 确认），
@@ -16,15 +16,28 @@
  * 组表 E 指向开发侧组合 minimal-plus-next（旧名 liangshen-bash → minimal-plus，
  * rc.1 分叉后开发侧为 minimal-plus-next）；M4_MODEL 可显式覆盖宿主默认路由
  * （默认路由额度期时用，值必须为 provider/model，记录字段 model 反映实际路由）。
+ *
+ * 2026-09-11 票 05：报告默认归档到 <repo>/experiments/regression-gate/results-m4-<日期>.jsonl
+ * （M4_OUT 可覆盖）；会话根由 m4.patch.yml 指向隔离目录（M4_SESSION_ROOT 可覆盖）。
  */
 import { randomUUID } from "node:crypto";
-import { appendFileSync } from "node:fs";
+import { appendFileSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { installModelSelection } from "@deepseek-ai/dsh-agent";
 import { SessionId } from "@deepseek-ai/dsh-session";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 
 export const name = "m4-runner";
 export const inject = [];
+
+/** 仓库根（本文件位于 <repo>/experiments/m4/，上溯两级）。 */
+const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
+
+/** 默认报告路径：按日归档到仓库实验目录约定下（票 05 / Q7）。 */
+function defaultOutPath() {
+  return join(REPO_ROOT, "experiments", "regression-gate", `results-m4-${new Date().toISOString().slice(0, 10)}.jsonl`);
+}
 
 const DEPLOYED_PRESETS = {
   E: "minimal-plus-next", // rc.1 开发侧组合；历史名 liangshen-bash → minimal-plus 后于 2026-09-10 分叉
@@ -197,7 +210,9 @@ async function run(ctx) {
   }
   const groups = (process.env.M4_GROUPS ?? "E").split(",").map((g) => g.trim()).filter(Boolean);
   const runs = Number(process.env.M4_RUNS ?? 9);
-  const out = process.env.M4_OUT ?? "/tmp/m4-new.jsonl";
+  const out = process.env.M4_OUT ?? defaultOutPath();
+  mkdirSync(dirname(out), { recursive: true });
+  console.log(`m4 report: ${out}`);
 
   for (const group of groups) {
     for (let run = 1; run <= runs; run++) {

@@ -1,0 +1,16 @@
+{
+  "task": "列出当前目录",
+  "provider": "commandcode",
+  "model": "deepseek/deepseek-v4.1-flash",
+  "sessionId": "session-trajectory-6aaac485-8fd6-4cc4-8d6a-f5c71b3e6492",
+  "tools": [
+    "bash",
+    "str_replace_editor"
+  ],
+  "injected": [],
+  "firstLine": "I'll list the contents of the current directory.",
+  "toolsOk": true,
+  "injectOk": true,
+  "openOk": false,
+  "pass": false
+}

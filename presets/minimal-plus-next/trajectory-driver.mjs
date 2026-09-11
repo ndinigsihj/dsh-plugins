@@ -2,7 +2,7 @@
  * minimal-plus-next 轨迹实测 driver — headless 单会话，验证首个 request/header 锚定。
  *
  * 用法（由 scripts/run-trajectory.sh 或手工）：
- *   TRAJECTORY_TASK="列出当前目录" TRAJECTORY_OUT=/tmp/traj-1.json \
+ *   TRAJECTORY_TASK="列出当前目录" \
  *     dsh --profile headless --patch presets/minimal-plus-next/trajectory.patch.yml
  *
  * 与 smoke-driver 的区别：本 driver 真实调用 LLM 跑一个简单任务，然后从
@@ -13,15 +13,28 @@
  *  - 首个 assistant/message 的首行（不应是 "Let me"/"I'll"/"我们" 式未锚定开场）
  *
  * 判定按文档 §4 #5 / Phase 3：5 会话全过 = 5/5 锚定。
+ *
+ * 2026-09-11 票 05：报告默认归档到 <repo>/experiments/regression-gate/results-trajectory-<日期>.json
+ * （TRAJECTORY_OUT 可覆盖）；会话根由 trajectory.patch.yml 指向隔离目录（TRAJECTORY_SESSION_ROOT 可覆盖）。
  */
 import { randomUUID } from "node:crypto";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { installModelSelection } from "@deepseek-ai/dsh-agent";
 import { SessionId } from "@deepseek-ai/dsh-session";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 
 export const name = "liangshen-trajectory";
 export const inject = [];
+
+/** 仓库根（本文件位于 <repo>/presets/minimal-plus-next/，上溯两级）。 */
+const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
+
+/** 默认报告路径：按日归档到仓库实验目录约定下（票 05 / Q7）。 */
+function defaultOutPath() {
+  return join(REPO_ROOT, "experiments", "regression-gate", `results-trajectory-${new Date().toISOString().slice(0, 10)}.json`);
+}
 
 /** 提取一个会话的轨迹判定。 */
 export function analyze(events) {
@@ -96,12 +109,10 @@ async function run(ctx) {
     sessionId: agent.session.id,
     ...outcome,
   };
-  const out = process.env.TRAJECTORY_OUT;
-  if (out !== undefined) {
-    writeFileSync(out, JSON.stringify(record, null, 2) + "\n");
-  } else {
-    console.log(JSON.stringify(record, null, 2));
-  }
+  const out = process.env.TRAJECTORY_OUT ?? defaultOutPath();
+  mkdirSync(dirname(out), { recursive: true });
+  writeFileSync(out, JSON.stringify(record, null, 2) + "\n");
+  console.log(`trajectory report: ${out}`);
   process.exit(outcome.pass ? 0 : 1);
 }
 

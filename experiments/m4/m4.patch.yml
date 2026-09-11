@@ -1,10 +1,13 @@
 # M4 对比实验 patch（headless 组合 + agent-presets，与历史 M4 同口径）。
 #
-# 用法：M4_GROUPS=E M4_RUNS=9 M4_MODEL=opencode-go/deepseek-v4-flash M4_OUT=/tmp/m4-new.jsonl \
+# 用法：M4_GROUPS=E M4_RUNS=9 M4_MODEL=opencode-go/deepseek-v4-flash \
 #   dsh --profile headless --patch experiments/m4/m4.patch.yml
 #
 # 2026-09-10 升级 rc.1 后：preset 走 user root（~/.dsh/.agent-presets 部署位副本），
 # E = minimal-plus-next；M4_MODEL 按需覆盖默认路由（见 m4-runner.mjs 头注释）。
+#
+# 票 05：会话写隔离根（M4_SESSION_ROOT，默认 /tmp/dsh-probe/m4-sessions），
+# 不再写真实 ~/.dsh/sessions；报告默认归档到 <repo>/experiments/regression-gate/（M4_OUT 可覆盖）。
 - id: headless-runner
   disabled: true
 
@@ -14,6 +17,11 @@
 # dsh-base 的 tool-bash 会与 preset 的 bash 撞名 → 与 smoke/trajectory 同处置
 - id: tool-bash
   disabled: true
+
+# 票 05：会话隔离写（范式同票 11/12 探针与票 02 seeded 探针）
+- id: session-persistence-jsonl
+  config:
+    root: !!js process.env.M4_SESSION_ROOT ?? '/tmp/dsh-probe/m4-sessions'
 
 - insert:
     - id: agent-presets
