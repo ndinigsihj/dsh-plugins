@@ -34,6 +34,7 @@ import {
   type OverlayHandle,
   type SelectItem,
   type SelectListTheme,
+  type Terminal,
   type TUI,
 } from "@earendil-works/pi-tui";
 import { lineDiff } from "./diff.ts";
@@ -145,6 +146,9 @@ export interface TuiAppOptions {
   ) => Promise<Array<{ mention: string; label: string; description?: string }>>;
   /** Async preview text for the highlighted session in the /resume picker. */
   sessionPreview?: SessionPreviewLoader;
+  /** Terminal override for in-process tests (fake terminal, plan §3.2).
+   * Absent → the real ProcessTerminal. */
+  terminal?: Terminal;
 }
 
 function markdownTheme(p: Palette): MarkdownTheme {
@@ -1866,8 +1870,8 @@ class FileReferenceAutocomplete implements AutocompleteProvider {
 }
 
 export class TuiApp {
-  private readonly terminal = new ProcessTerminal();
-  private readonly clipboardTerminal = new ClipboardTerminal(this.terminal);
+  private readonly terminal: Terminal;
+  private readonly clipboardTerminal: ClipboardTerminal;
   private readonly tui: TUI;
   private readonly p: Palette;
   private readonly transcript = new TranscriptModel();
@@ -1917,6 +1921,8 @@ export class TuiApp {
 
   constructor(options: TuiAppOptions) {
     this.options = options;
+    this.terminal = options.terminal ?? new ProcessTerminal();
+    this.clipboardTerminal = new ClipboardTerminal(this.terminal);
     this.p = createPalette(true);
     this.agent = options.agent;
     this.modelLabel = options.modelLabel;
