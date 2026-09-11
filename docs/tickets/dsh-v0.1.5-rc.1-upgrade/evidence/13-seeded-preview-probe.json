@@ -1,0 +1,69 @@
+{
+  "startedAt": "2026-09-11T03:35:31.804Z",
+  "sessionId": "session-6846f8fa-18eb-4ce8-8f85-4b6a36b37aff",
+  "checks": [
+    {
+      "id": "red-readSession-rejects-seeded",
+      "pass": true,
+      "detail": {
+        "error": "seeded session constructor seed must equal its inherited prefix"
+      }
+    },
+    {
+      "id": "listEvents-has-corpus",
+      "pass": true,
+      "detail": {
+        "events": 68,
+        "listMs": 223
+      }
+    },
+    {
+      "id": "green-reader-module-present",
+      "pass": true,
+      "detail": {}
+    },
+    {
+      "id": "green-log-reconstructed",
+      "pass": true,
+      "detail": {
+        "elapsedMs": 598
+      }
+    },
+    {
+      "id": "green-count-and-seq-match",
+      "pass": true,
+      "detail": {
+        "events": 68,
+        "records": 68,
+        "firstSeq": 0,
+        "lastSeq": 67,
+        "expectedFirstSeq": 0,
+        "expectedLastSeq": 67
+      }
+    },
+    {
+      "id": "green-inherited-count-recorded",
+      "pass": true,
+      "detail": {
+        "inheritedEventCount": 34
+      }
+    },
+    {
+      "id": "green-warm-call",
+      "pass": true,
+      "detail": {
+        "warmMs": 524
+      }
+    },
+    {
+      "id": "baseline-readSession-fastpath",
+      "pass": true,
+      "detail": {
+        "events": 65,
+        "readSessionMs": 180
+      }
+    }
+  ],
+  "finishedAt": "2026-09-11T03:35:33.780Z",
+  "summary": "8/8 pass"
+}

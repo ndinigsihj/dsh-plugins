@@ -1,3 +1,6 @@
 node_modules/
 *.log
 .DS_Store
+
+# ask-matt-flow 进度记录（流程自身状态，非交付物）
+.dsh/

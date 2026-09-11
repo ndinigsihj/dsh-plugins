@@ -1,4 +1,5 @@
-// Transcript model: folds the session/event feed into renderable rows.
+// Transcript model: folds the session/event feed (plus rc.1's live
+// assistant-stream chunks) into renderable rows.
 //
 // The model is append-only and renderer-agnostic. Rows carry plain text plus
 // optional presenter views; the renderer (app.ts) turns rows into terminal
@@ -6,6 +7,7 @@
 // keyed by (revision, width) instead of rebuilding text nodes each frame.
 
 import type { SessionEvent } from "@deepseek-ai/dsh-session/types";
+import type { StreamChunk } from "@deepseek-ai/dsh-llm";
 import type { ToolCallView, ToolResultView } from "@deepseek-ai/dsh-tools/presentation";
 
 export type TranscriptRow =
@@ -86,6 +88,12 @@ function parseArgs(raw: string): unknown {
 /** Shared empty result for takeDirtySeqs() — avoids allocating per frame. */
 const EMPTY_DIRTY: ReadonlySet<number> = new Set<number>();
 
+/** Row-seq base for live streaming bubbles. rc.1 chunks are process-local
+ * frames, not session events, so they carry no session seq; the model still
+ * keys rows/dirty marks by number. The base sits far below notice seqs so the
+ * two synthetic ranges can never collide. */
+const STREAM_ROW_SEQ_BASE = -1_000_000_000;
+
 export class TranscriptModel {
   private rows: TranscriptRow[] = [];
   private revision = 0;
@@ -93,6 +101,9 @@ export class TranscriptModel {
   private toolByCall = new Map<string, Extract<TranscriptRow, { kind: "tool" }>>();
   private lastSeq = -1;
   private noticeSeq = -1;
+  /** Next synthetic seq handed to a live streaming bubble (see
+   * STREAM_ROW_SEQ_BASE) — decrements so a new turn's bubble gets a fresh row. */
+  private streamSeq = STREAM_ROW_SEQ_BASE;
   /** Seqs mutated in place since the last takeDirtySeqs() — streaming chunk
    * folds, tool-result backfills, finalizations. The windowed TranscriptArea
    * updates only these mounted components (a plain length check can't see
@@ -205,27 +216,21 @@ export class TranscriptModel {
     this.rowIndex.clear();
     this.lastSeq = -1;
     this.noticeSeq = -1;
+    this.streamSeq = STREAM_ROW_SEQ_BASE;
     this.bump();
   }
 
   /** Rebuild transcript from an already-materialized session log (resume path).
-   * `skipStreamDeltas` folds from assistant/message final states instead of
-   * replaying every persisted streaming delta: a large resumed log expands
-   * to hundreds of thousands of chunk events whose only contribution here is
-   * re-deriving text the final message already contains (2026-08-26
-   * resume-perf analysis, docs/resume-memory-render-analysis.md §3-B).
-   * Interrupted streams that never reached a final message lose their
-   * partial bubble — cosmetic, and the session log keeps everything. Live
-   * streaming still applies chunks; this flag is for bulk replay only. */
-  rebuild(
-    events: readonly SessionEvent[],
-    presenters: ToolPresenters,
-    opts: { skipStreamDeltas?: boolean } = {},
-  ): void {
+   * rc.1 logs contain no assistant/chunk events: the durable record keeps only
+   * the final `assistant/message`/`assistant/attempt` settlements, so this
+   * folds exactly those. Interrupted streams that never reached a final
+   * message lose their partial bubble — cosmetic, and the session log keeps
+   * everything. Live streaming arrives separately through
+   * {@link applyStreamChunk} (2026-08-26 resume-perf analysis,
+   * docs/resume-memory-render-analysis.md §3-B). */
+  rebuild(events: readonly SessionEvent[], presenters: ToolPresenters): void {
     this.clear();
-    const skipDeltas = opts.skipStreamDeltas === true;
     for (const event of events) {
-      if (skipDeltas && event.type === "assistant/chunk") continue;
       this.apply(event, presenters);
     }
   }
@@ -284,29 +289,6 @@ export class TranscriptModel {
           });
         }
         this.bump();
-        break;
-      }
-      case "assistant/chunk": {
-        const chunk = (
-          event.data as { chunk?: { type: string; text?: string; block?: ContentLike } } | undefined
-        )?.chunk;
-        if (chunk === undefined) break;
-        if (chunk.type === "text-delta" || chunk.type === "reasoning-delta") {
-          const delta = chunk.text ?? "";
-          if (delta === "") break;
-          const row = (this.openAssistant ??= this.pushAssistant(event.seq));
-          if (chunk.type === "text-delta") row.text += delta;
-          else row.reasoning += delta;
-          this.markDirty(row.seq);
-          this.bump();
-        } else if (chunk.type === "block-end" && chunk.block?.type === "text") {
-          if (this.openAssistant === null) {
-            this.openAssistant = this.pushAssistant(event.seq);
-            // A fresh block-end with no earlier text-delta must bump so the
-            // windowed TranscriptArea mounts the new row immediately.
-            this.bump();
-          }
-        }
         break;
       }
       case "assistant/message": {
@@ -408,6 +390,41 @@ export class TranscriptModel {
         // into transcript rows — one source of truth, no duplicate cards.
         break;
     }
+  }
+
+  /**
+   * Fold one live `agent/assistant-stream` chunk into the open assistant row.
+   *
+   * rc.1 publishes model chunks process-locally as stream frames, not durable
+   * session events, so this is separate from {@link apply}: the durable
+   * `assistant/message` event still finalizes the row (full text/reasoning,
+   * done=true). The bubble carries a synthetic negative seq — frames have no
+   * session seq — which is fine because the UI positions rows by push order,
+   * not seq value.
+   */
+  applyStreamChunk(chunk: StreamChunk): void {
+    if (chunk.type === "text-delta" || chunk.type === "reasoning-delta") {
+      const delta = chunk.text;
+      if (delta === "") return;
+      const row = (this.openAssistant ??= this.pushAssistant(this.nextStreamSeq()));
+      if (chunk.type === "text-delta") row.text += delta;
+      else row.reasoning += delta;
+      this.markDirty(row.seq);
+      this.bump();
+    } else if (chunk.type === "block-end" && chunk.block.type === "text") {
+      if (this.openAssistant === null) {
+        this.openAssistant = this.pushAssistant(this.nextStreamSeq());
+        // A fresh block-end with no earlier text-delta must bump so the
+        // windowed TranscriptArea mounts the new row immediately.
+        this.bump();
+      }
+    }
+  }
+
+  /** Next synthetic row seq for a live streaming bubble. */
+  private nextStreamSeq(): number {
+    this.streamSeq -= 1;
+    return this.streamSeq;
   }
 
   private pushAssistant(seq: number): Extract<TranscriptRow, { kind: "assistant" }> {

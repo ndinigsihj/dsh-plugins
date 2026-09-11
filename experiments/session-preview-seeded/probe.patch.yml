@@ -1,0 +1,23 @@
+# Stage 7 反馈回路 overlay（finding 06-4：seeded 子会话 hover 预览读取）。
+#
+#   experiments/session-preview-seeded/run.sh [sessionId]
+#   （先复制真实 settings.yaml 到 /tmp，再跑：
+#    dsh --profile headless --patch experiments/session-preview-seeded/probe.patch.yml）
+#
+# 与票据 11/12 探针同处置：关掉 stock headless runner/startup，避免无人值守地建会话；
+# settings.path 指向 /tmp 副本，避免写真实 ~/.dsh/settings.yaml。
+# 注意：本 overlay 故意不覆盖 session-persistence-jsonl.root —— 探针要读真实的
+# ~/.dsh/sessions 里的 seeded fixture（票据 06 rewind 子会话）。
+- id: headless-runner
+  disabled: true
+
+- id: headless-startup
+  disabled: true
+
+- id: settings
+  config:
+    path: /tmp/dsh-ticket13-seeded-preview/settings.yaml
+
+- insert:
+    - id: session-preview-seeded-probe
+      name: /Users/vito/data/dev/dsh-plugins/experiments/session-preview-seeded/probe.mjs

@@ -1,0 +1,193 @@
+# `minimal-plus-next` 组合 preset（开发侧 rc.1）：Minimal 全量基底 + 二轮 bash 提权 + 二轮 AGENTS.md 注入。
+#
+# 2026-09-10 由 `minimal-plus` 分叉（ADR-0002：dev/stable 使用不同 preset，stable 宿主保持钉版）：
+# 与 `minimal-plus` 的唯一字段差异是 persona 行——rc.1 的 `@deepseek-ai/dsh-persona` 把正文键从
+# `text` 改为 `prefix`（可选 `suffix`），stable 侧 rc.2 只认 `text`，故单份文件无法同时服务两个宿主。
+# 2026-09-10 票据 09 按 ADR-0003 去重：本文件只声明与 rc.1 `dsh-base` 的差异。删除与宿主
+# 逐字重复的挂载行（agent-instructions / tool-pwsh / tool-fs / tool-fs-search / tool-jobs /
+# skill-filesystem / tool-goal / tool-todo）与删空的分组（planning / compaction）；
+# tool-web（网页抓取开关）与 delegation 内的 tool-subagent-fork（continuable→one-shot）
+# 按本轮决定跟随宿主，行已删除。保留的两处差异见下方 tool-bash 与 delegation 注释。
+# 2026-09-10 票据 11 在 delegation/tool-subagent 上开启官方模型选择
+# （`modelSelectionSettings: true`）：宿主作用域须挂载
+# `@deepseek-ai/dsh-tool-subagent/model-selection-settings`（部署基线在
+# ~/.dsh/profiles/{tui-dev,headless}/cordis.patch.yml；tui-dev 开启并给 4 条允许
+# 路由，headless 关闭以保持测量口径）。
+#
+# 以 Minimal 语义为基底（前身 liangshen）做 5 处改动（设计文档 docs/minimal-plus-preset-design.md §1）：
+#   1-4. 本地复用物走 preset 目录内自研相对路径（tool-bootstrap / instruction-hint /
+#        custom-bash / skill-search；S7 部署位决策，相对路径 + sync 整树同步，部署
+#        副本不引用 dev 工作树；文件自研替换 vendor，契约见 docs/
+#        minimal-plus-preset-self-host-implementation.md）。
+#   5. 新增 phase-swap-bash 行：首轮 tool/call（promotion）后把该 agent 的 bash 从
+#      persistent 换成沙箱 dsh-tool-bash（sandbox_permissions 提权）。
+# persona 保持 Minimal 版（前身 liangshen 同款）（rc.1 前缀键 + complete:true +
+# includeRuntimeContext:false）；二轮 agent-instructions 注入由宿主 base 行提供
+# （原显式行与宿主逐字重复，票据 09 已删）。
+#
+# 已知取舍：includeRuntimeContext:false 剥掉 runtime context 快照（cwd/文件策略/审批
+# 策略），模型知道 bash schema 有 sandbox_permissions 但看不到策略状态——Minimal-Plus
+# 语义的固有属性，见设计文档 §2。
+
+# ── bootstrap (must stay FIRST) ─────────────────────────────────────────────
+# 与 Minimal 完全一致：首轮只对模型暴露 Minimal 锚定对（persistent bash +
+# str_replace_editor），promotion 后放行完整目录。必须保持 FIRST（waterfall 逆序
+# 应用 + prepend:true 的最外层变换纪律，照抄 tool-bootstrap.mjs 头注释）。
+- id: tool-bootstrap
+  name: './tool-bootstrap.mjs'
+  config:
+    bootstrapTools: [bash, str_replace_editor]
+    promoteOn: tool-call
+    includeSubagents: true
+    suppressedContextSources: [agent-instructions, skill-catalog]
+
+# ── phase-swap-bash ─────────────────────────────────────────────────────────
+# 首轮 tool/call 后（promotion）把该 agent 的 bash 从 persistent 换成沙箱
+# dsh-tool-bash。per-agent shadow 语义：对该 agent 的 ctx 调 dsh-tool-bash.apply()，
+# 注册进该 agent 的 scope layer，shadow 掉全局 persistent bash，其他 session/子代理
+# 不受影响；swap 失败 warn once + 保持 persistent bash。插件单一来源：repo
+# presets/minimal-plus-next/phase-swap-bash.mjs（本 preset 版本化）。
+- id: phase-swap-bash
+  name: './phase-swap-bash.mjs'
+  config:
+    enableRunInBackground: true
+
+# ── identity ────────────────────────────────────────────────────────────────
+# Minimal persona（正文与 Minimal 基线一致，只是改用 rc.1 的 `prefix` 键）：`complete`
+# 防止 Harness identity 与 per-tool 指引改写 system prompt；includeRuntimeContext:false
+# 让任务与仓库规则只走 user message 与显式文件读取（固有取舍见文件头）。
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    prefix: >-
+      You are a helpful software engineer assistant.
+
+      When a todo list is active, call todo_write to mark each item completed the moment it is done; before finishing a turn, ensure no completed task is left in_progress/pending and close the list (all completed) once all work is complete.
+    complete: true
+    includeRuntimeContext: false
+
+# Minimal 基底的 instruction-hint（保留）：promotion 后每会话注入一次短提示——
+# "这些指令文件存在；行动前先读它们"——模型按需自行用 fs 工具读取。
+# 与宿主 base 的 agent-instructions digest 并存（C 组实测双源无冲突；hint 略冗余但无害）。
+- id: instruction-hint
+  name: './instruction-hint.mjs'
+  config:
+    promoteOn: tool-call
+    includeSubagents: true
+
+# ── shell ───────────────────────────────────────────────────────────────────
+- id: tool-bash
+  name: '@deepseek-ai/dsh-tool-bash'
+  # 差异行（票据 09 保留）：宿主同行只在 win32 禁用；本组合始终禁用——
+  # persistent-shell 组注册了同名 bash（首轮锚定），沙箱 bash 由
+  # phase-swap-bash 在 promotion 时对该 agent 动态注册（per-agent shadow）。
+  disabled: true
+
+# Minimal 的 persistent shell（PTY）：首轮 bash 就是它（锚定），disposed 语义由
+# phase-swap-bash 的 per-agent shadow 实现——不 dispose 共享实例。
+- id: persistent-shell
+  name: cordis:group
+  group: true
+  disabled: !!js process.platform === 'win32'
+  isolate:
+    terminals: true
+  config:
+    - id: pty
+      name: '@deepseek-ai/dsh-terminal'
+
+    - id: terminal-bash
+      name: '@deepseek-ai/dsh-terminal-bash'
+      config:
+        timeoutMs: 300000
+
+    - id: persistent-bash
+      name: '@deepseek-ai/dsh-tool-bash-persistent'
+      config:
+        timeoutMs: 300000
+        description: |-
+          Run commands in a bash shell
+          * When invoking this tool, the contents of the "command" parameter does NOT need to be XML-escaped.
+          * You don't have access to the internet via this tool.
+          * You do have access to a mirror of common linux and python packages via apt and pip.
+          * State is persistent across command calls and discussions with the user.
+          * To inspect a particular line range of a file, e.g. lines 10-25, try 'sed -n 10,25p /path/to/the/file'.
+          * Please avoid commands that may produce a very large amount of output.
+          * Please run long lived commands in the background, e.g. 'sleep 10 &' or start a server in the background.
+
+# Windows-only bash（本期只做 darwin；win32 第二优先级 D4）。
+- id: custom-bash
+  name: './custom-bash.mjs'
+  disabled: !!js process.platform !== 'win32'
+
+# ── filesystem ──────────────────────────────────────────────────────────────
+# tool-fs / tool-fs-search 已删除（票据 09：宿主 base 提供同 id 同 config 的行）。
+# str_replace_editor：2026-08-25 起走宿主沙箱化 ctx.fs（原配本地 fs-local
+# 已移除——越界写无审批，见 session-259d6388（2026-08-25 同日修复）。
+# str_replace_editor 走宿主沙箱化 ctx.fs：workspace-write 边界=会话不可变
+# cwd，越界写 → 拒绝 → 提权审批。（原 bootstrap-filesystem 隔离组+本地裸
+# fs-local 已删：isolate 组内无 fs 提供者会使工具无法激活，且裸 fs 曾致
+# 越界写静默成功——session-259d6388。）
+- id: str-replace-editor
+  name: '@deepseek-ai/dsh-tool-str-replace-editor'
+  config:
+    maxOutputChars: 16000
+
+# ── skills ──────────────────────────────────────────────────────────────────
+# Minimal 基底的按需技能工具（保留）：skill_search / skill_load，替代首轮全量
+# skill-catalog 注入对轨迹的扰动（issue #6）；skill-catalog 注入 promotion 后
+# 仍由 host 层照常恢复。skill-filesystem 已删除（票据 09：宿主 base 同 id 同 name）。
+- id: skill-search
+  name: './skill-search.mjs'
+
+# ── goals / plan mode / compaction（票据 09 全部删除）────────────────────────
+# tool-goal、compaction 组三行（compaction-basic / command-compact / tool-result-pruner）
+# 与宿主逐字重复；planning 组内唯一行 plan-mode 的差异只在 section 正文，本轮决定跟随
+# 宿主。删空的分组（planning / compaction）一并移除：goals 与 compaction 行为改由宿主
+# 实例提供；plan 状态不再隔离在本 preset 的 entry-local realm，与宿主一致（ADR-0003）。
+
+# ── delegation and workflows ────────────────────────────────────────────────
+# 保留的分组（票据 09）：host 同 id 行（tool-subagent-control / list-agents /
+# workflow-worker-thread / tool-workflow / tool-ralph）已删除；tool-subagent-fork
+# 按本轮决定跟随宿主（one-shot，不参与模型选择），行已删。保留 tool-subagent 作
+# 差异行——2026-09-10 票据 11 开启官方模型选择（`modelSelectionSettings: true`）：
+# 宿主作用域须挂载 `@deepseek-ai/dsh-tool-subagent/model-selection-settings`
+# （部署基线，tui-dev enabled=true；headless enabled=false 保测量口径），未记录
+# 策略的旧会话与 fork 来源子代理保持固定路由。两行 disabled 工具表达本部署不
+# 安装 codex / claude-code provider 的停用意图。
+- id: delegation
+  name: cordis:group
+  group: true
+  isolate:
+    workflowEngine: true
+  config:
+    - id: tool-subagent
+      name: '@deepseek-ai/dsh-tool-subagent'
+      config:
+        provider: spawn
+        toolName: subagent
+        modelSelectionSettings: true
+        backgroundMode: continuable
+
+    - id: tool-subagent-codex
+      name: '@deepseek-ai/dsh-tool-subagent'
+      disabled: true
+      config:
+        provider: codex
+        toolName: subagent_codex
+        enableRunInBackground: false
+        maxDepth: provider-managed
+
+    - id: tool-subagent-claude-code
+      name: '@deepseek-ai/dsh-tool-subagent'
+      disabled: true
+      config:
+        provider: claude-code
+        toolName: subagent_claude_code
+        enableRunInBackground: false
+        maxDepth: provider-managed
+
+# ── remaining model-facing rows ─────────────────────────────────────────────
+# tool-todo / tool-web 与宿主逐字重复（tool-web 的 fetch 差异本轮决定跟随宿主），
+# 已删除；tool-ask-user 宿主 base 不带（只有 user-questions 服务），保留。
+- id: tool-ask-user
+  name: '@deepseek-ai/dsh-tool-ask-user'

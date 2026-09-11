@@ -1,0 +1,140 @@
+{
+  "ticket": "09-composition-dedupe",
+  "date": "2026-09-10",
+  "host": "@deepseek-ai/dsh@0.1.5-rc.1",
+  "preset": "minimal-plus-next",
+  "repoFile": "presets/minimal-plus-next/agent.cordis.yml",
+  "repoSha256": "3de7d32bc583a7bc85bf1faf4905420b20eba529e7b451f1d28f47e504e77575",
+  "preDedupeDeployedSha256": "05805070cb7127c4d78e0b407913fc2249cf1d661749bf87cd094fae23726d3f",
+  "linesBefore": 278,
+  "linesAfter": 184,
+  "compareMethod": "dsh-base@0.1.5-rc.1 cordis.patch.yml 的宿主行 vs preset 行：id + name + disabled + config 逐字结构化比对（js-yaml !!js 按原文比较）",
+  "deleted": {
+    "verbatimDuplicates": [
+      "agent-instructions",
+      "tool-pwsh",
+      "tool-fs",
+      "tool-fs-search",
+      "tool-jobs",
+      "skill-filesystem",
+      "tool-goal",
+      "tool-todo",
+      "compaction/compaction-basic",
+      "compaction/command-compact",
+      "compaction/tool-result-pruner",
+      "delegation/tool-subagent-control",
+      "delegation/tool-subagent-list-agents",
+      "delegation/workflow-worker-thread",
+      "delegation/tool-workflow",
+      "delegation/tool-ralph"
+    ],
+    "verbatimDuplicateCount": 16,
+    "followHostDifferences": [
+      "planning/plan-mode (section 正文差异)",
+      "delegation/tool-subagent-fork (continuable -> one-shot)",
+      "tool-web (fetch:false -> 宿主 fetch:true)"
+    ],
+    "emptyGroupsRemoved": ["planning", "compaction"]
+  },
+  "kept": {
+    "customRows": [
+      "tool-bootstrap",
+      "phase-swap-bash",
+      "instruction-hint",
+      "custom-bash",
+      "skill-search"
+    ],
+    "groups": ["persistent-shell (pty/terminal-bash/persistent-bash)"],
+    "differenceRows": [
+      "tool-bash (disabled: true；宿主为 win32-only)",
+      "delegation/tool-subagent (承载票据 11 的 modelSelectionSettings)"
+    ],
+    "disabledIntentRows": ["delegation/tool-subagent-codex", "delegation/tool-subagent-claude-code"],
+    "otherKept": ["persona", "str-replace-editor", "tool-ask-user"],
+    "delegationGroupIsolate": "workflowEngine: true（保留原样；组内已无 workflow 行）"
+  },
+  "configGate": {
+    "presetIds": { "rows": 17, "uniqueIds": 17, "duplicates": 0 },
+    "command": "dsh --profile tui-dev --dump-config",
+    "tuiDevDump": { "rows": 98, "uniqueIds": 98, "duplicates": 0, "exit": 0 },
+    "tuiDevPatchSha256After": "1e8cf332a5f6276c35b53aac7274d60c49cd804a3b4ba00153a0719da64a2456",
+    "profileEdit": "删除 agent-presets.roots 覆盖（finding 03-3）；表达式原解析到 ~/.dsh/profiles/node_modules/@deepseek-ai/dsh/config/agent-presets/，gate 时经共享 farm 命中 stable rc.2 旧布局（code/cordis/minimal/standard）"
+  },
+  "rosterProbe": {
+    "roots": ["rc.1 shipped root", "~/.dsh/.agent-presets"],
+    "presets": ["standard", "ptc", "minimal", "cordis", "minimal-plus", "minimal-plus-next"],
+    "allHealthy": true,
+    "note": "上一行 roots 覆盖删除后 dev roster 不再引入 rc.2 的 `code`（display name PTC 模式）"
+  },
+  "behaviorSeam": {
+    "driver": "presets/minimal-plus-next/smoke-boot.mjs (no LLM)",
+    "env": "DSH_HOME=/tmp/dsh-ticket09-home；workspace /tmp/dsh-ticket09-ws；repo preset（默认 root）",
+    "round1Tools": ["bash", "str_replace_editor"],
+    "round1Injections": [],
+    "round2Tools": [
+      "ask_user_question",
+      "bash",
+      "create_goal",
+      "edit",
+      "exit_plan_mode",
+      "get_goal",
+      "glob",
+      "grep",
+      "interrupt_agent",
+      "job_kill",
+      "job_list",
+      "job_output",
+      "list_agents",
+      "ralph",
+      "read",
+      "read_image",
+      "send_message",
+      "skill",
+      "skill_load",
+      "skill_search",
+      "str_replace_editor",
+      "subagent",
+      "subagent_fork",
+      "todo_write",
+      "update_goal",
+      "web_fetch",
+      "web_search",
+      "workflow",
+      "write"
+    ],
+    "round2ToolCount": 29,
+    "round2BashParams": ["command", "description", "timeoutMs", "workdir", "run_in_background", "sandbox_permissions", "justification"],
+    "round2Injections": ["agent-instructions", "skill-catalog", "instruction-hint"],
+    "warnings": [],
+    "beforeAfterIdentical": true,
+    "deployedCopySmoke": { "presetRoot": "~/.dsh/.agent-presets", "exit": 0, "round2ToolCount": 29, "identicalToRepoRun": true },
+    "baselineTicket08": {
+      "file": "experiments/m4/results-minimal-plus-next-upgrade-only-2026-09-10.jsonl",
+      "sha256": "2fc453932386a9ed522ef32b4de05c7822ab00773f2c9e24689a90f9da8e8288",
+      "assemblyTools": 29,
+      "equalToSmokeAfter": true,
+      "webFetchPresent": true
+    },
+    "subagentWording": {
+      "subagent": "This tool runs in the background by default, immediately returns a durable subagent id...",
+      "subagent_fork": "This call waits for the result by default.",
+      "note": "fork 跟随宿主 one-shot（票据 11 前两者都不含 provider/model 字段）"
+    }
+  },
+  "deployment": {
+    "path": "~/.dsh/.agent-presets/minimal-plus-next",
+    "runtimeFilesMatched": "8/8",
+    "depsSymlink": "$HOME/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai",
+    "syncCommand": "scripts/sync-agent-presets.sh minimal-plus-next"
+  },
+  "stableSide": {
+    "presets/minimal-plusGitStatus": "clean",
+    "minimalPlusDepsSymlink": "/Users/vito/data/dev/dsh-runtime/stable/node_modules/@deepseek-ai",
+    "tuiProfileSha256": "4d3645374682b9689e8c107e7cff6bfb9d5b8b567d4e0e202c685d799c9f0515"
+  },
+  "regression": {
+    "presetTests": "43/43 pass",
+    "npmTest": "97/97 pass",
+    "tscNoEmit": "0 errors"
+  }
+}

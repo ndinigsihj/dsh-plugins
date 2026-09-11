@@ -6,8 +6,8 @@
  * 1. **不依赖第三方 dsh-tui（@deepseek-harness-tui/dsh-tui）的 tui/rewind-prompt
  *    决策事件**——那条缝走 host 中介的 DecisionEvents registry + Component 准入 +
  *    grant，对本地 patch-insert 的薄插件不可用（会被 internal/listener 守卫拒绝）。
- * 2. 本插件只消费 dsh 的**标准进程内服务**（agents / sessions /
- *    commands），与 rename-session 同级，
+ * 2. 本插件只消费 dsh 的**标准进程内服务**（agents / commands /
+ *    tuiHandoff），与 rename-session 同级，
  *    可直接 patch-insert。
  * 3. `/rewind` 是**自研 TUI 的 /rewind 实现**：自研 TUI 没有本地同名命令，
  *    输入经命令注册表执行；本插件把「回退对话 + 回滚文件」合二为一，且不碰 TUI 本体。
@@ -16,13 +16,14 @@
  *
  *   /rewind            → 列出历史 user 消息（seq + 摘要），提示 /rewind <seq>
  *   /rewind <seq>      → 1) 计算 boundary（回退到该消息所在 turn 之前）
- *                        2) sessions.fork(source, boundary, childId) 生成子会话
- *                           （现行语义：store.create 注册并进持久层写缓冲，
- *                           无需也不允许再手动 create+append——2026-08-26）
- *                        3) sessions.flush(child)：write-behind 缓冲强制落盘
- *                        4) 逆向恢复文件：源日志里 seq>boundary 的 write/edit
+ *                        2) tuiHandoff.forkPersistedChild(seed)：由 TUI 经宿主
+ *                           agent 生命周期创建并落盘 fork 子会话（finding 06-1；
+ *                           rc.1 裸 sessions.fork() 的子会话只在内存里，execve
+ *                           后的新进程 resume 不到）
+ *                        3) 逆向恢复文件：源日志里 seq>boundary 的 write/edit
  *                           反向应用回滚到边界点（方案 2 核心，纯函数可单测）
- *                        5) execve 重启（argv 剥旧 --resume）+ 环境变量指向子会话
+ *                        4) tuiHandoff.relaunchToResume(childId, summary)：
+ *                           execve 重启（argv 剥旧 --resume）+ 摘要留到 shell
  *
  * 挂载（tui / tui-dev profile；endless-tui 已弃用）：
  *
@@ -30,16 +31,17 @@
  *       - id: dsh-rewind
  *         name: '/Users/vito/data/dev/dsh-plugins/plugins/rewind-dsh.ts'   # tui-dev
  *         # tui（稳定）：'/Users/vito/data/dev/dsh-plugins-stable/plugins/rewind-dsh.ts'
- *         inject: [agents, sessions, commands]
+ *         inject: [agents, commands]
  */
 
 import { randomUUID } from "node:crypto";
 import { chmod, readFile, realpath, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, resolve, sep } from "node:path";
 import type { Context } from "@deepseek-ai/cordis";
+import type { SessionSeq } from "@deepseek-ai/dsh-session";
 
 export const name = "dsh-rewind";
-export const inject = ["agents", "sessions", "commands"];
+export const inject = ["agents", "commands"];
 
 // 无配置项：与 rename-session 等薄插件一致，不导出 Config（cordis 对缺省 Config 直接放行）。
 
@@ -55,8 +57,9 @@ interface SessionEvent {
 
 interface SessionLike {
   id: string;
-  header?: { cwd?: string };
-  events: readonly SessionEvent[];
+  /** rc.1 read interface: the `events` getter is gone; the log is read
+   * through an immutable on-demand snapshot. */
+  snapshotEvents(): readonly SessionEvent[];
 }
 
 interface AgentLike {
@@ -83,18 +86,6 @@ function isSubagent(agent: AgentLike): boolean {
 function liveRootAgent(agents: AgentsService): AgentLike | undefined {
   const live = agents.list?.().find((candidate) => !isSubagent(candidate));
   return live ?? agents.roots()[0];
-}
-
-interface SessionsService {
-  fork(
-    source: SessionLike,
-    boundary?: number,
-    childSessionId?: string,
-  ): SessionLike;
-  /** Force the write-behind batch out for one session (present in current dsh;
-   * guarded at the call site so an older deployment degrades loudly). Resolves
-   * boolean: false = no persistent listener participated. */
-  flush?(session: unknown): Promise<boolean | void>;
 }
 
 interface CommandResult {
@@ -132,6 +123,9 @@ function getService<T>(ctx: Context, key: string): T | undefined {
  * boundary = 该 turn/start 的 seq - 1（fork 落在所选 turn 之前）。
  * 若先遇到 turn/end（所选消息在两个 turn 之间），boundary = 所选 seq。
  * 返回 undefined 表示不可回退（所选是第一条消息 / 越界）。
+ *
+ * 返回值是强类型会话位置 `SessionSeq`（rc.1 fork 的 boundary 类型）：
+ * 只有日志里真实存在的 seq 才能成为边界，避免把任意数字当位置传入。
  */
 /** Locate an event by its seq — never by array position. Relay mirror
  *  sessions can carry a sparse window (events are appended as they arrive,
@@ -146,7 +140,7 @@ export function eventAtSeq(
 export function computeRewindBoundary(
   events: readonly SessionEvent[],
   pickedSeq: number,
-): number | undefined {
+): SessionSeq | undefined {
   if (!Number.isSafeInteger(pickedSeq) || pickedSeq < 0) return undefined;
   const pickedIndex = events.findIndex((event) => event.seq === pickedSeq);
   if (pickedIndex === -1) return undefined;
@@ -160,7 +154,7 @@ export function computeRewindBoundary(
     }
     if (event.type === "turn/end") break;
   }
-  return boundary >= 0 ? boundary : undefined;
+  return boundary >= 0 ? (boundary as SessionSeq) : undefined;
 }
 
 /** 一个 hunk（对应 dsh-tool-fs 的 FileDiff，tool/result.meta.diffs）。 */
@@ -481,11 +475,10 @@ export function buildReverseSteps(chronoSteps: readonly RestoreStep[]): RestoreS
 
 function apply(ctx: Context): void {
   const agents = getService<AgentsService>(ctx, "agents");
-  const sessions = getService<SessionsService>(ctx, "sessions");
   const commands = getService<CommandsService>(ctx, "commands");
 
-  if (agents === undefined || sessions === undefined || commands === undefined) {
-    ctx.logger?.warn("dsh-rewind: missing agents/sessions/commands — /rewind not registered");
+  if (agents === undefined || commands === undefined) {
+    ctx.logger?.warn("dsh-rewind: missing agents/commands — /rewind not registered");
     return;
   }
 
@@ -499,20 +492,21 @@ function apply(ctx: Context): void {
       // 自研 TUI 暴露当前 agent 的会话源（与双击 Esc picker 同一份 events）。
       // relay /resume 后 agents.roots()[0] 可能仍是启动时旧 root，会漏掉
       // 回放出来的 seq；rewindSource 优先，缺省再退回 liveRootAgent。
-      const source = getService<{ id: string; events: readonly SessionEvent[] }>(ctx, "rewindSource");
+      // rc.1：来源以 snapshotEvents() 暴露（无 `events` 数组 getter）。
+      const source = getService<{ id: string; snapshotEvents(): readonly SessionEvent[] }>(ctx, "rewindSource");
       let root: AgentLike | undefined;
       let events: SessionEvent[];
       if (source !== undefined) {
-        events = [...source.events];
+        events = [...source.snapshotEvents()];
         const live = agents.list?.().find((a) => a.id === source.id);
         root = live ?? {
           id: source.id,
-          session: { id: source.id, events },
+          session: { id: source.id, snapshotEvents: () => events },
           status: "idle",
         };
       } else {
         root = liveRootAgent(agents);
-        events = root === undefined ? [] : [...root.session.events];
+        events = root === undefined ? [] : [...root.session.snapshotEvents()];
       }
       if (root === undefined) {
         return { kind: "error", text: "no live root session" };
@@ -612,43 +606,39 @@ function apply(ctx: Context): void {
         return { kind: "error", text: "cannot rewind to this point (first message or bad boundary)" };
       }
 
-      // 1) fork 子会话（不 live，仅生成 seed + header，用于持久化）。
-      const childId = `session-${randomUUID()}`;
-      let child: SessionLike;
-      try {
-        child = sessions.fork(root.session, boundary, childId);
-      } catch (error) {
+      // 1) 让 TUI 经宿主 agent 生命周期创建**可持久化**的 fork 子会话。
+      //    finding 06-1：rc.1 的裸 sessions.fork() 子会话只在内存里
+      //    （持久化写句柄由 agent 生命周期持有），execve 后新进程 resume 不到；
+      //    且旧 flush 守卫在 rc.1 是假阴性（有监听者、无 writer 也返回 true）。
+      //    子会话真正落盘（可读复核通过）之前，不改任何文件。
+      const handoff = getService<{
+        forkPersistedChild?(seed: readonly SessionEvent[]): Promise<{
+          ok: boolean;
+          childId?: string;
+          cwd?: string;
+          error?: string;
+        }>;
+        relaunchToResume?(id: string, note?: string): Promise<void>;
+      }>(ctx, "tuiHandoff");
+      if (handoff === undefined || typeof handoff.forkPersistedChild !== "function") {
         return {
           kind: "error",
-          text: `fork failed: ${error instanceof Error ? error.message : String(error)}`,
+          text: "rewind unavailable: this TUI build lacks tuiHandoff.forkPersistedChild (finding 06-1 fix)",
         };
       }
-
-      const cwd = child.header?.cwd ?? process.cwd();
-
-      // 2) execve 前强制落盘子会话：持久层是 write-behind 批量缓冲（fork 的
-      //    seed 未必已到磁盘），不 flush 则新进程找不到 resume 目标
-      //    （2026-08-26 活体复现："session ... not found" 后直接退出）。
-      //    flush 必须发生在文件恢复之前：flush 失败时磁盘尚未被改动。
-      try {
-        if (typeof sessions.flush !== "function") throw new Error("sessions.flush unavailable");
-        // flush 返回 false = 没有持久化 listener 参与；此时 fork 的 seed 仍
-        // 未落盘，继续 execve 会让新进程找不到 resume 目标——按失败处理。
-        const flushed = (await sessions.flush(child as never)) as unknown;
-        if (flushed === false) {
-          return {
-            kind: "error",
-            text: "failed to flush forked session (no persistent listener) — rewind aborted before any file changes",
-          };
-        }
-      } catch (error) {
+      const forked = await handoff.forkPersistedChild(
+        events.filter((event) => event.seq <= boundary),
+      );
+      if (forked.ok !== true || typeof forked.childId !== "string" || typeof forked.cwd !== "string") {
         return {
           kind: "error",
-          text: `failed to flush forked session: ${error instanceof Error ? error.message : String(error)} — rewind aborted before any file changes`,
+          text: `rewind aborted before file changes — ${forked.error ?? "fork failed"}`,
         };
       }
+      const childId = forked.childId;
+      const cwd = forked.cwd;
 
-      // 3) 文件恢复（方案 2）：先全量 dry-run，全部可逆才写盘——
+      // 2) 文件恢复（方案 2）：先全量 dry-run，全部可逆才写盘——
       //    任一文件失败就整体放弃，避免 A 成功、B 失败的部分回滚。
       const { steps, skipped } = buildRestorePlan(events, boundary);
       const plan: Array<{
@@ -715,11 +705,11 @@ function apply(ctx: Context): void {
       if (failed.length > 0) {
         return {
           kind: "error",
-          text: `rewind aborted after partial file changes: ${failed.join(", ")} — resume manually with /resume ${child.id}`,
+          text: `rewind aborted after partial file changes: ${failed.join(", ")} — resume manually with /resume ${childId}`,
         };
       }
 
-      // 4) 汇报并重启。
+      // 3) 汇总恢复结果。
       const lines: string[] = [];
       if (restored.length > 0) lines.push(`restored files: ${restored.join(", ")}`);
       if (failed.length > 0) lines.push(`failed to restore: ${failed.join(", ")}`);
@@ -730,27 +720,25 @@ function apply(ctx: Context): void {
 
       // 4) execve 重启（进程在此被替换；后续不会真正 resolve）。
       // 优先委托 tui-runner 发布的 tuiHandoff 服务：它先恢复终端（stopTerminal：
-      // pop kitty 协议、退 raw mode、关 bracketed paste）再 execve。直接替换
-      // 进程会把本 TUI 推入的 kitty flags=7 留在终端协议栈上，之后每次重启
-      // 再叠一层，退出只 pop 一层——shell 从此收到 CSI-u 按键编码
+      // pop kitty 协议、退 raw mode、关 bracketed paste）再 execve，并把摘要
+      // 写到 stderr（finding 06-2：执行细节在 execve 前可见，留在 shell 回滚区）。
+      // 直接替换进程会把本 TUI 推入的 kitty flags=7 留在终端协议栈上，之后每次
+      // 重启再叠一层，退出只 pop 一层——shell 从此收到 CSI-u 按键编码
       // （2026-08-26 退出泄漏报告：↑键出现 ":3A" 尾巴）。
-      const handoff = getService<{
-        relaunchToResume(id: string): Promise<void>;
-      }>(ctx, "tuiHandoff");
-      if (handoff !== undefined) {
-        await handoff.relaunchToResume(child.id);
+      if (handoff !== undefined && typeof handoff.relaunchToResume === "function") {
+        await handoff.relaunchToResume(childId, `dsh-rewind: ${summary}`);
         // 服务版成功时进程已被替换、不会走到这里；返回即视为启动失败。
         return {
           kind: "error",
-          text: `rewind prepared (${summary}) but relaunch failed — resume manually with /resume ${child.id}`,
+          text: `rewind prepared (${summary}) but relaunch failed — resume manually with /resume ${childId}`,
         };
       }
       // 兜底：旧 runner 未发布服务时自行 execve，先做最小终端恢复。
-      relaunchToResume(child.id, cwd);
+      relaunchToResume(childId, cwd);
       // 兜底：execve 不可用/失败时，留在当前进程并提示。
       return {
         kind: "error",
-        text: `rewind prepared (${summary}) but relaunch failed — resume manually with /resume ${child.id}`,
+        text: `rewind prepared (${summary}) but relaunch failed — resume manually with /resume ${childId}`,
       };
     },
   });

@@ -6,11 +6,16 @@
  * 的记录结构重建，任务模板逐字沿用。
  *
  * 用法：
- *   M4_GROUPS=E,C M4_RUNS=9 M4_OUT=/tmp/m4-new.jsonl \
+ *   M4_GROUPS=E M4_RUNS=9 M4_MODEL=opencode-go/deepseek-v4-flash M4_OUT=/tmp/m4-new.jsonl \
  *     dsh --profile headless --patch experiments/m4/m4.patch.yml
  *
  * 每组每次：真实 LLM 完成三步任务（查看目录 → 写 probe 文件 → bash 确认），
  * 记录 firstMessage/firstToolCall/r2/header/toolSequence/error/elapsedMs。
+ *
+ * 2026-09-10 升级 rc.1：会话事件读取改 snapshotEvents()（events getter 已移除）；
+ * 组表 E 指向开发侧组合 minimal-plus-next（旧名 liangshen-bash → minimal-plus，
+ * rc.1 分叉后开发侧为 minimal-plus-next）；M4_MODEL 可显式覆盖宿主默认路由
+ * （默认路由额度期时用，值必须为 provider/model，记录字段 model 反映实际路由）。
  */
 import { randomUUID } from "node:crypto";
 import { appendFileSync } from "node:fs";
@@ -22,10 +27,21 @@ export const name = "m4-runner";
 export const inject = [];
 
 const DEPLOYED_PRESETS = {
-  E: "minimal-plus",
+  E: "minimal-plus-next", // rc.1 开发侧组合；历史名 liangshen-bash → minimal-plus 后于 2026-09-10 分叉
   C: "liangshen", // 2026-09-03 已随更名删除，仅历史；重跑 C 需先恢复基线
   A: "liangshen-plus", // 历史组已删除；保留键位以便脚本兼容旧 env
 };
+
+/** 本批实际路由：默认取宿主设置，M4_MODEL=provider/model 可显式覆盖。 */
+function batchSelection(defaultModel) {
+  const override = (process.env.M4_MODEL ?? "").trim();
+  if (override.length === 0) return defaultModel.currentSelection();
+  const slash = override.indexOf("/");
+  if (slash <= 0 || slash === override.length - 1) {
+    throw new Error(`M4_MODEL must be "provider/model", got "${override}"`);
+  }
+  return { provider: override.slice(0, slash), model: override.slice(slash + 1) };
+}
 
 function taskTemplate(group, run) {
   return `你的工作目录是 /Users/vito/data/dev/dsh-plugins。请完成以下任务：\n1. 先查看工作目录里有哪些文件和目录；\n2. 然后创建一个文本文件 m4-probe-${group}${run}.txt，内容写 'M4 probe ${group}-${run}'；\n3. 最后用 bash 确认文件已创建并展示其内容。`;
@@ -70,6 +86,7 @@ function firstAssistant(events) {
 
 /** R2（promotion 后）目录/注入/header 快照，口径对齐历史记录。 */
 async function round2(agent) {
+  const events = agent.session.snapshotEvents(); // rc.1：按需快照，取代已移除的 events getter
   const signal = new AbortController().signal;
   const context = { agent, scope: agent, signal };
   const assembled = await agent.ctx.systemPrompt.assemble(context);
@@ -79,8 +96,8 @@ async function round2(agent) {
 
   // 二轮注入从真实会话事件取：首个 tool/call（promotion）之后落盘的 user/message
   // 就是第二轮请求实际发送的注入（历史 M4 的 injectedEvents 同源）。
-  const firstToolCallIdx = agent.session.events.findIndex((event) => event.type === "tool/call");
-  const after = firstToolCallIdx === -1 ? agent.session.events : agent.session.events.slice(firstToolCallIdx + 1);
+  const firstToolCallIdx = events.findIndex((event) => event.type === "tool/call");
+  const after = firstToolCallIdx === -1 ? events : events.slice(firstToolCallIdx + 1);
   const injectedEvents = unique([
     "user",
     ...after
@@ -88,7 +105,7 @@ async function round2(agent) {
       .map((event) => event.data?.source?.kind),
   ]);
 
-  const headers = agent.session.events.filter((event) => event.type === "request/header");
+  const headers = events.filter((event) => event.type === "request/header");
   const lastHeader = headers.at(-1);
   const headerTools = (lastHeader?.data?.header?.tools ?? []).map((tool) => tool.name).sort();
   const headerBash = (lastHeader?.data?.header?.tools ?? []).find((tool) => tool.name === "bash");
@@ -131,7 +148,7 @@ async function runOne(ctx, agents, agentPresets, defaultModel, group, run) {
   const started = Date.now();
   const preset = DEPLOYED_PRESETS[group];
   if (preset === undefined) throw new Error(`unknown group ${group}`);
-  const selection = defaultModel.currentSelection();
+  const selection = batchSelection(defaultModel);
   const { agent } = await agents.create({
     sessionId: SessionId(`session-m4-${group}${run}-${randomUUID()}`),
     meta: { cwd: process.cwd() },
@@ -150,7 +167,9 @@ async function runOne(ctx, agents, agentPresets, defaultModel, group, run) {
   }));
   await agent.whenIdle();
 
-  const first = firstAssistant(agent.session.events);
+  const events = agent.session.snapshotEvents(); // rc.1：按需快照，取代已移除的 events getter
+  const first = firstAssistant(events);
+  const r2 = await round2(agent);
   return {
     ts: new Date().toISOString(),
     group,
@@ -160,8 +179,8 @@ async function runOne(ctx, agents, agentPresets, defaultModel, group, run) {
     task,
     firstMessage: { text: first.text, firstLine: first.firstLine, classification: first.classification },
     firstToolCall: first.firstToolCall,
-    r2: await round2(agent),
-    toolSequence: toolSequence(agent.session.events),
+    r2,
+    toolSequence: toolSequence(events),
     error: null,
     elapsedMs: Date.now() - started,
   };
@@ -175,7 +194,7 @@ async function run(ctx) {
   if (agents === undefined || agentPresets === undefined || defaultModel === undefined) {
     throw new Error("m4-runner: missing agents/agentPresets/agentDefaultModel services");
   }
-  const groups = (process.env.M4_GROUPS ?? "E,C").split(",").map((g) => g.trim()).filter(Boolean);
+  const groups = (process.env.M4_GROUPS ?? "E").split(",").map((g) => g.trim()).filter(Boolean);
   const runs = Number(process.env.M4_RUNS ?? 9);
   const out = process.env.M4_OUT ?? "/tmp/m4-new.jsonl";
 

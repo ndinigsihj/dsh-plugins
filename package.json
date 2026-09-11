@@ -8,7 +8,7 @@
     "node": ">=22.19.0"
   },
   "scripts": {
-    "test": "node --test lib/goal-bar.test.ts lib/transcript-area.test.ts plugins/rewind-dsh.test.ts presets/minimal-plus/phase-swap-bash.test.mjs presets/minimal-plus/tool-bootstrap.test.mjs presets/minimal-plus/instruction-hint.test.mjs presets/minimal-plus/skill-search.test.mjs presets/minimal-plus/custom-bash.test.mjs"
+    "test": "node --test lib/goal-bar.test.ts lib/transcript-area.test.ts plugins/rewind-dsh.test.ts presets/minimal-plus-next/phase-swap-bash.test.mjs presets/minimal-plus-next/tool-bootstrap.test.mjs presets/minimal-plus-next/instruction-hint.test.mjs presets/minimal-plus-next/skill-search.test.mjs presets/minimal-plus-next/custom-bash.test.mjs"
   },
   "dsh": {
     "bundle": {

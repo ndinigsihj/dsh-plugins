@@ -1,4 +1,4 @@
-// Tests for the windowed TranscriptArea + skipStreamDeltas rebuild
+// Tests for the windowed TranscriptArea + durable-log rebuild
 // (docs/resume-memory-render-analysis.md §3-A'/§3-B).
 //
 // TranscriptArea is exercised against a real ScrollView: metrics are driven
@@ -153,17 +153,13 @@ describe("TranscriptArea windowing", () => {
   it("streams into a mounted row after resume (in-place updates render)", () => {
     // Regression: resumed session, live turn streams chunks that fold into an
     // existing assistant row — row count never changes, so only the dirty-seq
-    // update pass can make the new text visible.
+    // update pass can make the new text visible. rc.1 source: the live
+    // `agent/assistant-stream` frames, not durable session events.
     const { area, model, scroll } = makeArea(5);
     scroll.updateLayout(Number.POSITIVE_INFINITY, 40, () => {});
     area.render(80);
-    const chunk = (seq: number, text: string): Ev => ({
-      type: "assistant/chunk",
-      seq,
-      data: { turn: 99, step: 0, chunk: { type: "text-delta", index: seq, text } },
-    });
-    model.apply(chunk(1000, "Hel") as never, presenters);
-    model.apply(chunk(1001, "lo") as never, presenters);
+    model.applyStreamChunk({ type: "text-delta", index: 0, text: "Hel" });
+    model.applyStreamChunk({ type: "text-delta", index: 0, text: "lo" });
     area.sync();
     const mid = flatten(area.render(80)).join("\n");
     assert.ok(mid.includes("Hello"), "streaming text not visible after resume");
@@ -230,62 +226,43 @@ describe("TranscriptArea windowing", () => {
   });
 });
 
-describe("rebuild skipStreamDeltas", () => {
-  it("folds from final messages instead of replaying deltas", () => {
+describe("rebuild from the durable log", () => {
+  it("folds final messages; a retired chunk event is ignored", () => {
     const model = new TranscriptModel();
-    const chunk = (seq: number, text: string): Ev => ({
-      type: "assistant/chunk",
-      seq,
-      data: { turn: 0, step: 0, chunk: { type: "text-delta", index: seq, text } },
-    });
+    // rc.1 logs never carry assistant/chunk; a legacy-shaped stray event must
+    // be skipped rather than build a second row (it is not a SessionEvent type).
     const events: Ev[] = [
       userMessage(0, "hi"),
-      chunk(1, "Hel"),
-      chunk(2, "lo "),
-      chunk(3, "world"),
+      { type: "assistant/chunk", seq: 1, data: { chunk: { type: "text-delta", index: 1, text: "ghost" } } },
       assistantMessage(4, "Hello world"),
-      userMessage(5, "next"),
-      // Interrupted stream: chunks with no final message → dropped silently.
-      chunk(6, "ghost"),
-      chunk(7, " partial"),
     ];
-    model.rebuild(events as never, presenters, { skipStreamDeltas: true });
+    model.rebuild(events as never, presenters);
     const assistants = model.snapshot.filter((r) => r.kind === "assistant");
-    assert.equal(assistants.length, 1, "chunks must not double-build rows");
+    assert.equal(assistants.length, 1, "stray chunk events must not build rows");
     assert.equal((assistants[0] as { text: string }).text, "Hello world");
   });
 
-  it("default rebuild still folds chunks (live path unchanged)", () => {
+  it("live stream chunks are not durable log input", () => {
     const model = new TranscriptModel();
-    const chunk = (seq: number, text: string): Ev => ({
-      type: "assistant/chunk",
-      seq,
-      data: { turn: 0, step: 0, chunk: { type: "text-delta", index: seq, text } },
-    });
-    const events: Ev[] = [chunk(0, "streamed "), chunk(1, "text")];
-    model.rebuild(events as never, presenters);
-    const assistants = model.snapshot.filter((r) => r.kind === "assistant");
-    assert.equal(assistants.length, 1);
-    assert.equal((assistants[0] as { text: string }).text, "streamed text");
+    model.rebuild(
+      [{ type: "assistant/chunk", seq: 0, data: { chunk: { type: "text-delta", index: 0, text: "streamed " } } }] as never,
+      presenters,
+    );
+    assert.equal(model.snapshot.filter((r) => r.kind === "assistant").length, 0);
   });
 });
 
 describe("turn lifecycle edge cases", () => {
   it("aborted turn closes the open assistant row; next turn starts fresh", () => {
     const model = new TranscriptModel();
-    const chunk = (seq: number, text: string): Ev => ({
-      type: "assistant/chunk",
-      seq,
-      data: { turn: 1, step: 0, chunk: { type: "text-delta", index: seq, text } },
-    });
     model.apply(userMessage(1, "q1") as never, presenters);
-    model.apply(chunk(2, "Hel") as never, presenters);
+    model.applyStreamChunk({ type: "text-delta", index: 0, text: "Hel" });
     model.apply(
       { type: "turn/end", seq: 3, data: { reason: { kind: "aborted" } } } as never,
       presenters,
     );
     model.apply(userMessage(4, "q2") as never, presenters);
-    model.apply(chunk(5, "Hi") as never, presenters);
+    model.applyStreamChunk({ type: "text-delta", index: 0, text: "Hi" });
     const assistants = model.snapshot.filter((r) => r.kind === "assistant");
     assert.equal(assistants.length, 2, "two aborted turns must not merge into one row");
     assert.equal((assistants[0] as { text: string }).text, "Hel");

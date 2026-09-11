@@ -1,0 +1,461 @@
+{
+  "capturedAt": "2026-09-10T06:36:27.427Z",
+  "farm": "/Users/vito/.dsh/profiles/node_modules",
+  "farmLinkCount": 529,
+  "danglingCount": 112,
+  "buckets": {
+    "global": 112,
+    "stable": 0,
+    "other": 0
+  },
+  "entries": [
+    {
+      "name": "@deepseek-ai/dsh-client-runtime",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-runtime"
+    },
+    {
+      "name": "@deepseek-ai/dsh-client-schema-form",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-schema-form"
+    },
+    {
+      "name": "@deepseek-ai/dsh-client-ui-primitives",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-primitives"
+    },
+    {
+      "name": "@deepseek-ai/dsh-client-ui-slots",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-slots"
+    },
+    {
+      "name": "@deepseek-ai/dsh-client-web",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-web"
+    },
+    {
+      "name": "@deepseek-ai/dsh-client-web-react",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-web-react"
+    },
+    {
+      "name": "@deepseek-ai/dsh-host-apiproxy",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-host-apiproxy"
+    },
+    {
+      "name": "@deepseek-ai/dsh-tool-subagent-report",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-tool-subagent-report"
+    },
+    {
+      "name": "@deepseek-ai/node-addon-landlock-run",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/node-addon-landlock-run"
+    },
+    {
+      "name": "@mistralai/mistralai",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@mistralai/mistralai"
+    },
+    {
+      "name": "@shikijs/core",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@shikijs/core"
+    },
+    {
+      "name": "@shikijs/engine-javascript",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@shikijs/engine-javascript"
+    },
+    {
+      "name": "@shikijs/engine-oniguruma",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@shikijs/engine-oniguruma"
+    },
+    {
+      "name": "@shikijs/langs",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@shikijs/langs"
+    },
+    {
+      "name": "@shikijs/primitive",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@shikijs/primitive"
+    },
+    {
+      "name": "@shikijs/themes",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@shikijs/themes"
+    },
+    {
+      "name": "@shikijs/types",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@shikijs/types"
+    },
+    {
+      "name": "@shikijs/vscode-textmate",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@shikijs/vscode-textmate"
+    },
+    {
+      "name": "@tanstack/react-virtual",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-trajectory/node_modules/@tanstack/react-virtual"
+    },
+    {
+      "name": "@tanstack/virtual-core",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@tanstack/virtual-core"
+    },
+    {
+      "name": "@types/debug",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@types/debug"
+    },
+    {
+      "name": "@types/hast",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@types/hast"
+    },
+    {
+      "name": "@types/katex",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@types/katex"
+    },
+    {
+      "name": "@types/mdast",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@types/mdast"
+    },
+    {
+      "name": "@types/ms",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@types/ms"
+    },
+    {
+      "name": "@types/unist",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@types/unist"
+    },
+    {
+      "name": "@ungap/structured-clone",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@ungap/structured-clone"
+    },
+    {
+      "name": "anser",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/anser"
+    },
+    {
+      "name": "ccount",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/ccount"
+    },
+    {
+      "name": "character-entities",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/character-entities"
+    },
+    {
+      "name": "character-entities-html4",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/character-entities-html4"
+    },
+    {
+      "name": "character-entities-legacy",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/character-entities-legacy"
+    },
+    {
+      "name": "clsx",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/clsx"
+    },
+    {
+      "name": "comma-separated-tokens",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/comma-separated-tokens"
+    },
+    {
+      "name": "decode-named-character-reference",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/decode-named-character-reference"
+    },
+    {
+      "name": "dequal",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/dequal"
+    },
+    {
+      "name": "devlop",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/devlop"
+    },
+    {
+      "name": "escape-string-regexp",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/escape-string-regexp"
+    },
+    {
+      "name": "hast-util-to-html",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/hast-util-to-html"
+    },
+    {
+      "name": "hast-util-whitespace",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/hast-util-whitespace"
+    },
+    {
+      "name": "html-void-elements",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/html-void-elements"
+    },
+    {
+      "name": "immer",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/immer"
+    },
+    {
+      "name": "katex",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/katex"
+    },
+    {
+      "name": "longest-streak",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/longest-streak"
+    },
+    {
+      "name": "loose-envify",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/loose-envify"
+    },
+    {
+      "name": "markdown-table",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/markdown-table"
+    },
+    {
+      "name": "mdast-util-find-and-replace",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/mdast-util-find-and-replace"
+    },
+    {
+      "name": "mdast-util-from-markdown",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/mdast-util-from-markdown"
+    },
+    {
+      "name": "mdast-util-gfm",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/mdast-util-gfm"
+    },
+    {
+      "name": "mdast-util-gfm-autolink-literal",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/mdast-util-gfm-autolink-literal"
+    },
+    {
+      "name": "mdast-util-gfm-footnote",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/mdast-util-gfm-footnote"
+    },
+    {
+      "name": "mdast-util-gfm-strikethrough",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/mdast-util-gfm-strikethrough"
+    },
+    {
+      "name": "mdast-util-gfm-table",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/mdast-util-gfm-table"
+    },
+    {
+      "name": "mdast-util-gfm-task-list-item",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/mdast-util-gfm-task-list-item"
+    },
+    {
+      "name": "mdast-util-math",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/mdast-util-math"
+    },
+    {
+      "name": "mdast-util-phrasing",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/mdast-util-phrasing"
+    },
+    {
+      "name": "mdast-util-to-hast",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/mdast-util-to-hast"
+    },
+    {
+      "name": "mdast-util-to-markdown",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/mdast-util-to-markdown"
+    },
+    {
+      "name": "mdast-util-to-string",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/mdast-util-to-string"
+    },
+    {
+      "name": "micromark",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark"
+    },
+    {
+      "name": "micromark-core-commonmark",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-core-commonmark"
+    },
+    {
+      "name": "micromark-extension-gfm",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-extension-gfm"
+    },
+    {
+      "name": "micromark-extension-gfm-autolink-literal",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-extension-gfm-autolink-literal"
+    },
+    {
+      "name": "micromark-extension-gfm-footnote",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-extension-gfm-footnote"
+    },
+    {
+      "name": "micromark-extension-gfm-strikethrough",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-extension-gfm-strikethrough"
+    },
+    {
+      "name": "micromark-extension-gfm-table",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-extension-gfm-table"
+    },
+    {
+      "name": "micromark-extension-gfm-tagfilter",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-extension-gfm-tagfilter"
+    },
+    {
+      "name": "micromark-extension-gfm-task-list-item",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-extension-gfm-task-list-item"
+    },
+    {
+      "name": "micromark-extension-math",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-extension-math"
+    },
+    {
+      "name": "micromark-factory-destination",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-factory-destination"
+    },
+    {
+      "name": "micromark-factory-label",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-factory-label"
+    },
+    {
+      "name": "micromark-factory-space",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-factory-space"
+    },
+    {
+      "name": "micromark-factory-title",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-factory-title"
+    },
+    {
+      "name": "micromark-factory-whitespace",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-factory-whitespace"
+    },
+    {
+      "name": "micromark-util-character",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-util-character"
+    },
+    {
+      "name": "micromark-util-chunked",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-util-chunked"
+    },
+    {
+      "name": "micromark-util-classify-character",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-util-classify-character"
+    },
+    {
+      "name": "micromark-util-combine-extensions",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-util-combine-extensions"
+    },
+    {
+      "name": "micromark-util-decode-numeric-character-reference",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-util-decode-numeric-character-reference"
+    },
+    {
+      "name": "micromark-util-decode-string",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-util-decode-string"
+    },
+    {
+      "name": "micromark-util-encode",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-util-encode"
+    },
+    {
+      "name": "micromark-util-html-tag-name",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-util-html-tag-name"
+    },
+    {
+      "name": "micromark-util-normalize-identifier",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-util-normalize-identifier"
+    },
+    {
+      "name": "micromark-util-resolve-all",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-util-resolve-all"
+    },
+    {
+      "name": "micromark-util-sanitize-uri",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-util-sanitize-uri"
+    },
+    {
+      "name": "micromark-util-subtokenize",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-util-subtokenize"
+    },
+    {
+      "name": "micromark-util-symbol",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-util-symbol"
+    },
+    {
+      "name": "micromark-util-types",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/micromark-util-types"
+    },
+    {
+      "name": "oniguruma-parser",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/oniguruma-parser"
+    },
+    {
+      "name": "oniguruma-to-es",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/oniguruma-to-es"
+    },
+    {
+      "name": "property-information",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/property-information"
+    },
+    {
+      "name": "react",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/react"
+    },
+    {
+      "name": "react-dom",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-trajectory/node_modules/react-dom"
+    },
+    {
+      "name": "regex",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/regex"
+    },
+    {
+      "name": "regex-recursion",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/regex-recursion"
+    },
+    {
+      "name": "regex-utilities",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/regex-utilities"
+    },
+    {
+      "name": "scheduler",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/scheduler"
+    },
+    {
+      "name": "shiki",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/shiki"
+    },
+    {
+      "name": "space-separated-tokens",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/space-separated-tokens"
+    },
+    {
+      "name": "stringify-entities",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/stringify-entities"
+    },
+    {
+      "name": "trim-lines",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/trim-lines"
+    },
+    {
+      "name": "unist-util-is",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/unist-util-is"
+    },
+    {
+      "name": "unist-util-position",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/unist-util-position"
+    },
+    {
+      "name": "unist-util-remove-position",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/unist-util-remove-position"
+    },
+    {
+      "name": "unist-util-stringify-position",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/unist-util-stringify-position"
+    },
+    {
+      "name": "unist-util-visit",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/unist-util-visit"
+    },
+    {
+      "name": "unist-util-visit-parents",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/unist-util-visit-parents"
+    },
+    {
+      "name": "use-sync-external-store",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/use-sync-external-store"
+    },
+    {
+      "name": "vfile",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/vfile"
+    },
+    {
+      "name": "vfile-message",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/vfile-message"
+    },
+    {
+      "name": "zustand",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/zustand"
+    },
+    {
+      "name": "zwitch",
+      "target": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/zwitch"
+    }
+  ]
+}

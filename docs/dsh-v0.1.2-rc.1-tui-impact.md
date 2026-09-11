@@ -1,5 +1,10 @@
 # dsh v0.1.2-rc.1 对自研 TUI 的影响分析与升级清单
 
+> **已过时（2026-09-11）**：本文 §0「跳过 0.1.2、等待 0.1.3 rc」的方向已被取代——
+> 实际升级目标是 `0.1.5-rc.1`，dsh-plugins 开发侧已落地（票据 01–12）。
+> 当前状态见 `docs/dsh-v0.1.5-rc.1-upgrade-closeout.md`；本文保留为 0.1.2 兼容性分析参考，
+> 其中关于 storage / agent-presets profile 清理的判断在本轮已按 rc.1 实际形状复核。
+>
 > 日期：2026-09-07
 > 范围：仅分析与文档，不包含代码修改。本文更新并取代 `dsh-v0.1.2-alpha.1-tui-impact.md`
 > 中已过时的版本状态结论；alpha.1 文档中关于 storage / agent-presets 的 profile 清理结论继续有效。

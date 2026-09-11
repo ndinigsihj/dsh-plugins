@@ -1,5 +1,9 @@
 # dsh v0.1.5 npm 发布状态核验
 
+> **已过时（2026-09-11）**：npm 状态已变化——`latest` = `0.1.5-rc.1`（本次实际升级目标）、
+> `next` = `0.1.5-rc.2`、`alpha` = `0.1.5-alpha.2`。本文是 2026-09-09 的历史快照，保留备查；
+> 当前版本事实与 as-built 状态见 `docs/dsh-v0.1.5-rc.1-upgrade-closeout.md` §1。
+>
 > 核验日期：2026-09-09  
 > 范围：仅核验 DeepSeek Harness 官方 npm 包 `@deepseek-ai/dsh` 的公开发布状态；未升级本地依赖、未修改代码。
 

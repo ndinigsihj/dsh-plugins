@@ -14,6 +14,11 @@ MVP 与二期主体均已实现:boot 全屏、prompt 提交、流式渲染、rea
 
 原版核心决策(归档笔记原话):**TUI 是"terminal front door, not a complete application"**——一个 Cordis 插件,只拥有"终端输入与呈现";agent 生命周期、session 持久化、工具执行、模型提问工具都留在进程内的其他组合条目里。
 
+> **例外（票据 06，用户裁定）**：`/rewind` 的 fork 子会话落盘由 TUI 经 `agents.create`
+> 走宿主生命周期完成（`tuiHandoff.forkPersistedChild`）——rc.1 的持久化写句柄只在
+> agent 生命周期内挂载，TUI 不能裸调 `sessions.fork` 后自行 flush。这是该分层原则的
+> 唯一例外，不扩展到其他 agent/session 操作。
+
 ```
 dsh CLI (launcher)                 # apps/cli: 解析 --profile tui,进程生命周期,resume execve
 └─ ~/.dsh/profiles/tui/             # profile 目录: package.json (bundles) + cordis.patch.yml
@@ -58,7 +63,7 @@ dsh CLI (launcher)                 # apps/cli: 解析 --profile tui,进程生命
 |---|---|---|
 | `Agent`(`ctx.agents` / 根部 agent) | `agent.send()` idle / `agent.steer()` running / `agent.cancel()` / `agent.whenIdle()` | 提交 prompt、steering、取消 |
 | `session/event` | `ctx.on('session/event', (session, event) => ...)` post-commit 流 | transcript 重建 |
-| `ctx.userQuestions` | `registerProvider({ ask(request) })` 单一应答者 | 模型 `ask_user_question` 工具的面板 |
+| `ctx.userQuestions` | rc.1: `ctx.on('user-questions/request', (request) => ...)` waterfall（服务对象本身只作挂载探测） | 模型 `ask_user_question` 工具的面板 |
 | `ctx.approval` | `ctx.on('approval/request', (req, next) => Promise<ApprovalOutcome>)` waterfall | 权限审批弹窗 |
 | `ctx.commands` | `commands.register({ name, description, handler })` | `/help` `/clear` `/exit` 等 |
 | `ctx.tokenMeter` | `measure(session)` | footer context 占用 |

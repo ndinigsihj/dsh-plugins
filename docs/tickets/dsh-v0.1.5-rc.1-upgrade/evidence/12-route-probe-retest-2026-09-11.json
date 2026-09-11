@@ -1,0 +1,295 @@
+{
+  "startedAt": "2026-09-11T06:21:41.385Z",
+  "parent": {
+    "provider": "opencode-go",
+    "model": "deepseek-v4-flash"
+  },
+  "allowed": [
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4-flash"
+    },
+    {
+      "provider": "commandcode",
+      "model": "deepseek/deepseek-v4-flash"
+    },
+    {
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-flash"
+    }
+  ],
+  "routes": [
+    {
+      "route": {
+        "provider": "opencode-go",
+        "model": "deepseek-v4-flash"
+      },
+      "pass": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "pass": true,
+          "failureKind": null,
+          "durationMs": 4220,
+          "childId": "b9791f16-177c-432b-8c0a-fe5fb04bdad0",
+          "childRoute": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "reasoningEffort": "max",
+            "maxTokens": 131072
+          },
+          "context": {
+            "type": "request/context",
+            "seq": 11,
+            "time": 1789107709141,
+            "data": {
+              "provider": "opencode-go",
+              "model": "deepseek-v4-flash",
+              "contextWindow": 1000000
+            }
+          },
+          "subagentResult": {
+            "isError": false,
+            "text": "done"
+          },
+          "toolCalls": [
+            {
+              "name": "bash",
+              "callId": "call_00_K4fHXv1auD50eDWCZojc2094",
+              "arguments": "{\"command\":\"echo ticket12-opencode-go-deepseek-v4-flash\",\"description\":\"Echo route probe marker\"}"
+            }
+          ],
+          "toolResults": [
+            {
+              "callId": "call_00_K4fHXv1auD50eDWCZojc2094",
+              "isError": false,
+              "text": "ticket12-opencode-go-deepseek-v4-flash\n"
+            }
+          ],
+          "turnErrors": [],
+          "marker": "ticket12-opencode-go-deepseek-v4-flash",
+          "markerSeen": true
+        }
+      ]
+    },
+    {
+      "route": {
+        "provider": "commandcode",
+        "model": "deepseek/deepseek-v4-flash"
+      },
+      "pass": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "pass": true,
+          "failureKind": null,
+          "durationMs": 6556,
+          "childId": "a8a9b48a-0702-4fa2-b1f8-8bcedc02662b",
+          "childRoute": {
+            "provider": "commandcode",
+            "model": "deepseek/deepseek-v4-flash",
+            "maxTokens": 131072,
+            "reasoningEffort": "max"
+          },
+          "context": {
+            "type": "request/context",
+            "seq": 11,
+            "time": 1789107713321,
+            "data": {
+              "provider": "commandcode",
+              "model": "deepseek/deepseek-v4-flash",
+              "contextWindow": 1000000
+            }
+          },
+          "subagentResult": {
+            "isError": false,
+            "text": "done"
+          },
+          "toolCalls": [
+            {
+              "name": "bash",
+              "callId": "call_00_dc7WFm0N9CkpXCHWatF21443",
+              "arguments": "{\"command\":\"echo ticket12-commandcode-deepseek-deepseek-v4-flash\",\"description\":\"Echo route probe marker\"}"
+            }
+          ],
+          "toolResults": [
+            {
+              "callId": "call_00_dc7WFm0N9CkpXCHWatF21443",
+              "isError": false,
+              "text": "ticket12-commandcode-deepseek-deepseek-v4-flash\n"
+            }
+          ],
+          "turnErrors": [],
+          "marker": "ticket12-commandcode-deepseek-deepseek-v4-flash",
+          "markerSeen": true
+        }
+      ]
+    },
+    {
+      "route": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "pass": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "pass": true,
+          "failureKind": null,
+          "durationMs": 5238,
+          "childId": "0623071f-0063-4e1a-a2d3-71a110207c0f",
+          "childRoute": {
+            "provider": "deepseek-official",
+            "model": "deepseek-v4-flash",
+            "maxTokens": 256000,
+            "reasoningEffort": "high"
+          },
+          "context": {
+            "type": "request/context",
+            "seq": 11,
+            "time": 1789107719880,
+            "data": {
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash",
+              "contextWindow": 1000000
+            }
+          },
+          "subagentResult": {
+            "isError": false,
+            "text": "done"
+          },
+          "toolCalls": [
+            {
+              "name": "bash",
+              "callId": "call_00_47SLpKCfESRNS799iwop4762",
+              "arguments": "{\"command\": \"echo ticket12-deepseek-official-deepseek-v4-flash\"}"
+            },
+            {
+              "name": "bash",
+              "callId": "call_00_t4wdTHFZeKRVNDz3nc5e8157",
+              "arguments": "{\"command\": \"echo ticket12-deepseek-official-deepseek-v4-flash\", \"description\": \"Echo route probe marker\"}"
+            }
+          ],
+          "toolResults": [
+            {
+              "callId": "call_00_47SLpKCfESRNS799iwop4762",
+              "isError": true,
+              "text": "Error: invalid arguments: missing required property \"description\""
+            },
+            {
+              "callId": "call_00_t4wdTHFZeKRVNDz3nc5e8157",
+              "isError": false,
+              "text": "ticket12-deepseek-official-deepseek-v4-flash\n"
+            }
+          ],
+          "turnErrors": [],
+          "marker": "ticket12-deepseek-official-deepseek-v4-flash",
+          "markerSeen": true
+        }
+      ]
+    },
+    {
+      "route": {
+        "provider": "opencode-go",
+        "model": "deepseek-flash"
+      },
+      "pass": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "pass": true,
+          "failureKind": null,
+          "durationMs": 7874,
+          "childId": "aac7f478-27da-48e4-b0da-e2ccd4de48c0",
+          "childRoute": {
+            "provider": "opencode-go",
+            "model": "deepseek-flash",
+            "maxTokens": 131072,
+            "reasoningEffort": "max"
+          },
+          "context": {
+            "type": "request/context",
+            "seq": 11,
+            "time": 1789107725103,
+            "data": {
+              "provider": "opencode-go",
+              "model": "deepseek-flash",
+              "contextWindow": 1000000
+            }
+          },
+          "subagentResult": {
+            "isError": false,
+            "text": "done"
+          },
+          "toolCalls": [
+            {
+              "name": "bash",
+              "callId": "call_00_RSMfPuF6B4gC6sXKneQZ0223",
+              "arguments": "{\"command\":\"echo ticket12-opencode-go-deepseek-flash\"}"
+            },
+            {
+              "name": "bash",
+              "callId": "call_00_BPBCvRSrI62zlSGJSp7c9423",
+              "arguments": "{\"command\":\"echo ticket12-opencode-go-deepseek-flash\",\"description\":\"Echo route probe marker\"}"
+            }
+          ],
+          "toolResults": [
+            {
+              "callId": "call_00_RSMfPuF6B4gC6sXKneQZ0223",
+              "isError": true,
+              "text": "Error: invalid arguments: missing required property \"description\""
+            },
+            {
+              "callId": "call_00_BPBCvRSrI62zlSGJSp7c9423",
+              "isError": false,
+              "text": "ticket12-opencode-go-deepseek-flash\n"
+            }
+          ],
+          "turnErrors": [],
+          "marker": "ticket12-opencode-go-deepseek-flash",
+          "markerSeen": true
+        }
+      ]
+    }
+  ],
+  "facts": {
+    "promotedTools": [
+      "ask_user_question",
+      "bash",
+      "create_goal",
+      "edit",
+      "exit_plan_mode",
+      "get_goal",
+      "glob",
+      "grep",
+      "interrupt_agent",
+      "job_kill",
+      "job_list",
+      "job_output",
+      "list_agents",
+      "list_subagent_models",
+      "ralph",
+      "read",
+      "read_image",
+      "send_message",
+      "skill",
+      "skill_load",
+      "skill_search",
+      "str_replace_editor",
+      "subagent",
+      "subagent_fork",
+      "todo_write",
+      "update_goal",
+      "web_fetch",
+      "web_search",
+      "workflow",
+      "write"
+    ]
+  },
+  "finishedAt": "2026-09-11T06:22:12.912Z",
+  "summary": "4/4 pass"
+}

@@ -1,17 +1,20 @@
-# dsh 0.1.1-rc.2 → 0.1.5-alpha.1 升级计划
+# dsh 0.1.1-rc.2 → 0.1.5-rc.1 升级计划
 
-> 日期：2026-09-09  
-> 状态：**计划稿，仅调查与设计，不包含代码修改，不执行安装、提交或推送**。  
+> 日期：2026-09-09（初稿，目标 `0.1.5-alpha.1`）；**2026-09-11 更新目标版本与差异清单**（票据 13 文档收口）。  
+> 状态：计划 + 实施记录。**dsh-plugins 开发侧已按本计划落地（票据 01–12）；
+> `dsh-relay` / `dsh-endless` 未实施，相关章节仍是计划。** 实施后的真实状态、破坏性迁移、
+> 测量结论与残留风险见 `docs/dsh-v0.1.5-rc.1-upgrade-closeout.md`。  
 > 范围：DeepSeek Harness 官方 npm 包及其官方 GitHub release notes；评估 `dsh-plugins`、`dsh-relay`、`dsh-endless` 三个仓库的兼容性与新增功能。
 
 ## 1. 执行摘要
 
-当前本地运行时是 `@deepseek-ai/dsh@0.1.1-rc.2`，三个仓库的 package manifest 仍以 `0.1.0-rc.6` 为依赖基线。目标 `0.1.5-alpha.1` 已发布到 npm 的 `alpha` tag，但不是稳定版：npm `latest` / `next` 仍为 `0.1.2-rc.1`。
+截至 2026-09-11 的 as-built 状态：开发侧全局宿主为 `@deepseek-ai/dsh@0.1.5-rc.1`，稳定侧隔离运行时保持 `0.1.1-rc.2`；三个仓库的 package manifest 仍以 `0.1.0-rc.6` 为依赖基线。初稿目标 `0.1.5-alpha.1`（2026-09-08 发布）已被 **`0.1.5-rc.1`（2026-09-10 发布）** 取代；当前 npm `latest` = `0.1.5-rc.1`、`next` = `0.1.5-rc.2`、`alpha` = `0.1.5-alpha.2`。
 
 这不是一次普通的依赖升级。必须按以下顺序处理：
 
 1. **先完成 API 与会话格式适配**：`Session.events` 移除、`SessionHandle`/单写锁、异步 agent 创建、Inbox API、V2/V3 日志迁移。
-2. **再升级三仓库依赖和 profile**：统一所有 `@deepseek-ai/*` 包到 `0.1.5-alpha.1`，禁止混用旧运行时树。
+2. **再升级依赖和 profile**：统一所有 `@deepseek-ai/*` 包到 `0.1.5-rc.1`，禁止混用旧运行时树。
+   本轮只执行了 dsh-plugins 开发侧（`tui-dev` + `headless`）；relay / endless 未动。
 3. **最后做功能增强**：优先做远端模型目录/子代理控制、V3 事件与长期记忆、图片记忆；Sidebar 和 Web 专属体验不属于这三个仓库的优先范围。
 
 建议采用 **兼容层 + 分阶段切换**，不要一次性把现有 v2/v3 relay 协议与 dsh API 改动混在一个大 diff 中。
@@ -20,30 +23,33 @@
 
 ### 2.1 npm 状态
 
-截至 2026-09-09，官方包 `@deepseek-ai/dsh`：
+**2026-09-11 更新（当前事实，查询日 2026-09-11）**：
 
 | 项目 | 结果 |
 |---|---|
-| 当前本地运行时 | `0.1.1-rc.2` |
-| 目标版本 | `0.1.5-alpha.1` |
-| `latest` | `0.1.2-rc.1` |
-| `next` | `0.1.2-rc.1` |
-| `alpha` | `0.1.5-alpha.1` |
+| 本地开发侧运行时（as-built） | `0.1.5-rc.1`（全局宿主） |
+| 稳定侧隔离运行时 | `0.1.1-rc.2`（钉版，本轮未动） |
+| 本次采用的目标版本 | `0.1.5-rc.1` |
+| `latest` | `0.1.5-rc.1`（npm 时间 `2026-09-10T03:12:53.293Z`） |
+| `next` | `0.1.5-rc.2`（npm 时间 `2026-09-10T14:57:10.790Z`，未采用） |
+| `alpha` | `0.1.5-alpha.2`（npm 时间 `2026-09-09T14:41:15.754Z`） |
 | 正式 `0.1.5` | 不存在，npm 返回 `E404` |
-| 正式 `0.1.3` | 不存在，npm 返回 `E404` |
 
-目标 alpha 的完整 dsh CLI 依赖树也已切到 `^0.1.5-alpha.1`，并新增了 `dsh-http-proxy`、`dsh-webhook`、`dsh-sdk-*`、`dsh-hooks-*`、实验性 Agent Team 等包；不能只替换 CLI 顶层版本而保留旧的全局 `@deepseek-ai` 树。
-
-来源：
+来源（查询日 2026-09-11）：
 
 - npm Registry：<https://registry.npmjs.org/@deepseek-ai%2fdsh>
-- 目标包元数据：<https://registry.npmjs.org/@deepseek-ai%2fdsh/0.1.5-alpha.1>
+- rc.1 release notes：<https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.5-rc.1>
+- rc.2 release notes：<https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.5-rc.2>
+
+**初稿时点（2026-09-09）快照，保留备查**：目标 `0.1.5-alpha.1` 已在 npm `alpha` tag，`latest` / `next` 仍为 `0.1.2-rc.1`（当时正式 `0.1.3` / `0.1.5` 均不存在，E404）；当时结论是 alpha 非稳定版、需显式安装。目标 alpha 的完整 dsh CLI 依赖树也已切到 `^0.1.5-alpha.1`，并新增了 `dsh-http-proxy`、`dsh-webhook`、`dsh-sdk-*`、`dsh-hooks-*`、实验性 Agent Team 等包；不能只替换 CLI 顶层版本而保留旧的全局 `@deepseek-ai` 树。
 
 ### 2.2 官方 release 线
 
 npm 中存在的目标范围版本为：
 
-`0.1.1-rc.2 → 0.1.2-alpha.2 → 0.1.2-alpha.3 → 0.1.2-alpha.4 → 0.1.2-alpha.5 → 0.1.2-rc.1 → 0.1.3-alpha.2 → 0.1.5-alpha.1`
+`0.1.1-rc.2 → 0.1.2-alpha.2 → 0.1.2-alpha.3 → 0.1.2-alpha.4 → 0.1.2-alpha.5 → 0.1.2-rc.1 → 0.1.3-alpha.2 → 0.1.5-alpha.1 → 0.1.5-alpha.2 → 0.1.5-rc.1 → 0.1.5-rc.2`
+
+（`0.1.5-rc.1` 为本次实际升级目标；`0.1.5-rc.2` 为 2026-09-11 的 npm `next`，未采用。）
 
 GitHub release notes 还提供 `0.1.2-alpha.1` 与 `0.1.3-alpha.1`，虽然前者没有进入 npm 版本列表，后者也不是当前 npm 可安装版本，但它们包含关键变更，必须纳入迁移分析。官方 GitHub API 中没有 `0.1.0-rc.2`、`rc.3`、`rc.6` 的独立 release note 条目；这些版本出现在 npm 历史中，但不能凭空补写其 release 内容。因此本稿对它们只把 `0.1.1-rc.2` 作为明确基线，不把缺失的说明推测成事实。
 
@@ -59,6 +65,9 @@ GitHub release notes 还提供 `0.1.2-alpha.1` 与 `0.1.3-alpha.1`，虽然前�
 - [`v0.1.3-alpha.1`](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.3-alpha.1)
 - [`v0.1.3-alpha.2`](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.3-alpha.2)
 - [`v0.1.5-alpha.1`](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.5-alpha.1)
+- [`v0.1.5-alpha.2`](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.5-alpha.2)
+- [`v0.1.5-rc.1`](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.5-rc.1)
+- [`v0.1.5-rc.2`](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.5-rc.2)
 
 ## 3. 从基线到目标的完整差异
 
@@ -203,7 +212,41 @@ GitHub release notes 还提供 `0.1.2-alpha.1` 与 `0.1.3-alpha.1`，虽然前�
 
 目标包声明级证据：从旧包与目标包下载的 `dsh-session`、`dsh-session-persistence`、`dsh-agent`、`dsh-agent-loop` `.d.ts` 对比显示：旧的 `events`、`prepare/load/append` persistence 形态已被按需 snapshot、per-session handle、`create/open/flush/stat/list` 形态替代；`AgentSetup` 增加显式 `agent` 参数；`agentLoop.create` 返回 `Promise<Agent>`。
 
+### 3.8 0.1.5-alpha.2：Sidebar、文件交付与默认工具收紧
+
+新增/变更：
+
+- Web 右侧 Sidebar 支持 Markdown/代码/HTML/PDF/图片预览；模型可显式交付文件并预览、用默认应用打开、在文件管理器中定位。
+- `/feedback` 支持提交明细反馈。
+- 修复工具筛选后的子代理仍收到不可用文件/Web 工具指导的问题（与「子代理工具面与提示一致」方向一致）。
+- Minimal profile 默认工具调整：Web `minimal` 与 Python `sdk-minimal` 默认仅提供持久 shell，`str_replace_editor` 需显式启用；持久 Bash 输出统一报告退出/超时状态。
+- Web 插件面板 API：`conversation` Slot 迁移为 `main` 的 `conversation` key；实验性 Agent Teams 包可从 npm 安装，不默认启用。
+- 修复 npm 安装需要 `fs-ext` 本地编译的问题。
+- Session 数据格式已为 V3（跨版本迁移细节见官方 `session-format-v2-to-v3/README`）。
+
+### 3.9 0.1.5-rc.1：本次实际升级目标（首个 0.1.5 候选）
+
+rc.1 汇总了自 `0.1.2-rc.1` 以来的主要变更，破坏性面与 §3.4–§3.8 一致，另有以下新增/明确项：
+
+- DeepSeek 适配器新增 `DeepSeek-V41-Flash`（`deepseek-flash`），支持文本、图片与会话历史中的系统提示词更新；新会话默认使用该模型，配置文件显式指定模型时以配置值为准（本部署 `agent-default-model` 仍为 commandcode，路由由配置显式决定）。
+- 所有出站请求遵循 `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY` / `NO_PROXY`。
+- 模型探测支持自定义 provider `models` 对象与 Anthropic 原生模型列表，回填模型名/上下文窗口/最大输出。
+- 持续子代理支持消息排队、编辑、删除、单条/全部 Steer 与停止；Agent Team `send_message` 统一 steer 语义并保留发送者与顺序。
+- 动态 system prompt（不破坏 KV Cache）需模型显式声明支持。
+- 普通 subprocess handle 不再暴露 pid；统一 `FS_NOT_OBSERVED` 文件写入/编辑失败诊断。
+- pi-ai 升级至 0.85.1；可选子代理插件内置运行时升级（Codex 0.153.4 / Claude Code 2.1.263）。
+- 破坏性项：Session V3；`SessionHandle` + session 锁；`agentLoop.create()` 异步；persona 前缀/后缀拆分；移除 `ctx.agent`；`Inbox` type-only；Web 面板 API 调整；SDK/Headless/ACP 默认 read/write/edit。
+- 本仓库对上述项的逐条处置与实测证据见 `docs/dsh-v0.1.5-rc.1-upgrade-closeout.md` §3。
+
+### 3.10 0.1.5-rc.2：未采用（2026-09-11 的 npm `next`）
+
+仅两项体验调整：反馈提交增加确认弹窗、交付文件卡片排版/图标刷新。对本仓库无破坏性影响；
+本轮不采用，若后续升级需重跑同一套闸门（closeout §7）。
+
 ## 4. 三仓库影响矩阵
+
+> 实施状态（2026-09-11）：**4.1 已实施**（票据 01–12，见 closeout）；**4.2 / 4.3 未实施**，
+> 以下内容保持为计划。
 
 ### 4.1 dsh-plugins
 
@@ -216,11 +259,11 @@ GitHub release notes 还提供 `0.1.2-alpha.1` 与 `0.1.3-alpha.1`，虽然前�
 | `ctx.agent` | P1 | 当前生产代码未发现直接使用 | 增加 typecheck/grep 门禁，避免新插件沿用旧 API |
 | `Inbox` | P1 | 当前 TUI 主要通过 agent surface 操作 | 不构造 Inbox、不依赖公共 `hasPending/claim`；只使用 `agent.inbox` 中目标仍公开的能力，需 alpha 实测确认 |
 | PTC / 默认工具 | P1 | minimal-plus preset、工具 bootstrap | 验证 read/write/edit 默认变化是否与自研 `custom-bash`、tool promotion 冲突；不主动覆盖官方默认值 |
-| provider/model 子代理配置 | P2 | 当前 TUI `/model` 与 model selection | 值得加入 `/subagent` 或任务启动配置，但应先确认 TUI 是否有合适 UI seam，不把 Web 专属面板搬入 TUI |
+| provider/model 子代理配置 | P2 | 当前 TUI `/model` 与 model selection | **已落地**：采用官方子代理模型选择（preset 开关 + 宿主设置服务 + 允许路由），见 `docs/subagent-model-selection.md`；自研 purpose 路由/adapter 方向作废（ADR-0001） |
 | token/cache 展示 | P2 | 已有 `/cost`、`/tokens` 与 token meter | 使用新事件/投影补 per-turn 统计和 cache hit；属于高价值、低跨仓库风险功能 |
 | 动态 system prompt/KV cache | P2 | 0.1.5 新能力 | 评估给 `/model`、preset 或 endless profile 变更使用；只有模型 capability 明确声明支持时才启用，不能强制刷新 prompt |
 
-### 4.2 dsh-relay
+### 4.2 dsh-relay（未实施，计划）
 
 | 影响 | 级别 | 证据/位置 | 处理 |
 |---|---:|---|---|
@@ -237,7 +280,7 @@ GitHub release notes 还提供 `0.1.2-alpha.1` 与 `0.1.3-alpha.1`，虽然前�
 | 任意附件/图片 | P2 | alpha.1/alpha.3/alpha.2 | 若跨机器传图片/文件，不能把 base64 塞进普通事件或无限增大 WS frame；设计 attachment transfer/reference，复用路径或 content-addressed object，设置大小、权限和过期策略 |
 | `RemoteError` | P2 | alpha.2 | 将远端错误标准化为 `{code,message,details,source}`，前端显示可读错误，保留原始错误用于诊断；避免继续暴露旧 ApiProxy 名称 |
 
-### 4.3 dsh-endless
+### 4.3 dsh-endless（未实施，计划）
 
 | 影响 | 级别 | 证据/位置 | 处理 |
 |---|---:|---|---|
@@ -268,7 +311,9 @@ GitHub release notes 还提供 `0.1.2-alpha.1` 与 `0.1.3-alpha.1`，虽然前�
 
 **P1：远端/子代理模型选择**
 
-对 relay 会话，TUI 的 `/model` 应展示 worker 实际 provider/model catalog，包括 context window 和 max output；子代理启动命令可增加显式 provider/model/reasoning/max output，但必须先确认当前命令注册和权限边界。
+**子代理部分已落地**（本地）：采用官方子代理模型选择，见 `docs/subagent-model-selection.md`。
+远端部分仍未做：对 relay 会话，TUI 的 `/model` 应展示 worker 实际 provider/model catalog，
+包括 context window 和 max output；模型目录能力随 relay rc.1 适配一起评估。
 
 **P2：动态 prompt capability**
 
@@ -328,23 +373,27 @@ GitHub release notes 还提供 `0.1.2-alpha.1` 与 `0.1.3-alpha.1`，虽然前�
 
 ## 6. 建议的实施阶段
 
+> 实施状态（2026-09-11）：**dsh-plugins 已按 Phase 0–4 中属于它的部分落地**（票据 01–12，
+> 见 `docs/dsh-v0.1.5-rc.1-upgrade-closeout.md`）；relay / endless 尚未开始。
+> Phase 5 的稳定化与发布决策**未执行**（本轮不 commit、不发布）。
+
 ### Phase 0：冻结基线与回滚点
 
-**涉及：三个仓库，配置/文档为主。**
+**涉及：三个仓库，配置/文档为主。dsh-plugins 部分已完成（票据 01）。**
 
 1. 记录当前全局 dsh、每个 `@deepseek-ai/*` 依赖、Node 版本、profile patch、`DSH_HOME` 和 Session 根目录。
 2. 备份 dsh Session 目录、endless SQLite、relay hub watermark/journal/buffer。
 3. 保存当前 `npm test`、`tsc --noEmit`、relay real-tree smoke、endless resume/compaction 实证结果。
-4. 明确目标是 alpha 试验树，不修改 `latest` 语义；所有启动命令显式使用 `@alpha` 或精确版本。
+4. 明确目标版本并锁定：本次实际采用 `0.1.5-rc.1` 精确版本（开发侧全局宿主），stable 侧继续钉在 `0.1.1-rc.2`；不使用浮动 tag 启动。
 
 验收：旧版本可以恢复一个已有 session；备份可读；工作区无非本轮改动被覆盖。
 
 ### Phase 1：依赖树和最小启动
 
-**不实现新功能。**
+**不实现新功能。dsh-plugins 部分已完成（票据 02/03/05）。**
 
-1. 安装 `@deepseek-ai/dsh@0.1.5-alpha.1` 到隔离 global/npm prefix，避免污染旧运行时。
-2. 更新/重建三个仓库的 `@deepseek-ai/*` 链接或 lockfile，使运行时与编译依赖统一。
+1. 安装 `@deepseek-ai/dsh@0.1.5-rc.1` 到全局（开发侧），稳定侧隔离运行时保持 `0.1.1-rc.2`。
+2. 更新/重建目标仓库的 `@deepseek-ai/*` 链接或 lockfile，使运行时与编译依赖统一。
 3. 先用 `headless`/最小 profile 启动，再启动 dsh-plugins TUI、relay worker/server/controller、endless profile。
 4. 验证 Node 22.19+、代理环境、Web token、图片依赖、profile preset roots。
 
@@ -352,7 +401,7 @@ GitHub release notes 还提供 `0.1.2-alpha.1` 与 `0.1.3-alpha.1`，虽然前�
 
 ### Phase 2：Session/API 兼容层
 
-**先 dsh-plugins，再 relay，最后 endless。**
+**先 dsh-plugins，再 relay，最后 endless。dsh-plugins 部分已完成（票据 04/06/07）。**
 
 1. dsh-plugins：替换真实 `.events` 读取，保留 query snapshot 的 `.events`；更新 rewind/fork/flush 类型和测试替身。
 2. relay：集中改 worker/server/controller 的 snapshot/backfill/rewind；建立 SessionHandle registry 与连接 owner 关系；异步 create 完成后再 ack。
@@ -365,7 +414,7 @@ GitHub release notes 还提供 `0.1.2-alpha.1` 与 `0.1.3-alpha.1`，虽然前�
 
 1. 在 relay worker 上验证目标 persistence backend 的 `create/open/read/write/flush/stat/list` 实际接口。
 2. 用备份副本测试旧 Session 冷恢复和自动迁移，不直接拿唯一生产日志试错。
-3. 验证 V3 system prompt、PTC legacy event、`code` preset migration；目标 alpha 读取升级后的日志，旧 dsh 读取被拒绝属于预期。
+3. 验证 V3 system prompt、PTC legacy event、`code` preset migration；新宿主读取升级后的日志，旧 dsh 读取被拒绝属于预期。
 4. 验证 `(deviceId, sessionId, seq)` 水位、V3 日志回放、断线补传、hub journal、rewind 和 mirror capture 不重复。
 5. 补 `SessionHandle` ownership 竞争、旧连接被替换、新连接胜出、worker 崩溃恢复的故障注入测试。
 
@@ -412,18 +461,19 @@ GitHub release notes 还提供 `0.1.2-alpha.1` 与 `0.1.3-alpha.1`，虽然前�
 
 - 不把 Web Sidebar、Web Preview、Inspector、Open in 复制到自研 TUI。
 - 不立即实现 relay 图片裸传；先完成引用/权限/生命周期设计。
-- 不以 `latest` 标签作为升级目标；当前 `latest` 仍是旧 rc。
-- 不为兼容 alpha 而删除现有 v2 relay 降级通道。
+- 不以浮动 dist-tag 作为升级依据（`latest` 已在 2026-09-10 前移到 `0.1.5-rc.1`）；升级必须锁定精确版本并跑完闸门。
+- 不为兼容 rc 而删除现有 v2 relay 降级通道。
 - 不在没有真实 persistence API 验证前批量改写所有历史 Session reader。
 - 不把动态 prompt 当作默认能力；必须以模型 capability 为闸门。
 
-## 9. 下一步决策点
+## 9. 下一步决策点（2026-09-11 更新）
 
-在进入代码实施前，需要确认以下顺序：
+原初稿的决策点已有结论，剩余如下：
 
-1. 是否接受 `0.1.5-alpha.1` 作为隔离测试运行时，而不是覆盖当前 `0.1.1-rc.2`。
-2. 是否先做 Phase 0～3 的兼容和回放验收，再做功能增强。
-3. relay 的双向子代理控制是否作为第一项跨组件协议升级；若确认，先单独维护协议计划，不与 Session API 迁移混做。
+1. ~~是否接受 `0.1.5-alpha.1` 作为隔离测试运行时~~ → 已决定并执行：开发侧全局宿主升级到 `0.1.5-rc.1`，stable 侧继续钉在 `0.1.1-rc.2`（票据 02）。
+2. Phase 0–3 的兼容与回放验收：dsh-plugins 部分已完成；relay / endless 部分未开始。
+3. relay 的双向子代理控制是否作为下一轮第一项跨组件协议升级；若确认，先单独维护协议计划，不与 Session API 迁移混做。
 4. endless 多模态记忆是否先执行一条真实图片 distill spike，再决定附件存储方案。
+5. 上游 `0.1.5-rc.2`（npm `next`）是否纳入；纳入即需重跑组合差异、工具面、M4 基线与模型选择/路由探针（closeout §7）。
 
-本稿只形成升级路线和评估，不代表已获准修改三个仓库代码。
+本稿的 dsh-plugins 部分已按计划实施完毕；relay / endless 部分仍只形成路线与评估，不代表已获准修改代码。

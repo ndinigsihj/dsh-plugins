@@ -1,0 +1,52 @@
+# 票据 11 行为探针 overlay（在 headless profile 之上）：
+#   dsh --profile headless --patch experiments/subagent-model-selection/probe.patch.yml
+#
+# 与 m4.patch.yml 同处置：关掉 stock headless runner/startup，禁用 dsh-base 的
+# tool-bash（与 preset 的 persistent-shell bash 撞名）。探针自带三段环境隔离：
+#   1) settings.path 指向临时副本 —— 设置编辑测试写副本，不碰 ~/.dsh/settings.yaml；
+#   2) session-persistence-jsonl.root 指向临时目录 —— 新探针会话与旧会话副本都落
+#      /tmp，不碰真实 ~/.dsh/sessions（旧会话由 run.sh 预复制）；
+#   3) 按 id 覆盖 headless 的部署基线为 enabled=true + 4 条允许路由（生产 tui-dev
+#      基线同值；headless 自身 kept disabled 以保测量口径）。
+- id: headless-runner
+  disabled: true
+
+- id: headless-startup
+  disabled: true
+
+- id: tool-bash
+  disabled: true
+
+- id: settings
+  config:
+    path: /tmp/dsh-ticket11/settings.yaml
+
+- id: session-persistence-jsonl
+  config:
+    root: /tmp/dsh-ticket11/sessions
+
+# 与 ~/.dsh/profiles/tui-dev/cordis.patch.yml 的部署基线逐字段一致
+- id: subagent-model-selection-settings
+  config:
+    enabled: true
+    allowedModels:
+      - provider: opencode-go
+        model: deepseek-v4-flash
+      - provider: commandcode
+        model: deepseek/deepseek-v4-flash
+      - provider: deepseek-official
+        model: deepseek-v4-flash
+      - provider: opencode-go
+        model: deepseek-flash
+
+- insert:
+    # preset 走 user root（部署位副本，即 tui-dev 的实际加载源）；与 m4.patch.yml 同约定
+    - id: agent-presets
+      name: "@deepseek-ai/dsh-agent-presets"
+      config:
+        default: minimal-plus-next
+        roots: []
+        includeUserRoot: true
+
+    - id: ticket11-probe
+      name: /Users/vito/data/dev/dsh-plugins/experiments/subagent-model-selection/probe.mjs

@@ -145,7 +145,9 @@ hub 侧的 `fleet-client` / `memory-sink`、worker 侧的 `remote-server` 挂载
 | `/task <id>` | attach-client | 查询后台任务状态 | ✅ 已实现 |
 | `/tasks` | attach-client | 列出最近后台任务 | ✅ 已实现 |
 
-## Agent presets (minimal-plus)
+## Agent presets (minimal-plus / minimal-plus-next)
+
+### minimal-plus（stable / `tui`，宿主 0.1.1-rc.2）
 
 `presets/minimal-plus/` keeps the Minimal base (historically the liangshen
 preset) **verbatim** (Minimal persona with `includeRuntimeContext: false`,
@@ -171,6 +173,22 @@ Known tradeoff: with `includeRuntimeContext: false` the model sees the
 | `smoke-boot.mjs` / `smoke-driver.mjs` | No-LLM composition smoke (round-1 catalog, round-2 swap+injection) |
 
 Use: `CC_TUI_PRESET=minimal-plus dsh --profile tui` then `/new`.
+
+### minimal-plus-next（dev / `tui-dev`，宿主 0.1.5-rc.1）
+
+`presets/minimal-plus-next/` 是开发侧的分叉（ADR-0002：stable 宿主钉版，不能与 rc.1 字段共用一份 preset）：
+
+- 与 `minimal-plus` 的字段差异只有 persona 正文键（rc.1 用 `prefix`，stable 只认 `text`）。
+- 按 ADR-0003 只声明与 rc.1 `dsh-base` 的差异：删除 16 个逐字重复行（含原显式的
+  `agent-instructions` 行，改由宿主 base 提供）与 `planning`/`compaction` 空组，仅保留
+  恒禁的 `tool-bash` 与承载官方子代理模型选择的 `tool-subagent`。不要为了让 preset
+  「自包含」把 base 已有的行抄回来。
+- `npm test` 的 preset 条目与部署位冒烟走 `presets/minimal-plus-next/`；stable 的
+  `minimal-plus` 副本冻结在 rc.2 代码，不在 rc.1 宿主下运行。
+- 部署：`scripts/sync-agent-presets.sh minimal-plus-next`（无参仍只同步 `minimal-plus`）；
+  冷启动加载的是 `~/.dsh/.agent-presets/` 副本，preset 改完必须重新同步并核 sha。
+- 子代理模型选择（`modelSelectionSettings`）的开关、宿主设置服务、允许路由维护与探针见
+  `docs/subagent-model-selection.md`。
 
 ## Tested
 

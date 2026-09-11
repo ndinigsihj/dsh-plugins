@@ -1,0 +1,3 @@
+name: Minimal+提权+注入（next）
+description: 开发侧 rc.1 变体（persona 用 prefix 键，其余同 minimal-plus）：Minimal 全量基底 + 二轮沙箱 bash 提权 + 二轮 AGENTS.md 注入。
+order: 7

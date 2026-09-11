@@ -16,7 +16,9 @@ import { join } from "node:path";
 import { installModelSelection } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-agent/lib/index.js";
 import { createUserMessage } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-llm/lib/index.js";
 import { SessionId } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-session/lib/index.js";
-import { boot, loadProfile } from "/Users/vito/.dsh/profiles/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js";
+// 用 repo 的 dev 依赖树（link-global-dsh.sh → 全局 rc.1），与上方 dsh-agent/session/llm 同代；
+// ~/.dsh/profiles/node_modules 共享 farm 会被最近一次 boot 的宿主整代重写（2026-09-10 实测）。
+import { boot, loadProfile } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js";
 
 // 自动注入 credentials（与 dsh CLI 同一解析来源；缺 key 也能跑路由记录验证）
 try {
@@ -89,7 +91,7 @@ async function lastRequestContext(label) {
     }),
   );
   await agent.whenIdle();
-  const events = agent.session.events.filter(
+  const events = agent.session.snapshotEvents().filter( // rc.1：按需快照，取代已移除的 events getter
     (e) => e.seq >= before && e.type === "request/context",
   );
   const last = events[events.length - 1];

@@ -13,13 +13,14 @@ import { homedir } from "node:os";
 import z from "@deepseek-ai/schemastery";
 import { randomUUID } from "node:crypto";
 import { installModelSelection } from "@deepseek-ai/dsh-agent";
-import { createUserMessage } from "@deepseek-ai/dsh-llm";
-import { SessionId } from "@deepseek-ai/dsh-session";
+import { createUserMessage, type StreamChunk } from "@deepseek-ai/dsh-llm";
+import { SessionId, SessionLogOffset } from "@deepseek-ai/dsh-session";
 import { z as zod } from "zod";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { TuiApp, formatTokens, type AgentSurface, type AutocompleteCommand, type GoalSummary, type RunningJob } from "./app.ts";
 import { createPalette } from "./palette.ts";
 import { sanitizeDisplay } from "./sanitize.ts";
+import { readPreviewLog, type PreviewLogWindow } from "./session-preview-log.ts";
 import { renderTranscriptMarkdown } from "./export.ts";
 import type { ToolPresenters, TodoItem } from "./transcript.ts";
 import {
@@ -583,12 +584,18 @@ interface CoreServices {
     }>;
   };
   sessions: {
-    flush(session: unknown): Promise<void>;
-    /** Fork a session log; no boundary = whole log, no childId = in-memory. */
-    fork?(source: unknown): { events: unknown[] };
+    /** Resolves whether at least one durability listener participated (rc.1);
+     * `false` means the session has no persistence writer attached. */
+    flush(session: unknown): Promise<boolean | void>;
+    /** Fork a session log; no boundary = whole log, no childId = in-memory.
+     * rc.1 returns a Session whose log is read through snapshotEvents(). */
+    fork?(source: unknown): { snapshotEvents(): ReadonlyArray<unknown> };
   };
   userQuestions?: {
-    registerProvider(provider: { ask(request: unknown): Promise<unknown> }): () => void;
+    /** rc.1 capability seam: answerer registration moved to the
+     * `user-questions/request` waterfall; the method only proves the service
+     * is mounted (see the listener below). */
+    ask(request: unknown): Promise<unknown>;
   };
   commands?: {
     register(definition: {
@@ -621,7 +628,21 @@ interface CoreServices {
     >;
     readSession(
       sessionId: string,
-    ): Promise<{ events: Array<{ type: string; data: Record<string, unknown> }> }>;
+    ): Promise<{
+      session: { id: string; version: number; createdAt: number; isSeeded: boolean };
+      inheritedEventCount: number;
+      events: Array<{ type: string; data: Record<string, unknown> }>;
+    }>;
+    /** rc.1 corpus reads that do NOT construct a Session: `readSession`'s
+     * snapshot mode rejects a seeded log once it grew past its inherited prefix
+     * (every fork/rewind child after its startup event). */
+    listEvents?(sessionId: string): Promise<Array<{ type: string; seq?: number }>>;
+    readEvent?(request: {
+      sessionId: string;
+      seq: number;
+      before?: number;
+      after?: number;
+    }): Promise<PreviewLogWindow & { target?: { type: string; seq?: number; data?: unknown } }>;
   };
   sessionProjections?: {
     snapshot(session: unknown): { values: ProjectionValues };
@@ -634,19 +655,22 @@ interface CoreServices {
       wire?: { viewSchema?: unknown; view: (state: unknown) => unknown };
     }): () => void;
   };
-  /** Persisted projection checkpoints (mounted by the tui profile patch);
-   * coldSnapshot walks cached-row + tail-replay and writes the row back. */
+  /** Persisted projection checkpoints (mounted by the tui profile patch).
+   * rc.1 shape: the caller supplies the complete log (read via sessionQuery);
+   * the service only seeds folds + refreshes the cache row. */
   sessionProjectionCache?: {
     coldSnapshot(
-      sessionId: string,
-      signal?: AbortSignal,
-    ): Promise<{ values: ProjectionValues }>;
+      meta: { id: string; version: number; createdAt: number; isSeeded: boolean },
+      inheritedEventCount: number,
+      events: ReadonlyArray<{ type: string; data: Record<string, unknown> }>,
+    ): { values: ProjectionValues };
   };
   /** Permission presets (base-mounted): sandbox/approval bundles with a
-   * durable log write path. */
+   * durable log write path. rc.1 folds `current` from the live session, not
+   * from a raw event array. */
   permissionPresets?: {
     readonly names: readonly string[];
-    current(events: unknown): string;
+    current(session: unknown): string;
     optionOf(name: string): { label?: string; description?: string };
     set(session: unknown, name: string): void;
   };
@@ -701,10 +725,24 @@ interface CoreServices {
   appExit: (code: number) => void;
 }
 
+/** Structural slice of one session-log event as the TUI reads it. */
+type SessionEventLike = {
+  type: string;
+  seq?: number;
+  data?: Record<string, unknown>;
+};
+
 interface Agent {
   id: string;
   status: "idle" | "running";
-  session: { events: unknown[]; append?(type: string, data: unknown): void };
+  session: {
+    /** rc.1 removed the `events` getter: the log is read through an immutable
+     * on-demand snapshot (eventAt(seq) covers single-position reads). */
+    snapshotEvents(): ReadonlyArray<SessionEventLike>;
+    append?(type: string, data: unknown): void;
+    /** Immutable creation header (cwd names the storage project directory). */
+    header?: { cwd?: string };
+  };
   ctx: { get<T = unknown>(key: string): T | undefined };
   followup(message: unknown): void;
   steer(message: unknown): void;
@@ -856,22 +894,55 @@ async function run(
    * last recorded route (the latest `request/context` event), and its last
    * used reasoning effort (the latest `request/header` call config).
    */
+  /**
+   * Events carrying a resumed session's recorded facts. `readSession`'s
+   * snapshot-mode construction rejects a seeded log once it grew past its
+   * inherited prefix (every fork/rewind child after its startup event), so
+   * assemble the few needed rows from the corpus readers that skip it:
+   * `listEvents` yields type/seq, `readEvent` yields the full row.
+   */
+  async function resumeFactEvents(
+    id: string,
+  ): Promise<ReadonlyArray<{ type: string; data?: unknown }> | undefined> {
+    const query = services.sessionQuery;
+    if (query?.listEvents !== undefined && query.readEvent !== undefined) {
+      try {
+        const wanted = new Set(["request/context", "request/header", "agent-preset/selected"]);
+        const latest = new Map<string, number>();
+        for (const record of await query.listEvents(id)) {
+          if (wanted.has(record.type) && typeof record.seq === "number") {
+            latest.set(record.type, record.seq);
+          }
+        }
+        const events: Array<{ type: string; data?: unknown }> = [];
+        for (const seq of latest.values()) {
+          const window = await query.readEvent({ sessionId: id, seq });
+          if (window.target !== undefined) events.push(window.target);
+        }
+        return events;
+      } catch {
+        /* fall through to readSession */
+      }
+    }
+    try {
+      return (await query?.readSession(id))?.events;
+    } catch {
+      return undefined;
+    }
+  }
+
   async function bootResumeFacts(id: string): Promise<{
     presetId?: string;
     recordedRoute?: { provider: string; model: string };
     recordedEffort?: string;
   }> {
-    try {
-      const snap = await services.sessionQuery?.readSession(id);
-      if (snap !== undefined) {
-        return {
-          presetId: recordedPresetOf(snap.events),
-          recordedRoute: recordedRouteOf(snap.events),
-          recordedEffort: recordedEffortOf(snap.events),
-        };
-      }
-    } catch {
-      /* unreadable log — fall through */
+    const events = await resumeFactEvents(id);
+    if (events !== undefined) {
+      return {
+        presetId: recordedPresetOf(events),
+        recordedRoute: recordedRouteOf(events),
+        recordedEffort: recordedEffortOf(events),
+      };
     }
     return {};
   }
@@ -1469,38 +1540,49 @@ async function run(
                 })),
               ),
     sessionPreview: async (sessionId) => {
-      // Cold ladder first: cached checkpoint + persistence tail replay, no
-      // full-log decode; the row is written back so repeat hovers get
-      // cheaper. Falls through to the legacy full read when the cache is
-      // absent, the session has no persisted log, or the unit is missing.
-      const cacheSvc = services.sessionProjectionCache;
-      if (cacheSvc !== undefined) {
-        try {
-          const cut = await cacheSvc.coldSnapshot(sessionId);
+      const query = services.sessionQuery;
+      if (query === undefined) return null;
+      const previewFrom = (
+        meta: { id: string; version: number; createdAt: number; isSeeded: boolean },
+        inheritedEventCount: number,
+        events: ReadonlyArray<{ type: string; data: Record<string, unknown> }>,
+      ): string | null => {
+        const cacheSvc = services.sessionProjectionCache;
+        if (cacheSvc !== undefined) {
+          const cut = cacheSvc.coldSnapshot(meta, inheritedEventCount, events);
           const fromValues = cut.values.tuiPreview;
           if (fromValues !== undefined) {
             const formatted = formatPreviewFromValues(fromValues);
             if (formatted !== null) return formatted;
           }
-        } catch {
-          /* fall through to the legacy path */
         }
+        return buildPreviewFromEvents(events as ReadonlyArray<PreviewEvent>);
+      };
+      try {
+        // rc.1 shape: the caller supplies the complete log; the projection
+        // cache only seeds folds and refreshes its row (no storage read of its
+        // own). One log read serves both the cached and the scan path.
+        const loaded = await query.readSession(sessionId);
+        return previewFrom(loaded.session, loaded.inheritedEventCount, loaded.events ?? []);
+      } catch {
+        // seeded（fork/rewind）子会话会拒绝 readSession（finding 06-4）：
+        // 改走不构造 Session 的读者重建同一份日志；失败仍返回 null。
       }
-      const query = services.sessionQuery;
-      if (query === undefined) return null;
-      return query
-        .readSession(sessionId)
-        .then((loaded) => buildPreviewFromEvents((loaded.events ?? []) as ReadonlyArray<PreviewEvent>))
-        .catch(() => null);
+      try {
+        const loaded = await readPreviewLog(query, sessionId);
+        if (loaded === undefined) return null;
+        return previewFrom(loaded.session, loaded.inheritedEventCount, loaded.events as never);
+      } catch {
+        return null;
+      }
     },
   });
 
   // On resume, rebuild the transcript from the persisted log before live events.
-  // skipStreamDeltas: fold from assistant/message final states — a large log
-  // expands to ~10× its line count in chunk events whose replay only re-derives
-  // text the final messages already carry (resume-perf analysis §3-B).
+  // rc.1 logs carry no chunk events (settlements only), so the fold is a plain
+  // replay of the durable record.
   if (resumeId !== undefined) {
-    app.model.rebuild(agent.session.events as never, presenters, { skipStreamDeltas: true });
+    app.model.rebuild(agent.session.snapshotEvents() as never, presenters);
     app.onSessionEvent();
     app.appendCommandOutput(`Resumed session ${agent.id}.`);
     seedProjections();
@@ -1565,7 +1647,7 @@ async function run(
    * usual `dsh …` launcher — aliases and absolute paths are not reconstructed.
    * Blank sessions have nothing worth reopening — skip the noise. */
   function resumeHint(): string | undefined {
-    if (sessionIsBlank(agent.session.events as Array<{ type?: string }>)) return undefined;
+    if (sessionIsBlank(agent.session.snapshotEvents())) return undefined;
     const args = argvWithoutResume(process.argv.slice(2)).map(quoteIfNeeded);
     return `\nResume with the command below:\n  dsh ${[...args, "--resume", quoteIfNeeded(agent.id)].join(" ")}\n`;
   }
@@ -1607,7 +1689,7 @@ async function run(
    * its own 24-bit color), rendered verbatim by the transcript, never exported.
    * Whale and slogan are centered on the widest banner line. */
   function showBootBanner(): void {
-    if (!sessionIsBlank(agent.session.events as Array<{ type?: string }>)) return;
+    if (!sessionIsBlank(agent.session.snapshotEvents())) return;
     const p = createPalette(true);
     const version = readPkgVersion();
     const preset = currentPreset();
@@ -1857,7 +1939,7 @@ async function run(
       app.showNotice("Agent is running — Esc cancels it first.");
       return;
     }
-    const current = pp.current(agent.session.events as never);
+    const current = pp.current(agent.session);
     if (current === "custom") {
       app.showNotice("Effective values match no preset (custom) — pick one to normalize.");
     }
@@ -2089,7 +2171,7 @@ async function run(
    * history yet, so an empty agent log falls back to sessionQuery's.
    */
   async function doRewindPicker(): Promise<void> {
-    let items = rewindCandidates(agent.session.events ?? []);
+    let items = rewindCandidates(agent.session.snapshotEvents());
     if (items.length === 0 && services.sessionQuery !== undefined) {
       try {
         const snap = await services.sessionQuery.readSession(agent.id);
@@ -2159,9 +2241,10 @@ async function run(
     } catch {
       /* registry hiccup — fall through to direct scans */
     }
-    app.setCacheRate(lastCacheRate(agent.session.events) ?? null);
-    for (let i = agent.session.events.length - 1; i >= 0; i -= 1) {
-      const evt = agent.session.events[i] as
+    const live = agent.session.snapshotEvents();
+    app.setCacheRate(lastCacheRate(live) ?? null);
+    for (let i = live.length - 1; i >= 0; i -= 1) {
+      const evt = live[i] as
         | { type?: string; data?: { todos?: TodoItem[] } }
         | undefined;
       if (evt?.type === "todo/write") {
@@ -2208,7 +2291,7 @@ async function run(
     }
     let seed: unknown[];
     try {
-      seed = fork.call(services.sessions, agent.session).events;
+      seed = [...fork.call(services.sessions, agent.session).snapshotEvents()];
     } catch (error) {
       app.showNotice(
         `Model switch failed at fork: ${error instanceof Error ? error.message : String(error)}`,
@@ -2219,7 +2302,7 @@ async function run(
     // request route changes (same rule as rewind).
     const composed = await composePreset(
       services.agentPresets,
-      recordedPresetOf(agent.session.events as Array<{ type: string; data?: unknown }>) ?? currentPreset(),
+      recordedPresetOf(agent.session.snapshotEvents()) ?? currentPreset(),
       (m) => app.showNotice(m),
     );
     try {
@@ -2247,7 +2330,7 @@ async function run(
       // gauge both re-seed so in-flight todos survive the switch.
       seedProjections();
       app.model.clear();
-      app.model.rebuild(next.session.events as never, presenters, { skipStreamDeltas: true });
+      app.model.rebuild(next.session.snapshotEvents() as never, presenters);
       app.onSessionEvent();
       void services.sessions.flush(next.session).catch(() => {});
       updateContextPressure();
@@ -2619,7 +2702,7 @@ async function run(
       app.showNotice(`Already on preset "${id}".`);
       return;
     }
-    if (!sessionIsBlank(agent.session.events as Array<{ type?: string }>)) {
+    if (!sessionIsBlank(agent.session.snapshotEvents())) {
       const failed = await saveDefault(id);
       if (failed !== undefined) {
         app.showNotice(`Could not save "${id}" as roster default: ${failed}`);
@@ -3161,8 +3244,72 @@ async function run(
     }
   }
 
-  /** Flush, restore the terminal, then replace the process with `--resume <id>`. */
-  async function relaunchToResume(id: string): Promise<void> {
+  /**
+   * /rewind support (finding 06-1): create a durable fork child of the live
+   * root from `seed`, returning its id and workspace cwd. rc.1 holds session
+   * persistence in the agent lifecycle — `agents.create` attaches the write
+   * handle and stores the seed at publication — so a bare `sessions.fork()`
+   * child stays memory-only and the execve'd process could never resume it.
+   * Resolution means the child artifact was flushed and is readable; the
+   * caller only then restores files and relaunches into `childId`.
+   */
+  async function forkPersistedChild(
+    seed: ReadonlyArray<SessionEventLike>,
+  ): Promise<{ ok: true; childId: string; cwd: string } | { ok: false; error: string }> {
+    if (seed.length === 0) return { ok: false, error: "fork seed is empty" };
+    if (seed[seed.length - 1]?.type === "turn/start") {
+      return { ok: false, error: "fork seed ends inside an open turn" };
+    }
+    const cwd = agent.session.header?.cwd ?? process.cwd();
+    const childId = SessionId(`session-${randomUUID()}`);
+    try {
+      const composed = await composePreset(
+        services.agentPresets,
+        recordedPresetOf(agent.session.snapshotEvents()) ?? currentPreset(),
+        (m) => app.showNotice(m),
+      );
+      const route = currentModelSelection();
+      const created = await services.agents.create({
+        sessionId: childId,
+        seed: [...seed],
+        inheritedEventCount: SessionLogOffset(seed.length),
+        meta: {
+          cwd,
+          parentSession: agent.id,
+          isSeeded: true,
+          ...(composed.agentPreset === undefined ? {} : { agentPreset: composed.agentPreset }),
+        },
+        agentOptions: route,
+        setup: makeSetup(composed, route),
+      });
+      await created.agent.whenIdle();
+      const flushed = await services.sessions.flush(created.agent.session);
+      if (flushed === false) {
+        return { ok: false, error: "fork child has no durability listener" };
+      }
+      // Prove the artifact is durably visible before the caller execve's into
+      // it. Deliberately not `readSession`: rc.1's snapshot-mode read asserts
+      // inheritedEventCount === events.length, which a seeded fork child stops
+      // satisfying once its post-seed startup event is appended.
+      if (services.sessionQuery !== undefined) {
+        const records = await services.sessionQuery.listSessions();
+        const record = records.find((candidate) => candidate.header.id === childId);
+        if (record === undefined || record.persisted !== true) {
+          return { ok: false, error: "fork child is not persisted after flush" };
+        }
+      }
+      return { ok: true, childId, cwd };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  }
+
+  /** Flush, restore the terminal, then replace the process with `--resume <id>`.
+   * `note` (optional) is written to stderr right after the terminal is
+   * restored, so a caller's summary (e.g. /rewind's restored-file list)
+   * survives the execve in the shell scrollback instead of dying with the
+   * alternate screen. */
+  async function relaunchToResume(id: string, note?: string): Promise<void> {
     try {
       await services.sessions.flush(agent.session);
     } catch {
@@ -3193,6 +3340,7 @@ async function run(
       }
     }
     app.stopTerminal();
+    if (note !== undefined && note !== "") process.stderr.write(`${note}\n`);
     // Drop any --resume already on the command line (chained /resume): the new
     // target must win regardless of how the runtime parses duplicates.
     const priorArgv = argvWithoutResume(process.argv.slice(1));
@@ -3216,7 +3364,9 @@ async function run(
   // stack — the shell then keeps receiving CSI-u keypresses (`:3A` on every
   // arrow key) until the tab is reset (2026-08-26 exit-leak report).
   ctx.provide("tuiHandoff", {
-    relaunchToResume: (id: string) => relaunchToResume(id),
+    // /rewind 的持久化 fork：子会话必须经宿主 agent 生命周期落盘后才能 execve（finding 06-1）。
+    forkPersistedChild: (seed: ReadonlyArray<SessionEventLike>) => forkPersistedChild(seed),
+    relaunchToResume: (id: string, note?: string) => relaunchToResume(id, note),
     // relay rewind：worker 端已 fork 出 child，前端 detach 旧流并 resume child。
     resumeRemoteChild: (deviceId: string, childId: string) => resumeWorkerSession(deviceId, childId),
   });
@@ -3226,13 +3376,14 @@ async function run(
   // root（session 为空），导致选中的 seq 在 /rewind 侧找不到。
   // 冷启动内存日志为空时，picker 已从 sessionQuery 读盘列出候选；把读到的
   // 快照暂存为 fallback，/rewind <seq> 走同一条 rewindSource 也能找到事件。
-  let rewindFallbackEvents: ReadonlyArray<unknown> | undefined;
+  let rewindFallbackEvents: ReadonlyArray<SessionEventLike> | undefined;
   ctx.provide("rewindSource", {
     get id() {
       return agent.id;
     },
-    get events() {
-      const live = agent.session.events ?? [];
+    // rc.1 session read interface: a snapshot call, not an `events` getter.
+    snapshotEvents: (): ReadonlyArray<SessionEventLike> => {
+      const live = agent.session.snapshotEvents();
       if (live.length > 0) return live;
       return rewindFallbackEvents ?? [];
     },
@@ -3381,10 +3532,15 @@ async function run(
     }
   }
 
-  // Model asks the human: FIFO through the TUI question overlay.
+  // Model asks the human: FIFO through the TUI question overlay. rc.1 removed
+  // the provider registry — answerers now claim the `user-questions/request`
+  // waterfall (return an answer) and delegate by calling next(). The request
+  // shape and answer shape are unchanged from the old provider's ask().
+  let disposeQuestions: (() => void) | undefined;
   if (services.userQuestions !== undefined) {
-    const disposeProvider = services.userQuestions.registerProvider({
-      ask: async (request) => {
+    disposeQuestions = ctx.on(
+      "user-questions/request",
+      async (request: unknown) => {
         const req = request as {
           signal?: AbortSignal;
           questions: Array<{
@@ -3424,8 +3580,7 @@ async function run(
         }
         return { answers };
       },
-    });
-    ctx.effect(() => disposeProvider);
+    );
   }
 
   // Tool approval: surface the 'approval/request' waterfall as a TUI dialog.
@@ -3507,7 +3662,7 @@ async function run(
       }
     }
     if (used === undefined || windowTokens === undefined || windowTokens <= 0) {
-      const report = lastUsageReport(agent.session.events as ReadonlyArray<unknown>);
+      const report = lastUsageReport(agent.session.snapshotEvents());
       if (report === undefined) {
         app.setContextOccupancy(null);
         return;
@@ -3602,11 +3757,6 @@ async function run(
         if (rate !== undefined) app.setCacheRate(rate);
         // Session-total `out` rides updateContextPressure (projection-backed),
         // so the per-event outputTokens value is no longer consumed here.
-      } else if (evt.type === "assistant/chunk") {
-        const chunk = evt.data?.chunk as { type?: string; text?: string } | undefined;
-        if (chunk?.type === "text-delta" && typeof chunk.text === "string" && chunk.text !== "") {
-          app.noteStreamText(chunk.text);
-        }
       } else if (evt.type === "todo/write") {
         const todos = evt.data?.todos as TodoItem[] | undefined;
         if (Array.isArray(todos)) app.setTodos(todos);
@@ -3629,6 +3779,26 @@ async function run(
     },
   );
 
+  // rc.1 no longer logs assistant/chunk session events: model chunks are
+  // published process-locally as `agent/assistant-stream` frames (start/chunk/
+  // end), while the durable `assistant/message` event still settles the row
+  // through the session feed above. The subscription is unscoped, so subagent
+  // streams arrive too — only the adopted root agent may drive the transcript.
+  const disposeAssistantStream = ctx.on(
+    "agent/assistant-stream",
+    (payload: { agent?: { id?: unknown }; frame?: { type?: string; chunk?: unknown } }) => {
+      if (payload.agent !== undefined && payload.agent.id !== agent.id) return;
+      if (payload.frame?.type !== "chunk") return;
+      const chunk = payload.frame.chunk as StreamChunk | undefined;
+      if (chunk === undefined) return;
+      app.model.applyStreamChunk(chunk);
+      if (chunk.type === "text-delta" && chunk.text !== "") {
+        app.noteStreamText(chunk.text);
+      }
+      app.onSessionEvent();
+    },
+  );
+
   // Agent status → footer + the app-facing surface status. Relay (attach-client)
   // emits this from remote turn/start|end; the real Agent.status is a read-only
   // getter so writing it throws and kills the wire loop — ride surfaceStatus.
@@ -3646,9 +3816,11 @@ async function run(
   );
 
   ctx.effect(() => () => {
+    disposeQuestions?.();
     disposeApproval();
     disposeRouteFiller();
     disposeSessionFeed();
+    disposeAssistantStream();
     disposeStatus();
   });
 

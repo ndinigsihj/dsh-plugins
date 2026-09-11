@@ -1,0 +1,439 @@
+{
+  "startedAt": "2026-09-11T03:36:15.294Z",
+  "parent": {
+    "provider": "opencode-go",
+    "model": "deepseek-v4-flash"
+  },
+  "allowedX": [
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4-flash"
+    },
+    {
+      "provider": "commandcode",
+      "model": "deepseek/deepseek-v4-flash"
+    },
+    {
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-flash"
+    }
+  ],
+  "checks": [
+    {
+      "id": "a1-host-service-mounted",
+      "pass": true,
+      "detail": {
+        "enabled": true,
+        "allowedModels": [
+          {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash"
+          },
+          {
+            "provider": "commandcode",
+            "model": "deepseek/deepseek-v4-flash"
+          },
+          {
+            "provider": "deepseek-official",
+            "model": "deepseek-v4-flash"
+          },
+          {
+            "provider": "opencode-go",
+            "model": "deepseek-flash"
+          }
+        ]
+      }
+    },
+    {
+      "id": "a00-promotion-precondition",
+      "pass": true,
+      "detail": {
+        "count": 30,
+        "tools": [
+          "ask_user_question",
+          "bash",
+          "create_goal",
+          "edit",
+          "exit_plan_mode",
+          "get_goal",
+          "glob",
+          "grep",
+          "interrupt_agent",
+          "job_kill",
+          "job_list",
+          "job_output",
+          "list_agents",
+          "list_subagent_models",
+          "ralph",
+          "read",
+          "read_image",
+          "send_message",
+          "skill",
+          "skill_load",
+          "skill_search",
+          "str_replace_editor",
+          "subagent",
+          "subagent_fork",
+          "todo_write",
+          "update_goal",
+          "web_fetch",
+          "web_search",
+          "workflow",
+          "write"
+        ]
+      }
+    },
+    {
+      "id": "a2-preset-model-selection-schema",
+      "pass": true,
+      "detail": {
+        "subagentParams": [
+          "description",
+          "prompt",
+          "provider",
+          "model",
+          "reasoning_effort",
+          "run_in_background"
+        ]
+      }
+    },
+    {
+      "id": "a3-discovery-tool-visible",
+      "pass": true,
+      "detail": {
+        "count": 30,
+        "tools": [
+          "ask_user_question",
+          "bash",
+          "create_goal",
+          "edit",
+          "exit_plan_mode",
+          "get_goal",
+          "glob",
+          "grep",
+          "interrupt_agent",
+          "job_kill",
+          "job_list",
+          "job_output",
+          "list_agents",
+          "list_subagent_models",
+          "ralph",
+          "read",
+          "read_image",
+          "send_message",
+          "skill",
+          "skill_load",
+          "skill_search",
+          "str_replace_editor",
+          "subagent",
+          "subagent_fork",
+          "todo_write",
+          "update_goal",
+          "web_fetch",
+          "web_search",
+          "workflow",
+          "write"
+        ]
+      }
+    },
+    {
+      "id": "a13-tool-names-and-context-sources",
+      "pass": true,
+      "detail": {
+        "subagentParams": [
+          "description",
+          "prompt",
+          "provider",
+          "model",
+          "reasoning_effort",
+          "run_in_background"
+        ],
+        "forkParams": [
+          "description",
+          "prompt",
+          "run_in_background"
+        ],
+        "forkDescription": "Delegate a task to a subagent that inherits this conversation: a child agent see"
+      }
+    },
+    {
+      "id": "a0-session-records-policy",
+      "pass": true,
+      "detail": {
+        "policy": [
+          {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash"
+          },
+          {
+            "provider": "commandcode",
+            "model": "deepseek/deepseek-v4-flash"
+          },
+          {
+            "provider": "deepseek-official",
+            "model": "deepseek-v4-flash"
+          },
+          {
+            "provider": "opencode-go",
+            "model": "deepseek-flash"
+          }
+        ],
+        "parentRoute": {
+          "provider": "opencode-go",
+          "model": "deepseek-v4-flash",
+          "maxTokens": 131072,
+          "reasoningEffort": "max"
+        }
+      }
+    },
+    {
+      "id": "a4-discovery-by-provider",
+      "pass": true,
+      "detail": {
+        "providersText": "deepseek-official — DeepSeek\nopencode-go — opencode-go\ncommandcode — Command Code",
+        "opencodeText": "opencode-go/deepseek-v4-flash — DeepSeek V4 Flash\nopencode-go/deepseek-flash — DeepSeek V4.1 Flash",
+        "commandcodeText": "commandcode/deepseek/deepseek-v4-flash — DeepSeek V4 Flash",
+        "outsideText": "ERROR: LLM provider \"volcengine\" is not allowed for this Session"
+      }
+    },
+    {
+      "id": "a5-explicit-route-used",
+      "pass": true,
+      "detail": {
+        "childId": "063212bb-8b55-4548-b586-f0549dd5bfc6",
+        "route": {
+          "provider": "opencode-go",
+          "model": "deepseek-flash",
+          "reasoningEffort": "low",
+          "maxTokens": 131072
+        },
+        "result": "OK"
+      }
+    },
+    {
+      "id": "a6-explicit-effort-used",
+      "pass": true,
+      "detail": {
+        "childId": "063212bb-8b55-4548-b586-f0549dd5bfc6",
+        "effort": "low"
+      }
+    },
+    {
+      "id": "a8-child-inherits-policy",
+      "pass": true,
+      "detail": {
+        "childId": "063212bb-8b55-4548-b586-f0549dd5bfc6",
+        "policy": [
+          {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash"
+          },
+          {
+            "provider": "commandcode",
+            "model": "deepseek/deepseek-v4-flash"
+          },
+          {
+            "provider": "deepseek-official",
+            "model": "deepseek-v4-flash"
+          },
+          {
+            "provider": "opencode-go",
+            "model": "deepseek-flash"
+          }
+        ]
+      }
+    },
+    {
+      "id": "a7-omitted-route-inherits",
+      "pass": true,
+      "detail": {
+        "childId": "52b5f8d6-ddb6-4926-b6b4-09aac9f9fbcb",
+        "parentRoute": {
+          "provider": "opencode-go",
+          "model": "deepseek-v4-flash",
+          "maxTokens": 131072,
+          "reasoningEffort": "max"
+        },
+        "childRoute": {
+          "provider": "opencode-go",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max",
+          "maxTokens": 131072
+        }
+      }
+    },
+    {
+      "id": "a11-forbidden-route-rejected",
+      "pass": true,
+      "detail": {
+        "childId": null,
+        "text": "ERROR: child LLM route \"volcengine/deepseek-v4-flash-ga-260731\" is not allowed for this Session"
+      }
+    },
+    {
+      "id": "a12-fork-same-route-no-selection",
+      "pass": true,
+      "detail": {
+        "childId": "d535ae3f-c8f4-43cb-9440-8870d71fa97f",
+        "parentRoute": {
+          "provider": "opencode-go",
+          "model": "deepseek-v4-flash",
+          "maxTokens": 131072,
+          "reasoningEffort": "max"
+        },
+        "forkRoute": {
+          "provider": "opencode-go",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max",
+          "maxTokens": 131072
+        },
+        "result": "OK"
+      }
+    },
+    {
+      "id": "a14-model-driven-selection",
+      "pass": true,
+      "detail": {
+        "childId": "679c6c70-00c6-4f5c-850a-f9808b0f2355",
+        "route": {
+          "provider": "opencode-go",
+          "model": "deepseek-flash",
+          "reasoningEffort": "low",
+          "maxTokens": 131072
+        },
+        "call": "{\"description\":\"route probe\",\"prompt\":\"Reply with exactly: OK\",\"provider\":\"opencode-go\",\"model\":\"deepseek-flash\",\"reasoning_effort\":\"low\",\"run_in_background\":false}"
+      }
+    },
+    {
+      "id": "a9-settings-edit-does-not-rewrite",
+      "pass": true,
+      "detail": {
+        "before": {
+          "base": {
+            "enabled": true,
+            "allowedModels": [
+              {
+                "provider": "opencode-go",
+                "model": "deepseek-v4-flash"
+              },
+              {
+                "provider": "commandcode",
+                "model": "deepseek/deepseek-v4-flash"
+              },
+              {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash"
+              },
+              {
+                "provider": "opencode-go",
+                "model": "deepseek-flash"
+              }
+            ]
+          }
+        },
+        "published": true,
+        "newPolicy": [
+          {
+            "provider": "gjx",
+            "model": "gpt-5.6-sol"
+          }
+        ],
+        "oldPolicy": [
+          {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash"
+          },
+          {
+            "provider": "commandcode",
+            "model": "deepseek/deepseek-v4-flash"
+          },
+          {
+            "provider": "deepseek-official",
+            "model": "deepseek-v4-flash"
+          },
+          {
+            "provider": "opencode-go",
+            "model": "deepseek-flash"
+          }
+        ],
+        "freshListY": "gjx/gpt-5.6-sol — gpt-5.6-sol",
+        "freshListX": "ERROR: LLM provider \"opencode-go\" is not allowed for this Session",
+        "staleText": "ERROR: child LLM route \"gjx/gpt-5.6-sol\" is not allowed for this Session"
+      }
+    },
+    {
+      "id": "a10-old-session-stays-off",
+      "pass": true,
+      "detail": {
+        "oldSessionId": "session-m4-E1-4478e2ed-ca11-47e8-a86f-53dc9876547f",
+        "count": 29,
+        "subagentParams": [
+          "description",
+          "prompt",
+          "run_in_background"
+        ]
+      }
+    }
+  ],
+  "facts": {
+    "baseline": {
+      "enabled": true,
+      "allowedModels": [
+        {
+          "provider": "opencode-go",
+          "model": "deepseek-v4-flash"
+        },
+        {
+          "provider": "commandcode",
+          "model": "deepseek/deepseek-v4-flash"
+        },
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash"
+        },
+        {
+          "provider": "opencode-go",
+          "model": "deepseek-flash"
+        }
+      ]
+    },
+    "assembledTools": [
+      "ask_user_question",
+      "bash",
+      "create_goal",
+      "edit",
+      "exit_plan_mode",
+      "get_goal",
+      "glob",
+      "grep",
+      "interrupt_agent",
+      "job_kill",
+      "job_list",
+      "job_output",
+      "list_agents",
+      "list_subagent_models",
+      "ralph",
+      "read",
+      "read_image",
+      "send_message",
+      "skill",
+      "skill_load",
+      "skill_search",
+      "str_replace_editor",
+      "subagent",
+      "subagent_fork",
+      "todo_write",
+      "update_goal",
+      "web_fetch",
+      "web_search",
+      "workflow",
+      "write"
+    ]
+  },
+  "finishedAt": "2026-09-11T03:36:47.966Z",
+  "summary": "16/16 pass"
+}

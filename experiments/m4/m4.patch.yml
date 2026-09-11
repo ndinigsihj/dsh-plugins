@@ -1,7 +1,10 @@
 # M4 对比实验 patch（headless 组合 + agent-presets，与历史 M4 同口径）。
 #
-# 用法：M4_GROUPS=E,C M4_RUNS=9 M4_OUT=/tmp/m4-new.jsonl \
+# 用法：M4_GROUPS=E M4_RUNS=9 M4_MODEL=opencode-go/deepseek-v4-flash M4_OUT=/tmp/m4-new.jsonl \
 #   dsh --profile headless --patch experiments/m4/m4.patch.yml
+#
+# 2026-09-10 升级 rc.1 后：preset 走 user root（~/.dsh/.agent-presets 部署位副本），
+# E = minimal-plus-next；M4_MODEL 按需覆盖默认路由（见 m4-runner.mjs 头注释）。
 - id: headless-runner
   disabled: true
 
@@ -16,7 +19,7 @@
     - id: agent-presets
       name: "@deepseek-ai/dsh-agent-presets"
       config:
-        default: minimal-plus
+        default: minimal-plus-next
         roots: []
         includeUserRoot: true
 
