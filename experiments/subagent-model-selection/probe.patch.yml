@@ -49,4 +49,4 @@
         includeUserRoot: true
 
     - id: ticket11-probe
-      name: /Users/vito/data/dev/dsh-plugins/experiments/subagent-model-selection/probe.mjs
+      name: ./probe.mjs

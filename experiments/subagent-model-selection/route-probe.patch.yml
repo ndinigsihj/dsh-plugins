@@ -50,4 +50,4 @@
         includeUserRoot: true
 
     - id: ticket12-route-probe
-      name: /Users/vito/data/dev/dsh-plugins/experiments/subagent-model-selection/route-probe.mjs
+      name: ./route-probe.mjs

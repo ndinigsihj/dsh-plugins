@@ -19,9 +19,9 @@
  */
 import { randomUUID } from "node:crypto";
 import { appendFileSync } from "node:fs";
-import { installModelSelection } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-agent/lib/index.js";
-import { SessionId } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-session/lib/index.js";
-import { createUserMessage } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-llm/lib/index.js";
+import { installModelSelection } from "@deepseek-ai/dsh-agent";
+import { SessionId } from "@deepseek-ai/dsh-session";
+import { createUserMessage } from "@deepseek-ai/dsh-llm";
 
 export const name = "m4-runner";
 export const inject = [];
@@ -44,7 +44,8 @@ function batchSelection(defaultModel) {
 }
 
 function taskTemplate(group, run) {
-  return `你的工作目录是 /Users/vito/data/dev/dsh-plugins。请完成以下任务：\n1. 先查看工作目录里有哪些文件和目录；\n2. 然后创建一个文本文件 m4-probe-${group}${run}.txt，内容写 'M4 probe ${group}-${run}'；\n3. 最后用 bash 确认文件已创建并展示其内容。`;
+  // 工作目录取自进程 cwd（与 agents.create 的 meta.cwd 同源），换 checkout 无需改文案。
+  return `你的工作目录是 ${process.cwd()}。请完成以下任务：\n1. 先查看工作目录里有哪些文件和目录；\n2. 然后创建一个文本文件 m4-probe-${group}${run}.txt，内容写 'M4 probe ${group}-${run}'；\n3. 最后用 bash 确认文件已创建并展示其内容。`;
 }
 
 function unique(parts) {

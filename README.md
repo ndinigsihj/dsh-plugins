@@ -35,9 +35,9 @@ The profile's `cordis.patch.yml` inserts the local plugin files by absolute path
 ```yaml
 - insert:
     - id: tui-startup
-      name: '/Users/vito/data/dev/dsh-plugins/lib/startup.ts'
+      name: '<repo>/lib/startup.ts'      # 换成当前 checkout 的绝对路径
     - id: tui-runner
-      name: '/Users/vito/data/dev/dsh-plugins/lib/index.ts'
+      name: '<repo>/lib/index.ts'
 ```
 
 1. `npm install` (project has its own node_modules so the `.ts` imports resolve)

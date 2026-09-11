@@ -18,3 +18,4 @@
 - [ ] 变异验证：人为删除停止终端的调用后，恢复契约断言变红
 - [ ] 复制相关断言只走远程会话分支（测试注释说明原因）
 - [ ] 新测试进入日常单测命令，整体仍为秒级且全绿
+- [ ] `phase-swap-bash.test.mjs` 自带的 boot 桩并入共享 `test-helpers.mjs`（保留 `sessionListeners`/`assembleListeners` 的直驱手法）— 来自施工图 §6-6 与 P2.5 的「桩统一」；stable 副本 `presets/minimal-plus/test-helpers.mjs` 按 D3 不动、差异保留

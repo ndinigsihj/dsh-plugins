@@ -20,4 +20,4 @@
 
 - insert:
     - id: session-preview-seeded-probe
-      name: /Users/vito/data/dev/dsh-plugins/experiments/session-preview-seeded/probe.mjs
+      name: ./probe.mjs

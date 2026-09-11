@@ -18,17 +18,17 @@ import { join } from "node:path";
 // 用 repo 的 dev 依赖树（link-global-dsh.sh → 全局 rc.1），而不是
 // ~/.dsh/profiles/node_modules 共享 farm——该 farm 由最近一次 boot 的宿主代
 // 自愈，stable 侧启动后会指回 rc.2，冒烟就会挂在旧 persona 字段上（2026-09-10 实测）。
-import {
-  boot,
-  loadProfile,
-} from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js";
+import { boot, loadProfile } from "@deepseek-ai/dsh-app-boot";
+import { installAnchor } from "../../scripts/host-runtime.mjs";
 
+// 仓库根由本模块位置推导（presets/minimal-plus-next/ → repo 根），换 checkout/CI 无需改脚本。
+const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 // dsh CLI 安装锚点（bundle 解析基准，同 CLI 的 INSTALL_ANCHOR）
-const INSTALL_ANCHOR = "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/package.json";
-const SMOKE_DRIVER = "/Users/vito/data/dev/dsh-plugins/presets/minimal-plus-next/smoke-driver.mjs";
+const INSTALL_ANCHOR = installAnchor();
+const SMOKE_DRIVER = fileURLToPath(new URL("./smoke-driver.mjs", import.meta.url));
 // 冒烟默认直挂 repo 内 preset 目录（自研文件），不依赖 ~/.dsh 部署位；
 // 设 SMOKE_PRESET_ROOT 可改扫部署位副本（Phase 4 部署冒烟）。
-const PRESET_ROOT = process.env.SMOKE_PRESET_ROOT ?? "/Users/vito/data/dev/dsh-plugins/presets";
+const PRESET_ROOT = process.env.SMOKE_PRESET_ROOT ?? join(ROOT, "presets");
 
 const profile = loadProfile("dsh", "headless", INSTALL_ANCHOR);
 const bundlePatches = profile.layers.flatMap((layer) => layer.patches);

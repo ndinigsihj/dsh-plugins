@@ -2,6 +2,9 @@
 #
 # 用法：TRAJECTORY_TASK=... TRAJECTORY_OUT=... \
 #   dsh --profile headless --patch presets/minimal-plus-next/trajectory.patch.yml
+#
+# 路径不写死：preset 根由 TRAJECTORY_PRESET_ROOT 覆盖，默认取相对当前工作目录的
+# presets（文档约定的调用方式即在仓库根执行）；driver 由 patch 文件位置锚定。
 - id: headless-runner
   disabled: true
 
@@ -18,9 +21,9 @@
       config:
         default: minimal-plus-next
         roots:
-          - path: /Users/vito/data/dev/dsh-plugins/presets
+          - path: !!js process.env.TRAJECTORY_PRESET_ROOT ?? 'presets'
             trust: system
         includeUserRoot: true
 
     - id: liangshen-trajectory
-      name: /Users/vito/data/dev/dsh-plugins/presets/minimal-plus-next/trajectory-driver.mjs
+      name: ./trajectory-driver.mjs

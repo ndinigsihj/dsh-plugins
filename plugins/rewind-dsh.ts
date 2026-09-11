@@ -29,8 +29,8 @@
  *
  *   - insert:
  *       - id: dsh-rewind
- *         name: '/Users/vito/data/dev/dsh-plugins/plugins/rewind-dsh.ts'   # tui-dev
- *         # tui（稳定）：'/Users/vito/data/dev/dsh-plugins-stable/plugins/rewind-dsh.ts'
+ *         name: '<repo>/plugins/rewind-dsh.ts'        # tui-dev：换成当前 checkout 的绝对路径
+ *         # tui（稳定）：'<stable-checkout>/plugins/rewind-dsh.ts'
  *         inject: [agents, commands]
  */
 

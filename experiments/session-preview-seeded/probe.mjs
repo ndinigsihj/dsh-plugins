@@ -15,13 +15,15 @@
  * /tmp/dsh-ticket13-seeded-preview/probe.json），全 PASS 退出码 0。
  */
 import { writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 export const name = "session-preview-seeded-probe";
 /** sessionQuery 是 dsh-base 提供的基础服务；声明 inject 让 apply 等服务就绪后再跑。 */
 export const inject = ["sessionQuery"];
 
 const DEFAULT_SESSION_ID = "session-6846f8fa-18eb-4ce8-8f85-4b6a36b37aff";
-const READER_MODULE = "/Users/vito/data/dev/dsh-plugins/lib/session-preview-log.ts";
+/** TUI 侧预览读取器：由本模块位置推导（experiments/session-preview-seeded/ → repo 根）。 */
+const READER_MODULE = fileURLToPath(new URL("../../lib/session-preview-log.ts", import.meta.url));
 
 function failureText(error) {
   if (error !== null && typeof error === "object") {

@@ -13,12 +13,13 @@
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { installModelSelection } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-agent/lib/index.js";
-import { createUserMessage } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-llm/lib/index.js";
-import { SessionId } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-session/lib/index.js";
+import { installModelSelection } from "@deepseek-ai/dsh-agent";
+import { createUserMessage } from "@deepseek-ai/dsh-llm";
+import { SessionId } from "@deepseek-ai/dsh-session";
 // 用 repo 的 dev 依赖树（link-global-dsh.sh → 全局 rc.1），与上方 dsh-agent/session/llm 同代；
 // ~/.dsh/profiles/node_modules 共享 farm 会被最近一次 boot 的宿主整代重写（2026-09-10 实测）。
-import { boot, loadProfile } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js";
+import { boot, loadProfile } from "@deepseek-ai/dsh-app-boot";
+import { installAnchor } from "../scripts/host-runtime.mjs";
 
 // 自动注入 credentials（与 dsh CLI 同一解析来源；缺 key 也能跑路由记录验证）
 try {
@@ -29,7 +30,8 @@ try {
   }
 } catch {}
 
-const INSTALL_ANCHOR = "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/package.json";
+// dsh 安装锚点由依赖树推导（link-global-dsh.sh 建立的 repo 依赖作用域），不写死本机路径。
+const INSTALL_ANCHOR = installAnchor();
 
 const profile = loadProfile("dsh", "headless", INSTALL_ANCHOR);
 const bundlePatches = profile.layers.flatMap((layer) => layer.patches);

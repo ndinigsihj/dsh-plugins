@@ -14,9 +14,9 @@
  */
 import { randomUUID } from "node:crypto";
 import { writeFileSync } from "node:fs";
-import { installModelSelection } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-agent/lib/index.js";
-import { SessionId } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-session/lib/index.js";
-import { ToolCallId, createUserMessage } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-llm/lib/index.js";
+import { installModelSelection } from "@deepseek-ai/dsh-agent";
+import { SessionId } from "@deepseek-ai/dsh-session";
+import { ToolCallId, createUserMessage } from "@deepseek-ai/dsh-llm";
 
 export const name = "ticket11-probe";
 export const inject = [];

@@ -24,4 +24,4 @@
         includeUserRoot: true
 
     - id: m4-trajectory-runner
-      name: /Users/vito/data/dev/dsh-plugins/experiments/m4/m4-runner.mjs
+      name: ./m4-runner.mjs

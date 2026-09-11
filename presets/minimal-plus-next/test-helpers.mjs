@@ -8,11 +8,10 @@
  * 运行：node --test presets/minimal-plus-next/<file>.test.mjs
  */
 
-const DEP = "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai";
-const { Context } = await import(`${DEP}/cordis/lib/index.js`);
-const { createScope, scopeOf } = await import(`${DEP}/dsh-scope/lib/index.js`);
-const { ToolRuntime } = await import(`${DEP}/dsh-tools/lib/index.js`);
-const persistentBash = await import(`${DEP}/dsh-tool-bash-persistent/lib/index.js`);
+const { Context } = await import("@deepseek-ai/cordis");
+const { createScope, scopeOf } = await import("@deepseek-ai/dsh-scope");
+const { ToolRuntime } = await import("@deepseek-ai/dsh-tools");
+const persistentBash = await import("@deepseek-ai/dsh-tool-bash-persistent");
 
 export const PERSISTENT_DESC = "persistent probe bash";
 export const PARAM_KEYS = (tool) => Object.keys(tool?.parameters?.properties ?? {});

@@ -1,7 +1,7 @@
 /**
  * phase-swap-bash 集成单测（真实 dsh 运行时）。
  *
- * 使用 repo 的 node_modules（`/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai`）。
+ * 使用 repo 的 node_modules（`node_modules/@deepseek-ai` 由 `scripts/link-global-dsh.sh` 指向全局宿主）。
  * 原 endless-tui profile（第三方 @deepseek-harness-tui/dsh-tui）已删除，本测试不再依赖它。
  *
  * 运行：node --test presets/minimal-plus-next/phase-swap-bash.test.mjs
@@ -16,16 +16,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-// ── 部署包绝对路径（rc.8 运行时）─────────────────────────────────────────────
-const DEP = "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai";
-const CORDIS = "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/cordis/lib/index.js";
-const SCOPE = "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-scope/lib/index.js";
-
-const { Context } = await import(CORDIS);
-const { createScope, scopeOf } = await import(SCOPE);
-const { ToolRuntime } = await import(`${DEP}/dsh-tools/lib/index.js`);
-const persistentBash = await import(`${DEP}/dsh-tool-bash-persistent/lib/index.js`);
-const sandboxBash = await import(`${DEP}/dsh-tool-bash/lib/index.js`);
+// ── 宿主包按裸包名导入（深路径会被 exports 拒绝）──────────────────────────────
+const { Context } = await import("@deepseek-ai/cordis");
+const { createScope, scopeOf } = await import("@deepseek-ai/dsh-scope");
+const { ToolRuntime } = await import("@deepseek-ai/dsh-tools");
+const persistentBash = await import("@deepseek-ai/dsh-tool-bash-persistent");
+const sandboxBash = await import("@deepseek-ai/dsh-tool-bash");
 const plugin = await import("./phase-swap-bash.mjs");
 
 const PERSISTENT_DESC = "persistent probe bash";
