@@ -20,6 +20,7 @@ import { SESSION_FORMAT_VERSION } from "@deepseek-ai/dsh-session";
 import { MANIFEST_PATH, checkDeployment, checkHostPin, readManifest, resolveDeploymentRoot } from "./manifest.mjs";
 import { EXIT, GATE_VERSION, createAssertions, diffRealHome, parseTestCounts, run, sha256File, sha256Json, stableJson, writeReport } from "./gate-helpers.mjs";
 import { parseCompositionDump } from "./dump-parse.mjs";
+import { RenderRealError, REAL_PROFILE_NAME, renderRealComposition } from "./composition/render-real.mjs";
 import { countEntries, findDuplicateIds } from "./unique-ids.mjs";
 
 // `new URL("..")` 带尾斜杠；去掉它，路径显示（`file.slice(REPO_ROOT.length + 1)`）才正确。
@@ -38,6 +39,7 @@ const GATE_SOURCES = [
   join(REPO_ROOT, "gates", "manifest.mjs"),
   join(REPO_ROOT, "gates", "unique-ids.mjs"),
   join(REPO_ROOT, "gates", "dump-parse.mjs"),
+  join(REPO_ROOT, "gates", "composition", "render-real.mjs"),
 ];
 /** seeded 预览探针的 id 白名单：红线断言被删掉时闸门必须变红。 */
 const SEEDED_PROBE_IDS = [
@@ -194,27 +196,34 @@ function runT0(env) {
 // ── T1 零 LLM 组合层 ─────────────────────────────────────────────────────────
 
 /**
- * 闸门自持组合：repo preset 根 + 四个生产插件，不读用户层、不依赖相邻仓库。
- * 渲染走 app-boot 的 `renderConfigDump`（与 `--dump-config` 同一算法）。
+ * 组合渲染的唯一入口（票据 03 的 `gate` + 票据 04 的 `real`）：
+ *   - `gate`（默认）：repo preset 根 + 四个生产插件（`gates/composition/gate.patch.yml`），
+ *     不读用户层、不依赖相邻仓库；
+ *   - `real`（交付前）：票据 04 物化到临时 home 的真实 `tui-dev` profile 渲染副本，
+ *     不再叠加闸门补丁（真实组合的内容全在渲染后的 profile 里）。
+ * 两条路径都走 app-boot 的 `renderConfigDump`（与 `--dump-config` 同一算法）。
  */
-async function composeGate({ tempHome, host }) {
+async function composeComposition({ tempHome, host, composition }) {
+  const real = composition === "real";
   await healProfilesModuleFallback({ installAnchor: installAnchor(host), home: tempHome });
   let profile;
   try {
-    profile = loadProfile("dsh", "headless", installAnchor(host), tempHome);
+    profile = loadProfile("dsh", real ? REAL_PROFILE_NAME : "headless", installAnchor(host), tempHome);
   } catch (error) {
     throw new PreconditionError(`loadProfile failed: ${String(error.message ?? error)}`, { error: String(error) });
   }
-  let overlay;
-  try {
-    overlay = loadOverlayPatches("dsh", GATE_PATCH);
-  } catch (error) {
-    throw new PreconditionError(`gate patch failed to load: ${String(error.message ?? error)}`, { patch: GATE_PATCH });
+  let overlay = [];
+  if (!real) {
+    try {
+      overlay = loadOverlayPatches("dsh", GATE_PATCH);
+    } catch (error) {
+      throw new PreconditionError(`gate patch failed to load: ${String(error.message ?? error)}`, { patch: GATE_PATCH });
+    }
   }
   const layers = [
     ...profile.layers.map((layer) => ({ label: layer.packageName, patches: layer.patches })),
     ...(profile.patches.length > 0 ? [{ label: profile.patchPath, patches: profile.patches }] : []),
-    { label: "gates/composition/gate.patch.yml", patches: overlay },
+    ...(real ? [] : [{ label: "gates/composition/gate.patch.yml", patches: overlay }]),
   ];
   let dump;
   try {
@@ -223,7 +232,7 @@ async function composeGate({ tempHome, host }) {
     throw new PreconditionError(`composition render failed: ${String(error.message ?? error)}`, { error: String(error) });
   }
   const composed = composeEntries(layers.flatMap((layer) => layer.patches));
-  const dumpPath = join(tempHome, "gate-composition.yml");
+  const dumpPath = join(tempHome, real ? "tui-dev-composition.yml" : "gate-composition.yml");
   writeFileSync(dumpPath, dump);
   return {
     composed,
@@ -232,6 +241,8 @@ async function composeGate({ tempHome, host }) {
     composedSha256: sha256Json(composed),
     counts: countEntries(composed),
     duplicates: findDuplicateIds(composed),
+    /** T1 真正加载的那份补丁（gate：仓库补丁；real：临时 home 渲染副本）。 */
+    patchPath: real ? profile.patchPath : GATE_PATCH,
   };
 }
 
@@ -317,9 +328,11 @@ function findStubReferences(entries, dumpText) {
 function runT1(config, report) {
   const t = createAssertions();
   const { tempHome, env, gate } = config;
+  const real = config.composition === "real";
 
   // ① 组合导出：真实 `dsh --dump-config` 退出码 0（另一条渲染路径），并与进程内组合对照
-  const dumpRun = run("dsh", ["--profile", "headless", "--patch", GATE_PATCH, "--dump-config"], { cwd: REPO_ROOT, env });
+  const dumpArgs = real ? ["--profile", REAL_PROFILE_NAME, "--dump-config"] : ["--profile", "headless", "--patch", GATE_PATCH, "--dump-config"];
+  const dumpRun = run("dsh", dumpArgs, { cwd: REPO_ROOT, env });
   const dumpText = dumpRun.stdout;
   const parsed = parseCompositionDump(dumpText);
   const cliCounts = parsed.entries === undefined ? undefined : countEntries(parsed.entries);
@@ -328,7 +341,7 @@ function runT1(config, report) {
   t[dumpOk ? "pass" : "fail"](
     "composition.dump-config",
     `exit ${String(dumpRun.status)} ${parsed.error === undefined ? `entries=${String(cliCounts?.ids)}` : `parse: ${parsed.error}`}`,
-    { source: GATE_PATCH, inProcessEntries: gate.composed.length, stderr: tailLines(dumpRun.stderr, 4) },
+    { source: gate.patchPath, inProcessEntries: gate.composed.length, stderr: tailLines(dumpRun.stderr, 4) },
   );
 
   // ② 逐 loader id 递归计数 = 1：导出本身不做重复检测（patch 按 id 覆盖），必须单独断言；
@@ -381,8 +394,12 @@ function runT1(config, report) {
   );
   report.smoke = { r1Tools, toolCount: r2Tools.length, tools: r2Tools, preStepSources: r2Sources };
 
-  // ⑤ 降级路径冒烟（缺 bootstrap 工具 → fail-open 全量目录）
-  const degrade = run("bash", [DEGRADE_SMOKE], { cwd: REPO_ROOT, env: { ...env, DEGRADE_SMOKE_ROOT: join(tempHome, "degrade") } });
+  // ⑤ 降级路径冒烟（缺 bootstrap 工具 → fail-open 全量目录）。
+  // preset 来源跟随组合模式：real 用物化副本（部署位），gate 用仓库根。
+  const degrade = run("bash", [DEGRADE_SMOKE], {
+    cwd: REPO_ROOT,
+    env: { ...env, DEGRADE_SMOKE_ROOT: join(tempHome, "degrade"), DEGRADE_SMOKE_SOURCE_ROOT: env.SMOKE_PRESET_ROOT },
+  });
   const degradeOut = `${degrade.stdout}\n${degrade.stderr}`;
   const failOpen = degradeOut.includes("bootstrap disabled, full catalog exposed");
   const r1Degraded = jsonField(degrade.stdout, "ROUND1 catalog:");
@@ -471,9 +488,15 @@ function runT1(config, report) {
     { strictZones: report.isolation.strictZones, observedChanges: diffs },
   );
 
-  // ⑩ 副本侧被回写文件的 sha（宿主规范化回写落临时副本即接受）
+  // ⑩ 副本侧被回写文件的 sha（宿主规范化回写落临时副本即接受；real 另记真实 profile 副本）
   const copyCordis = sha256File(join(tempHome, "profiles", "headless", "cordis.yml"));
-  t.pass("isolation.copy-rewrite-sha", `cordis.yml sha256=${String(copyCordis).slice(0, 12)}`, { path: join(tempHome, "profiles", "headless", "cordis.yml") });
+  const realCopyCordis = real ? sha256File(join(tempHome, "profiles", REAL_PROFILE_NAME, "cordis.yml")) : undefined;
+  const copyEvidence = real
+    ? `headless cordis.yml sha256=${String(copyCordis).slice(0, 12)} ${REAL_PROFILE_NAME} cordis.yml sha256=${String(realCopyCordis).slice(0, 12)}`
+    : `cordis.yml sha256=${String(copyCordis).slice(0, 12)}`;
+  t.pass("isolation.copy-rewrite-sha", copyEvidence, {
+    paths: [join(tempHome, "profiles", "headless", "cordis.yml"), ...(real ? [join(tempHome, "profiles", REAL_PROFILE_NAME, "cordis.yml")] : [])],
+  });
 
   // ⑪ 闸门自身不含部署位同步动作（同步仍是显式 scripts/sync-agent-presets.sh）
   const offenders = GATE_SOURCES.filter((file) => hasActiveSyncCall(file));
@@ -481,6 +504,17 @@ function runT1(config, report) {
     "gate.no-deployment-sync",
     offenders.length === 0 ? `no sync invocation in ${String(GATE_SOURCES.length)} gate sources` : `sync invocation in: ${offenders.join(", ")}`,
   );
+
+  // ⑫ real：源 profile 只读（渲染前后 sha 一致）；报告记源 sha 与渲染后 sha 供追溯
+  if (real && config.real !== null) {
+    const afterSha = sha256File(config.real.sourcePath);
+    const unchanged = afterSha === config.real.sourceSha;
+    t[unchanged ? "pass" : "fail"](
+      "composition.source-profile-unchanged",
+      `source ${config.real.sourcePath} before=${String(config.real.sourceSha).slice(0, 12)} after=${String(afterSha).slice(0, 12)}`,
+      { sourcePath: config.real.sourcePath, sourceSha: config.real.sourceSha, afterSha },
+    );
+  }
 
   return t.assertions;
 }
@@ -500,9 +534,9 @@ function recordTier(id, assertions, startedMs = Date.now()) {
 }
 
 /** T2/T4 的 stub 与 app 层尚未落地（票据 06–08）：显式 skip，不假装绿。 */
-function skipPendingTiers(report, tiers) {
-  if (tiers.includes(2)) {
-    report.tiers.push(recordTier("T2", [{ id: "stub.tier", status: "skip", evidence: "stub behaviour tier lands with tickets 06/07" }]));
+function skipPendingTiers(tiers, requested) {
+  if (requested.includes(2)) {
+    tiers.push(recordTier("T2", [{ id: "stub.tier", status: "skip", evidence: "stub behaviour tier lands with tickets 06/07" }]));
   }
 }
 
@@ -527,8 +561,13 @@ export async function runGate(options) {
     hostVersion: null,
     sessionFormatVersion: SESSION_FORMAT_VERSION,
     composition: options.composition,
-    compositionSourceSha: sha256File(GATE_PATCH),
+    compositionVerified: options.composition === "real" ? null : "repo-patch",
+    compositionSourcePath: options.composition === "real" ? null : GATE_PATCH,
+    compositionSourceSha: options.composition === "real" ? null : sha256File(GATE_PATCH),
+    compositionRenderedPath: null,
     compositionRenderedSha: null,
+    compositionDumpSha: null,
+    compositionReal: null,
     deployment: null,
     tiers: [],
     exemptions: [],
@@ -573,12 +612,6 @@ export async function runGate(options) {
       }
     }
   }
-  if (options.composition === "real") {
-    preconditionsOk = false;
-    preconditionDetail = "real composition mode needs dsh-relay + dsh-endless runtime render (ticket 04)";
-    pre.fail("composition.real", preconditionDetail);
-  }
-
   const tempHome = options.tempHome;
   const env = {
     ...process.env,
@@ -593,6 +626,41 @@ export async function runGate(options) {
   mkdirSync(join(tempHome, "gate"), { recursive: true });
   prepareProfile(tempHome);
   const realHomeBefore = scanRealHome(manifest.status === "ok" ? manifest.manifest : { deployment: {} });
+
+  // real 组合（票据 04）：读真实 tui-dev profile、按 env 渲染三类仓库根、物化到临时 home。
+  // 缺相邻 checkout / 渲染后依赖不可解析 → 环境前置失败（exit 2），绝不回落自持组合。
+  let real = null;
+  if (options.composition === "real" && host !== undefined && manifest.status === "ok") {
+    const deploymentEntry = manifest.manifest.deployment?.[PRESET];
+    try {
+      real = renderRealComposition({
+        repoRoot: REPO_ROOT,
+        tempHome,
+        presetName: PRESET,
+        deploymentRoot: deploymentEntry === undefined ? undefined : resolveDeploymentRoot(deploymentEntry, homedir()),
+        installAnchor: installAnchor(host),
+        env: process.env,
+        homeDir: homedir(),
+      });
+      env.SMOKE_PRESET_ROOT = real.preset.root;
+      pre.pass(
+        "composition.real-render",
+        `source=${real.sourcePath} sha256=${real.sourceSha.slice(0, 12)} → rendered=${real.renderedPath} sha256=${real.renderedSha.slice(0, 12)} preset=${real.preset.source}`,
+        { roots: real.roots, preset: real.preset, settings: real.settings, loadedBy: "rendered-copy" },
+      );
+      report.compositionVerified = "rendered-copy";
+      report.compositionSourcePath = real.sourcePath;
+      report.compositionSourceSha = real.sourceSha;
+      report.compositionRenderedPath = real.renderedPath;
+      report.compositionRenderedSha = real.renderedSha;
+      report.compositionReal = { profile: REAL_PROFILE_NAME, roots: real.roots, preset: real.preset, settings: real.settings };
+    } catch (error) {
+      preconditionsOk = false;
+      preconditionDetail = error instanceof RenderRealError ? error.message : `real composition render failed: ${String(error.message ?? error)}`;
+      pre.fail("composition.real-render", preconditionDetail, error.detail);
+    }
+  }
+
   const exemptions = options.exemptions ?? new Set();
   const exemptionsApplied = [];
   report.exemptions = exemptionsApplied;
@@ -601,7 +669,7 @@ export async function runGate(options) {
   let gateError = null;
   if (preconditionsOk && host !== undefined && options.tiers.includes(1)) {
     try {
-      gate = await composeGate({ tempHome, host });
+      gate = await composeComposition({ tempHome, host, composition: options.composition });
     } catch (error) {
       gateError = error;
       if (error instanceof PreconditionError) {
@@ -631,6 +699,8 @@ export async function runGate(options) {
         tempHome,
         env,
         gate,
+        composition: options.composition,
+        real,
         manifestObj: manifest.manifest,
         host,
         exemptions,
@@ -640,13 +710,21 @@ export async function runGate(options) {
       };
       const t1Started = Date.now();
       tiers.push(recordTier("T1", runT1(config, report), t1Started));
-      report.compositionRenderedSha = gate.dumpSha256;
+      report.compositionDumpSha = gate.dumpSha256;
       report.compositionEntriesSha = gate.composedSha256;
       report.compositionArtifact = gate.dumpPath;
-      report.copies = { profileCordisSha: sha256File(join(tempHome, "profiles", "headless", "cordis.yml")) };
+      if (options.composition === "gate") {
+        // gate：渲染产物（dump）即「验的那一份」的 sha 记录面（票据 03 的既有 schema）。
+        report.compositionRenderedPath = gate.dumpPath;
+        report.compositionRenderedSha = gate.dumpSha256;
+      }
+      report.copies = {
+        profileCordisSha: sha256File(join(tempHome, "profiles", "headless", "cordis.yml")),
+        ...(real === null ? {} : { realProfileCordisSha: sha256File(join(tempHome, "profiles", REAL_PROFILE_NAME, "cordis.yml")) }),
+      };
     }
   }
-  skipPendingTiers(report, options.tiers);
+  skipPendingTiers(tiers, options.tiers);
 
   if (pre.assertions.length > 0) {
     tiers.unshift({

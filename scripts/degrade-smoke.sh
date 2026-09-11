@@ -7,15 +7,18 @@
 # 用法：scripts/degrade-smoke.sh   （默认在仓库 .tmp-degrade-<preset> 下建临时 preset 树）
 # 可覆盖：DEGRADE_SMOKE_PRESET=<preset id>（stable 手验可设 minimal-plus）
 #         DEGRADE_SMOKE_ROOT=<dir>
+#         DEGRADE_SMOKE_SOURCE_ROOT=<dir>（preset 来源根，默认 presets；real 组合模式
+#           传闸门物化的部署位副本根，degrade 与主冒烟才验同一份 preset）
 #         SMOKE_SESSION_ROOT=<dir>（沿透给 smoke-boot；闸门落临时 home）
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PRESET="${DEGRADE_SMOKE_PRESET:-minimal-plus-next}"
+SOURCE_ROOT="${DEGRADE_SMOKE_SOURCE_ROOT:-presets}"
 ROOT="${DEGRADE_SMOKE_ROOT:-.tmp-degrade-$PRESET}"
 rm -rf "$ROOT"
 mkdir -p "$ROOT"
-cp -R "presets/$PRESET" "$ROOT/"
+cp -R "$SOURCE_ROOT/$PRESET" "$ROOT/"
 
 # preset 的自研 .mjs 用裸包名导入宿主依赖；副本一旦落在仓库外（闸门用临时 home），
 # Node 解析就找不到 repo node_modules。这里在副本根补一个 fallback 链接（解析顺序

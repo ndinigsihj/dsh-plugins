@@ -8,11 +8,18 @@
 # 退出码：0 全过 / 1 任一断言失败 / 2 环境前置不满足（宿主或会话格式与清单不符、
 # 组合渲染缺依赖、real 模式缺相邻仓库）。
 #
+# real 组合模式（票据 04；计划 §2.1）：不写死本机路径，按 env 渲染真实
+# `~/.dsh/profiles/tui-dev/cordis.patch.yml` 到临时 home：
+#   DSH_PLUGINS_ROOT（默认本 checkout）
+#   DSH_RELAY_ROOT / DSH_ENDLESS_ROOT（默认相邻 ../dsh-relay、../dsh-endless）
+# 缺任一 checkout 或渲染后依赖不可解析 → exit 2，不回落自持组合。
+#
 # 防护（计划 §2.2）：
 #   - 仓库本地锁 `$REPO/.git/dsh-regression-gate.lock`：两个终端并发会抢共享 farm，
 #     这里用「原子 mkdir」持锁串行化（macOS/Linux 都可用；超时默认 300s）；
 #   - 临时 home：`$TMPDIR/dsh-regression-gate-<pid>/home`，DSH_HOME/HOME 都指过去，
-#     真实 ~/.dsh 只读；退出时删除（--keep-temp 保留供排查）；
+#     真实 ~/.dsh 只读；退出时删除（--keep-temp 保留供排查——注意 real 模式会在
+#     该 home 里放 settings.yaml 副本，含明文密钥，保留即等于在磁盘上多留一份）；
 #   - 报告默认落 `experiments/regression-gate/results-<UTC 日期>.json`（计划 §4.4）。
 
 set -euo pipefail

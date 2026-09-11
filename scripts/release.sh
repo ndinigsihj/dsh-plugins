@@ -24,8 +24,14 @@ if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
   exit 1
 fi
 
-npx tsc --noEmit
-npm test
+# --- Pre-release gate (tickets 03/04; plan §5.1) -----------------------------
+# Always the REAL tui-dev composition, runtime-rendered into a temp home; never
+# any exemption flag (D6) — a stale/absent deployment or a missing sibling
+# checkout must stop the release, not be waived. T0 covers tsc + npm test, T1 the
+# zero-LLM composition layer, T2 degrades to an explicit skip until tickets 06/07.
+# Delivery sequence: explicit preset sync -> this gate -> T3 real-model layer on
+# demand -> human sign-off.
+scripts/regression-gate.sh --tier 0,1,2 --composition real
 
 # Bump only when needed so a re-run after a late failure stays commit-clean.
 if [ "$(node -p "require('./package.json').version")" != "$ver" ]; then
