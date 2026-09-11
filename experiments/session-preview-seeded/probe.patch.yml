@@ -1,13 +1,14 @@
-# Stage 7 反馈回路 overlay（finding 06-4：seeded 子会话 hover 预览读取）。
+# 票 02 seeded 预览探针 overlay（在 headless profile 之上）：
 #
 #   experiments/session-preview-seeded/run.sh [sessionId]
-#   （先复制真实 settings.yaml 到 /tmp，再跑：
-#    dsh --profile headless --patch experiments/session-preview-seeded/probe.patch.yml）
 #
-# 与票据 11/12 探针同处置：关掉 stock headless runner/startup，避免无人值守地建会话；
-# settings.path 指向 /tmp 副本，避免写真实 ~/.dsh/settings.yaml。
-# 注意：本 overlay 故意不覆盖 session-persistence-jsonl.root —— 探针要读真实的
-# ~/.dsh/sessions 里的 seeded fixture（票据 06 rewind 子会话）。
+# 与票据 11/12 探针同处置：关掉 stock headless runner/startup，避免无人值守地建会话。
+# 输入隔离（票 02：不再读用户 settings / sessions）：
+#   - settings.path 指向 run.sh 从 `gates/fixtures/settings.min.yaml` 复制的临时副本；
+#   - session-persistence-jsonl.root 指向临时目录，探针在 apply 时把仓库 fixture
+#     （experiments/fixtures/session-preview-seeded/store，原样字节快照）复制进去，
+#     复制前后逐文件 sha256 校验。
+# 两处 `!!js` 的默认值与 probe.mjs 内的兜底一致；正常运行由 run.sh 显式 export。
 - id: headless-runner
   disabled: true
 
@@ -16,7 +17,11 @@
 
 - id: settings
   config:
-    path: /tmp/dsh-ticket13-seeded-preview/settings.yaml
+    path: !!js process.env.SEEDED_PREVIEW_SETTINGS ?? '/tmp/dsh-seeded-preview/settings.yaml'
+
+- id: session-persistence-jsonl
+  config:
+    root: !!js process.env.SEEDED_PREVIEW_SESSIONS_ROOT ?? '/tmp/dsh-seeded-preview/sessions'
 
 - insert:
     - id: session-preview-seeded-probe

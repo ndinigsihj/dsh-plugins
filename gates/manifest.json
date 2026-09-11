@@ -1,0 +1,40 @@
+{
+  "gateVersion": 1,
+  "hostVersion": "0.1.5-rc.1",
+  "sessionFormatVersion": 3,
+  "deployment": {
+    "minimal-plus-next": {
+      "path": "~/.dsh/.agent-presets/minimal-plus-next",
+      "files": {
+        "agent.cordis.yml": "9087bf00b2edd520f91b2a97fc527cd6250f590ab8694b757420f57e3b31789c",
+        "preset.yml": "8a0965bd624a179d1059849aafea878d981ecfd7512f6f250569fdfd09d1d1de",
+        "compaction-epoch.mjs": "a17cdce7b871b57b35fe9dc5abae4fd7d6b3bcb3089278c7be97ad314e0d4feb",
+        "phase-swap-bash.mjs": "084316a3cfa0ea77a0477a76fcce06300884800b8439da36831112d5d5751690",
+        "tool-bootstrap.mjs": "e3e05e677289d84f5b24e291061e92dc309e75768a5aad355b5ade28f2d2a6ed",
+        "instruction-hint.mjs": "4a2a26cb74ee8307d17df72ea4cebbebf806a4f5c95b29b5e442b6c41fad0667",
+        "skill-search.mjs": "61312f8b054035e52afc6df9d52f5d38b1847dd8ba2a9eb99d2381c794debfaf",
+        "custom-bash.mjs": "3b26436ee419ce57594a9f2fcaad688b6b404780859a82ba143ddcf40abd427d"
+      }
+    }
+  },
+  "baselines": {
+    "m4-upgrade-only-2026-09-10": {
+      "path": "experiments/m4/results-minimal-plus-next-upgrade-only-2026-09-10.jsonl",
+      "sha256": "2fc453932386a9ed522ef32b4de05c7822ab00773f2c9e24689a90f9da8e8288",
+      "hostVersion": "0.1.5-rc.1",
+      "capturedAt": "2026-09-10T12:11:52.000Z",
+      "model": "opencode-go/deepseek-v4-flash",
+      "preset": "minimal-plus-next",
+      "runs": 9
+    },
+    "m4-deduped-2026-09-10": {
+      "path": "experiments/m4/results-minimal-plus-next-deduped-2026-09-10.jsonl",
+      "sha256": "c2d4ef22cacf6c87e5b74df3adfbeebf3e5fd81ba7acec7a09e905daf4ad65a1",
+      "hostVersion": "0.1.5-rc.1",
+      "capturedAt": "2026-09-10T14:25:33.000Z",
+      "model": "opencode-go/deepseek-v4-flash",
+      "preset": "minimal-plus-next",
+      "runs": 9
+    }
+  }
+}
