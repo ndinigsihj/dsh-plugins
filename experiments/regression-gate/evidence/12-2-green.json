@@ -1,0 +1,148 @@
+{
+  "schema": "dsh-gate-stub/1",
+  "scenario": {
+    "id": "bash-first-call",
+    "finding": "finding 12-2（closeout §7.2）：promotion 时换 bash schema 拒掉首轮调用",
+    "invariant": "首轮 bash 调用（无 description）按 persistent schema 校验成功；下一次请求起沙箱 schema 生效",
+    "path": "/Users/vito/data/dev/dsh-plugins/gates/stub/scenarios/bash-first-call.mjs"
+  },
+  "hostVersion": "0.1.5-rc.1",
+  "startedAt": "2026-09-11T15:34:03.839Z",
+  "finishedAt": "2026-09-11T15:34:04.969Z",
+  "durationMs": 1130,
+  "route": {
+    "provider": "stub",
+    "model": "stub-model"
+  },
+  "sessionId": "session-stub-bash-first-call-03a5ad45-0bef-4aa8-a197-0db18da64161",
+  "calls": [
+    {
+      "provider": "stub",
+      "model": "stub-model",
+      "purpose": null,
+      "sessionId": "session-stub-bash-first-call-03a5ad45-0bef-4aa8-a197-0db18da64161",
+      "toolNames": [
+        "bash",
+        "str_replace_editor"
+      ],
+      "turnIndex": 0
+    },
+    {
+      "provider": "stub",
+      "model": "stub-model",
+      "purpose": null,
+      "sessionId": "session-stub-bash-first-call-03a5ad45-0bef-4aa8-a197-0db18da64161",
+      "toolNames": [
+        "ask_user_question",
+        "bash",
+        "create_goal",
+        "edit",
+        "exit_plan_mode",
+        "get_goal",
+        "glob",
+        "grep",
+        "interrupt_agent",
+        "job_kill",
+        "job_list",
+        "job_output",
+        "list_agents",
+        "ralph",
+        "read",
+        "read_image",
+        "send_message",
+        "skill",
+        "skill_load",
+        "skill_search",
+        "str_replace_editor",
+        "subagent",
+        "subagent_fork",
+        "todo_write",
+        "update_goal",
+        "web_fetch",
+        "web_search",
+        "workflow",
+        "write"
+      ],
+      "turnIndex": 1
+    },
+    {
+      "provider": "stub",
+      "model": "stub-model",
+      "purpose": null,
+      "sessionId": "session-stub-bash-first-call-03a5ad45-0bef-4aa8-a197-0db18da64161",
+      "toolNames": [
+        "ask_user_question",
+        "bash",
+        "create_goal",
+        "edit",
+        "exit_plan_mode",
+        "get_goal",
+        "glob",
+        "grep",
+        "interrupt_agent",
+        "job_kill",
+        "job_list",
+        "job_output",
+        "list_agents",
+        "ralph",
+        "read",
+        "read_image",
+        "send_message",
+        "skill",
+        "skill_load",
+        "skill_search",
+        "str_replace_editor",
+        "subagent",
+        "subagent_fork",
+        "todo_write",
+        "update_goal",
+        "web_fetch",
+        "web_search",
+        "workflow",
+        "write"
+      ],
+      "turnIndex": 2
+    }
+  ],
+  "assertions": [
+    {
+      "id": "route.first-request",
+      "status": "pass",
+      "evidence": "request/header#1 config=provider:stub model:stub-model"
+    },
+    {
+      "id": "bash.first-call-persistent-args",
+      "status": "pass",
+      "evidence": "tool/call#1 name=bash arguments={\"command\":\"pwd\"}"
+    },
+    {
+      "id": "bash.first-call-not-rejected",
+      "status": "pass",
+      "evidence": "no argument rejection; tool/result isError=true content=Error: posix_openpt failed: Operation not permitted"
+    },
+    {
+      "id": "bash.promoted-sandbox-visible",
+      "status": "pass",
+      "evidence": "request/header seq=17 bash params=command,description,timeoutMs,workdir,run_in_background,sandbox_permissions,justification"
+    },
+    {
+      "id": "bash.second-call-accepted",
+      "status": "pass",
+      "evidence": "tool/call#2 arguments={\"command\":\"pwd\",\"description\":\"二轮沙箱调用：确认当前目录\"} result=isError=false error=<none>"
+    },
+    {
+      "id": "stub.no-aux-calls",
+      "status": "pass",
+      "evidence": "conversation calls=3/3 aux=[]"
+    },
+    {
+      "id": "session.turn-completed",
+      "status": "pass",
+      "evidence": "turn/end reason={\"kind\":\"completed\"}"
+    }
+  ],
+  "summary": {
+    "passed": 7,
+    "failed": 0
+  }
+}

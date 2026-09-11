@@ -1,0 +1,41 @@
+# T2 假模型行为层 overlay（票据 06；计划 §3.1）——叠在 headless profile 之上：
+#
+#   node gates/stub/run.mjs --scenario bash-first-call
+#   scripts/regression-gate.sh --tier 2
+#
+# 遏制规则（Q13）：假模型只出现在本文件与同目录模块里；provider 名固定 `stub`，
+# 不占用任何真实路由。`./adapter.mjs` 由加载器锚定到本补丁所在目录
+# （anchorInsertedPluginNames），换 checkout 仍可解析。
+- id: headless-runner
+  disabled: true
+
+- id: headless-startup
+  disabled: true
+
+# dsh-base 的 tool-bash 与 preset 的 persistent-shell bash 撞名（同 smoke-boot 处置）
+- id: tool-bash
+  disabled: true
+
+# Q25：首条人类消息后会并发打同一路由，必须关掉，回放序列才确定
+- id: session-title-llm
+  disabled: true
+
+# 会话落隔离根：runner / 闸门注入 STUB_SESSION_ROOT，缺省落 /tmp，绝不写真实 ~/.dsh
+- id: session-persistence-jsonl
+  config:
+    root: !!js process.env.STUB_SESSION_ROOT ?? '/tmp/dsh-gate-stub-sessions'
+
+- insert:
+    # preset 根只扫 repo presets/（跨 checkout 可跑）；不读用户部署位副本，
+    # 部署位一致性由 T1 的独立 sha 断言表达。
+    - id: gate-stub-agent-presets
+      name: '@deepseek-ai/dsh-agent-presets'
+      config:
+        default: minimal-plus-next
+        roots:
+          - path: !!js process.env.STUB_PRESET_ROOT ?? 'presets'
+            trust: system
+        includeUserRoot: false
+
+    - id: gate-stub-adapter
+      name: ./adapter.mjs

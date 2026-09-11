@@ -20,7 +20,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 // ── boot 桩走共享 test-helpers；宿主包按裸包名导入（深路径会被 exports 拒绝）──
-const { boot, makeAgent, fireEvent, fireToolCall, runAssemble, PERSISTENT_DESC, PARAM_KEYS, VIEW } =
+const { boot, makeAgent, fireEvent, fireToolCall, fireToolResult, runAssemble, PERSISTENT_DESC, PARAM_KEYS, VIEW } =
   await import("./test-helpers.mjs");
 const sandboxBash = await import("@deepseek-ai/dsh-tool-bash");
 const plugin = await import("./phase-swap-bash.mjs");
@@ -41,11 +41,14 @@ test("首轮：agent 看到 persistent bash（仅 command 参数）", () => {
   assert.equal(bash.description, PERSISTENT_DESC);
 });
 
-test("tool/call 后 swap：agent view 显示沙箱 bash（含 sandbox_permissions）", async () => {
+test("tool/call 只 promotion 不 swap，tool/result 结算后才 swap：view 显示沙箱 bash", async () => {
   const bootState = bootWithPlugin();
   const agent = makeAgent(bootState, "sess-1");
-  // 先清空 events 使 promotion scan 从未 promote → 发 tool/call 后 promote
+  // finding 12-2：触发 promotion 的调用还没结算，此刻换 schema 会让同一 step 已产出的
+  // 参数被沙箱 schema 拒（missing required property "description"）。
   await fireToolCall(bootState, agent.session);
+  assert.deepEqual(PARAM_KEYS(VIEW(agent.ctx).get("bash")), ["command"], "tool/call 落盘瞬间不得 swap");
+  await fireToolResult(bootState, agent.session);
   const bash = VIEW(agent.ctx).get("bash");
   const params = PARAM_KEYS(bash);
   assert.ok(params.includes("sandbox_permissions"), `应含 sandbox_permissions，实际: ${params.join(",")}`);
@@ -56,13 +59,15 @@ test("tool/call 后 swap：agent view 显示沙箱 bash（含 sandbox_permission
   assert.equal(bootState.tools.view(undefined).visible.get("bash").description, PERSISTENT_DESC);
 });
 
-test("swap 幂等：同一 session 二次 tool/call 不重复注册", async () => {
+test("swap 幂等：同一 session 二次 tool/call+result 不重复注册", async () => {
   const bootState = bootWithPlugin();
   const agent = makeAgent(bootState, "sess-1");
   await fireToolCall(bootState, agent.session);
+  await fireToolResult(bootState, agent.session);
   const scopedLayersAfterFirst = bootState.tools.layers.scoped.size;
-  // 第二次 tool/call（新 seq）不应再次 swap
+  // 第二次 tool/call（新 seq）：已 swap 的 session 直接幂等返回，结算后也不重复注册
   await fireToolCall(bootState, agent.session);
+  await fireToolResult(bootState, agent.session);
   const scopedLayersAfterSecond = bootState.tools.layers.scoped.size;
   assert.equal(scopedLayersAfterFirst, scopedLayersAfterSecond);
   // 且 sandbox bash 仍可见
@@ -74,6 +79,7 @@ test("per-agent 隔离：agent A swap 后 agent B 仍看 persistent bash", async
   const agentA = makeAgent(bootState, "sess-A");
   const agentB = makeAgent(bootState, "sess-B");
   await fireToolCall(bootState, agentA.session);
+  await fireToolResult(bootState, agentA.session);
   // A 已 swap → 沙箱
   assert.ok(PARAM_KEYS(VIEW(agentA.ctx).get("bash")).includes("sandbox_permissions"));
   // B 未 swap → 仍 persistent
@@ -82,19 +88,22 @@ test("per-agent 隔离：agent A swap 后 agent B 仍看 persistent bash", async
   assert.equal(bashB.description, PERSISTENT_DESC);
 });
 
-test("includeSubagents：子代理独立 swap（各自 tool/call 后）", async () => {
+test("includeSubagents：子代理独立 swap（各自 tool/result 结算后）", async () => {
   const bootState = bootWithPlugin();
   const parent = makeAgent(bootState, "sess-parent");
   const sub = makeAgent(bootState, "sess-sub", []);
   sub.session.header = { delegationDepth: 1 };
-  // 父先 tool/call → swap 父
+  // 父先 tool/call+result → swap 父
   await fireToolCall(bootState, parent.session);
+  await fireToolResult(bootState, parent.session);
   assert.ok(PARAM_KEYS(VIEW(parent.ctx).get("bash")).includes("sandbox_permissions"));
   // 子未 tool/call → 仍 persistent（includeSubagents: true 时子也走 bootstrap）
   const bashSub = VIEW(sub.ctx).get("bash");
   assert.deepEqual(PARAM_KEYS(bashSub), ["command"]);
-  // 子 tool/call → 子也 swap
+  // 子 tool/call → 仍 persistent（延后）；结算后子也 swap
   await fireToolCall(bootState, sub.session);
+  assert.deepEqual(PARAM_KEYS(VIEW(sub.ctx).get("bash")), ["command"]);
+  await fireToolResult(bootState, sub.session);
   assert.ok(PARAM_KEYS(VIEW(sub.ctx).get("bash")).includes("sandbox_permissions"));
 });
 
@@ -112,10 +121,25 @@ test("冷启动恢复：resume 已 promoted 会话时任意首个事件触发 sw
   );
 });
 
+test("冷启动：首个事件恰是 tool/call 时同样延后到结算（12-2）", async () => {
+  const bootState = bootWithPlugin();
+  // 会话日志里已有 promotion（resume 一个已 promoted 会话），首个事件又是新的 tool/call
+  const agent = makeAgent(bootState, "sess-resume-call", [{ type: "tool/call", seq: 5, data: {} }]);
+  await fireEvent(bootState, agent.session, { type: "tool/call", seq: 6, data: {} });
+  assert.deepEqual(
+    PARAM_KEYS(VIEW(agent.ctx).get("bash")),
+    ["command"],
+    "冷启动首个事件是 tool/call 时不得 swap（该调用参数按旧 schema 产出）",
+  );
+  await fireEvent(bootState, agent.session, { type: "tool/result", seq: 7, data: {} });
+  assert.ok(PARAM_KEYS(VIEW(agent.ctx).get("bash")).includes("sandbox_permissions"), "结算后应 swap");
+});
+
 test("compaction 后回到 controlled phase：persistent 重新可见，再 promote 再 swap", async () => {
   const bootState = bootWithPlugin();
   const agent = makeAgent(bootState, "sess-compact");
   await fireToolCall(bootState, agent.session);
+  await fireToolResult(bootState, agent.session);
   assert.ok(PARAM_KEYS(VIEW(agent.ctx).get("bash")).includes("sandbox_permissions"));
 
   await fireEvent(bootState, agent.session, { type: "compaction/end", seq: 100, data: {} });
@@ -127,11 +151,13 @@ test("compaction 后回到 controlled phase：persistent 重新可见，再 prom
   );
   assert.ok(!PARAM_KEYS(reverted).includes("sandbox_permissions"), "persistent bash 不应含 sandbox_permissions");
 
-  // 新一轮 tool/call（seq 必须超过 compaction 边界）重新 promote → 再次 swap 回沙箱
+  // 新一轮 tool/call（seq 必须超过 compaction 边界）重新 promote，但仍延后到结算才 swap
   await fireEvent(bootState, agent.session, { type: "tool/call", seq: 101, data: {} });
+  assert.deepEqual(PARAM_KEYS(VIEW(agent.ctx).get("bash")), ["command"], "compaction 后的新 tool/call 同样延后");
+  await fireEvent(bootState, agent.session, { type: "tool/result", seq: 102, data: {} });
   assert.ok(
     PARAM_KEYS(VIEW(agent.ctx).get("bash")).includes("sandbox_permissions"),
-    "compaction 后的新 promotion 应重新 swap 回沙箱 bash",
+    "compaction 后的新 promotion 应在结算后重新 swap 回沙箱 bash",
   );
 });
 
@@ -139,7 +165,8 @@ test("失败降级：swap 抛错 → warn once + 不 rethrow + persistent 保留
   // 不提供 sandboxPolicy → dsh-tool-bash.apply 会抛 "tool-bash: ... ctx.sandboxPolicy is missing"
   const bootState = bootWithPlugin({ withSandboxPolicy: false });
   const agent = makeAgent(bootState, "sess-1");
-  await fireToolCall(bootState, agent.session); // 不应 throw
+  await fireToolCall(bootState, agent.session);
+  await fireToolResult(bootState, agent.session); // 结算后才真正尝试 swap；不应 throw
   // warn 记录了一次（fiber 错误会先记一条 error，warnOnce 的 warn 在其后）
   assert.ok(bootState.warnings.length >= 1, "应有 warn 日志");
   assert.ok(

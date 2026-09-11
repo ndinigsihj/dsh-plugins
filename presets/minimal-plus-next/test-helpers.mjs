@@ -116,6 +116,20 @@ export async function fireToolCall(bootState, session) {
   await fireEvent(bootState, session, event);
 }
 
+/**
+ * 触发一个 tool/result session 事件（结算上一条 tool/call）。
+ * finding 12-2 起，phase-swap-bash 的 swap 以此事件为触发点：tool/call 只 promotion、
+ * 不换 schema，避免同一 step 已产出的参数被沙箱 schema 拒。
+ */
+export async function fireToolResult(bootState, session, callId = "call-1") {
+  const event = {
+    type: "tool/result",
+    seq: sessionLog(session).length,
+    data: { message: { content: [{ type: "tool-result", toolCallId: callId, content: [], isError: false }] } },
+  };
+  await fireEvent(bootState, session, event);
+}
+
 /** 以链式 next 跑 system-prompt/assemble 监听器；base 为最终底层组装结果。 */
 export async function runAssemble(bootState, agent, base) {
   const chain = [...bootState.listeners.assemble];

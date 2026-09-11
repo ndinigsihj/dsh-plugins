@@ -1,0 +1,423 @@
+{
+  "gateVersion": 1,
+  "startedAt": "2026-09-11T16:12:18.575Z",
+  "finishedAt": "2026-09-11T16:12:26.912Z",
+  "gitHead": "4282a91",
+  "gitDirty": true,
+  "hostVersion": "0.1.5-rc.1",
+  "sessionFormatVersion": 3,
+  "composition": "gate",
+  "compositionVerified": "repo-patch",
+  "compositionSourcePath": "/Users/vito/data/dev/dsh-plugins/gates/composition/gate.patch.yml",
+  "compositionSourceSha": "a8fb9b41ce38bc19fb7d27942cbd8a71cb066453f7618762a9219111ce7d4040",
+  "compositionRenderedPath": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-6yyDiL/home/gate-composition.yml",
+  "compositionRenderedSha": "8fa1112c7b9d6124d7aba4844d4958a56d30b0f8f874536b42c6ec1fc7bd7619",
+  "compositionDumpSha": "8fa1112c7b9d6124d7aba4844d4958a56d30b0f8f874536b42c6ec1fc7bd7619",
+  "compositionReal": null,
+  "deployment": {
+    "status": "ok",
+    "manifestMatchesRepo": true,
+    "files": {
+      "agent.cordis.yml": {
+        "repo": "9087bf00b2edd520f91b2a97fc527cd6250f590ab8694b757420f57e3b31789c",
+        "deployed": "9087bf00b2edd520f91b2a97fc527cd6250f590ab8694b757420f57e3b31789c",
+        "expected": "9087bf00b2edd520f91b2a97fc527cd6250f590ab8694b757420f57e3b31789c",
+        "state": "ok"
+      },
+      "preset.yml": {
+        "repo": "8a0965bd624a179d1059849aafea878d981ecfd7512f6f250569fdfd09d1d1de",
+        "deployed": "8a0965bd624a179d1059849aafea878d981ecfd7512f6f250569fdfd09d1d1de",
+        "expected": "8a0965bd624a179d1059849aafea878d981ecfd7512f6f250569fdfd09d1d1de",
+        "state": "ok"
+      },
+      "compaction-epoch.mjs": {
+        "repo": "a17cdce7b871b57b35fe9dc5abae4fd7d6b3bcb3089278c7be97ad314e0d4feb",
+        "deployed": "a17cdce7b871b57b35fe9dc5abae4fd7d6b3bcb3089278c7be97ad314e0d4feb",
+        "expected": "a17cdce7b871b57b35fe9dc5abae4fd7d6b3bcb3089278c7be97ad314e0d4feb",
+        "state": "ok"
+      },
+      "phase-swap-bash.mjs": {
+        "repo": "c00fe48e5a4036196c8ac2af9548e91b2bb6add2d4cd1117730f821abc0bd298",
+        "deployed": "c00fe48e5a4036196c8ac2af9548e91b2bb6add2d4cd1117730f821abc0bd298",
+        "expected": "c00fe48e5a4036196c8ac2af9548e91b2bb6add2d4cd1117730f821abc0bd298",
+        "state": "ok"
+      },
+      "tool-bootstrap.mjs": {
+        "repo": "e3e05e677289d84f5b24e291061e92dc309e75768a5aad355b5ade28f2d2a6ed",
+        "deployed": "e3e05e677289d84f5b24e291061e92dc309e75768a5aad355b5ade28f2d2a6ed",
+        "expected": "e3e05e677289d84f5b24e291061e92dc309e75768a5aad355b5ade28f2d2a6ed",
+        "state": "ok"
+      },
+      "instruction-hint.mjs": {
+        "repo": "4a2a26cb74ee8307d17df72ea4cebbebf806a4f5c95b29b5e442b6c41fad0667",
+        "deployed": "4a2a26cb74ee8307d17df72ea4cebbebf806a4f5c95b29b5e442b6c41fad0667",
+        "expected": "4a2a26cb74ee8307d17df72ea4cebbebf806a4f5c95b29b5e442b6c41fad0667",
+        "state": "ok"
+      },
+      "skill-search.mjs": {
+        "repo": "61312f8b054035e52afc6df9d52f5d38b1847dd8ba2a9eb99d2381c794debfaf",
+        "deployed": "61312f8b054035e52afc6df9d52f5d38b1847dd8ba2a9eb99d2381c794debfaf",
+        "expected": "61312f8b054035e52afc6df9d52f5d38b1847dd8ba2a9eb99d2381c794debfaf",
+        "state": "ok"
+      },
+      "custom-bash.mjs": {
+        "repo": "3b26436ee419ce57594a9f2fcaad688b6b404780859a82ba143ddcf40abd427d",
+        "deployed": "3b26436ee419ce57594a9f2fcaad688b6b404780859a82ba143ddcf40abd427d",
+        "expected": "3b26436ee419ce57594a9f2fcaad688b6b404780859a82ba143ddcf40abd427d",
+        "state": "ok"
+      }
+    }
+  },
+  "tiers": [
+    {
+      "id": "PRE",
+      "status": "pass",
+      "startedAt": "2026-09-11T16:12:18.575Z",
+      "durationMs": 0,
+      "assertions": [
+        {
+          "id": "host.cli",
+          "status": "pass",
+          "evidence": "dsh --version -> 0.1.5-rc.1"
+        },
+        {
+          "id": "host.pin.hostVersion",
+          "status": "pass",
+          "evidence": "expected=0.1.5-rc.1 actual=0.1.5-rc.1"
+        },
+        {
+          "id": "host.pin.sessionFormatVersion",
+          "status": "pass",
+          "evidence": "expected=3 actual=3"
+        }
+      ]
+    },
+    {
+      "id": "T0",
+      "status": "pass",
+      "startedAt": "2026-09-11T16:12:21.704Z",
+      "durationMs": 2716,
+      "assertions": [
+        {
+          "id": "tsc.noEmit",
+          "status": "pass",
+          "evidence": "exit 0",
+          "detail": {
+            "stderr": [
+              ""
+            ]
+          }
+        },
+        {
+          "id": "npm.test",
+          "status": "pass",
+          "evidence": "exit 0 tests=133 pass=133 fail=0",
+          "detail": {
+            "skipped": 0
+          }
+        },
+        {
+          "id": "testfile.list-consistency",
+          "status": "pass",
+          "evidence": "12 files present",
+          "detail": {
+            "declared": 12
+          }
+        }
+      ]
+    },
+    {
+      "id": "T1",
+      "status": "pass",
+      "startedAt": "2026-09-11T16:12:26.018Z",
+      "durationMs": 4263,
+      "assertions": [
+        {
+          "id": "composition.dump-config",
+          "status": "pass",
+          "evidence": "exit 0 entries=92",
+          "detail": {
+            "source": "/Users/vito/data/dev/dsh-plugins/gates/composition/gate.patch.yml",
+            "inProcessEntries": 92,
+            "stderr": [
+              ""
+            ]
+          }
+        },
+        {
+          "id": "composition.loader-id-unique",
+          "status": "pass",
+          "evidence": "in-process ids=92 cli ids=92 duplicates=0",
+          "detail": {
+            "inProcess": {
+              "groups": 0,
+              "ids": 92,
+              "maxDepth": 0
+            },
+            "cli": {
+              "groups": 0,
+              "ids": 92,
+              "maxDepth": 0
+            },
+            "duplicates": []
+          }
+        },
+        {
+          "id": "composition.no-stub",
+          "status": "pass",
+          "evidence": "no stub provider/module reference"
+        },
+        {
+          "id": "smoke.anchored-first-turn",
+          "status": "pass",
+          "evidence": "exit 0 R1=[\"bash\",\"str_replace_editor\"]",
+          "detail": {
+            "stderr": [
+              ""
+            ]
+          }
+        },
+        {
+          "id": "smoke.promoted-catalog",
+          "status": "pass",
+          "evidence": "tools=29 missing=[] unexpected=[] bashParamsMissing=[] preStepMissing=[]",
+          "detail": {
+            "preset": "minimal-plus-next"
+          }
+        },
+        {
+          "id": "degrade.fail-open",
+          "status": "pass",
+          "evidence": "exit 0 warning=true R1 tools=29",
+          "detail": {
+            "stderr": [
+              ""
+            ]
+          }
+        },
+        {
+          "id": "seeded-preview.probe",
+          "status": "pass",
+          "evidence": "exit 0 10/10 pass missing=0",
+          "detail": {
+            "summary": "10/10 pass",
+            "missing": [],
+            "stderr": [
+              ""
+            ]
+          }
+        },
+        {
+          "id": "deployment.repo-matches-manifest",
+          "status": "pass",
+          "evidence": "8 files match",
+          "detail": {
+            "manifest": "/Users/vito/data/dev/dsh-plugins/gates/manifest.json"
+          }
+        },
+        {
+          "id": "deployment.repo-vs-deployed",
+          "status": "pass",
+          "evidence": "8 files ok"
+        },
+        {
+          "id": "host.pin",
+          "status": "pass",
+          "evidence": "anchor=0.1.5-rc.1 farm=0.1.5-rc.1 expected=0.1.5-rc.1",
+          "detail": {
+            "farmManifest": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-6yyDiL/home/profiles/node_modules/@deepseek-ai/dsh/package.json"
+          }
+        },
+        {
+          "id": "session.format-version",
+          "status": "pass",
+          "evidence": "runtime=3 manifest=3"
+        },
+        {
+          "id": "isolation.real-home-untouched",
+          "status": "pass",
+          "evidence": "signature identical before/after (strict zones; 0 observed-only changes)",
+          "detail": {
+            "strictZones": [
+              "profiles",
+              "root:settings.yaml",
+              "deployment:minimal-plus-next",
+              "sessions"
+            ],
+            "observedChanges": []
+          }
+        },
+        {
+          "id": "isolation.copy-rewrite-sha",
+          "status": "pass",
+          "evidence": "cordis.yml sha256=c300dcf2ebc5",
+          "detail": {
+            "paths": [
+              "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-6yyDiL/home/profiles/headless/cordis.yml"
+            ]
+          }
+        },
+        {
+          "id": "gate.no-deployment-sync",
+          "status": "pass",
+          "evidence": "no sync invocation in 7 gate sources"
+        }
+      ]
+    },
+    {
+      "id": "T2",
+      "status": "pass",
+      "startedAt": "2026-09-11T16:12:26.912Z",
+      "durationMs": 894,
+      "assertions": [
+        {
+          "id": "stub.overlay-only",
+          "status": "pass",
+          "evidence": "no stub provider/module/model reference outside gates/stub/**"
+        },
+        {
+          "id": "stub.bash-first-call.route.first-request",
+          "status": "pass",
+          "evidence": "request/header#1 config=provider:stub model:stub-model"
+        },
+        {
+          "id": "stub.bash-first-call.bash.first-call-persistent-args",
+          "status": "pass",
+          "evidence": "tool/call#1 name=bash arguments={\"command\":\"pwd\"}"
+        },
+        {
+          "id": "stub.bash-first-call.bash.first-call-not-rejected",
+          "status": "pass",
+          "evidence": "no argument rejection; tool/result isError=true content=Error: posix_openpt failed: Operation not permitted"
+        },
+        {
+          "id": "stub.bash-first-call.bash.promoted-sandbox-visible",
+          "status": "pass",
+          "evidence": "request/header seq=20 bash params=command,description,timeoutMs,workdir,run_in_background,sandbox_permissions,justification"
+        },
+        {
+          "id": "stub.bash-first-call.bash.second-call-accepted",
+          "status": "pass",
+          "evidence": "tool/call#2 arguments={\"command\":\"pwd\",\"description\":\"二轮沙箱调用：确认当前目录\"} result=isError=false error=<none>"
+        },
+        {
+          "id": "stub.bash-first-call.stub.no-aux-calls",
+          "status": "pass",
+          "evidence": "conversation calls=3/3 aux=[]"
+        },
+        {
+          "id": "stub.bash-first-call.session.turn-completed",
+          "status": "pass",
+          "evidence": "turn/end reason={\"kind\":\"completed\"}"
+        },
+        {
+          "id": "stub.bash-first-call.process-exit",
+          "status": "pass",
+          "evidence": "exit 0 report=7/7 pass"
+        }
+      ]
+    }
+  ],
+  "exemptions": [],
+  "summary": {
+    "passed": 29,
+    "failed": 0,
+    "skipped": 0
+  },
+  "smoke": {
+    "r1Tools": [
+      "bash",
+      "str_replace_editor"
+    ],
+    "toolCount": 29,
+    "tools": [
+      "ask_user_question",
+      "bash",
+      "create_goal",
+      "edit",
+      "exit_plan_mode",
+      "get_goal",
+      "glob",
+      "grep",
+      "interrupt_agent",
+      "job_kill",
+      "job_list",
+      "job_output",
+      "list_agents",
+      "ralph",
+      "read",
+      "read_image",
+      "send_message",
+      "skill",
+      "skill_load",
+      "skill_search",
+      "str_replace_editor",
+      "subagent",
+      "subagent_fork",
+      "todo_write",
+      "update_goal",
+      "web_fetch",
+      "web_search",
+      "workflow",
+      "write"
+    ],
+    "preStepSources": [
+      "agent-instructions",
+      "skill-catalog",
+      "instruction-hint"
+    ]
+  },
+  "seededPreview": {
+    "checks": 10,
+    "ids": [
+      "fixture-store-prepared",
+      "fixture-copied-byte-identical",
+      "red-readSession-rejects-seeded",
+      "listEvents-has-corpus",
+      "green-reader-module-present",
+      "green-log-reconstructed",
+      "green-count-and-seq-match",
+      "green-inherited-count-recorded",
+      "green-warm-call",
+      "baseline-readSession-fastpath"
+    ]
+  },
+  "host": {
+    "expected": "0.1.5-rc.1",
+    "installAnchor": {
+      "path": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/package.json",
+      "version": "0.1.5-rc.1"
+    },
+    "farm": {
+      "path": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-6yyDiL/home/profiles/node_modules/@deepseek-ai/dsh/package.json",
+      "version": "0.1.5-rc.1",
+      "healed": true
+    }
+  },
+  "isolation": {
+    "strictZones": [
+      "profiles",
+      "root:settings.yaml",
+      "deployment:minimal-plus-next",
+      "sessions"
+    ],
+    "observedChanges": [],
+    "strictChanges": []
+  },
+  "compositionEntriesSha": "e55ab4daf81791b33f1412f80cb1699e8622162b7fa2d0e8ed192fcde39a34b5",
+  "compositionArtifact": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-6yyDiL/home/gate-composition.yml",
+  "copies": {
+    "profileCordisSha": "c300dcf2ebc5f02062d6591268d29d3db6fe45e0cb138f5467276fe2ba06076e"
+  },
+  "stub": {
+    "scenarios": [
+      {
+        "scenario": "bash-first-call",
+        "passed": 7,
+        "failed": 0,
+        "exit": 0,
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-6yyDiL/home/stub/bash-first-call.json"
+      }
+    ]
+  }
+}

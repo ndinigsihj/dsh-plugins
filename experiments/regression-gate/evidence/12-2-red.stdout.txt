@@ -1,0 +1,10 @@
+[T2] scenario=bash-first-call finding=finding 12-2（closeout §7.2）：promotion 时换 bash schema 拒掉首轮调用
+  PASS route.first-request — request/header#1 config=provider:stub model:stub-model
+  PASS bash.first-call-persistent-args — tool/call#1 name=bash arguments={"command":"pwd"}
+  FAIL bash.first-call-not-rejected — tool/result rejected: ToolArgsError/INVALID_ARGS content=Error: invalid arguments: missing required property "description"
+  PASS bash.promoted-sandbox-visible — request/header seq=17 bash params=command,description,timeoutMs,workdir,run_in_background,sandbox_permissions,justification
+  PASS bash.second-call-accepted — tool/call#2 arguments={"command":"pwd","description":"二轮沙箱调用：确认当前目录"} result=isError=false error=<none>
+  PASS stub.no-aux-calls — conversation calls=3/3 aux=[]
+  PASS session.turn-completed — turn/end reason={"kind":"completed"}
+[T2] summary: 6 passed, 1 failed — report experiments/regression-gate/evidence/12-2-red.json
+red exit=1

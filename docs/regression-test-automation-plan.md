@@ -185,8 +185,9 @@ stable 与 dev 的回归边界写清，不留「看起来有测试其实没跑�
 **场景脚本形态（Q24）**：`gates/stub/scenarios/<id>.mjs`，每文件导出
 `{ id, finding, turns, assert(events, ctx) }`；共用 runner `gates/stub/run.mjs`（进程内 `loadProfile`+`boot`）。
 首批场景（对应 §5.4 断言）：
-1. `bash-first-call`（12-2）：turn1 `bash{command}`（无 `description`）→ 断言 `tool/result.isError === false`
-   且 `tool/call.arguments` 不含 `description`；turn2 补 `description`。
+1. `bash-first-call`（12-2）：turn1 `bash{command}`（无 `description`）→ 断言无 `INVALID_ARGS` 拒
+   （无 tool/result 也算拒；会话沙箱禁 `posix_openpt` 时执行层失败不算回归，证据原样记录 isError
+   与 error code）且 `tool/call.arguments` 不含 `description`；turn2 补 `description`。
 2. `bash-promotion-visible`（12-2 同源）：promotion 后沙箱 bash 可见；compaction 后回退 persistent。
 3. `v3-resume-route`（票据 11）：V3 会话 resume 后首个 `request/header` 含 `list_subagent_models`。
 4. `rewind-fork-persist`（06-1）：**落 T4b**（见 Q27/Q28）。

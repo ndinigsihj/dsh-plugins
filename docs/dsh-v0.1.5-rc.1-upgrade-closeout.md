@@ -174,14 +174,18 @@
 3. **宿主升级后必须重打 `x-opencode-session` 本地补丁**（全局 rc.1 与 stable 运行时两处），
    否则 opencode-go 路由 400 `MissingSessionID`（finding 05-4）。
 4. **preset 改动后必须同步部署位并核 sha**：冷启动加载的是 `~/.dsh/.agent-presets/minimal-plus-next/`，
-   仓库绿灯不等于部署位生效（finding 05-5）。当前 8/8 一致（2026-09-11 复核）。
+   仓库绿灯不等于部署位生效（finding 05-5）。当前 8/8 一致（2026-09-12 同步 12-2 修复后复核，
+   `phase-swap-bash.mjs` = `c00fe48e…`；`--tier 0,1,2` 免豁免全绿）。
 
 ### 7.2 已记录、暂不处置的残留
 
 - **首轮 anchored bash 首次调用必先参数校验失败**：promotion 前模型看到的是持久 bash schema（只要 `command`），
   而 phase-swap 已把该 agent 换成沙箱 bash（要 `command`+`description`），首次调用报
   `missing required property "description"`，能自纠的模型重发即成功。机制线索
-  `presets/minimal-plus-next/phase-swap-bash.mjs`；未修（finding 12-2）。
+  `presets/minimal-plus-next/phase-swap-bash.mjs`。**2026-09-11 已修（票据 06，方向 A）**：swap 延后到
+  触发 promotion 的调用结算（`tool/result`）之后，首轮调用按产出参数时的 persistent schema 校验，
+  下一次请求起沙箱 schema 生效；红→绿证据见 `experiments/regression-gate/evidence/12-2-red.json` /
+  `12-2-green.json` 与 `docs/tickets/regression-test-automation/evidence/06-stub-model-tier-and-12-2.md`。
 - **seeded 子会话 hover 预览**：已于 2026-09-11 Stage 7 修复（`lib/session-preview-log.ts` 回退 + 真实 fixture 红→绿探针，见 `evidence/13-stage7-fixes.md`），不再列为残留。
 - **relay 未验证**：`agent/assistant-stream` 是否由 relay 镜像转发、V3/`SessionHandle` 迁移均未做，
   属后续独立轮次（finding 04-4；spec out of scope）。
