@@ -1,0 +1,19 @@
+diff --git a/presets/minimal-plus-next/phase-swap-bash.mjs b/presets/minimal-plus-next/phase-swap-bash.mjs
+index 971fef4..4f1c859 100644
+--- a/presets/minimal-plus-next/phase-swap-bash.mjs
++++ b/presets/minimal-plus-next/phase-swap-bash.mjs
+@@ -112,13 +112,7 @@ export function apply(ctx, config) {
+       if (agent === undefined) return
+ 
+       if (event.type === 'compaction/end') {
+-        // compaction 后回到 controlled phase：注销该 agent scope 里的沙箱
+-        // bash，露出全局 persistent bash；下次 promotion 再重新 swap。
+-        const disposer = swapDisposers.get(session.id)
+-        if (disposer !== undefined) {
+-          disposer()
+-          swapDisposers.delete(session.id)
+-        }
++        // MUTATION（票据 07 反向断言抽验）：跳过注销，压缩后停留在沙箱相位。
+         return
+       }
+ 

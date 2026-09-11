@@ -1,0 +1,174 @@
+{
+  "schema": "dsh-gate-stub/1",
+  "scenario": {
+    "id": "bash-promotion-visible",
+    "finding": "phase-swap-bash 的 promotion 可见性与 compaction 回退（票据 07 / 12-2 同源）",
+    "invariant": "promotion 后下一次请求暴露沙箱 bash schema；compaction/end 后下一次请求回到 persistent schema",
+    "path": "/Users/vito/data/dev/dsh-plugins/gates/stub/scenarios/bash-promotion-visible.mjs"
+  },
+  "hostVersion": "0.1.5-rc.1",
+  "startedAt": "2026-09-11T16:29:02.609Z",
+  "finishedAt": "2026-09-11T16:29:03.647Z",
+  "durationMs": 1037,
+  "route": {
+    "provider": "stub",
+    "model": "stub-model"
+  },
+  "sessionId": "session-stub-bash-promotion-visible-1c1fdf9e-230b-478f-884d-83e4d459656b",
+  "sessions": [
+    {
+      "id": "session-stub-bash-promotion-visible-1c1fdf9e-230b-478f-884d-83e4d459656b",
+      "label": "main",
+      "role": "created"
+    }
+  ],
+  "facts": {
+    "compaction": {
+      "summarySeq": 23,
+      "shadowedSeqs": [
+        9,
+        13,
+        15
+      ],
+      "shadowedTokenCount": 1773
+    }
+  },
+  "calls": [
+    {
+      "provider": "stub",
+      "model": "stub-model",
+      "purpose": null,
+      "sessionId": "session-stub-bash-promotion-visible-1c1fdf9e-230b-478f-884d-83e4d459656b",
+      "toolNames": [
+        "bash",
+        "str_replace_editor"
+      ],
+      "turnIndex": 0
+    },
+    {
+      "provider": "stub",
+      "model": "stub-model",
+      "purpose": null,
+      "sessionId": "session-stub-bash-promotion-visible-1c1fdf9e-230b-478f-884d-83e4d459656b",
+      "toolNames": [
+        "ask_user_question",
+        "bash",
+        "create_goal",
+        "edit",
+        "exit_plan_mode",
+        "get_goal",
+        "glob",
+        "grep",
+        "interrupt_agent",
+        "job_kill",
+        "job_list",
+        "job_output",
+        "list_agents",
+        "list_subagent_models",
+        "ralph",
+        "read",
+        "read_image",
+        "send_message",
+        "skill",
+        "skill_load",
+        "skill_search",
+        "str_replace_editor",
+        "subagent",
+        "subagent_fork",
+        "todo_write",
+        "update_goal",
+        "web_fetch",
+        "web_search",
+        "workflow",
+        "write"
+      ],
+      "turnIndex": 1
+    },
+    {
+      "provider": "stub",
+      "model": "stub-model",
+      "purpose": "compaction",
+      "sessionId": "session-stub-bash-promotion-visible-1c1fdf9e-230b-478f-884d-83e4d459656b",
+      "toolNames": [
+        "ask_user_question",
+        "bash",
+        "create_goal",
+        "edit",
+        "exit_plan_mode",
+        "get_goal",
+        "glob",
+        "grep",
+        "interrupt_agent",
+        "job_kill",
+        "job_list",
+        "job_output",
+        "list_agents",
+        "list_subagent_models",
+        "ralph",
+        "read",
+        "read_image",
+        "send_message",
+        "skill",
+        "skill_load",
+        "skill_search",
+        "str_replace_editor",
+        "subagent",
+        "subagent_fork",
+        "todo_write",
+        "update_goal",
+        "web_fetch",
+        "web_search",
+        "workflow",
+        "write"
+      ],
+      "turnIndex": null
+    },
+    {
+      "provider": "stub",
+      "model": "stub-model",
+      "purpose": null,
+      "sessionId": "session-stub-bash-promotion-visible-1c1fdf9e-230b-478f-884d-83e4d459656b",
+      "toolNames": [
+        "bash",
+        "str_replace_editor"
+      ],
+      "turnIndex": 2
+    }
+  ],
+  "assertions": [
+    {
+      "id": "route.first-request",
+      "status": "pass",
+      "evidence": "request/header#1 config=stub/stub-model"
+    },
+    {
+      "id": "bash.promoted-sandbox-visible",
+      "status": "pass",
+      "evidence": "request/header seq=18 bash params=command,description,timeoutMs,workdir,run_in_background,sandbox_permissions,justification"
+    },
+    {
+      "id": "compaction.completed",
+      "status": "pass",
+      "evidence": "compaction/end seq=25 error=<none>"
+    },
+    {
+      "id": "bash.compaction-fallback-persistent",
+      "status": "fail",
+      "evidence": "request/header seq=31 bash params=command,description,timeoutMs,workdir,run_in_background,sandbox_permissions,justification"
+    },
+    {
+      "id": "stub.script-consumed",
+      "status": "pass",
+      "evidence": "conversation calls=3/3 compaction calls=1"
+    },
+    {
+      "id": "session.turn-completed",
+      "status": "pass",
+      "evidence": "turn/end reason={\"kind\":\"completed\"}"
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 1
+  }
+}

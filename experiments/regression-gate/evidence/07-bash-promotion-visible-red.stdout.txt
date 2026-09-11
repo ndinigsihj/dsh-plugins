@@ -1,0 +1,8 @@
+[T2] scenario=bash-promotion-visible finding=phase-swap-bash 的 promotion 可见性与 compaction 回退（票据 07 / 12-2 同源）
+  PASS route.first-request — request/header#1 config=stub/stub-model
+  PASS bash.promoted-sandbox-visible — request/header seq=18 bash params=command,description,timeoutMs,workdir,run_in_background,sandbox_permissions,justification
+  PASS compaction.completed — compaction/end seq=25 error=<none>
+  FAIL bash.compaction-fallback-persistent — request/header seq=31 bash params=command,description,timeoutMs,workdir,run_in_background,sandbox_permissions,justification
+  PASS stub.script-consumed — conversation calls=3/3 compaction calls=1
+  PASS session.turn-completed — turn/end reason={"kind":"completed"}
+[T2] summary: 5 passed, 1 failed — report experiments/regression-gate/evidence/07-bash-promotion-visible-red.json

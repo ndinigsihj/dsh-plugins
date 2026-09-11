@@ -1,13 +1,18 @@
 #!/usr/bin/env node
 /**
- * T2 假模型行为层 runner（票据 06；计划 §3.1、§5.4）。
+ * T2 假模型行为层 runner（票据 06/07；计划 §3.1、§5.4）。
  *
  * 在一个进程内的 headless 组合（dsh-base + dsh-headless bundle + stub overlay）
- * 里跑真实 agent loop：装载场景脚本 → 注入 `stub` 路由的脚本化适配器 → 创建 agent、
- * 挂载 minimal-plus-next preset → 发一条用户消息 → 等空闲 → 只读会话事件断言。
+ * 里跑真实 agent loop：装载场景脚本 → 注入 `stub` 路由的脚本化适配器 → 按场景契约驱动
+ * （默认单 agent 单轮；多 agent 场景走 `run(harness)`）→ 只读会话事件断言。
  *
  * 用法（一条命令跑一层：scripts/regression-gate.sh --tier 2）：
  *   node gates/stub/run.mjs --scenario bash-first-call [--json <report.json>]
+ *
+ * 场景契约（票据 06 起）：导出 `{ id, finding, invariant, assert(events, context) }` +
+ *   - 默认流程：`turns`（轮次→分块序列）+ `userMessage`，runner 建一个 agent 跑完；
+ *   - 多 agent 流程：`run(harness)`（harness 见 gates/stub/harness.mjs），自己决定
+ *     建/恢复 agent、压缩时点与工具调用；断言仍只读会话事件。
  *
  * 环境（缺省即自建隔离 home；闸门会显式注入，见 gates/run.mjs 的 runT2）：
  *   STUB_HOME            隔离 home（闸门注入；缺省 mktemp 后删除）。刻意不读 ambient
@@ -19,17 +24,14 @@
  *
  * 退出码：0 全过 / 1 任一断言失败（含组合引导失败——那不是环境前置，是机制坏了）。
  */
-import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { boot, healProfilesModuleFallback, loadOverlayPatches, loadProfile } from '@deepseek-ai/dsh-app-boot';
-import { installModelSelection } from '@deepseek-ai/dsh-agent';
-import { createUserMessage } from '@deepseek-ai/dsh-llm';
-import { SessionId } from '@deepseek-ai/dsh-session';
 import { installAnchor } from '../../scripts/host-runtime.mjs';
 import { STUB_MODEL, STUB_PROVIDER, stubState } from './adapter.mjs';
+import { createHarness } from './harness.mjs';
 
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const STUB_DIR = join(REPO_ROOT, 'gates', 'stub');
@@ -128,10 +130,16 @@ function prepareEnv(scenario) {
 function assertScenarioShape(scenario, path) {
   if (typeof scenario.id !== 'string' || scenario.id.length === 0) throw new Error(`gate-stub: ${path} must export a string id`);
   if (typeof scenario.finding !== 'string') throw new Error(`gate-stub: ${path} must export finding (source of the regression)`);
-  if (!Array.isArray(scenario.turns) || scenario.turns.length === 0) throw new Error(`gate-stub: ${path} must export a non-empty turns array`);
+  if (typeof scenario.invariant !== 'string' || scenario.invariant.length === 0) {
+    throw new Error(`gate-stub: ${path} must export a non-empty invariant (what the scenario locks)`);
+  }
   if (typeof scenario.assert !== 'function') throw new Error(`gate-stub: ${path} must export assert(events, context)`);
+  if (typeof scenario.run === 'function') return;
+  if (!Array.isArray(scenario.turns) || scenario.turns.length === 0) {
+    throw new Error(`gate-stub: ${path} must export a non-empty turns array (or a run(harness) hook)`);
+  }
   if (typeof scenario.userMessage !== 'string' || scenario.userMessage.length === 0) {
-    throw new Error(`gate-stub: ${path} must export a non-empty userMessage`);
+    throw new Error(`gate-stub: ${path} must export a non-empty userMessage (or a run(harness) hook)`);
   }
 }
 
@@ -193,12 +201,14 @@ async function run(options) {
     durationMs: null,
     route: { provider: STUB_PROVIDER, model: STUB_MODEL },
     sessionId: null,
+    sessions: [],
+    facts: {},
     calls: [],
     assertions: [],
     summary: { passed: 0, failed: 0 },
   };
   const reportPath = options.json ?? process.env.STUB_REPORT ?? defaultReportPath(scenario.id);
-  let events = [];
+  let sessionDump = {};
 
   try {
     await healProfilesModuleFallback({ installAnchor: INSTALL_ANCHOR, home: env.home });
@@ -224,31 +234,24 @@ async function run(options) {
     stubState.scenario = scenario;
     stubState.calls.length = 0;
 
-    const selection = { provider: STUB_PROVIDER, model: STUB_MODEL };
-    const sessionId = SessionId(`session-stub-${scenario.id}-${randomUUID()}`);
-    report.sessionId = String(sessionId);
-    const { agent } = await agents.create({
-      sessionId,
-      meta: { cwd: process.cwd() },
-      agentOptions: selection,
-      setup: async (agentCtx) => {
-        // 路由由 driver 显式传入（每 agent 选项 + 选择安装），不依赖组合行默认值
-        installModelSelection(agentCtx, { current: selection, assembled: undefined });
-        await agentPresets.mount(agentCtx, PRESET);
-      },
-    });
-    await withTimeout(agent.whenIdle(), 'initial idle');
-    agent.followup(createUserMessage({
-      content: [{ type: 'text', text: scenario.userMessage }],
-      source: { kind: 'user' },
-    }));
-    await withTimeout(agent.whenIdle(), 'turn idle');
+    const harness = createHarness({ ctx, agents, agentPresets, preset: PRESET, wait: withTimeout, scenarioId: scenario.id });
+    if (typeof scenario.run === 'function') {
+      await withTimeout(scenario.run(harness), `scenario ${scenario.id} run`);
+    } else {
+      const { agent } = await harness.createAgent({ label: 'main' });
+      await harness.followup(agent, scenario.userMessage);
+    }
 
-    const collected = agent.session.snapshotEvents();
-    events = collected;
+    const primary = harness.primary();
+    if (primary === undefined) throw new Error('gate-stub: scenario created no agent session');
+    const collected = primary.agent.session.snapshotEvents();
+    report.sessionId = primary.id;
+    report.sessions = harness.records();
+    report.facts = harness.facts;
     report.calls = stubState.calls;
+    sessionDump = Object.fromEntries(harness.feed.ids().map((id) => [id, harness.events(id)]));
     try {
-      report.assertions = normalizeAssertions(scenario.assert(collected, { agent, ctx, stub: stubState }));
+      report.assertions = normalizeAssertions(scenario.assert(collected, { agent: primary.agent, ctx, stub: stubState, harness }));
     } catch (error) {
       report.assertions = [{ id: 'scenario.assert', status: 'fail', evidence: String(error?.message ?? error) }];
     }
@@ -266,7 +269,7 @@ async function run(options) {
   };
   writeJson(reportPath, report);
   if (process.env.STUB_DUMP_EVENTS === '1') {
-    writeJson(`${reportPath}.events.json`, events);
+    writeJson(`${reportPath}.events.json`, { sessionId: report.sessionId, sessions: sessionDump });
   }
 
   process.stdout.write(`[T2] scenario=${scenario.id} finding=${scenario.finding}\n`);

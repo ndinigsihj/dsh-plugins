@@ -25,6 +25,15 @@
   config:
     root: !!js process.env.STUB_SESSION_ROOT ?? '/tmp/dsh-gate-stub-sessions'
 
+# 票据 07：委派策略场景要求策略生效（T1 冒烟共用的 gates/composition/subagent-settings.patch.yml
+# 保持 enabled=false）。允许集合只放 T2 自己的 stub 路由；「集合外路由」场景拿它当拒绝面。
+- id: subagent-model-selection-settings
+  config:
+    enabled: true
+    allowedModels:
+      - provider: stub
+        model: stub-model
+
 - insert:
     # preset 根只扫 repo presets/（跨 checkout 可跑）；不读用户部署位副本，
     # 部署位一致性由 T1 的独立 sha 断言表达。
