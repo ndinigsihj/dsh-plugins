@@ -2,7 +2,7 @@
 # Cut a dsh-plugins release: verify -> bump -> tag -> move the stable worktree.
 # Usage: scripts/release.sh <version>        e.g. scripts/release.sh 0.1.3
 #
-# The stable worktree (default ~/dev/dsh-plugins-stable, override with
+# The stable worktree (default /Users/vito/data/dev/dsh-plugins-stable, override with
 # DSH_STABLE_DIR) is what ~/.dsh/profiles/tui mounts; profiles are never
 # touched here — advancing it is purely this checkout.
 set -euo pipefail
@@ -12,7 +12,8 @@ ver="${1:?usage: release.sh <version> (e.g. 0.1.3)}"
 tag="v$ver"
 
 cd "$(dirname "$0")/.."
-STABLE="${DSH_STABLE_DIR:-$HOME/dev/dsh-plugins-stable}"
+STABLE="${DSH_STABLE_DIR:-/Users/vito/data/dev/dsh-plugins-stable}"
+HOST_DEPS_DIR="${DSH_HOST_DEPS_DIR:-/Users/vito/data/dev/dsh-runtime/stable/node_modules/@deepseek-ai}"
 
 if [ -n "$(git status --porcelain)" ]; then
   echo "error: dirty working tree (including staged/untracked) — commit or stash first" >&2
@@ -78,10 +79,10 @@ rm -f "$STABLE/node_modules/@deepseek-ai"
 if [ "$prevLock" != "$newLock" ]; then
   (cd "$STABLE" && npm i --no-fund --no-audit)
 fi
-(cd "$STABLE" && scripts/link-global-dsh.sh)
+(cd "$STABLE" && DSH_HOST_DEPS_DIR="$HOST_DEPS_DIR" scripts/link-global-dsh.sh)
 # Presets advance with the release: sync the self-contained preset tree to
 # ~/.dsh/.agent-presets so the stable TUI stops loading the dev worktree.
-scripts/sync-agent-presets.sh
+DSH_HOST_DEPS_DIR="$HOST_DEPS_DIR" scripts/sync-agent-presets.sh
 
 echo "stable = $STABLE @ $tag"
 echo "running TUI sessions must exit and relaunch to pick up the new code."

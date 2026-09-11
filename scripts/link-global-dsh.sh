@@ -6,10 +6,10 @@
 set -euo pipefail
 
 GROOT="$(npm root -g)"
-TARGET="$GROOT/@deepseek-ai/dsh/node_modules/@deepseek-ai"
+TARGET="${DSH_HOST_DEPS_DIR:-$GROOT/@deepseek-ai/dsh/node_modules/@deepseek-ai}"
 if [ ! -d "$TARGET" ]; then
-  echo "error: global dsh dependency tree not found at $TARGET" >&2
-  echo "install it first: npm i -g @deepseek-ai/dsh" >&2
+  echo "error: dsh dependency tree not found at $TARGET" >&2
+  echo "set DSH_HOST_DEPS_DIR or install @deepseek-ai/dsh globally" >&2
   exit 1
 fi
 
