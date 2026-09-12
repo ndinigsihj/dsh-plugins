@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 — 回归闸门脚本
 
-**Status:** done — 2026-09-12（实现 + 机制验证 + 正式签收全绿：opencode-go 退役、2 条路由集、重采 M4 基线后 `--tier 3` 18/0/0 exit 0；证据见 evidence/11-real-model-archival-and-advisory.md §9）。
+**Status:** done — 2026-09-12（实现 + 机制验证 + 正式签收全绿：opencode-go 退役、2 条路由集、重采 M4 基线后 `--tier 3` 18/0/0 exit 0；提交 `df8ea1c` + 路由切换/签收 `8139644`，已 push；证据见 evidence/11-real-model-archival-and-advisory.md §9）。
 
 **施工图:** `docs/regression-test-automation-plan.md` §3.4、§4.3、§7 P4；用户决策 D4（判图只做 triage）、Q3（版本不符拒绝跑）。
 

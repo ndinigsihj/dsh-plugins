@@ -4,7 +4,7 @@
 
 **Blocked by:** 04 — 真实组合模式与发版接线；06 — 假模型行为层骨架 + 首条回归红绿
 
-**Status:** done — 2026-09-12（实现与验收证据齐，用户已签收 Q23；已提交、未 push，证据见 evidence/10-pty-smoke.md）
+**Status:** done — 2026-09-12（实现与验收证据齐，用户已签收 Q23；提交 `5dc687d`，已 push；证据见 evidence/10-pty-smoke.md）
 
 **施工图:** `docs/regression-test-automation-plan.md` §3.3；用户决策 D8（不接 release）、Q10（独立脚本）、Q20i（真实 profile）、Q22（重绘上界）、Q23（手跑验收）。
 

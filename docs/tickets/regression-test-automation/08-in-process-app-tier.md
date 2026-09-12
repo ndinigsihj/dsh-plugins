@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — 路径可移植性与宿主依赖解析
 
-**Status:** done — 2026-09-11（实现与验收证据齐；未提交，证据见 evidence/08-in-process-app-tier.md）
+**Status:** done — 2026-09-11（实现与验收证据齐；提交 `e43343a`，已 push；证据见 evidence/08-in-process-app-tier.md）
 
 **施工图:** `docs/regression-test-automation-plan.md` §3.2、§5.4；用户决策 D7（构造项注入）、Q19a（进日常单测）。
 

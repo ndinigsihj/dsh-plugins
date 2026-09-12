@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 — 回归闸门脚本（依赖其组合引导、报告与隔离约定）
 
-**Status:** done — 2026-09-11（实现与验收证据齐；未提交，证据见 evidence/06-stub-model-tier-and-12-2.md）
+**Status:** done — 2026-09-11（实现与验收证据齐；提交 `a6260c2`，已 push；证据见 evidence/06-stub-model-tier-and-12-2.md）
 
 **施工图:** `docs/regression-test-automation-plan.md` §3.1、§5.4；用户决策 Q13（遏制三规则）、Q24（进程内 driver）、Q25（确定性护栏）、Q26（红绿举证）。
 

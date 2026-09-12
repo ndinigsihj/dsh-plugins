@@ -4,7 +4,7 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** done — 2026-09-11
+**Status:** done — 2026-09-11（提交 `7f837ea`，已 push）
 
 **Evidence:** `evidence/01-portable-paths.md`
 

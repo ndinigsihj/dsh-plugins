@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — 路径可移植性与宿主依赖解析
 
-**Status:** done — 2026-09-11
+**Status:** done — 2026-09-11（提交 `b735a49`，已 push）
 
 **Evidence:** `evidence/02-version-manifest-and-fixtures.md`
 

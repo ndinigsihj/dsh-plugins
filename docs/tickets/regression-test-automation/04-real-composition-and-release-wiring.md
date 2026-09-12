@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 — 回归闸门脚本
 
-**Status:** done — 2026-09-11（实现与验收证据齐；未提交，证据见 evidence/04-real-composition-and-release-wiring.md）
+**Status:** done — 2026-09-11（实现与验收证据齐；提交 `4282a91`，已 push；证据见 evidence/04-real-composition-and-release-wiring.md）
 
 **施工图:** `docs/regression-test-automation-plan.md` §2.1、§5.1；用户决策 Q15（运行期渲染而非改 profile）、D6（release 永不豁免）。
 

@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 — 回归闸门脚本（09 已完成，工作流文件已就位）
 
-**Status:** done — 2026-09-12（本地：新增断言 10/10、`npm test` 154/154、`--tier 0` 负控红→绿 exit 1→0；未提交，证据 `evidence/12-workflow-trigger-path-assertion.md`）
+**Status:** done — 2026-09-12（本地：新增断言 10/10、`npm test` 154/154、`--tier 0` 负控红→绿 exit 1→0；提交 `d29e961` + CI 回填 `b6513e4`（已 push，`regression-gate` 绿灯）；证据 `evidence/12-workflow-trigger-path-assertion.md`）
 
 **施工图:** `docs/regression-test-automation-plan.md` §6-1、§5.4（T0 断言面）
 

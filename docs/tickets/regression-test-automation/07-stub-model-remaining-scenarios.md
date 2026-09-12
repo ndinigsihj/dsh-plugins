@@ -4,7 +4,7 @@
 
 **Blocked by:** 06 — 假模型行为层骨架 + 首条回归红绿（12-2）
 
-**Status:** done — 2026-09-12（实现与验收证据齐；已提交、未 push，证据见 evidence/07-stub-model-remaining-scenarios.md）
+**Status:** done — 2026-09-12（实现与验收证据齐；提交 `467178d`，已 push；证据见 evidence/07-stub-model-remaining-scenarios.md）
 
 **施工图:** `docs/regression-test-automation-plan.md` §3.1「首批场景」、§5.4；用户决策 D2（手写脚本）。
 
