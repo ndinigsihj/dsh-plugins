@@ -2,7 +2,7 @@
 
 - 执行时间：2026-09-12（本地；网关报告时间戳 06:25:55Z / 06:26:08Z）
 - 授权：用户「继续票据 12」；施工图 `docs/regression-test-automation-plan.md` §6-1、§5.4（T0 断言面）+ 票据 09 证据 §五「未做常驻断言」的转交。
-- 收口：实现改动均在工作区、**未 commit / 未 push**（用户确认后再提交）。stable 侧 `presets/minimal-plus/**` 未触碰，工作流文件内容未改（负控后 sha 复原）。
+- 收口：实现改动提交 `d29e961` 并 push（`7a6decc..d29e961`，2026-09-12）；托管 `regression-gate` CI 绿灯见 §五。stable 侧 `presets/minimal-plus/**` 未触碰，工作流文件内容未改（负控后 sha 复原）。
 
 ## 一、改动清单（2 增 3 改，全 dev 侧）
 
@@ -57,9 +57,19 @@ T0 报告里失败项即 `tiers[].assertions` 的 `npm.test`（红报告原样�
 4. **负控红绿** — §三，红时消息含「文件 + 事件 + 模式」，T0 面 exit 1；恢复后 exit 0。
 5. **进 `npm test`（T0）+ README** — `npm test` 由 13 文件 144 用例变为 14 文件 154 用例（全绿）；README T0 行与 CI 段同步。
 
-## 五、边界与说明
+## 五、真实 CI（push 后，2026-09-12）
+
+commit `d29e961` push（`7a6decc..d29e961`）后，`regression-gate` 工作流按 `paths`（`gates/**`、`package.json` 命中）自动触发并在托管 runner 上通过：
+
+| 工作流 | runner | 结果 | run |
+| --- | --- | --- | --- |
+| `regression-gate` | `macos-latest` | completed / **success**（T0 含新断言 + T1 + T2，`--skip-deployment-check` 缺席记账；created 06:40:43Z → 观测 06:41:04Z in_progress → 06:42:31Z success） | [34678752540](https://github.com/ndinigsihj/dsh-plugins/actions/runs/34678752540) |
+
+`custom-bash-win-smoke` 未触发：本次改动路径不在其触发面（`presets/minimal-plus-next/custom-bash.*` / `scripts/custom-bash-win-smoke.mjs` / 其自身工作流）；它最近一次运行（T09 收口 `74adf0f`，run 34677128292）保持 success。
+
+## 六、边界与说明
 
 - 断言只证明「可解析 + 路径存在」，不模拟 GitHub 实际触发判定（票面已声明）；`branches`/`tags`/cron/权限/依赖图不在范围内。
 - 存在性按工作树当前状态（`statSync` 跟随 symlink）；测试期间并发删除目标目录属 TOCTOU，不在断言职责内。
 - 本票未改 `gates/run.mjs`（T0 通过 `npm test` 自然收编新断言）、未改工作流内容、未改 T1/T2/T3 语义。
-- 全部改动未 commit；提交与否待用户确认。
+- 全部改动提交并 push（`d29e961`），托管 CI 绿灯（§五）；本票无未落盘改动。
