@@ -1,0 +1,401 @@
+{
+  "gateVersion": 1,
+  "startedAt": "2026-09-12T01:47:35.152Z",
+  "finishedAt": "2026-09-12T01:48:07.332Z",
+  "gitHead": "5dc687d",
+  "gitDirty": true,
+  "hostVersion": "0.1.5-rc.1",
+  "sessionFormatVersion": 3,
+  "composition": "gate",
+  "compositionVerified": "repo-patch",
+  "compositionSourcePath": "/Users/vito/data/dev/dsh-plugins/gates/composition/gate.patch.yml",
+  "compositionSourceSha": "a8fb9b41ce38bc19fb7d27942cbd8a71cb066453f7618762a9219111ce7d4040",
+  "compositionRenderedPath": null,
+  "compositionRenderedSha": null,
+  "compositionDumpSha": null,
+  "compositionReal": null,
+  "deployment": null,
+  "tiers": [
+    {
+      "id": "PRE",
+      "status": "pass",
+      "startedAt": "2026-09-12T01:47:35.152Z",
+      "durationMs": 0,
+      "assertions": [
+        {
+          "id": "host.cli",
+          "status": "pass",
+          "evidence": "dsh --version -> 0.1.5-rc.1"
+        },
+        {
+          "id": "host.pin.hostVersion",
+          "status": "pass",
+          "evidence": "expected=0.1.5-rc.1 actual=0.1.5-rc.1"
+        },
+        {
+          "id": "host.pin.sessionFormatVersion",
+          "status": "pass",
+          "evidence": "expected=3 actual=3"
+        }
+      ]
+    },
+    {
+      "id": "T3",
+      "status": "fail",
+      "startedAt": "2026-09-12T01:48:07.332Z",
+      "durationMs": 31919,
+      "assertions": [
+        {
+          "id": "t3.baseline.file-intact",
+          "status": "pass",
+          "evidence": "baseline m4-deduped-2026-09-10 state=ok sha256=c2d4ef22cacf",
+          "detail": {
+            "path": "experiments/m4/results-minimal-plus-next-deduped-2026-09-10.jsonl",
+            "hint": "re-capture the baseline and update gates/manifest.json if the batch file changed"
+          }
+        },
+        {
+          "id": "t3.model.baseline-match",
+          "status": "pass",
+          "evidence": "model=opencode-go/deepseek-v4-flash baseline=opencode-go/deepseek-v4-flash",
+          "detail": {
+            "hint": "GATE_T3_MODEL override recorded; re-capture the baseline (manifest) if the route intentionally changed"
+          }
+        },
+        {
+          "id": "t3.m4.batch-exit",
+          "status": "pass",
+          "evidence": "exit 0",
+          "detail": {
+            "stderr": [
+              ""
+            ]
+          }
+        },
+        {
+          "id": "t3.m4.records-complete",
+          "status": "pass",
+          "evidence": "records=9 expected=9 broken=0",
+          "detail": {
+            "archive": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T01-47-35-413Z/m4-E.jsonl"
+          }
+        },
+        {
+          "id": "t3.m4.behaviour-anchored",
+          "status": "fail",
+          "evidence": "records=9/9 anchored=0/8 (tolerance 1) check3=0 check4=0 errors=0",
+          "detail": {
+            "threshold": 8,
+            "nonBashFirstTools": [],
+            "errors": [],
+            "providerErrors": [
+              {
+                "run": 1,
+                "code": "QUOTA",
+                "message": "429: {\"type\":\"GoUsageLimitError\",\"message\":\"Monthly usage limit reached. Resets in 7 days. To continue using this model now, enable usage from your available balance: https://opencode.ai/workspace/wrk"
+              },
+              {
+                "run": 2,
+                "code": "QUOTA",
+                "message": "429: {\"type\":\"GoUsageLimitError\",\"message\":\"Monthly usage limit reached. Resets in 7 days. To continue using this model now, enable usage from your available balance: https://opencode.ai/workspace/wrk"
+              },
+              {
+                "run": 3,
+                "code": "QUOTA",
+                "message": "429: {\"type\":\"GoUsageLimitError\",\"message\":\"Monthly usage limit reached. Resets in 7 days. To continue using this model now, enable usage from your available balance: https://opencode.ai/workspace/wrk"
+              },
+              {
+                "run": 4,
+                "code": "QUOTA",
+                "message": "429: {\"type\":\"GoUsageLimitError\",\"message\":\"Monthly usage limit reached. Resets in 7 days. To continue using this model now, enable usage from your available balance: https://opencode.ai/workspace/wrk"
+              },
+              {
+                "run": 5,
+                "code": "QUOTA",
+                "message": "429: {\"type\":\"GoUsageLimitError\",\"message\":\"Monthly usage limit reached. Resets in 7 days. To continue using this model now, enable usage from your available balance: https://opencode.ai/workspace/wrk"
+              },
+              {
+                "run": 6,
+                "code": "QUOTA",
+                "message": "429: {\"type\":\"GoUsageLimitError\",\"message\":\"Monthly usage limit reached. Resets in 7 days. To continue using this model now, enable usage from your available balance: https://opencode.ai/workspace/wrk"
+              },
+              {
+                "run": 7,
+                "code": "QUOTA",
+                "message": "429: {\"type\":\"GoUsageLimitError\",\"message\":\"Monthly usage limit reached. Resets in 7 days. To continue using this model now, enable usage from your available balance: https://opencode.ai/workspace/wrk"
+              },
+              {
+                "run": 8,
+                "code": "QUOTA",
+                "message": "429: {\"type\":\"GoUsageLimitError\",\"message\":\"Monthly usage limit reached. Resets in 7 days. To continue using this model now, enable usage from your available balance: https://opencode.ai/workspace/wrk"
+              },
+              {
+                "run": 9,
+                "code": "QUOTA",
+                "message": "429: {\"type\":\"GoUsageLimitError\",\"message\":\"Monthly usage limit reached. Resets in 7 days. To continue using this model now, enable usage from your available balance: https://opencode.ai/workspace/wrk"
+              }
+            ],
+            "hint": "behaviour anchoring = first response has a tool call and its first tool is bash"
+          }
+        },
+        {
+          "id": "t3.m4.agent-instructions",
+          "status": "fail",
+          "evidence": "check3=0/8",
+          "detail": {
+            "archive": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T01-47-35-413Z/m4-E.jsonl"
+          }
+        },
+        {
+          "id": "t3.m4.sandbox-bash",
+          "status": "fail",
+          "evidence": "check4=0/8",
+          "detail": {
+            "archive": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T01-47-35-413Z/m4-E.jsonl"
+          }
+        },
+        {
+          "id": "t3.m4.archive",
+          "status": "pass",
+          "evidence": "archive sha256=f01b0adc7839 runs=9 host=0.1.5-rc.1 model=opencode-go/deepseek-v4-flash capturedAt=2026-09-12T01:47:35.413Z",
+          "detail": {
+            "path": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T01-47-35-413Z/m4-E.jsonl"
+          }
+        },
+        {
+          "id": "t3.m4.advisory-wording",
+          "status": "pass",
+          "evidence": "advisory only, not asserted: anchorRate=100% weNeed=0 letMe=0 toolCall=0 avgTools=2"
+        },
+        {
+          "id": "t3.model-selection-probe.all-checks",
+          "status": "fail",
+          "evidence": "exit 1 11/16 pass failed=[\"a00-promotion-precondition\",\"a2-preset-model-selection-schema\",\"a3-discovery-tool-visible\",\"a13-tool-names-and-context-sources\",\"a14-model-driven-selection\"] missing=[]",
+          "detail": {
+            "archive": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T01-47-35-413Z/model-selection-probe.json",
+            "stderr": [
+              ""
+            ]
+          }
+        },
+        {
+          "id": "t3.model-selection-probe.archive",
+          "status": "pass",
+          "evidence": "archive sha256=623a2d8ed1f8 checks=16 oldSession=session-m4-E1-613dd138-b1b1-4a8b-8c8c-034fb676e496 capturedAt=2026-09-12T01:47:35.413Z",
+          "detail": {
+            "oldSession": "session-m4-E1-613dd138-b1b1-4a8b-8c8c-034fb676e496"
+          }
+        },
+        {
+          "id": "t3.route-probe.all-routes",
+          "status": "fail",
+          "evidence": "exit 1 0/0 pass routes=[]",
+          "detail": {
+            "archive": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T01-47-35-413Z/route-probe.json",
+            "stderr": [
+              "TICKET12 ROUTE PROBE FAILED: Error: ticket12-route-probe: subagent lacks model params after promotion: []",
+              "    at run (file:///Users/vito/data/dev/dsh-plugins/experiments/subagent-model-selection/route-probe.mjs:248:73)",
+              "    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)"
+            ]
+          }
+        },
+        {
+          "id": "t3.route-probe.archive",
+          "status": "fail",
+          "evidence": "no route report at /Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T01-47-35-413Z/route-probe.json",
+          "detail": {
+            "path": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T01-47-35-413Z/route-probe.json"
+          }
+        },
+        {
+          "id": "t3.report.provenance",
+          "status": "fail",
+          "evidence": "host=0.1.5-rc.1 sessionFormat=3 profile=t3-headless presetSha=9087bf00b2ed credentials=882fe9d2342c runs=9 capturedAt=2026-09-12T01:47:35.413Z archive=/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T01-47-35-413Z"
+        },
+        {
+          "id": "t3.isolation.real-home-untouched",
+          "status": "pass",
+          "evidence": "signature identical before/after (strict zones; 1 observed-only changes)",
+          "detail": {
+            "observedChanges": [
+              {
+                "zone": "storages",
+                "change": "changed",
+                "before": 176,
+                "after": 176
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "exemptions": [],
+  "summary": {
+    "passed": 11,
+    "failed": 7,
+    "skipped": 0
+  },
+  "t3": {
+    "capturedAt": "2026-09-12T01:47:35.413Z",
+    "hostVersion": "0.1.5-rc.1",
+    "sessionFormatVersion": 3,
+    "model": "opencode-go/deepseek-v4-flash",
+    "modelMatchesBaseline": true,
+    "runs": 9,
+    "tolerance": 1,
+    "timeoutMs": 900000,
+    "baseline": {
+      "id": "m4-deduped-2026-09-10",
+      "path": "experiments/m4/results-minimal-plus-next-deduped-2026-09-10.jsonl",
+      "sha256": "c2d4ef22cacf6c87e5b74df3adfbeebf3e5fd81ba7acec7a09e905daf4ad65a1",
+      "runs": 9,
+      "hostVersion": "0.1.5-rc.1",
+      "state": "ok"
+    },
+    "composition": {
+      "profile": "t3-headless",
+      "profilePatchSha256": "98a3a3a969bc1aa965b3b87926c4fa715806cff9593caa545af2c37befce3757",
+      "preset": "minimal-plus-next",
+      "presetSource": "deployed",
+      "presetPath": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-UJxKsJ/home/.agent-presets/minimal-plus-next",
+      "presetSha256": "9087bf00b2edd520f91b2a97fc527cd6250f590ab8694b757420f57e3b31789c",
+      "manifestSha256": "9087bf00b2edd520f91b2a97fc527cd6250f590ab8694b757420f57e3b31789c",
+      "deploymentStatus": "ok",
+      "deploymentDrift": [],
+      "settingsSha256": "422169d15f44c5dcb3daee31ba4813e08db72c2d6fc996368fab59002223e51c",
+      "credentialsCopied": true,
+      "credentialsSha256": "882fe9d2342c90df09343ba142d8d6d3835b386d78dfecbe8e1721c7c349a563"
+    },
+    "assets": {
+      "m4PatchSha256": "80e44d6018a0b0a6328432f02d255facc9947ee277eaa0d51602f02fec833bd9",
+      "modelSelectionPatchSha256": "5e919f0a4ed887a4b0a5617466c713442242a00c1dab097bad5d4f55da6a45e0",
+      "routeProbePatchSha256": "3d0dbf39ac9b899f6c85710fc2d6d01fa0a83cc46ef5dfda6f61c370e723a48b"
+    },
+    "archive": {
+      "dir": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T01-47-35-413Z",
+      "files": [
+        {
+          "name": "m4-E.jsonl",
+          "path": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T01-47-35-413Z/m4-E.jsonl",
+          "sha256": "f01b0adc78394a7910424cb2b28a595218f2571bea70e32ee043af9cb5590e96"
+        },
+        {
+          "name": "model-selection-probe.json",
+          "path": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T01-47-35-413Z/model-selection-probe.json",
+          "sha256": "623a2d8ed1f88a575097a9812cb30585097993596edcfcd230541b3270896ff7"
+        }
+      ]
+    },
+    "m4": {
+      "exit": 0,
+      "elapsedMs": 8236,
+      "model": "opencode-go/deepseek-v4-flash",
+      "archive": {
+        "name": "m4-E.jsonl",
+        "path": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T01-47-35-413Z/m4-E.jsonl",
+        "sha256": "f01b0adc78394a7910424cb2b28a595218f2571bea70e32ee043af9cb5590e96"
+      },
+      "brokenLines": [],
+      "expectedRuns": 9,
+      "tolerance": 1,
+      "threshold": 8,
+      "records": 9,
+      "errors": [],
+      "providerErrors": [
+        {
+          "run": 1,
+          "code": "QUOTA",
+          "message": "429: {\"type\":\"GoUsageLimitError\",\"message\":\"Monthly usage limit reached. Resets in 7 days. To continue using this model now, enable usage from your available balance: https://opencode.ai/workspace/wrk"
+        },
+        {
+          "run": 2,
+          "code": "QUOTA",
+          "message": "429: {\"type\":\"GoUsageLimitError\",\"message\":\"Monthly usage limit reached. Resets in 7 days. To continue using this model now, enable usage from your available balance: https://opencode.ai/workspace/wrk"
+        },
+        {
+          "run": 3,
+          "code": "QUOTA",
+          "message": "429: {\"type\":\"GoUsageLimitError\",\"message\":\"Monthly usage limit reached. Resets in 7 days. To continue using this model now, enable usage from your available balance: https://opencode.ai/workspace/wrk"
+        },
+        {
+          "run": 4,
+          "code": "QUOTA",
+          "message": "429: {\"type\":\"GoUsageLimitError\",\"message\":\"Monthly usage limit reached. Resets in 7 days. To continue using this model now, enable usage from your available balance: https://opencode.ai/workspace/wrk"
+        },
+        {
+          "run": 5,
+          "code": "QUOTA",
+          "message": "429: {\"type\":\"GoUsageLimitError\",\"message\":\"Monthly usage limit reached. Resets in 7 days. To continue using this model now, enable usage from your available balance: https://opencode.ai/workspace/wrk"
+        },
+        {
+          "run": 6,
+          "code": "QUOTA",
+          "message": "429: {\"type\":\"GoUsageLimitError\",\"message\":\"Monthly usage limit reached. Resets in 7 days. To continue using this model now, enable usage from your available balance: https://opencode.ai/workspace/wrk"
+        },
+        {
+          "run": 7,
+          "code": "QUOTA",
+          "message": "429: {\"type\":\"GoUsageLimitError\",\"message\":\"Monthly usage limit reached. Resets in 7 days. To continue using this model now, enable usage from your available balance: https://opencode.ai/workspace/wrk"
+        },
+        {
+          "run": 8,
+          "code": "QUOTA",
+          "message": "429: {\"type\":\"GoUsageLimitError\",\"message\":\"Monthly usage limit reached. Resets in 7 days. To continue using this model now, enable usage from your available balance: https://opencode.ai/workspace/wrk"
+        },
+        {
+          "run": 9,
+          "code": "QUOTA",
+          "message": "429: {\"type\":\"GoUsageLimitError\",\"message\":\"Monthly usage limit reached. Resets in 7 days. To continue using this model now, enable usage from your available balance: https://opencode.ai/workspace/wrk"
+        }
+      ],
+      "anchored": 0,
+      "withToolCall": 0,
+      "nonBashFirstTools": [],
+      "check3": 0,
+      "check4": 0,
+      "recordsOk": true,
+      "behaviourOk": false,
+      "check3Ok": false,
+      "check4Ok": false,
+      "advisory": {
+        "anchorRate": "100%",
+        "weNeed": 0,
+        "letMe": 0,
+        "toolCall": 0,
+        "avgTools": 2
+      }
+    },
+    "modelSelectionProbe": {
+      "exit": 1,
+      "elapsedMs": 21014,
+      "oldSession": {
+        "id": "session-m4-E1-613dd138-b1b1-4a8b-8c8c-034fb676e496",
+        "source": "m4-E-copy"
+      },
+      "archive": {
+        "name": "model-selection-probe.json",
+        "path": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T01-47-35-413Z/model-selection-probe.json",
+        "sha256": "623a2d8ed1f88a575097a9812cb30585097993596edcfcd230541b3270896ff7"
+      },
+      "total": 16,
+      "passed": 11,
+      "failed": [
+        "a00-promotion-precondition",
+        "a2-preset-model-selection-schema",
+        "a3-discovery-tool-visible",
+        "a13-tool-names-and-context-sources",
+        "a14-model-driven-selection"
+      ],
+      "missing": [],
+      "summary": "11/16 pass"
+    },
+    "routeProbe": {
+      "exit": 1,
+      "elapsedMs": 2582,
+      "total": 0,
+      "passed": 0,
+      "routes": []
+    }
+  }
+}

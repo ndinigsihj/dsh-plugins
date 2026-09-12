@@ -36,5 +36,9 @@
       "preset": "minimal-plus-next",
       "runs": 9
     }
+  },
+  "t3": {
+    "baseline": "m4-deduped-2026-09-10",
+    "tolerance": 1
   }
 }

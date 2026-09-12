@@ -1,0 +1,327 @@
+{
+  "startedAt": "2026-09-12T01:47:44.973Z",
+  "parent": {
+    "provider": "opencode-go",
+    "model": "deepseek-v4-flash"
+  },
+  "allowedX": [
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4-flash"
+    },
+    {
+      "provider": "commandcode",
+      "model": "deepseek/deepseek-v4-flash"
+    },
+    {
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-flash"
+    }
+  ],
+  "checks": [
+    {
+      "id": "a1-host-service-mounted",
+      "pass": true,
+      "detail": {
+        "enabled": true,
+        "allowedModels": [
+          {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash"
+          },
+          {
+            "provider": "commandcode",
+            "model": "deepseek/deepseek-v4-flash"
+          },
+          {
+            "provider": "deepseek-official",
+            "model": "deepseek-v4-flash"
+          },
+          {
+            "provider": "opencode-go",
+            "model": "deepseek-flash"
+          }
+        ]
+      }
+    },
+    {
+      "id": "a00-promotion-precondition",
+      "pass": false,
+      "detail": {
+        "count": 2,
+        "tools": [
+          "bash",
+          "str_replace_editor"
+        ]
+      }
+    },
+    {
+      "id": "a2-preset-model-selection-schema",
+      "pass": false,
+      "detail": {
+        "subagentParams": []
+      }
+    },
+    {
+      "id": "a3-discovery-tool-visible",
+      "pass": false,
+      "detail": {
+        "count": 2,
+        "tools": [
+          "bash",
+          "str_replace_editor"
+        ]
+      }
+    },
+    {
+      "id": "a13-tool-names-and-context-sources",
+      "pass": false,
+      "detail": {
+        "subagentParams": [],
+        "forkParams": []
+      }
+    },
+    {
+      "id": "a0-session-records-policy",
+      "pass": true,
+      "detail": {
+        "policy": [
+          {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash"
+          },
+          {
+            "provider": "commandcode",
+            "model": "deepseek/deepseek-v4-flash"
+          },
+          {
+            "provider": "deepseek-official",
+            "model": "deepseek-v4-flash"
+          },
+          {
+            "provider": "opencode-go",
+            "model": "deepseek-flash"
+          }
+        ],
+        "parentRoute": {
+          "provider": "opencode-go",
+          "model": "deepseek-v4-flash",
+          "maxTokens": 131072,
+          "reasoningEffort": "max"
+        }
+      }
+    },
+    {
+      "id": "a4-discovery-by-provider",
+      "pass": true,
+      "detail": {
+        "providersText": "deepseek-official — DeepSeek\nopencode-go — opencode-go\ncommandcode — Command Code",
+        "opencodeText": "opencode-go/deepseek-v4-flash — DeepSeek V4 Flash\nopencode-go/deepseek-flash — DeepSeek V4.1 Flash",
+        "commandcodeText": "commandcode/deepseek/deepseek-v4-flash — DeepSeek V4 Flash",
+        "outsideText": "ERROR: LLM provider \"volcengine\" is not allowed for this Session"
+      }
+    },
+    {
+      "id": "a5-explicit-route-used",
+      "pass": true,
+      "detail": {
+        "childId": "04050b1c-876e-40c3-b657-9d7cdf6bb0fc",
+        "route": {
+          "provider": "opencode-go",
+          "model": "deepseek-flash",
+          "reasoningEffort": "low",
+          "maxTokens": 131072
+        },
+        "result": "ERROR: subagent run failed"
+      }
+    },
+    {
+      "id": "a6-explicit-effort-used",
+      "pass": true,
+      "detail": {
+        "childId": "04050b1c-876e-40c3-b657-9d7cdf6bb0fc",
+        "effort": "low"
+      }
+    },
+    {
+      "id": "a8-child-inherits-policy",
+      "pass": true,
+      "detail": {
+        "childId": "04050b1c-876e-40c3-b657-9d7cdf6bb0fc",
+        "policy": [
+          {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash"
+          },
+          {
+            "provider": "commandcode",
+            "model": "deepseek/deepseek-v4-flash"
+          },
+          {
+            "provider": "deepseek-official",
+            "model": "deepseek-v4-flash"
+          },
+          {
+            "provider": "opencode-go",
+            "model": "deepseek-flash"
+          }
+        ]
+      }
+    },
+    {
+      "id": "a7-omitted-route-inherits",
+      "pass": true,
+      "detail": {
+        "childId": "7b3db93c-29ef-47dc-89c5-a89739943a4e",
+        "parentRoute": {
+          "provider": "opencode-go",
+          "model": "deepseek-v4-flash",
+          "maxTokens": 131072,
+          "reasoningEffort": "max"
+        },
+        "childRoute": {
+          "provider": "opencode-go",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max",
+          "maxTokens": 131072
+        }
+      }
+    },
+    {
+      "id": "a11-forbidden-route-rejected",
+      "pass": true,
+      "detail": {
+        "childId": null,
+        "text": "ERROR: child LLM route \"volcengine/deepseek-v4-flash-ga-260731\" is not allowed for this Session"
+      }
+    },
+    {
+      "id": "a12-fork-same-route-no-selection",
+      "pass": true,
+      "detail": {
+        "childId": "1c0dfff2-cac0-4f47-89c6-18d2fba3a75b",
+        "parentRoute": {
+          "provider": "opencode-go",
+          "model": "deepseek-v4-flash",
+          "maxTokens": 131072,
+          "reasoningEffort": "max"
+        },
+        "forkRoute": {
+          "provider": "opencode-go",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max",
+          "maxTokens": 131072
+        },
+        "result": "ERROR: subagent run failed"
+      }
+    },
+    {
+      "id": "a14-model-driven-selection",
+      "pass": false,
+      "detail": {
+        "childId": null,
+        "route": null,
+        "call": null
+      }
+    },
+    {
+      "id": "a9-settings-edit-does-not-rewrite",
+      "pass": true,
+      "detail": {
+        "before": {
+          "base": {
+            "enabled": true,
+            "allowedModels": [
+              {
+                "provider": "opencode-go",
+                "model": "deepseek-v4-flash"
+              },
+              {
+                "provider": "commandcode",
+                "model": "deepseek/deepseek-v4-flash"
+              },
+              {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-flash"
+              },
+              {
+                "provider": "opencode-go",
+                "model": "deepseek-flash"
+              }
+            ]
+          }
+        },
+        "published": true,
+        "newPolicy": [
+          {
+            "provider": "gjx",
+            "model": "gpt-5.6-sol"
+          }
+        ],
+        "oldPolicy": [
+          {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash"
+          },
+          {
+            "provider": "commandcode",
+            "model": "deepseek/deepseek-v4-flash"
+          },
+          {
+            "provider": "deepseek-official",
+            "model": "deepseek-v4-flash"
+          },
+          {
+            "provider": "opencode-go",
+            "model": "deepseek-flash"
+          }
+        ],
+        "freshListY": "gjx/gpt-5.6-sol — gpt-5.6-sol",
+        "freshListX": "ERROR: LLM provider \"opencode-go\" is not allowed for this Session",
+        "staleText": "ERROR: child LLM route \"gjx/gpt-5.6-sol\" is not allowed for this Session"
+      }
+    },
+    {
+      "id": "a10-old-session-stays-off",
+      "pass": true,
+      "detail": {
+        "oldSessionId": "session-m4-E1-613dd138-b1b1-4a8b-8c8c-034fb676e496",
+        "count": 2,
+        "subagentParams": []
+      }
+    }
+  ],
+  "facts": {
+    "baseline": {
+      "enabled": true,
+      "allowedModels": [
+        {
+          "provider": "opencode-go",
+          "model": "deepseek-v4-flash"
+        },
+        {
+          "provider": "commandcode",
+          "model": "deepseek/deepseek-v4-flash"
+        },
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash"
+        },
+        {
+          "provider": "opencode-go",
+          "model": "deepseek-flash"
+        }
+      ]
+    },
+    "assembledTools": [
+      "bash",
+      "str_replace_editor"
+    ]
+  },
+  "finishedAt": "2026-09-12T01:48:04.667Z",
+  "summary": "11/16 pass"
+}

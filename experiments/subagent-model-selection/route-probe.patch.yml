@@ -7,6 +7,8 @@
 #   2) session-persistence-jsonl.root 指向临时目录 —— 探针会话不落真实 ~/.dsh/sessions；
 #   3) 按 id 覆盖 headless 部署基线为 enabled=true + 当前允许路由（与
 #      ~/.dsh/profiles/tui-dev/cordis.patch.yml 部署基线逐字段一致）。
+# 路径可用 env 覆盖（闸门 `--tier 3` 用 ROUTE_PROBE_SETTINGS_PATH /
+# ROUTE_PROBE_SESSION_ROOT 指向自己的隔离临时 home；不设时保持 run-route-probe.sh 默认值）。
 #
 # 探针本身从设置服务读取 allowedModels 并逐条探测；集合裁剪时同步改本文件与部署基线。
 - id: headless-runner
@@ -20,11 +22,11 @@
 
 - id: settings
   config:
-    path: /tmp/dsh-ticket12/settings.yaml
+    path: !!js process.env.ROUTE_PROBE_SETTINGS_PATH ?? '/tmp/dsh-ticket12/settings.yaml'
 
 - id: session-persistence-jsonl
   config:
-    root: /tmp/dsh-ticket12/sessions
+    root: !!js process.env.ROUTE_PROBE_SESSION_ROOT ?? '/tmp/dsh-ticket12/sessions'
 
 # 与 ~/.dsh/profiles/tui-dev/cordis.patch.yml 的部署基线逐字段一致
 - id: subagent-model-selection-settings

@@ -2,13 +2,16 @@
  * 回归闸门编排器（票据 03；计划 §2.1、§2.2、§5.1、§5.2、§5.4）。
  *
  * 入口是 `scripts/regression-gate.sh`（单一命令、持仓库本地锁、建临时 home）；
- * 本模块负责跑完静态层（T0）与零 LLM 组合层（T1）、收集断言证据、写报告。
+ * 本模块负责跑完静态层（T0）与零 LLM 组合层（T1）、假模型行为层（T2）、
+ * 按需真实模型层（T3，见 `gates/t3/run.mjs`）、收集断言证据、写报告。
  *
  * 退出码三态（由本模块返回，bash 入口透传）：
- *   0 全过 / 1 任一断言失败 / 2 环境前置不满足（清单、宿主钉版、组合渲染缺依赖）。
+ *   0 全过 / 1 任一断言失败 / 2 环境前置不满足（清单、宿主钉版、组合渲染缺依赖、
+ *   T3 版本/基线来源不符或真实 settings 缺失）。
  *
  * 隔离：全部输入来自 repo 资产与临时 home（`GATE_TEMP`），真实 `~/.dsh` 只读；
- * 跨进程写目标只有报告文件与临时 home。
+ * 跨进程写目标只有报告文件与临时 home（T3 额外按日期归档到
+ * `experiments/regression-gate/t3-*`）。
  */
 import { createRequire } from "node:module";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
@@ -22,6 +25,8 @@ import { EXIT, GATE_VERSION, createAssertions, diffRealHome, parseTestCounts, ru
 import { parseCompositionDump } from "./dump-parse.mjs";
 import { RenderRealError, REAL_PROFILE_NAME, renderRealComposition } from "./composition/render-real.mjs";
 import { countEntries, findDuplicateIds } from "./unique-ids.mjs";
+import { runT3 } from "./t3/run.mjs";
+import { t3ProvenanceProblems } from "./t3/analysis.mjs";
 
 // `new URL("..")` 带尾斜杠；去掉它，路径显示（`file.slice(REPO_ROOT.length + 1)`）才正确。
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/u, "");
@@ -42,6 +47,7 @@ const GATE_SOURCES = [
   join(REPO_ROOT, "gates", "unique-ids.mjs"),
   join(REPO_ROOT, "gates", "dump-parse.mjs"),
   join(REPO_ROOT, "gates", "composition", "render-real.mjs"),
+  join(REPO_ROOT, "gates", "t3", "run.mjs"),
 ];
 /** seeded 预览探针的 id 白名单：红线断言被删掉时闸门必须变红。 */
 const SEEDED_PROBE_IDS = [
@@ -131,6 +137,7 @@ function scanRealHome(manifest) {
     profiles: join(realHome, ".dsh", "profiles"),
     storages: { path: join(realHome, ".dsh", "storages"), strict: false, reason: "live sessions write projection cache here" },
     "root:settings.yaml": join(realHome, ".dsh", "settings.yaml"),
+    "root:.credentials.yaml": join(realHome, ".dsh", ".credentials.yaml"),
   };
   for (const [preset, entry] of Object.entries(manifest.deployment)) {
     paths[`deployment:${preset}`] = resolveDeploymentRoot(entry, realHome);
@@ -152,6 +159,21 @@ function scanRealHome(manifest) {
  */
 export function strictIsolationDiffs(before, diffs) {
   return diffs.filter((diff) => before[diff.zone]?.strict !== false);
+}
+
+/** T3 的隔离断言（与 T1 第 ⑨ 条同口径：严格区零变化；活跃写入区只记录）。 */
+function t3IsolationAssertions(before, after) {
+  const t = createAssertions();
+  const diffs = diffRealHome(before, after);
+  const strict = strictIsolationDiffs(before, diffs);
+  t[strict.length === 0 ? "pass" : "fail"](
+    "t3.isolation.real-home-untouched",
+    strict.length === 0
+      ? `signature identical before/after (strict zones; ${String(diffs.length)} observed-only changes)`
+      : JSON.stringify(strict),
+    { observedChanges: diffs },
+  );
+  return t.assertions;
 }
 
 function countTree(dir) {
@@ -701,6 +723,23 @@ export async function runGate(options) {
       }
     }
   }
+  // T3 版本闸门（用户决策 Q3）：宿主/会话格式/基线来源或真实 settings 不符时该层拒绝运行
+  // （exit 2，T0/T1/T2 不受影响），而不是拿旧数字当结论。
+  let t3Refusal = null;
+  if (options.tiers.includes(3) && preconditionsOk && manifest.status === "ok" && host !== undefined) {
+    const problems = t3ProvenanceProblems(manifest.manifest, {
+      hostVersion: host.version,
+      sessionFormatVersion: SESSION_FORMAT_VERSION,
+      settingsPresent: existsSync(join(homedir(), ".dsh", "settings.yaml")),
+    });
+    for (const problem of problems) {
+      pre.fail(`t3.precondition.${problem.id}`, problem.detail, {
+        hint: "re-capture the baseline: update gates/manifest.json (host pin / baseline record) or switch back to the pinned host, then rerun --tier 3",
+      });
+    }
+    if (problems.length > 0) t3Refusal = problems.map((problem) => problem.detail).join("; ");
+  }
+
   const tempHome = options.tempHome;
   const env = {
     ...process.env,
@@ -823,6 +862,23 @@ export async function runGate(options) {
       tiers.push(recordTier("T2", [{ id: "tier.T2", status: "skip", evidence: `precondition not met: ${String(preconditionDetail)}` }]));
     }
   }
+  if (options.tiers.includes(3)) {
+    if (t3Refusal !== null) {
+      tiers.push(recordTier("T3", [{ id: "tier.T3", status: "skip", evidence: `refused: ${t3Refusal} — re-capture the baseline, then rerun --tier 3` }]));
+    } else if (!preconditionsOk) {
+      tiers.push(recordTier("T3", [{ id: "tier.T3", status: "skip", evidence: `precondition not met: ${String(preconditionDetail)}` }]));
+    } else {
+      const t3Started = Date.now();
+      let assertions;
+      try {
+        assertions = runT3({ tempHome, env, report, manifestObj: manifest.manifest, host });
+      } catch (error) {
+        assertions = [{ id: "t3.run", status: "fail", evidence: `T3 runner failed: ${String(error?.message ?? error)}` }];
+      }
+      assertions.push(...t3IsolationAssertions(realHomeBefore, scanRealHome(manifest.manifest)));
+      tiers.push(recordTier("T3", assertions, t3Started));
+    }
+  }
 
   if (pre.assertions.length > 0) {
     tiers.unshift({
@@ -845,7 +901,9 @@ export async function runGate(options) {
   writeReport(options.reportPath, report);
   printSummary(report, options.reportPath);
   const failed = report.summary.failed > 0;
-  if (failed || !preconditionsOk) return preconditionsOk ? EXIT.fail : EXIT.precondition;
+  if (!preconditionsOk) return EXIT.precondition;
+  if (t3Refusal !== null && options.tiers.includes(3)) return EXIT.precondition;
+  if (failed) return EXIT.fail;
   return EXIT.pass;
 }
 

@@ -81,6 +81,29 @@ test("清单结构缺字段或 sha 非法 → invalid", (t) => {
   assert.equal(readManifest(path).status, "invalid");
 });
 
+test("清单 t3 段（可选）：引用不存在基线或 tolerance 非法 → invalid；合法或缺省 → ok", (t) => {
+  const { root } = workspace(t);
+  const path = join(root, "manifest.json");
+  const noT3 = demoManifest();
+  writeFileSync(path, JSON.stringify(noT3));
+  assert.equal(readManifest(path).status, "ok", "旧清单没有 t3 段仍应可读");
+
+  const unknownBaseline = demoManifest();
+  unknownBaseline.t3 = { baseline: "nope", tolerance: 1 };
+  writeFileSync(path, JSON.stringify(unknownBaseline));
+  assert.equal(readManifest(path).status, "invalid");
+
+  const badTolerance = demoManifest();
+  badTolerance.t3 = { baseline: "m4-demo-2026-09-10", tolerance: -1 };
+  writeFileSync(path, JSON.stringify(badTolerance));
+  assert.equal(readManifest(path).status, "invalid");
+
+  const ok = demoManifest();
+  ok.t3 = { baseline: "m4-demo-2026-09-10", tolerance: 1 };
+  writeFileSync(path, JSON.stringify(ok));
+  assert.equal(readManifest(path).status, "ok");
+});
+
 test("清单可读 → ok 且返回对象", (t) => {
   const { root } = workspace(t);
   const path = join(root, "manifest.json");

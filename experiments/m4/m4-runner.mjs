@@ -188,6 +188,7 @@ async function runOne(ctx, agents, agentPresets, defaultModel, group, run) {
     ts: new Date().toISOString(),
     group,
     run,
+    sessionId: agent.session.id,
     preset,
     model: `${selection.provider}/${selection.model}`,
     task,
@@ -195,6 +196,14 @@ async function runOne(ctx, agents, agentPresets, defaultModel, group, run) {
     firstToolCall: first.firstToolCall,
     r2,
     toolSequence: toolSequence(events),
+    // 票据 11：turn 级模型错误（额度/传输分类）显式落记录，T3 报告才不用猜「0 工具调用」的原因。
+    turnErrors: events
+      .filter((event) => event.type === "turn/end" && event.data?.reason?.kind === "error")
+      .map((event) => ({
+        turn: event.data.turn ?? null,
+        code: event.data.reason.error?.code ?? null,
+        message: event.data.reason.error?.message ?? null,
+      })),
     error: null,
     elapsedMs: Date.now() - started,
   };
@@ -224,6 +233,7 @@ async function run(ctx) {
           ts: new Date().toISOString(),
           group,
           run,
+          sessionId: null,
           preset: DEPLOYED_PRESETS[group] ?? null,
           model: null,
           task: null,
@@ -231,6 +241,7 @@ async function run(ctx) {
           firstToolCall: null,
           r2: null,
           toolSequence: null,
+          turnErrors: [],
           error: error instanceof Error ? error.message : String(error),
           elapsedMs: null,
         };

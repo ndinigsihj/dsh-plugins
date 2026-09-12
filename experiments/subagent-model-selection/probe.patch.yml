@@ -5,9 +5,11 @@
 # tool-bash（与 preset 的 persistent-shell bash 撞名）。探针自带三段环境隔离：
 #   1) settings.path 指向临时副本 —— 设置编辑测试写副本，不碰 ~/.dsh/settings.yaml；
 #   2) session-persistence-jsonl.root 指向临时目录 —— 新探针会话与旧会话副本都落
-#      /tmp，不碰真实 ~/.dsh/sessions（旧会话由 run.sh 预复制）；
+#      临时根，不碰真实 ~/.dsh/sessions（旧会话由 run.sh 或闸门 T3 预复制）；
 #   3) 按 id 覆盖 headless 的部署基线为 enabled=true + 4 条允许路由（生产 tui-dev
 #      基线同值；headless 自身 kept disabled 以保测量口径）。
+# 路径可用 env 覆盖（闸门 `--tier 3` 用 PROBE_SETTINGS_PATH / PROBE_SESSION_ROOT
+# 指向自己的隔离临时 home；不设时保持 run.sh 的 /tmp/dsh-ticket11 默认值）。
 - id: headless-runner
   disabled: true
 
@@ -19,11 +21,11 @@
 
 - id: settings
   config:
-    path: /tmp/dsh-ticket11/settings.yaml
+    path: !!js process.env.PROBE_SETTINGS_PATH ?? '/tmp/dsh-ticket11/settings.yaml'
 
 - id: session-persistence-jsonl
   config:
-    root: /tmp/dsh-ticket11/sessions
+    root: !!js process.env.PROBE_SESSION_ROOT ?? '/tmp/dsh-ticket11/sessions'
 
 # 与 ~/.dsh/profiles/tui-dev/cordis.patch.yml 的部署基线逐字段一致
 - id: subagent-model-selection-settings

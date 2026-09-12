@@ -2,11 +2,21 @@
 # 回归闸门单一入口（票据 03；计划 §2.2、§5.1）。
 #
 #   scripts/regression-gate.sh [--tier 0,1] [--composition gate|real]
+#                              [--tier 0,1,2,3] ...
 #                              [--json <path>] [--skip-deployment-check]
 #                              [--allow-stale-deployment] [--keep-temp]
 #
 # 退出码：0 全过 / 1 任一断言失败 / 2 环境前置不满足（宿主或会话格式与清单不符、
-# 组合渲染缺依赖、real 模式缺相邻仓库）。
+# 组合渲染缺依赖、real 模式缺相邻仓库、T3 版本/基线来源不符或真实 settings 缺失）。
+#
+# T3 真实模型层（票据 11；按需，永不进 release/CI）：
+#   scripts/regression-gate.sh --tier 3            # M4 批次 + 模型选择探针 + 允许路由探针
+# 需要真实 `~/.dsh/settings.yaml`（provider 凭据）；只读复制进隔离临时 home，
+# 原始产物按 UTC 时间戳归档到 `experiments/regression-gate/t3-*`（跨轮次不覆盖）。
+# 宿主版本/会话格式/基线来源与清单不符时该层拒绝运行（exit 2）并提示重采基线。
+# 默认路由遇外部额度/传输不可用时，可用 env 做机制验证跑（报告记录实际路由，基线口径不变）：
+#   GATE_T3_MODEL、PROBE_PARENT_{PROVIDER,MODEL}、PROBE_EXPLICIT_{PROVIDER,MODEL}、
+#   ROUTE_PROBE_PARENT_{PROVIDER,MODEL}。
 #
 # real 组合模式（票据 04；计划 §2.1）：不写死本机路径，按 env 渲染真实
 # `~/.dsh/profiles/tui-dev/cordis.patch.yml` 到临时 home：

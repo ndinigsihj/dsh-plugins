@@ -24,8 +24,15 @@ export const name = "ticket12-route-probe";
 export const inject = [];
 
 const PRESET = "minimal-plus-next";
-/** 父会话路由：票据 07/08/10 M4 同源，工具调用能力已验证。 */
-const PARENT = { provider: "opencode-go", model: "deepseek-v4-flash" };
+/**
+ * 父会话路由：票据 07/08/10 M4 同源，工具调用能力已验证。
+ * 可用 env 覆盖（`ROUTE_PROBE_PARENT_PROVIDER` / `ROUTE_PROBE_PARENT_MODEL`）：T3 真实模型层
+ * 在默认路由遇额度/传输不可用时做机制验证跑，报告会记录实际路由；不设 env 时行为不变。
+ */
+const PARENT = {
+  provider: process.env.ROUTE_PROBE_PARENT_PROVIDER ?? "opencode-go",
+  model: process.env.ROUTE_PROBE_PARENT_MODEL ?? "deepseek-v4-flash",
+};
 const MAX_ATTEMPTS = 2;
 /** 首轮锚定（tool-bootstrap）只放行 bash/str_replace_editor；父会话先真发一次工具调用完成 promotion。 */
 const WARMUP_PROMPT = [

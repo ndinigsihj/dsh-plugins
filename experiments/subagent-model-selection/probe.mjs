@@ -22,8 +22,19 @@ export const name = "ticket11-probe";
 export const inject = [];
 
 const PRESET = "minimal-plus-next";
-/** 父会话路由：票据 07/08/10 M4 批次同源，工具调用能力已验证。 */
-const PARENT = { provider: "opencode-go", model: "deepseek-v4-flash" };
+/**
+ * 父会话路由：票据 07/08/10 M4 批次同源，工具调用能力已验证。
+ * 可用 env 覆盖（`PROBE_PARENT_PROVIDER` / `PROBE_PARENT_MODEL`）：T3 真实模型层在默认
+ * 路由遇额度/传输不可用时做机制验证跑，报告会记录实际路由；不设 env 时行为不变。
+ */
+function routeFromEnv(prefix, fallback) {
+  return {
+    provider: process.env[`${prefix}_PROVIDER`] ?? fallback.provider,
+    model: process.env[`${prefix}_MODEL`] ?? fallback.model,
+  };
+}
+
+const PARENT = routeFromEnv("PROBE_PARENT", { provider: "opencode-go", model: "deepseek-v4-flash" });
 /** 探针部署基线（与 ~/.dsh/profiles/tui-dev/cordis.patch.yml 逐字段一致）。 */
 const ALLOWED_X = [
   { provider: "opencode-go", model: "deepseek-v4-flash" },
@@ -33,7 +44,8 @@ const ALLOWED_X = [
 ];
 /** 事后编辑到用户层的集合：与 X 不相交，便于区分"已记录"与"当前设置"。 */
 const SETTINGS_Y = { enabled: true, allowedModels: [{ provider: "gjx", model: "gpt-5.6-sol" }] };
-const EXPLICIT = { provider: "opencode-go", model: "deepseek-flash", reasoning_effort: "low" };
+/** 显式委派路由（必须在允许集合 X 内）；env 覆盖同上：PROBE_EXPLICIT_PROVIDER / _MODEL。 */
+const EXPLICIT = { ...routeFromEnv("PROBE_EXPLICIT", { provider: "opencode-go", model: "deepseek-flash" }), reasoning_effort: "low" };
 const FORBIDDEN = { provider: "volcengine", model: "deepseek-v4-flash-ga-260731" };
 const MODEL_PARAMS = ["provider", "model", "reasoning_effort"];
 const CHILD_PROMPT = "Reply with exactly: OK";

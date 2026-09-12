@@ -1,0 +1,263 @@
+{
+  "startedAt": "2026-09-12T02:05:37.902Z",
+  "parent": {
+    "provider": "deepseek-official",
+    "model": "deepseek-v4-flash"
+  },
+  "allowed": [
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-v4-flash"
+    },
+    {
+      "provider": "commandcode",
+      "model": "deepseek/deepseek-v4-flash"
+    },
+    {
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash"
+    },
+    {
+      "provider": "opencode-go",
+      "model": "deepseek-flash"
+    }
+  ],
+  "routes": [
+    {
+      "route": {
+        "provider": "opencode-go",
+        "model": "deepseek-v4-flash"
+      },
+      "pass": false,
+      "attempts": [
+        {
+          "attempt": 1,
+          "pass": false,
+          "failureKind": "subagent-error",
+          "durationMs": 1190,
+          "childId": "26f74fbd-47f1-4924-b228-86f1a8dfd0e6",
+          "childRoute": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "maxTokens": 131072,
+            "reasoningEffort": "max"
+          },
+          "context": {
+            "type": "request/context",
+            "seq": 11,
+            "time": 1789178741332,
+            "data": {
+              "provider": "opencode-go",
+              "model": "deepseek-v4-flash",
+              "contextWindow": 1000000
+            }
+          },
+          "subagentResult": {
+            "isError": true,
+            "text": "ERROR: subagent run failed"
+          },
+          "toolCalls": [],
+          "toolResults": [],
+          "turnErrors": [
+            {
+              "code": "QUOTA",
+              "status": null,
+              "message": "429: {\"type\":\"GoUsageLimitError\",\"message\":\"Monthly usage limit reached. Resets in 7 days. To continue using this model now, enable usage from your available balance: https://opencode.ai/workspace/wrk_01M0D6KF9TN0T769PN3NAYCPWA/go\"}"
+            }
+          ],
+          "marker": "ticket12-opencode-go-deepseek-v4-flash",
+          "markerSeen": false
+        }
+      ]
+    },
+    {
+      "route": {
+        "provider": "commandcode",
+        "model": "deepseek/deepseek-v4-flash"
+      },
+      "pass": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "pass": true,
+          "failureKind": null,
+          "durationMs": 9586,
+          "childId": "8c41023d-c845-4fa5-b998-8a34286c654d",
+          "childRoute": {
+            "provider": "commandcode",
+            "model": "deepseek/deepseek-v4-flash",
+            "maxTokens": 131072,
+            "reasoningEffort": "max"
+          },
+          "context": {
+            "type": "request/context",
+            "seq": 11,
+            "time": 1789178742516,
+            "data": {
+              "provider": "commandcode",
+              "model": "deepseek/deepseek-v4-flash",
+              "contextWindow": 1000000
+            }
+          },
+          "subagentResult": {
+            "isError": false,
+            "text": "done"
+          },
+          "toolCalls": [
+            {
+              "name": "bash",
+              "callId": "call_00_UHNGaxYLrUYDb7itRKsC1345",
+              "arguments": "{\"command\":\"echo ticket12-commandcode-deepseek-deepseek-v4-flash\",\"description\":\"Echo route probe marker\"}"
+            }
+          ],
+          "toolResults": [
+            {
+              "callId": "call_00_UHNGaxYLrUYDb7itRKsC1345",
+              "isError": false,
+              "text": "ticket12-commandcode-deepseek-deepseek-v4-flash\n[Command finished with exit code 0]"
+            }
+          ],
+          "turnErrors": [],
+          "marker": "ticket12-commandcode-deepseek-deepseek-v4-flash",
+          "markerSeen": true
+        }
+      ]
+    },
+    {
+      "route": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash"
+      },
+      "pass": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "pass": true,
+          "failureKind": null,
+          "durationMs": 6234,
+          "childId": "772b79b1-7443-4d52-85a7-c65091bc47b6",
+          "childRoute": {
+            "provider": "deepseek-official",
+            "model": "deepseek-v4-flash",
+            "reasoningEffort": "high",
+            "maxTokens": 256000
+          },
+          "context": {
+            "type": "request/context",
+            "seq": 11,
+            "time": 1789178752087,
+            "data": {
+              "provider": "deepseek-official",
+              "model": "deepseek-v4-flash",
+              "contextWindow": 1000000
+            }
+          },
+          "subagentResult": {
+            "isError": false,
+            "text": "done"
+          },
+          "toolCalls": [
+            {
+              "name": "bash",
+              "callId": "call_00_V0T32rfQeYG5BG8KHDKE8919",
+              "arguments": "{\"command\": \"echo ticket12-deepseek-official-deepseek-v4-flash\"}"
+            }
+          ],
+          "toolResults": [
+            {
+              "callId": "call_00_V0T32rfQeYG5BG8KHDKE8919",
+              "isError": false,
+              "text": "ticket12-deepseek-official-deepseek-v4-flash\n[Command finished with exit code 0]"
+            }
+          ],
+          "turnErrors": [],
+          "marker": "ticket12-deepseek-official-deepseek-v4-flash",
+          "markerSeen": true
+        }
+      ]
+    },
+    {
+      "route": {
+        "provider": "opencode-go",
+        "model": "deepseek-flash"
+      },
+      "pass": false,
+      "attempts": [
+        {
+          "attempt": 1,
+          "pass": false,
+          "failureKind": "subagent-error",
+          "durationMs": 889,
+          "childId": "0c553718-a232-490c-9bb1-0bf373eb0109",
+          "childRoute": {
+            "provider": "opencode-go",
+            "model": "deepseek-flash",
+            "maxTokens": 131072,
+            "reasoningEffort": "max"
+          },
+          "context": {
+            "type": "request/context",
+            "seq": 11,
+            "time": 1789178758333,
+            "data": {
+              "provider": "opencode-go",
+              "model": "deepseek-flash",
+              "contextWindow": 1000000
+            }
+          },
+          "subagentResult": {
+            "isError": true,
+            "text": "ERROR: subagent run failed"
+          },
+          "toolCalls": [],
+          "toolResults": [],
+          "turnErrors": [
+            {
+              "code": "QUOTA",
+              "status": null,
+              "message": "429: {\"type\":\"GoUsageLimitError\",\"message\":\"Monthly usage limit reached. Resets in 7 days. To continue using this model now, enable usage from your available balance: https://opencode.ai/workspace/wrk_01M0D6KF9TN0T769PN3NAYCPWA/go\"}"
+            }
+          ],
+          "marker": "ticket12-opencode-go-deepseek-flash",
+          "markerSeen": false
+        }
+      ]
+    }
+  ],
+  "facts": {
+    "promotedTools": [
+      "ask_user_question",
+      "bash",
+      "create_goal",
+      "edit",
+      "exit_plan_mode",
+      "get_goal",
+      "glob",
+      "grep",
+      "interrupt_agent",
+      "job_kill",
+      "job_list",
+      "job_output",
+      "list_agents",
+      "list_subagent_models",
+      "ralph",
+      "read",
+      "read_image",
+      "send_message",
+      "skill",
+      "skill_load",
+      "skill_search",
+      "str_replace_editor",
+      "subagent",
+      "subagent_fork",
+      "todo_write",
+      "update_goal",
+      "web_fetch",
+      "web_search",
+      "workflow",
+      "write"
+    ]
+  },
+  "finishedAt": "2026-09-12T02:05:59.154Z",
+  "summary": "2/4 pass"
+}

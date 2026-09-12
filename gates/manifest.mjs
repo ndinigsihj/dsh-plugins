@@ -75,6 +75,8 @@ function shapeProblem(manifest) {
   if (deploymentProblem !== undefined) return deploymentProblem;
   const baselinesProblem = baselinesShapeProblem(manifest.baselines);
   if (baselinesProblem !== undefined) return baselinesProblem;
+  const t3Problem = t3ShapeProblem(manifest.t3, manifest.baselines);
+  if (t3Problem !== undefined) return t3Problem;
   return undefined;
 }
 
@@ -109,6 +111,21 @@ function baselinesShapeProblem(baselines) {
       return `baselines["${id}"].runs must be a positive integer`;
     }
   }
+  return undefined;
+}
+
+/**
+ * 可选的真实模型层（T3）配置：`baseline` 必须引用现成基线，`tolerance` 为允许偏离跑数。
+ * 缺省允许（旧清单仍可读），运行 `--tier 3` 时由 `t3ProvenanceProblems` 拒绝。
+ */
+function t3ShapeProblem(t3, baselines) {
+  if (t3 === undefined) return undefined;
+  if (!isRecord(t3)) return "t3 must be an object";
+  if (typeof t3.baseline !== "string" || t3.baseline.length === 0) return "t3.baseline must be a non-empty string";
+  if (!isRecord(baselines) || baselines[t3.baseline] === undefined) {
+    return `t3.baseline "${t3.baseline}" is not in baselines`;
+  }
+  if (!Number.isSafeInteger(t3.tolerance) || t3.tolerance < 0) return "t3.tolerance must be a non-negative integer";
   return undefined;
 }
 
