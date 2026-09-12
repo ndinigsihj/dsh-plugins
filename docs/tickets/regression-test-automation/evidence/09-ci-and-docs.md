@@ -2,13 +2,13 @@
 
 - 执行时间：2026-09-12（本地）
 - 授权：用户「继续票据 09」；施工图 `docs/regression-test-automation-plan.md` §5.3、§6-1、§7 P3 + 决策 Q17（托管 runner、零密钥）、Q16（缺席记账）、D3（stable 边界）、D8（T4b 不接 release）。
-- 未 commit、未 push（真实 CI 绿灯需 push 授权后补）；stable 侧 `presets/minimal-plus/**` 未动。
+- 收口：实现提交 `9761cc3`、开票提交 `74adf0f`，已 push 到 `origin/main`（`2518af1..74adf0f`）；push 后两个 CI 工作流实测绿灯（§四）。stable 侧 `presets/minimal-plus/**` 未动。
 
 ## 一、改动清单（3 改 1 增 1 补注，全 dev 侧）
 
 | 文件 | 改动 |
 | --- | --- |
-| `.github/workflows/regression-gate.yml` | **新增**（75 行）：托管 `macos-latest`、零密钥；`npm ci` → 按 `gates/manifest.json` 安装 `@deepseek-ai/dsh@0.1.5-rc.1` → `scripts/link-global-dsh.sh` → `--tier 0,1,2 --skip-deployment-check`；报告上传 artifact；触发 `push(main)` + `pull_request` + `workflow_dispatch`，`paths` 全部指向现存目录；`permissions: contents: read` |
+| `.github/workflows/regression-gate.yml` | **新增**（80 行）：托管 `macos-latest`、零密钥；`npm ci` → 按 `gates/manifest.json` 安装 `@deepseek-ai/dsh@0.1.5-rc.1` → `scripts/link-global-dsh.sh` → `--tier 0,1,2 --skip-deployment-check`；报告上传 artifact；触发 `push(main)` + `pull_request` + `workflow_dispatch`，`paths` 全部指向现存目录；`permissions: contents: read` |
 | `.github/workflows/custom-bash-win-smoke.yml` | 触发路径 `presets/liangshen-bash/**`（目录已不存在 → 永不触发）→ `presets/minimal-plus-next/**`；契约测试命令同步改指 next；job env `CUSTOM_BASH_PRESET_ROOT=presets/minimal-plus-next` |
 | `scripts/custom-bash-win-smoke.mjs` | preset 路径参数化：`CUSTOM_BASH_PRESET_ROOT`（绝对路径或相对仓库根，空值视为未设）→ `pathToFileURL` 动态 import；默认 dev 侧 `presets/minimal-plus-next`；模块缺失时明确报错 exit 2；模块解析先于平台判定（非 win32 可验证路径可用） |
 | `README.md` | 新增「Regression gate（回归闸门）」：入口与分层表（T0/T1/T2/T3/T4b）、两种豁免语义、报告位置、stable 侧不在闸门内及其手验要求、PTY 冒烟独立按需入口、**仓库绿灯 ≠ 部署位生效**与交付前同步序列、CI 口径 |
@@ -31,7 +31,7 @@ Windows smoke 的两个 preset 副本现状（已核对）：`presets/minimal-pl
   （`lib/**`、`plugins/**`、`presets/minimal-plus-next/**`、`gates/**`、`experiments/fixtures/**`、
   `experiments/session-preview-seeded/**`、三个脚本、`package.json`/`package-lock.json`/`tsconfig.json`、工作流自身）。
 
-## 三、本地校验（票面第 5 条；真实 CI 绿灯待 push）
+## 三、本地校验（票面第 5 条；真实 CI 绿灯已在 push 后取得，见 §四）
 
 ### 1. 工作流 YAML 语法 + 触发路径解析
 
@@ -87,15 +87,27 @@ npm view @deepseek-ai/dsh@0.1.5-rc.1 version dist.tarball dist.integrity   # 隔
 
 返回 `version = '0.1.5-rc.1'`、`dist.tarball = https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-0.1.5-rc.1.tgz`
 （integrity `sha512-rmNmzQCg3oIc1z8xH7izRSOuy1TNzq+/NILyfM+7e8DKOyV+yBtg47WEsqR2SiIe1ATec3L/rUa1YhIcfQ2XEg==`）。
-印证计划 §8 的前提；干净 runner 上能否起 headless 组合仍属真实 CI 的验收事实。
+印证计划 §8 的前提；干净 runner 上能起 headless 组合也已由 §四的 CI 绿跑证实。
 
-## 四、边界与未完成项
+## 四、真实 CI（push 后，2026-09-12）
 
-- **真实 CI 绿灯未取得**：需 push 授权（本票按约束不自动 push）。push 后需确认 `regression-gate` 与
-  `custom-bash-win-smoke` 两个工作流实际触发且绿。
-- **Windows runner 的真实冒烟未跑**：本机非 win32；若 GitHub Windows runner 无 Git Bash，脚本第 1 条会红
-  （环境问题而非代码问题），届时按 Q17 的退路（self-hosted / ubuntu）评估。
+commit `74adf0f`（T09 收口提交，main → origin/main）push 后，两个工作流都按 `paths` 触发器自动运行并在托管
+runner 上通过（原始状态见 `experiments/regression-gate/evidence/09-ci-runs.txt`）：
+
+| 工作流 | runner | 结果 | run |
+| --- | --- | --- | --- |
+| `regression-gate` | `macos-latest` | completed / **success**（T0+T1+T2，`--skip-deployment-check` 缺席记账） | [34677128295](https://github.com/ndinigsihj/dsh-plugins/actions/runs/34677128295) |
+| `custom-bash-win-smoke` | `windows-latest` | completed / **success**（契约测试 + 真实 Git Bash 解析/执行、WSL 拒绝、缺 bash fail-open） | [34677128292](https://github.com/ndinigsihj/dsh-plugins/actions/runs/34677128292) |
+
+即：Q17 的「托管 macOS + 零密钥 + 干净 runner 能起 headless 组合」不再只是前提核查；「触发器指向现存目录后
+真的会触发」也由 push 实测（两个 run 的 `created_at` 均为 push 时刻）。Windows runner 上 Git Bash 存在，
+`custom-bash-win-smoke` 第 1 条真实解析+执行分支不再依赖本机环境假设。
+
+## 五、边界与未完成项
+
+- **Windows runner 环境假设已实测**：GitHub `windows-latest` 自带 Git Bash，脚本第 1 条（真实解析 + `bash -c echo`）
+  通过；若将来 runner 镜像移除 Git Bash，该条会红，属环境变化而非代码回归。
 - **未做常驻断言**：触发路径存在性目前是一次性校验。若要防止再次出现「触发路径指向已删除目录」这类
-  静默失效，可另开票据把它做成 T0 断言（用 PyYAML 之外的解析路径）；本票未引入新依赖，故未做。
+  静默失效，可另开票据把它做成 T0 断言——已开 **T12**（`docs/tickets/regression-test-automation/12-workflow-trigger-path-assertion.md`）。
 - **豁免语义依赖调用方**：workflow 固定传 `--skip-deployment-check`；若将来有人在 CI 改传
   `--allow-stale-deployment`，陈旧部署位会被静默豁免——README 已写明两者语义边界。
