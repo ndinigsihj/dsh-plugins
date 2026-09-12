@@ -24,6 +24,10 @@
 #   DSH_RELAY_ROOT / DSH_ENDLESS_ROOT（默认相邻 ../dsh-relay、../dsh-endless）
 # 缺任一 checkout 或渲染后依赖不可解析 → exit 2，不回落自持组合。
 #
+# 仓库绿灯 ≠ 部署位生效：本闸门验的是渲染副本，运行中的 TUI 加载的是
+# `~/.dsh/.agent-presets/<preset>` 副本；交付前先显式 `scripts/sync-agent-presets.sh <preset>`，
+# 再跑 `--composition real`。闸门不会自动同步部署位。
+#
 # 防护（计划 §2.2）：
 #   - 仓库本地锁 `$REPO/.git/dsh-regression-gate.lock`：两个终端并发会抢共享 farm，
 #     这里用「原子 mkdir」持锁串行化（macOS/Linux 都可用；超时默认 300s）；

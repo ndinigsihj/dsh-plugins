@@ -1,23 +1,28 @@
 name: custom-bash-win-smoke
 
+# 真实 Windows 冒烟（票据 09 修正；计划 §6-1）：
+# 触发路径改指仍然存在的 dev preset（原 `presets/liangshen-bash/**` 已不存在，
+# 工作流永不触发），脚本内的 preset 路径由 CUSTOM_BASH_PRESET_ROOT 参数化。
 on:
   workflow_dispatch:
   push:
     paths:
-      - "presets/liangshen-bash/custom-bash.mjs"
-      - "presets/liangshen-bash/custom-bash.test.mjs"
+      - "presets/minimal-plus-next/custom-bash.mjs"
+      - "presets/minimal-plus-next/custom-bash.test.mjs"
       - "scripts/custom-bash-win-smoke.mjs"
       - ".github/workflows/custom-bash-win-smoke.yml"
 
 jobs:
   win-smoke:
     runs-on: windows-latest
+    env:
+      CUSTOM_BASH_PRESET_ROOT: presets/minimal-plus-next
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Pure function contract tests
-        run: node --test presets/liangshen-bash/custom-bash.test.mjs
+        run: node --test presets/minimal-plus-next/custom-bash.test.mjs
       - name: Real Windows smoke (resolve/echo/WSL reject/missing-bash fail-open)
         run: node scripts/custom-bash-win-smoke.mjs

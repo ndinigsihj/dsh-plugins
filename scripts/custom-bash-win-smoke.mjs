@@ -7,20 +7,34 @@
  *  2. 所有候选解析成 WSL launcher 时全部拒绝 → throw；
  *  3. 缺 bash 时 apply 跳过注册 + warn（fail-open）。
  *
+ * preset 路径参数化（票据 09；计划 §6-1）：测试对象默认是 dev 侧
+ * `presets/minimal-plus-next`，可用 `CUSTOM_BASH_PRESET_ROOT` 覆盖
+ * （绝对路径，或相对仓库根），CI 用同名 env 传入。
+ *
  * 运行：node scripts/custom-bash-win-smoke.mjs
  */
 import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import {
-  apply,
-  isWindowsSubsystemLauncher,
-  resolveWindowsBash,
-} from "../presets/minimal-plus/custom-bash.mjs";
+import { dirname, isAbsolute, join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const presetRoot = process.env.CUSTOM_BASH_PRESET_ROOT || join("presets", "minimal-plus-next");
+const presetDir = isAbsolute(presetRoot) ? presetRoot : join(REPO_ROOT, presetRoot);
+const customBashPath = join(presetDir, "custom-bash.mjs");
+if (!existsSync(customBashPath)) {
+  console.error(`custom-bash-win-smoke: no custom-bash.mjs under ${presetDir} (set CUSTOM_BASH_PRESET_ROOT)`);
+  process.exit(2);
+}
+// 先按参数解析模块再判平台：非 win32 上也能验证 preset 路径可用（否则报 win32-only）。
+const { apply, isWindowsSubsystemLauncher, resolveWindowsBash } = await import(pathToFileURL(customBashPath).href);
 
 if (process.platform !== "win32") {
   console.error("custom-bash-win-smoke: only runs on win32");
   process.exit(2);
 }
+
+console.log(`custom-bash-win-smoke: preset=${presetDir}`);
 
 /** 用真实文件系统 + `where` 解析可执行文件（模拟 harness 的 subprocess.resolveExecutable）。 */
 const realResolver = {

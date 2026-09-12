@@ -190,6 +190,53 @@ Use: `CC_TUI_PRESET=minimal-plus dsh --profile tui` then `/new`.
 - 子代理模型选择（`modelSelectionSettings`）的开关、宿主设置服务、允许路由维护与探针见
   `docs/subagent-model-selection.md`。
 
+## Regression gate（回归闸门）
+
+单一入口 `scripts/regression-gate.sh`（施工图：`docs/regression-test-automation-plan.md`）。闸门的输入全部取自
+仓库资产 + 隔离临时 home（`DSH_HOME`/`HOME` 都指过去），真实 `~/.dsh` 只读；**闸门不自动同步部署位**。
+
+```bash
+scripts/regression-gate.sh --tier 0,1                              # 日常：静态层 + 零 LLM 组合层
+scripts/regression-gate.sh --tier 0,1,2 --skip-deployment-check    # 部署位缺席（CI 口径）
+scripts/regression-gate.sh --tier 0,1,2 --composition real         # 交付前：真实 tui-dev 组合
+scripts/regression-gate.sh --tier 3                                # 按需：真实模型层（需凭据，永不进 release/CI）
+scripts/tui-pty-smoke.sh                                           # 按需：独立 PTY 冒烟（T4b，不进 release）
+```
+
+退出码：全过 `0`；任一断言失败 `1`；环境前置不满足 `2`（宿主或会话格式与 `gates/manifest.json` 不符、
+组合渲染缺依赖、`real` 缺相邻 `../dsh-relay`/`../dsh-endless`、T3 版本/基线来源不符或真实 settings 缺失）。
+
+| 层 | 内容 | 说明 |
+|---|---|---|
+| T0 | `tsc --noEmit` + `npm test` | 静态层；进程内 app 层（T4a，`lib/app.test.ts`，注入假 Terminal）随 `npm test` 执行 |
+| T1 | 零 LLM 组合层 | 组合导出、逐 loader id 唯一、反 stub 劫持、首轮锚定/二轮提升冒烟、降级 fail-open、seeded 预览探针、部署位 sha、宿主钉版、真实 home 零写入 |
+| T2 | 假模型行为层 | `gates/stub/**` 脚本化 provider：首请求路由、12-2 沙箱 bash 红绿、compaction 回退、V3 恢复路由、委派策略 |
+| T3 | 真实模型层（按需） | M4 行为基线 + 模型选择/允许路由探针；需真实 `~/.dsh/settings.yaml`，永不进 release/CI |
+| T4b | PTY 冒烟（按需） | `scripts/tui-pty-smoke.sh`，真 PTY + stub provider；独立入口，不进 release（D8） |
+
+**两种豁免**（默认拒绝；被豁免时报告写 `exemptions[]` 并在 stdout 打醒目警告，绝不静默变绿）：
+
+- `--allow-stale-deployment`：只豁免「仓库 preset ↔ `~/.dsh/.agent-presets/<preset>` sha 一致」这一层。
+  豁免状态下冒烟/探针验的是**旧副本**，不代表仓库当前内容。
+- `--skip-deployment-check`：只用于部署位**不存在**（CI/隔离环境），报告记 `reason: "absent"`。
+- release 路径（`scripts/release.sh`）永不传任何豁免参数。
+
+**报告**：默认 `experiments/regression-gate/results-<UTC 日期>.json`（`--json` 可改）；
+T3 产物另按 `experiments/regression-gate/t3-<UTC 时间戳>/` 归档，跨轮次不覆盖。
+
+**仓库绿灯 ≠ 部署位生效**：`gate` 组合把仓库资产渲染进隔离临时 home 验证，而运行中的 TUI 加载的是
+`~/.dsh/.agent-presets/<preset>` 副本。交付前必须显式执行 `scripts/sync-agent-presets.sh <preset>` 同步部署位，
+再用 `--composition real` 跑真实 `tui-dev` 组合；序列：同步 → `--tier 0,1,2 --composition real` 全绿 → T3 按需 → 人工签收。
+
+**边界**：闸门只面向 `tui-dev` / `minimal-plus-next` / dev 侧脚本；stable 的 `minimal-plus` 不在闸门内，
+`npm test` 也不跑它（stable 冻结在 rc.2 宿主）——改 stable 文件（含 `presets/minimal-plus/**`）必须在其运行时手验；
+两份 preset 的测试文件会长期不一致（有意取舍）。
+
+**CI**：`.github/workflows/regression-gate.yml` 在托管 macOS runner 上零密钥跑 T0/T1/T2（宿主从公共 registry
+按 `gates/manifest.json` 的版本安装），部署位按「缺席」记账；T3 与 T4b 不进 CI。Windows 侧另见
+`.github/workflows/custom-bash-win-smoke.yml`（触发路径 = `presets/minimal-plus-next/**`，脚本 preset 路径由
+`CUSTOM_BASH_PRESET_ROOT` 参数化）。
+
 ## Tested
 
 Boot, fullscreen takeover, prompt submit, streaming assistant rendering, reasoning (dim), injected-context dimming, error cards, status line, `/help` `/clear` `/exit`, clean exit (code 0). Approval dialogs, question panels, and tool cards are wired to the documented service APIs but need a tool-capable model route to exercise end to end.

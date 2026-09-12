@@ -1,0 +1,80 @@
+name: regression-gate
+
+# 合并前闸门（票据 09；计划 §7 P3）：托管 macOS、零密钥。
+# T0 静态层、T1 零 LLM 组合层、T2 假模型行为层在 CI 上跑；进程内 app 层（T4a）随
+# `npm test`（T0）执行。T3 真实模型层与 T4b PTY 冒烟永不进 CI（需要额度 / 真 PTY，
+# 按需手跑，见 README「Regression gate」）。
+# 部署位检查按「缺席」显式记账：--skip-deployment-check → 报告 exemptions 里出现
+# reason=absent，而不是拿陈旧豁免掩盖（Q16）。
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "lib/**"
+      - "plugins/**"
+      - "presets/minimal-plus-next/**"
+      - "gates/**"
+      - "experiments/fixtures/**"
+      - "experiments/session-preview-seeded/**"
+      - "scripts/regression-gate.sh"
+      - "scripts/degrade-smoke.sh"
+      - "scripts/link-global-dsh.sh"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - ".github/workflows/regression-gate.yml"
+  pull_request:
+    paths:
+      - "lib/**"
+      - "plugins/**"
+      - "presets/minimal-plus-next/**"
+      - "gates/**"
+      - "experiments/fixtures/**"
+      - "experiments/session-preview-seeded/**"
+      - "scripts/regression-gate.sh"
+      - "scripts/degrade-smoke.sh"
+      - "scripts/link-global-dsh.sh"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - ".github/workflows/regression-gate.yml"
+
+jobs:
+  gate:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install project dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install the pinned host from the public registry
+        run: |
+          HOST_VERSION="$(node -p "require('./gates/manifest.json').hostVersion")"
+          echo "installing @deepseek-ai/dsh@${HOST_VERSION}"
+          npm install -g --no-audit --no-fund "@deepseek-ai/dsh@${HOST_VERSION}"
+
+      - name: Link the host dependency tree
+        run: bash scripts/link-global-dsh.sh
+
+      - name: Run the regression gate (T0 + T1 + T2; T4a rides npm test)
+        run: bash scripts/regression-gate.sh --tier 0,1,2 --skip-deployment-check --json experiments/regression-gate/results-ci.json
+
+      - name: Upload the gate report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-gate-report
+          path: experiments/regression-gate/results-ci.json
+          if-no-files-found: warn

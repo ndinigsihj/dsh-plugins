@@ -1,0 +1,36 @@
+.github/workflows/custom-bash-win-smoke.yml: name='custom-bash-win-smoke' events=['push', 'workflow_dispatch']
+  push.paths: ok  presets/minimal-plus-next/custom-bash.mjs (file presets/minimal-plus-next/custom-bash.mjs)
+  push.paths: ok  presets/minimal-plus-next/custom-bash.test.mjs (file presets/minimal-plus-next/custom-bash.test.mjs)
+  push.paths: ok  scripts/custom-bash-win-smoke.mjs (file scripts/custom-bash-win-smoke.mjs)
+  push.paths: ok  .github/workflows/custom-bash-win-smoke.yml (file .github/workflows/custom-bash-win-smoke.yml)
+  job win-smoke: runs-on=windows-latest
+.github/workflows/regression-gate.yml: name='regression-gate' events=['pull_request', 'push', 'workflow_dispatch']
+  push.paths: ok  lib/** (dir lib)
+  push.paths: ok  plugins/** (dir plugins)
+  push.paths: ok  presets/minimal-plus-next/** (dir presets/minimal-plus-next)
+  push.paths: ok  gates/** (dir gates)
+  push.paths: ok  experiments/fixtures/** (dir experiments/fixtures)
+  push.paths: ok  experiments/session-preview-seeded/** (dir experiments/session-preview-seeded)
+  push.paths: ok  scripts/regression-gate.sh (file scripts/regression-gate.sh)
+  push.paths: ok  scripts/degrade-smoke.sh (file scripts/degrade-smoke.sh)
+  push.paths: ok  scripts/link-global-dsh.sh (file scripts/link-global-dsh.sh)
+  push.paths: ok  package.json (file package.json)
+  push.paths: ok  package-lock.json (file package-lock.json)
+  push.paths: ok  tsconfig.json (file tsconfig.json)
+  push.paths: ok  .github/workflows/regression-gate.yml (file .github/workflows/regression-gate.yml)
+  pull_request.paths: ok  lib/** (dir lib)
+  pull_request.paths: ok  plugins/** (dir plugins)
+  pull_request.paths: ok  presets/minimal-plus-next/** (dir presets/minimal-plus-next)
+  pull_request.paths: ok  gates/** (dir gates)
+  pull_request.paths: ok  experiments/fixtures/** (dir experiments/fixtures)
+  pull_request.paths: ok  experiments/session-preview-seeded/** (dir experiments/session-preview-seeded)
+  pull_request.paths: ok  scripts/regression-gate.sh (file scripts/regression-gate.sh)
+  pull_request.paths: ok  scripts/degrade-smoke.sh (file scripts/degrade-smoke.sh)
+  pull_request.paths: ok  scripts/link-global-dsh.sh (file scripts/link-global-dsh.sh)
+  pull_request.paths: ok  package.json (file package.json)
+  pull_request.paths: ok  package-lock.json (file package-lock.json)
+  pull_request.paths: ok  tsconfig.json (file tsconfig.json)
+  pull_request.paths: ok  .github/workflows/regression-gate.yml (file .github/workflows/regression-gate.yml)
+  job gate: runs-on=macos-latest
+
+workflow validation: PASS
