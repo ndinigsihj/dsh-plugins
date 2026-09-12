@@ -1,0 +1,341 @@
+{
+  "gateVersion": 1,
+  "startedAt": "2026-09-12T02:35:56.838Z",
+  "finishedAt": "2026-09-12T02:39:07.836Z",
+  "gitHead": "df8ea1c",
+  "gitDirty": true,
+  "hostVersion": "0.1.5-rc.1",
+  "sessionFormatVersion": 3,
+  "composition": "gate",
+  "compositionVerified": "repo-patch",
+  "compositionSourcePath": "/Users/vito/data/dev/dsh-plugins/gates/composition/gate.patch.yml",
+  "compositionSourceSha": "a8fb9b41ce38bc19fb7d27942cbd8a71cb066453f7618762a9219111ce7d4040",
+  "compositionRenderedPath": null,
+  "compositionRenderedSha": null,
+  "compositionDumpSha": null,
+  "compositionReal": null,
+  "deployment": null,
+  "tiers": [
+    {
+      "id": "PRE",
+      "status": "pass",
+      "startedAt": "2026-09-12T02:35:56.838Z",
+      "durationMs": 0,
+      "assertions": [
+        {
+          "id": "host.cli",
+          "status": "pass",
+          "evidence": "dsh --version -> 0.1.5-rc.1"
+        },
+        {
+          "id": "host.pin.hostVersion",
+          "status": "pass",
+          "evidence": "expected=0.1.5-rc.1 actual=0.1.5-rc.1"
+        },
+        {
+          "id": "host.pin.sessionFormatVersion",
+          "status": "pass",
+          "evidence": "expected=3 actual=3"
+        }
+      ]
+    },
+    {
+      "id": "T3",
+      "status": "pass",
+      "startedAt": "2026-09-12T02:39:07.836Z",
+      "durationMs": 190704,
+      "assertions": [
+        {
+          "id": "t3.baseline.file-intact",
+          "status": "pass",
+          "evidence": "baseline m4-commandcode-v41-2026-09-12 state=ok sha256=ef9a270a40ba",
+          "detail": {
+            "path": "experiments/m4/results-minimal-plus-next-commandcode-v41-2026-09-12.jsonl",
+            "hint": "re-capture the baseline and update gates/manifest.json if the batch file changed"
+          }
+        },
+        {
+          "id": "t3.model.baseline-match",
+          "status": "pass",
+          "evidence": "model=commandcode/deepseek/deepseek-v4.1-flash baseline=commandcode/deepseek/deepseek-v4.1-flash",
+          "detail": {
+            "hint": "GATE_T3_MODEL override recorded; re-capture the baseline (manifest) if the route intentionally changed"
+          }
+        },
+        {
+          "id": "t3.m4.batch-exit",
+          "status": "pass",
+          "evidence": "exit 0",
+          "detail": {
+            "stderr": [
+              ""
+            ]
+          }
+        },
+        {
+          "id": "t3.m4.records-complete",
+          "status": "pass",
+          "evidence": "records=9 expected=9 broken=0",
+          "detail": {
+            "archive": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T02-35-57-132Z/m4-E.jsonl"
+          }
+        },
+        {
+          "id": "t3.m4.behaviour-anchored",
+          "status": "pass",
+          "evidence": "records=9/9 anchored=9/8 (tolerance 1) check3=9 check4=9 errors=0",
+          "detail": {
+            "threshold": 8,
+            "nonBashFirstTools": [],
+            "errors": [],
+            "providerErrors": [],
+            "hint": "behaviour anchoring = first response has a tool call and its first tool is bash"
+          }
+        },
+        {
+          "id": "t3.m4.agent-instructions",
+          "status": "pass",
+          "evidence": "check3=9/8",
+          "detail": {
+            "archive": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T02-35-57-132Z/m4-E.jsonl"
+          }
+        },
+        {
+          "id": "t3.m4.sandbox-bash",
+          "status": "pass",
+          "evidence": "check4=9/8",
+          "detail": {
+            "archive": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T02-35-57-132Z/m4-E.jsonl"
+          }
+        },
+        {
+          "id": "t3.m4.archive",
+          "status": "pass",
+          "evidence": "archive sha256=eab1f99a475f runs=9 host=0.1.5-rc.1 model=commandcode/deepseek/deepseek-v4.1-flash capturedAt=2026-09-12T02:35:57.132Z",
+          "detail": {
+            "path": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T02-35-57-132Z/m4-E.jsonl"
+          }
+        },
+        {
+          "id": "t3.m4.advisory-wording",
+          "status": "pass",
+          "evidence": "advisory only, not asserted: anchorRate=100% weNeed=0 letMe=0 toolCall=9 avgTools=29"
+        },
+        {
+          "id": "t3.model-selection-probe.all-checks",
+          "status": "pass",
+          "evidence": "exit 0 16/16 pass failed=[] missing=[]",
+          "detail": {
+            "archive": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T02-35-57-132Z/model-selection-probe.json",
+            "stderr": [
+              ""
+            ]
+          }
+        },
+        {
+          "id": "t3.model-selection-probe.archive",
+          "status": "pass",
+          "evidence": "archive sha256=704cc6d28506 checks=16 oldSession=session-m4-E1-1f1322c9-3943-4894-88e0-eaa3ecaae34a capturedAt=2026-09-12T02:35:57.132Z",
+          "detail": {
+            "oldSession": "session-m4-E1-1f1322c9-3943-4894-88e0-eaa3ecaae34a"
+          }
+        },
+        {
+          "id": "t3.route-probe.all-routes",
+          "status": "pass",
+          "evidence": "exit 0 2/2 pass routes=[\"commandcode/deepseek/deepseek-v4.1-flash:pass\",\"deepseek-official/deepseek-flash:pass\"]",
+          "detail": {
+            "archive": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T02-35-57-132Z/route-probe.json",
+            "stderr": [
+              ""
+            ]
+          }
+        },
+        {
+          "id": "t3.route-probe.archive",
+          "status": "pass",
+          "evidence": "archive sha256=5359f6370a91 routes=2 capturedAt=2026-09-12T02:35:57.132Z",
+          "detail": {
+            "path": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T02-35-57-132Z/route-probe.json"
+          }
+        },
+        {
+          "id": "t3.report.provenance",
+          "status": "pass",
+          "evidence": "host=0.1.5-rc.1 sessionFormat=3 profile=t3-headless presetSha=9087bf00b2ed credentials=882fe9d2342c runs=9 capturedAt=2026-09-12T02:35:57.132Z archive=/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T02-35-57-132Z"
+        },
+        {
+          "id": "t3.isolation.real-home-untouched",
+          "status": "pass",
+          "evidence": "signature identical before/after (strict zones; 0 observed-only changes)",
+          "detail": {
+            "observedChanges": []
+          }
+        }
+      ]
+    }
+  ],
+  "exemptions": [],
+  "summary": {
+    "passed": 18,
+    "failed": 0,
+    "skipped": 0
+  },
+  "t3": {
+    "capturedAt": "2026-09-12T02:35:57.132Z",
+    "hostVersion": "0.1.5-rc.1",
+    "sessionFormatVersion": 3,
+    "model": "commandcode/deepseek/deepseek-v4.1-flash",
+    "modelMatchesBaseline": true,
+    "runs": 9,
+    "tolerance": 1,
+    "timeoutMs": 900000,
+    "baseline": {
+      "id": "m4-commandcode-v41-2026-09-12",
+      "path": "experiments/m4/results-minimal-plus-next-commandcode-v41-2026-09-12.jsonl",
+      "sha256": "ef9a270a40ba52663c66bc2adcec89d891281e4fd5a74b992f141b6742a96f0d",
+      "runs": 9,
+      "hostVersion": "0.1.5-rc.1",
+      "state": "ok"
+    },
+    "composition": {
+      "profile": "t3-headless",
+      "profilePatchSha256": "98a3a3a969bc1aa965b3b87926c4fa715806cff9593caa545af2c37befce3757",
+      "preset": "minimal-plus-next",
+      "presetSource": "deployed",
+      "presetPath": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-KaNrN7/home/.agent-presets/minimal-plus-next",
+      "presetSha256": "9087bf00b2edd520f91b2a97fc527cd6250f590ab8694b757420f57e3b31789c",
+      "manifestSha256": "9087bf00b2edd520f91b2a97fc527cd6250f590ab8694b757420f57e3b31789c",
+      "deploymentStatus": "ok",
+      "deploymentDrift": [],
+      "settingsSha256": "9196bbea212eaf07a7ae391bbdb6aa9acf7d5e9f39161372aa771e44a1ebcc87",
+      "settingsCopies": 3,
+      "credentialsCopied": true,
+      "credentialsSha256": "882fe9d2342c90df09343ba142d8d6d3835b386d78dfecbe8e1721c7c349a563"
+    },
+    "assets": {
+      "m4PatchSha256": "37910b8b7ddb3edea39ffe6ad2d642f8eed53be1779ed9a60b2023c03c7e637f",
+      "modelSelectionPatchSha256": "23774c540b91613352de985a5d53457fe89ecdb5a2c7832a933ee0683f3c067f",
+      "routeProbePatchSha256": "3e14e03b5ea720b9290ab1c9553fdc2f5fc8d15e25ea3dfd4f812b68d89d83db"
+    },
+    "archive": {
+      "dir": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T02-35-57-132Z",
+      "files": [
+        {
+          "name": "m4-E.jsonl",
+          "path": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T02-35-57-132Z/m4-E.jsonl",
+          "sha256": "eab1f99a475fdf1c8f92e58e515a21fe88f0262b0dbfa0c9a3886bfacd8be6ce"
+        },
+        {
+          "name": "model-selection-probe.json",
+          "path": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T02-35-57-132Z/model-selection-probe.json",
+          "sha256": "704cc6d285063496ded7ccf7154b0f279772604ae5d2c20505764cf37b25d1b1"
+        },
+        {
+          "name": "route-probe.json",
+          "path": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T02-35-57-132Z/route-probe.json",
+          "sha256": "5359f6370a912cb0111bd558441d8cf65ee59940343943360dbe48e39051825d"
+        }
+      ]
+    },
+    "m4": {
+      "exit": 0,
+      "elapsedMs": 148394,
+      "model": "commandcode/deepseek/deepseek-v4.1-flash",
+      "archive": {
+        "name": "m4-E.jsonl",
+        "path": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T02-35-57-132Z/m4-E.jsonl",
+        "sha256": "eab1f99a475fdf1c8f92e58e515a21fe88f0262b0dbfa0c9a3886bfacd8be6ce"
+      },
+      "brokenLines": [],
+      "expectedRuns": 9,
+      "tolerance": 1,
+      "threshold": 8,
+      "records": 9,
+      "errors": [],
+      "providerErrors": [],
+      "anchored": 9,
+      "withToolCall": 9,
+      "nonBashFirstTools": [],
+      "check3": 9,
+      "check4": 9,
+      "recordsOk": true,
+      "behaviourOk": true,
+      "check3Ok": true,
+      "check4Ok": true,
+      "advisory": {
+        "anchorRate": "100%",
+        "weNeed": 0,
+        "letMe": 0,
+        "toolCall": 9,
+        "avgTools": 29
+      }
+    },
+    "modelSelectionProbe": {
+      "exit": 0,
+      "elapsedMs": 17222,
+      "oldSession": {
+        "id": "session-m4-E1-1f1322c9-3943-4894-88e0-eaa3ecaae34a",
+        "source": "m4-E-copy"
+      },
+      "parent": {
+        "provider": "commandcode",
+        "model": "deepseek/deepseek-v4.1-flash"
+      },
+      "archive": {
+        "name": "model-selection-probe.json",
+        "path": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T02-35-57-132Z/model-selection-probe.json",
+        "sha256": "704cc6d285063496ded7ccf7154b0f279772604ae5d2c20505764cf37b25d1b1"
+      },
+      "total": 16,
+      "passed": 16,
+      "failed": [],
+      "missing": [],
+      "summary": "16/16 pass"
+    },
+    "routeProbe": {
+      "exit": 0,
+      "elapsedMs": 24905,
+      "parent": {
+        "provider": "commandcode",
+        "model": "deepseek/deepseek-v4.1-flash"
+      },
+      "allowed": [
+        {
+          "provider": "commandcode",
+          "model": "deepseek/deepseek-v4.1-flash"
+        },
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-flash"
+        }
+      ],
+      "archive": {
+        "name": "route-probe.json",
+        "path": "/Users/vito/data/dev/dsh-plugins/experiments/regression-gate/t3-2026-09-12T02-35-57-132Z/route-probe.json",
+        "sha256": "5359f6370a912cb0111bd558441d8cf65ee59940343943360dbe48e39051825d"
+      },
+      "total": 2,
+      "passed": 2,
+      "routes": [
+        {
+          "route": "commandcode/deepseek/deepseek-v4.1-flash",
+          "pass": true,
+          "failureKinds": [],
+          "turnErrorCodes": [],
+          "markerSeen": true,
+          "durationMs": 10320
+        },
+        {
+          "route": "deepseek-official/deepseek-flash",
+          "pass": true,
+          "failureKinds": [],
+          "turnErrorCodes": [],
+          "markerSeen": true,
+          "durationMs": 6303
+        }
+      ],
+      "summary": "2/2 pass"
+    }
+  }
+}

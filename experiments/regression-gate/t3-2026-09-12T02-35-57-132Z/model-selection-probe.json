@@ -1,0 +1,399 @@
+{
+  "startedAt": "2026-09-12T02:38:26.584Z",
+  "parent": {
+    "provider": "commandcode",
+    "model": "deepseek/deepseek-v4.1-flash"
+  },
+  "allowedX": [
+    {
+      "provider": "commandcode",
+      "model": "deepseek/deepseek-v4.1-flash"
+    },
+    {
+      "provider": "deepseek-official",
+      "model": "deepseek-flash"
+    }
+  ],
+  "checks": [
+    {
+      "id": "a1-host-service-mounted",
+      "pass": true,
+      "detail": {
+        "enabled": true,
+        "allowedModels": [
+          {
+            "provider": "commandcode",
+            "model": "deepseek/deepseek-v4.1-flash"
+          },
+          {
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          }
+        ]
+      }
+    },
+    {
+      "id": "a00-promotion-precondition",
+      "pass": true,
+      "detail": {
+        "count": 30,
+        "tools": [
+          "ask_user_question",
+          "bash",
+          "create_goal",
+          "edit",
+          "exit_plan_mode",
+          "get_goal",
+          "glob",
+          "grep",
+          "interrupt_agent",
+          "job_kill",
+          "job_list",
+          "job_output",
+          "list_agents",
+          "list_subagent_models",
+          "ralph",
+          "read",
+          "read_image",
+          "send_message",
+          "skill",
+          "skill_load",
+          "skill_search",
+          "str_replace_editor",
+          "subagent",
+          "subagent_fork",
+          "todo_write",
+          "update_goal",
+          "web_fetch",
+          "web_search",
+          "workflow",
+          "write"
+        ]
+      }
+    },
+    {
+      "id": "a2-preset-model-selection-schema",
+      "pass": true,
+      "detail": {
+        "subagentParams": [
+          "description",
+          "prompt",
+          "provider",
+          "model",
+          "reasoning_effort",
+          "run_in_background"
+        ]
+      }
+    },
+    {
+      "id": "a3-discovery-tool-visible",
+      "pass": true,
+      "detail": {
+        "count": 30,
+        "tools": [
+          "ask_user_question",
+          "bash",
+          "create_goal",
+          "edit",
+          "exit_plan_mode",
+          "get_goal",
+          "glob",
+          "grep",
+          "interrupt_agent",
+          "job_kill",
+          "job_list",
+          "job_output",
+          "list_agents",
+          "list_subagent_models",
+          "ralph",
+          "read",
+          "read_image",
+          "send_message",
+          "skill",
+          "skill_load",
+          "skill_search",
+          "str_replace_editor",
+          "subagent",
+          "subagent_fork",
+          "todo_write",
+          "update_goal",
+          "web_fetch",
+          "web_search",
+          "workflow",
+          "write"
+        ]
+      }
+    },
+    {
+      "id": "a13-tool-names-and-context-sources",
+      "pass": true,
+      "detail": {
+        "subagentParams": [
+          "description",
+          "prompt",
+          "provider",
+          "model",
+          "reasoning_effort",
+          "run_in_background"
+        ],
+        "forkParams": [
+          "description",
+          "prompt",
+          "run_in_background"
+        ],
+        "forkDescription": "Delegate a task to a subagent that inherits this conversation: a child agent see"
+      }
+    },
+    {
+      "id": "a0-session-records-policy",
+      "pass": true,
+      "detail": {
+        "policy": [
+          {
+            "provider": "commandcode",
+            "model": "deepseek/deepseek-v4.1-flash"
+          },
+          {
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          }
+        ],
+        "parentRoute": {
+          "provider": "commandcode",
+          "model": "deepseek/deepseek-v4.1-flash",
+          "maxTokens": 131072,
+          "reasoningEffort": "max"
+        }
+      }
+    },
+    {
+      "id": "a4-discovery-by-provider",
+      "pass": true,
+      "detail": {
+        "providersText": "deepseek-official — DeepSeek\ncommandcode — Command Code",
+        "byProvider": {
+          "commandcode": "commandcode/deepseek/deepseek-v4.1-flash — DeepSeek V4.1 Flash",
+          "deepseek-official": "deepseek-official/deepseek-flash — DeepSeek-V41-Flash"
+        },
+        "outsideText": "ERROR: LLM provider \"volcengine\" is not allowed for this Session",
+        "allowedProviders": [
+          "commandcode",
+          "deepseek-official"
+        ],
+        "expectations": [
+          {
+            "provider": "commandcode",
+            "model": "deepseek/deepseek-v4.1-flash"
+          },
+          {
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          }
+        ]
+      }
+    },
+    {
+      "id": "a5-explicit-route-used",
+      "pass": true,
+      "detail": {
+        "childId": "85e51e27-a364-4065-9300-b8c5e70af1f3",
+        "route": {
+          "provider": "deepseek-official",
+          "model": "deepseek-flash",
+          "reasoningEffort": "low",
+          "maxTokens": 256000
+        },
+        "result": "OK"
+      }
+    },
+    {
+      "id": "a6-explicit-effort-used",
+      "pass": true,
+      "detail": {
+        "childId": "85e51e27-a364-4065-9300-b8c5e70af1f3",
+        "effort": "low"
+      }
+    },
+    {
+      "id": "a8-child-inherits-policy",
+      "pass": true,
+      "detail": {
+        "childId": "85e51e27-a364-4065-9300-b8c5e70af1f3",
+        "policy": [
+          {
+            "provider": "commandcode",
+            "model": "deepseek/deepseek-v4.1-flash"
+          },
+          {
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          }
+        ]
+      }
+    },
+    {
+      "id": "a7-omitted-route-inherits",
+      "pass": true,
+      "detail": {
+        "childId": "ba3a9d7a-0628-4dad-bec3-209ff5f82c2d",
+        "parentRoute": {
+          "provider": "commandcode",
+          "model": "deepseek/deepseek-v4.1-flash",
+          "maxTokens": 131072,
+          "reasoningEffort": "max"
+        },
+        "childRoute": {
+          "provider": "commandcode",
+          "model": "deepseek/deepseek-v4.1-flash",
+          "reasoningEffort": "max",
+          "maxTokens": 131072
+        }
+      }
+    },
+    {
+      "id": "a11-forbidden-route-rejected",
+      "pass": true,
+      "detail": {
+        "childId": null,
+        "text": "ERROR: child LLM route \"volcengine/deepseek-v4-flash-ga-260731\" is not allowed for this Session"
+      }
+    },
+    {
+      "id": "a12-fork-same-route-no-selection",
+      "pass": true,
+      "detail": {
+        "childId": "169fa03f-bf30-4cbb-9d8f-02de7bac4315",
+        "parentRoute": {
+          "provider": "commandcode",
+          "model": "deepseek/deepseek-v4.1-flash",
+          "maxTokens": 131072,
+          "reasoningEffort": "max"
+        },
+        "forkRoute": {
+          "provider": "commandcode",
+          "model": "deepseek/deepseek-v4.1-flash",
+          "reasoningEffort": "max",
+          "maxTokens": 131072
+        },
+        "result": "OK"
+      }
+    },
+    {
+      "id": "a14-model-driven-selection",
+      "pass": true,
+      "detail": {
+        "childId": "c00cff5a-4a2e-4d19-9c9a-ac4600f3fbba",
+        "route": {
+          "provider": "deepseek-official",
+          "model": "deepseek-flash",
+          "reasoningEffort": "low",
+          "maxTokens": 256000
+        },
+        "call": "{\"description\":\"route probe\",\"prompt\":\"Reply with exactly: OK\",\"provider\":\"deepseek-official\",\"model\":\"deepseek-flash\",\"reasoning_effort\":\"low\",\"run_in_background\":false}"
+      }
+    },
+    {
+      "id": "a9-settings-edit-does-not-rewrite",
+      "pass": true,
+      "detail": {
+        "before": {
+          "base": {
+            "enabled": true,
+            "allowedModels": [
+              {
+                "provider": "commandcode",
+                "model": "deepseek/deepseek-v4.1-flash"
+              },
+              {
+                "provider": "deepseek-official",
+                "model": "deepseek-flash"
+              }
+            ]
+          }
+        },
+        "published": true,
+        "newPolicy": [
+          {
+            "provider": "gjx",
+            "model": "gpt-5.6-sol"
+          }
+        ],
+        "oldPolicy": [
+          {
+            "provider": "commandcode",
+            "model": "deepseek/deepseek-v4.1-flash"
+          },
+          {
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          }
+        ],
+        "freshListY": "gjx/gpt-5.6-sol — gpt-5.6-sol",
+        "freshListX": "ERROR: LLM provider \"volcengine\" is not allowed for this Session",
+        "staleText": "ERROR: child LLM route \"gjx/gpt-5.6-sol\" is not allowed for this Session"
+      }
+    },
+    {
+      "id": "a10-old-session-stays-off",
+      "pass": true,
+      "detail": {
+        "oldSessionId": "session-m4-E1-1f1322c9-3943-4894-88e0-eaa3ecaae34a",
+        "count": 29,
+        "subagentParams": [
+          "description",
+          "prompt",
+          "run_in_background"
+        ]
+      }
+    }
+  ],
+  "facts": {
+    "baseline": {
+      "enabled": true,
+      "allowedModels": [
+        {
+          "provider": "commandcode",
+          "model": "deepseek/deepseek-v4.1-flash"
+        },
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-flash"
+        }
+      ]
+    },
+    "assembledTools": [
+      "ask_user_question",
+      "bash",
+      "create_goal",
+      "edit",
+      "exit_plan_mode",
+      "get_goal",
+      "glob",
+      "grep",
+      "interrupt_agent",
+      "job_kill",
+      "job_list",
+      "job_output",
+      "list_agents",
+      "list_subagent_models",
+      "ralph",
+      "read",
+      "read_image",
+      "send_message",
+      "skill",
+      "skill_load",
+      "skill_search",
+      "str_replace_editor",
+      "subagent",
+      "subagent_fork",
+      "todo_write",
+      "update_goal",
+      "web_fetch",
+      "web_search",
+      "workflow",
+      "write"
+    ]
+  },
+  "finishedAt": "2026-09-12T02:38:42.702Z",
+  "summary": "16/16 pass"
+}

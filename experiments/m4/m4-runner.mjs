@@ -6,7 +6,7 @@
  * 的记录结构重建，任务模板逐字沿用。
  *
  * 用法：
- *   M4_GROUPS=E M4_RUNS=9 M4_MODEL=opencode-go/deepseek-v4-flash \
+ *   M4_GROUPS=E M4_RUNS=9 M4_MODEL=commandcode/deepseek/deepseek-v4.1-flash \
  *     dsh --profile headless --patch experiments/m4/m4.patch.yml
  *
  * 每组每次：真实 LLM 完成三步任务（查看目录 → 写 probe 文件 → bash 确认），

@@ -23,7 +23,9 @@ export const inject = [];
 
 const PRESET = "minimal-plus-next";
 /**
- * 父会话路由：票据 07/08/10 M4 批次同源，工具调用能力已验证。
+ * 父会话路由（2026-09-12 起）：opencode-go 月度额度停用后改用 commandcode 的 v4.1-flash，
+ * 与 `experiments/m4/results-minimal-plus-next-commandcode-v41-2026-09-12.jsonl` 同源，
+ * 工具调用/沙箱 bash 能力已验证。
  * 可用 env 覆盖（`PROBE_PARENT_PROVIDER` / `PROBE_PARENT_MODEL`）：T3 真实模型层在默认
  * 路由遇额度/传输不可用时做机制验证跑，报告会记录实际路由；不设 env 时行为不变。
  */
@@ -34,18 +36,16 @@ function routeFromEnv(prefix, fallback) {
   };
 }
 
-const PARENT = routeFromEnv("PROBE_PARENT", { provider: "opencode-go", model: "deepseek-v4-flash" });
-/** 探针部署基线（与 ~/.dsh/profiles/tui-dev/cordis.patch.yml 逐字段一致）。 */
+const PARENT = routeFromEnv("PROBE_PARENT", { provider: "commandcode", model: "deepseek/deepseek-v4.1-flash" });
+/** 探针部署基线（与 ~/.dsh/profiles/tui-dev/cordis.patch.yml 逐字段一致）；2026-09-12 起 2 条。 */
 const ALLOWED_X = [
-  { provider: "opencode-go", model: "deepseek-v4-flash" },
-  { provider: "commandcode", model: "deepseek/deepseek-v4-flash" },
-  { provider: "deepseek-official", model: "deepseek-v4-flash" },
-  { provider: "opencode-go", model: "deepseek-flash" },
+  { provider: "commandcode", model: "deepseek/deepseek-v4.1-flash" },
+  { provider: "deepseek-official", model: "deepseek-flash" },
 ];
 /** 事后编辑到用户层的集合：与 X 不相交，便于区分"已记录"与"当前设置"。 */
 const SETTINGS_Y = { enabled: true, allowedModels: [{ provider: "gjx", model: "gpt-5.6-sol" }] };
 /** 显式委派路由（必须在允许集合 X 内）；env 覆盖同上：PROBE_EXPLICIT_PROVIDER / _MODEL。 */
-const EXPLICIT = { ...routeFromEnv("PROBE_EXPLICIT", { provider: "opencode-go", model: "deepseek-flash" }), reasoning_effort: "low" };
+const EXPLICIT = { ...routeFromEnv("PROBE_EXPLICIT", { provider: "deepseek-official", model: "deepseek-flash" }), reasoning_effort: "low" };
 const FORBIDDEN = { provider: "volcengine", model: "deepseek-v4-flash-ga-260731" };
 const MODEL_PARAMS = ["provider", "model", "reasoning_effort"];
 const CHILD_PROMPT = "Reply with exactly: OK";
@@ -199,28 +199,29 @@ function checkSchema(report, tools) {
   );
 }
 
-/** 票 3 + 票 10（发现侧）：按 provider 列模型 / 集合外 provider 被拒。 */
+/** 票 3 + 票 10（发现侧）：按 provider 列模型 / 集合外 provider 被拒（期望集合从 ALLOWED_X 派生）。 */
 async function checkDiscovery(report, agent) {
   const providers = await execTool(agent, "list_subagent_models", {});
-  const opencode = await execTool(agent, "list_subagent_models", { provider: "opencode-go" });
-  const commandcode = await execTool(agent, "list_subagent_models", { provider: "commandcode" });
-  const outside = await execTool(agent, "list_subagent_models", { provider: "volcengine" });
   const providersText = resultText(providers);
-  const opencodeText = resultText(opencode);
-  const commandcodeText = resultText(commandcode);
+  const allowedProviders = [...new Set(ALLOWED_X.map((route) => route.provider))];
+  const byProvider = {};
+  for (const provider of allowedProviders) {
+    byProvider[provider] = resultText(await execTool(agent, "list_subagent_models", { provider }));
+  }
+  const outside = await execTool(agent, "list_subagent_models", { provider: FORBIDDEN.provider });
   const outsideText = resultText(outside);
+  const allModelsListed = ALLOWED_X.every((route) => byProvider[route.provider]?.includes(`${route.provider}/${route.model}`));
+  const noForeignModels = Object.values(byProvider).every((text) => !text.includes("muse-spark"));
   record(
     report,
     "a4-discovery-by-provider",
-    ["opencode-go", "commandcode", "deepseek-official"].every((id) => providersText.includes(id)) &&
-      !providersText.includes("volcengine") &&
-      opencodeText.includes("opencode-go/deepseek-v4-flash") &&
-      opencodeText.includes("opencode-go/deepseek-flash") &&
-      !opencodeText.includes("muse-spark") &&
-      commandcodeText.includes("commandcode/deepseek/deepseek-v4-flash") &&
+    allowedProviders.every((id) => providersText.includes(id)) &&
+      !providersText.includes(FORBIDDEN.provider) &&
+      allModelsListed &&
+      noForeignModels &&
       outside.isError === true &&
       outsideText.includes("not allowed"),
-    { providersText, opencodeText, commandcodeText, outsideText },
+    { providersText, byProvider, outsideText, allowedProviders, expectations: ALLOWED_X },
   );
 }
 
@@ -286,7 +287,8 @@ async function checkSettingsEdit(report, services, feed, agent) {
   const newPolicy = feed.policyOf(fresh.session.id);
   const oldPolicy = feed.policyOf(agent.session.id);
   const freshListY = resultText(await execTool(fresh, "list_subagent_models", { provider: "gjx" }));
-  const freshListX = resultText(await execTool(fresh, "list_subagent_models", { provider: "opencode-go" }));
+  // 编辑后新会话只认 Y：查询非 Y 的 provider 必须报 not allowed。
+  const freshListX = resultText(await execTool(fresh, "list_subagent_models", { provider: FORBIDDEN.provider }));
   const stale = await delegate(feed, agent, "subagent", { provider: "gjx", model: "gpt-5.6-sol" });
   const staleText = resultText(stale.result);
   record(

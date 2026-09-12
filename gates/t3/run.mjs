@@ -391,7 +391,7 @@ export function runT3({ tempHome, env, report, manifestObj, host }) {
     elapsedMs: Date.now() - probeStarted,
     oldSession: oldSession === null ? null : { id: oldSession.id, source: `m4-${M4_GROUP}-copy` },
     parent: probeReport?.parent,
-    allowed: probeReport?.allowed,
+    allowed: probeReport?.allowedX,
     archive: probeArchive,
     total: probe.total,
     passed: probe.passed,

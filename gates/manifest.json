@@ -35,10 +35,19 @@
       "model": "opencode-go/deepseek-v4-flash",
       "preset": "minimal-plus-next",
       "runs": 9
+    },
+    "m4-commandcode-v41-2026-09-12": {
+      "path": "experiments/m4/results-minimal-plus-next-commandcode-v41-2026-09-12.jsonl",
+      "sha256": "ef9a270a40ba52663c66bc2adcec89d891281e4fd5a74b992f141b6742a96f0d",
+      "hostVersion": "0.1.5-rc.1",
+      "capturedAt": "2026-09-12T02:24:07.000Z",
+      "model": "commandcode/deepseek/deepseek-v4.1-flash",
+      "preset": "minimal-plus-next",
+      "runs": 9
     }
   },
   "t3": {
-    "baseline": "m4-deduped-2026-09-10",
+    "baseline": "m4-commandcode-v41-2026-09-12",
     "tolerance": 1
   }
 }

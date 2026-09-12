@@ -28,17 +28,15 @@
     root: !!js process.env.PROBE_SESSION_ROOT ?? '/tmp/dsh-ticket11/sessions'
 
 # 与 ~/.dsh/profiles/tui-dev/cordis.patch.yml 的部署基线逐字段一致
+# （2026-09-12 起：opencode-go / commandcode v4-flash / deepseek-v4-flash 全部退役，
+#  集合 = commandcode deepseek-v4.1-flash + deepseek-official deepseek-flash）
 - id: subagent-model-selection-settings
   config:
     enabled: true
     allowedModels:
-      - provider: opencode-go
-        model: deepseek-v4-flash
       - provider: commandcode
-        model: deepseek/deepseek-v4-flash
+        model: deepseek/deepseek-v4.1-flash
       - provider: deepseek-official
-        model: deepseek-v4-flash
-      - provider: opencode-go
         model: deepseek-flash
 
 - insert:

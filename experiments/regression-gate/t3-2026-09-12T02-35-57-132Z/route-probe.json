@@ -1,0 +1,162 @@
+{
+  "startedAt": "2026-09-12T02:38:43.768Z",
+  "parent": {
+    "provider": "commandcode",
+    "model": "deepseek/deepseek-v4.1-flash"
+  },
+  "allowed": [
+    {
+      "provider": "commandcode",
+      "model": "deepseek/deepseek-v4.1-flash"
+    },
+    {
+      "provider": "deepseek-official",
+      "model": "deepseek-flash"
+    }
+  ],
+  "routes": [
+    {
+      "route": {
+        "provider": "commandcode",
+        "model": "deepseek/deepseek-v4.1-flash"
+      },
+      "pass": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "pass": true,
+          "failureKind": null,
+          "durationMs": 10320,
+          "childId": "743f32ea-e17d-4783-9360-0871eb34caab",
+          "childRoute": {
+            "provider": "commandcode",
+            "model": "deepseek/deepseek-v4.1-flash",
+            "reasoningEffort": "max",
+            "maxTokens": 131072
+          },
+          "context": {
+            "type": "request/context",
+            "seq": 11,
+            "time": 1789180731051,
+            "data": {
+              "provider": "commandcode",
+              "model": "deepseek/deepseek-v4.1-flash",
+              "contextWindow": 1000000
+            }
+          },
+          "subagentResult": {
+            "isError": false,
+            "text": "done"
+          },
+          "toolCalls": [
+            {
+              "name": "bash",
+              "callId": "call_00_tzioAjFgiXIA6lZdd3Eo2678",
+              "arguments": "{\"command\":\"echo ticket12-commandcode-deepseek-deepseek-v4-1-flash\"}"
+            }
+          ],
+          "toolResults": [
+            {
+              "callId": "call_00_tzioAjFgiXIA6lZdd3Eo2678",
+              "isError": false,
+              "text": "ticket12-commandcode-deepseek-deepseek-v4-1-flash\n[Command finished with exit code 0]"
+            }
+          ],
+          "turnErrors": [],
+          "marker": "ticket12-commandcode-deepseek-deepseek-v4-1-flash",
+          "markerSeen": true
+        }
+      ]
+    },
+    {
+      "route": {
+        "provider": "deepseek-official",
+        "model": "deepseek-flash"
+      },
+      "pass": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "pass": true,
+          "failureKind": null,
+          "durationMs": 6303,
+          "childId": "0db752ac-3dab-458e-95c6-a5bd451a05f6",
+          "childRoute": {
+            "provider": "deepseek-official",
+            "model": "deepseek-flash",
+            "maxTokens": 256000,
+            "reasoningEffort": "high"
+          },
+          "context": {
+            "type": "request/context",
+            "seq": 11,
+            "time": 1789180741328,
+            "data": {
+              "provider": "deepseek-official",
+              "model": "deepseek-flash",
+              "contextWindow": 1000000,
+              "systemPromptUpdate": "in-history"
+            }
+          },
+          "subagentResult": {
+            "isError": false,
+            "text": "done"
+          },
+          "toolCalls": [
+            {
+              "name": "bash",
+              "callId": "call_00_5eRFWoGpy2a1C7wuCebK6370",
+              "arguments": "{\"command\": \"echo ticket12-deepseek-official-deepseek-flash\", \"description\": \"Echo route probe marker\"}"
+            }
+          ],
+          "toolResults": [
+            {
+              "callId": "call_00_5eRFWoGpy2a1C7wuCebK6370",
+              "isError": false,
+              "text": "ticket12-deepseek-official-deepseek-flash\n[Command finished with exit code 0]"
+            }
+          ],
+          "turnErrors": [],
+          "marker": "ticket12-deepseek-official-deepseek-flash",
+          "markerSeen": true
+        }
+      ]
+    }
+  ],
+  "facts": {
+    "promotedTools": [
+      "ask_user_question",
+      "bash",
+      "create_goal",
+      "edit",
+      "exit_plan_mode",
+      "get_goal",
+      "glob",
+      "grep",
+      "interrupt_agent",
+      "job_kill",
+      "job_list",
+      "job_output",
+      "list_agents",
+      "list_subagent_models",
+      "ralph",
+      "read",
+      "read_image",
+      "send_message",
+      "skill",
+      "skill_load",
+      "skill_search",
+      "str_replace_editor",
+      "subagent",
+      "subagent_fork",
+      "todo_write",
+      "update_goal",
+      "web_fetch",
+      "web_search",
+      "workflow",
+      "write"
+    ]
+  },
+  "finishedAt": "2026-09-12T02:39:07.588Z",
+  "summary": "2/2 pass"
+}

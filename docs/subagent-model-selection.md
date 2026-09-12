@@ -1,7 +1,7 @@
 # 子代理模型选择（官方机制）：使用与维护
 
 > 状态：已落地（票据 11 实施；票据 12 首测 3/4 + 2026-09-11 复测 4/4 完成）。
-> 日期：2026-09-11（票据 13 文档收口）。
+> 日期：2026-09-11（票据 13 文档收口）；2026-09-12 增补 opencode-go 退役与 3 条现行集合。
 > 关联：ADR-0001（采用官方机制、弃自研 purpose 路由）、`docs/dsh-v0.1.5-rc.1-upgrade-spec.md`、
 > `docs/tickets/dsh-v0.1.5-rc.1-upgrade/11-official-subagent-model-selection.md` 与
 > `evidence/11-subagent-model-selection.md`、`12-allowed-route-verification.md` 与 `evidence/12-route-probe.json`。
@@ -35,8 +35,8 @@
 ```yaml
 enabled: true
 allowedModels:
-  - provider: opencode-go
-    model: deepseek-v4-flash
+  - provider: commandcode
+    model: deepseek/deepseek-v4.1-flash
 ```
 
 - `enabled: false`：机制关闭，会话工具面保持 29（测量基线口径）。
@@ -62,15 +62,15 @@ allowedModels:
 “事后编辑设置不改写已记录策略”是官方承诺的语义（release notes），也是本仓库选它的原因之一：
 同一次工作里的路由来源稳定、可追溯。
 
-## 3. 当前部署状态（2026-09-11 复核）
+## 3. 当前部署状态（2026-09-12 复核，3 条现行集合）
 
 | 位置 | 内容 | sha256 |
 | --- | --- | --- |
-| `~/.dsh/profiles/tui-dev/cordis.patch.yml` | `subagent-model-selection-settings` insert：`enabled: true` + 4 条允许路由 | `d6b283d6…` |
-| `~/.dsh/profiles/headless/cordis.patch.yml` | 同 id 挂载：`enabled: false` + 同 4 条（保 M4/轨迹/冒烟 29 工具口径） | `338f36cd…` |
+| `~/.dsh/profiles/tui-dev/cordis.patch.yml` | `subagent-model-selection-settings` insert：`enabled: true` + 2 条允许路由（§4.1） | `96a0d5e0…` |
+| `~/.dsh/profiles/headless/cordis.patch.yml` | 同 id 挂载：`enabled: false` + 同 2 条（保 M4/轨迹/冒烟 29 工具口径） | `6ef872ea…` |
 | `presets/minimal-plus-next/agent.cordis.yml` | `delegation/tool-subagent` 的 `modelSelectionSettings: true` | `9087bf00…` |
 | `~/.dsh/.agent-presets/minimal-plus-next/agent.cordis.yml` | 部署位副本，与仓库逐字节一致（8/8 生产文件 sha 一致） | `9087bf00…` |
-| `~/.dsh/settings.yaml` | 用户层当前**无** `subagent-model-selection:` 段（复核于 2026-09-11） | `84299548…` |
+| `~/.dsh/settings.yaml` | 用户层当前**无** `subagent-model-selection:` 段；`agent-default-model` 已切 `commandcode/deepseek/deepseek-v4.1-flash`（2026-09-12） | 复核时 sha `84299548…`（其后仅默认模型行更新） |
 
 补充事实：
 
@@ -81,7 +81,25 @@ allowedModels:
 
 ## 4. 允许路由集合与验证状态
 
-初始 4 条由用户 2026-09-10 选定，票据 12 于 2026-09-10T16:04Z 逐条做真实 bash 工具调用探测：
+### 4.1 现行集合（2026-09-12 起，2 条）
+
+用户 2026-09-12 裁定：opencode-go 月度额度（实测 `GoUsageLimitError`，重置约 7 天）期间不再使用
+opencode-go，默认模型切 `commandcode/deepseek/deepseek-v4.1-flash`；随后又退役
+`commandcode/deepseek/deepseek-v4-flash`（并入 v4.1-flash）与 `deepseek-official/deepseek-v4-flash`
+（换成 `deepseek-flash`）。现行为下列 2 条：
+
+| 路由 | 工具调用验证 | 说明 |
+| --- | --- | --- |
+| `commandcode/deepseek/deepseek-v4.1-flash` | 通过 | 2026-09-12 M4 单跑 25.9s、首工具 bash；同日 M4 N=9 基线与 T3 正式复跑见 `docs/tickets/regression-test-automation/evidence/11-real-model-archival-and-advisory.md` §9 |
+| `deepseek-official/deepseek-flash` | 通过 | `dsh-llm-deepseek` 目录内 `DeepSeek-V41-Flash`；2026-09-12 T3 正式复跑路由探针 pass（探针显式委派也用它，含 `reasoning_effort: low`） |
+
+口径沿用票据 12：**只有能力类失败才从集合移除**；opencode-go 属额度类停用（可恢复），
+不构成能力淘汰结论。当前集合与 `docs/tickets/regression-test-automation/evidence/11-real-model-archival-and-advisory.md`
+的 T3 正式跑一致（2/2 route probe）。
+
+### 4.2 历史：初始 4 条（2026-09-10 选定，2026-09-12 全部退役/替换）
+
+票据 12 于 2026-09-10T16:04Z 对当时 4 条逐条做真实 bash 工具调用探测：
 
 | 路由 | 工具调用验证 | 说明 |
 | --- | --- | --- |
@@ -150,7 +168,7 @@ preset 的 `modelSelectionSettings: true` 仅在宿主挂载了服务时才有�
 
 ## 6. 残留风险与未验证项
 
-- **4 条允许路由已全部取得工具调用实证**（2026-09-11 复测 4/4，§5.4）；集合外的模型不得默认视为可用。
+- **现行 2 条允许路由已取得工具调用实证**（2026-09-12，§4.1；初始 4 条中的 opencode-go 两条因月度额度停用、另两条按用户裁定退役/替换）；集合外的模型不得默认视为可用。
 - **用户层对所有 profile 生效**：`~/.dsh/settings.yaml` 的该段会覆盖基线；
   若用户层开启，headless/M4 会话也会变成 30 工具形状，测量可比性受影响（finding 11-3）。
   扩缩集合或采集基线前先复核用户层。
