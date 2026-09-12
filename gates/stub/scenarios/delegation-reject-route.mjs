@@ -14,7 +14,7 @@
  *     --json experiments/regression-gate/evidence/07-delegation-reject-route-green.json
  */
 import { textTurn, toolCallTurn } from '../adapter.mjs';
-import { callsByName, headerConfig, requestHeaders, resultError, resultIsError, resultOfCall, routeLabel, safeJson } from '../inspect.mjs';
+import { callsByName, headerConfig, requestHeaders, resultError, resultIsError, resultOfCall, routeGuard, routeLabel, safeJson, turnCompleted } from '../inspect.mjs';
 
 export const id = 'delegation-reject-route';
 export const finding = '委派指定集合外路由时被拒且不发出请求（票据 11 / 计划 §3.1 场景 5）';
@@ -54,15 +54,10 @@ export function assert(events, { harness, stub } = {}) {
       .map((header) => `${id}#${String(header.seq)} ${routeLabel(headerConfig(header))}`),
   );
   const forbiddenCalls = (stub?.calls ?? []).filter((entry) => entry.model === FORBIDDEN.model);
-  const turnEnds = events.filter((event) => event.type === 'turn/end');
-  const lastTurnEnd = turnEnds.at(-1);
 
   // ① 路由护栏（Q25）。
-  push(
-    'route.first-request',
-    headerConfig(requestHeaders(events)[0])?.provider === 'stub' && headerConfig(requestHeaders(events)[0])?.model === 'stub-model',
-    `request/header#1 config=${routeLabel(headerConfig(requestHeaders(events)[0]))}`,
-  );
+  const guard = routeGuard(events);
+  push('route.first-request', guard.ok, guard.evidence);
 
   // ② 前提：调用确实指定了集合外路由。
   push(
@@ -96,11 +91,8 @@ export function assert(events, { harness, stub } = {}) {
   );
 
   // ⑥ 拒绝后父会话继续正常收尾。
-  push(
-    'session.turn-completed',
-    lastTurnEnd?.data?.reason?.kind === 'completed',
-    `turn/end reason=${JSON.stringify(lastTurnEnd?.data?.reason ?? null)}`,
-  );
+  const completed = turnCompleted(events);
+  push('session.turn-completed', completed.ok, completed.evidence);
 
   return out;
 }

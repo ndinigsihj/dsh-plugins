@@ -20,7 +20,7 @@
  *   docs/tickets/regression-test-automation/evidence/07-stub-model-remaining-scenarios.md
  */
 import { textTurn, toolCallTurn } from '../adapter.mjs';
-import { bashParamKeys, headerConfig, requestHeaders, routeLabel } from '../inspect.mjs';
+import { bashParamKeys, requestHeaders, routeGuard, turnCompleted } from '../inspect.mjs';
 
 export const id = 'bash-promotion-visible';
 export const finding = 'phase-swap-bash 的 promotion 可见性与 compaction 回退（票据 07 / 12-2 同源）';
@@ -59,15 +59,10 @@ export function assert(events, { stub } = {}) {
   const toolCalls = events.filter((event) => event.type === 'tool/call');
   const compactionEnds = events.filter((event) => event.type === 'compaction/end');
   const compactionEnd = compactionEnds.at(-1);
-  const turnEnds = events.filter((event) => event.type === 'turn/end');
 
   // ① 路由护栏（Q25）：首个请求必须落在假模型上，防止场景误打真实 provider。
-  const first = headers[0];
-  push(
-    'route.first-request',
-    headerConfig(first)?.provider === 'stub' && headerConfig(first)?.model === 'stub-model',
-    `request/header#1 config=${routeLabel(headerConfig(first))}`,
-  );
+  const guard = routeGuard(events);
+  push('route.first-request', guard.ok, guard.evidence);
 
   // ② 不变量 A：promotion（tool/call#1）之后的下一次请求必须暴露沙箱 bash schema。
   const firstCallSeq = toolCalls[0]?.seq ?? Number.POSITIVE_INFINITY;
@@ -110,12 +105,8 @@ export function assert(events, { stub } = {}) {
   );
 
   // ⑥ 轮次正常收尾。
-  const lastTurnEnd = turnEnds.at(-1);
-  push(
-    'session.turn-completed',
-    lastTurnEnd?.data?.reason?.kind === 'completed',
-    `turn/end reason=${JSON.stringify(lastTurnEnd?.data?.reason ?? null)}`,
-  );
+  const completed = turnCompleted(events);
+  push('session.turn-completed', completed.ok, completed.evidence);
 
   return out;
 }

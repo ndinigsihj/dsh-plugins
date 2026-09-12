@@ -66,3 +66,24 @@ export function callsByName(events, name) {
 export function resultOfCall(events, callId) {
   return events.find((event) => event.type === 'tool/result' && toolCallIdOf(event) === callId);
 }
+
+/**
+ * Q25 路由护栏（票据 12 审查 Standards#3 抽公共）：首个 request/header 必须落在
+ * 假模型上，防「忘改路由 → 打真实 provider」。返回 `{ ok, evidence }` 供场景 push。
+ */
+export function routeGuard(events, label = 'request/header#1') {
+  const config = headerConfig(requestHeaders(events)[0]);
+  return {
+    ok: config?.provider === 'stub' && config?.model === 'stub-model',
+    evidence: `${label} config=${routeLabel(config)}`,
+  };
+}
+
+/** 会话正常收尾：最后一个 turn/end 的 reason.kind === 'completed'。返回 `{ ok, evidence }`。 */
+export function turnCompleted(events, label = 'turn/end') {
+  const lastTurnEnd = events.filter((event) => event.type === 'turn/end').at(-1);
+  return {
+    ok: lastTurnEnd?.data?.reason?.kind === 'completed',
+    evidence: `${label} reason=${JSON.stringify(lastTurnEnd?.data?.reason ?? null)}`,
+  };
+}

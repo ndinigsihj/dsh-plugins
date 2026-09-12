@@ -18,7 +18,7 @@
  */
 import { SessionId } from '@deepseek-ai/dsh-session';
 import { textTurn, toolCallTurn } from '../adapter.mjs';
-import { headerConfig, headerToolNames, requestHeaders, routeLabel } from '../inspect.mjs';
+import { headerToolNames, requestHeaders, routeGuard, routeLabel, turnCompleted } from '../inspect.mjs';
 
 export const id = 'v3-resume-route';
 export const finding = 'V3 会话 resume 后按已记录策略重挂路由发现工具（票据 11）';
@@ -58,11 +58,8 @@ export function assert(events, { harness } = {}) {
   const tools = headerToolNames(resumedHeader).sort();
 
   // ① 路由护栏（Q25）：恢复后首个请求仍落在假模型上。
-  push(
-    'route.first-request',
-    headerConfig(resumedHeader)?.provider === 'stub' && headerConfig(resumedHeader)?.model === 'stub-model',
-    `resumed request/header#1 config=${routeLabel(headerConfig(resumedHeader))}`,
-  );
+  const guard = routeGuard(resumed, 'resumed request/header#1');
+  push('route.first-request', guard.ok, guard.evidence);
 
   // ② 不变量：恢复后首个请求头含路由发现工具。
   push(
@@ -96,12 +93,8 @@ export function assert(events, { harness } = {}) {
   );
 
   // ⑥ 恢复窗口正常收尾。
-  const lastTurnEnd = resumed.filter((event) => event.type === 'turn/end').at(-1);
-  push(
-    'session.turn-completed',
-    lastTurnEnd?.data?.reason?.kind === 'completed',
-    `resumed window turn/end reason=${JSON.stringify(lastTurnEnd?.data?.reason ?? null)}`,
-  );
+  const completed = turnCompleted(resumed, 'resumed window turn/end');
+  push('session.turn-completed', completed.ok, completed.evidence);
 
   return out;
 }

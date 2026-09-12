@@ -50,7 +50,7 @@
 | Q17 | CI = 全 **hosted `macos-latest`**、零 secrets；若实测起不来再退 self-hosted |
 | Q18 | 资产落点见 §4.4（`gates/**`、`lib/testing/**`、`lib/app.test.ts`、`scripts/**`、`experiments/regression-gate/**`） |
 | Q19 | **T4a 进 `npm test`；T2 只进闸门 tier 2**（`npm test` 保持秒级） |
-| Q20 | T4b 用**真实 tui-dev profile**；保留 repo 本地 flock 串行锁 |
+| Q20 | T4b 用**真实 tui-dev profile**；保留 repo 本地原子 mkdir 串行锁 |
 | Q21 | 先出计划 v2 施工图，批准后才动代码 |
 | Q22 | 重绘上界 = 数 PTY 原始流中的 `\x1b[2J`（扣除进入 alt-screen 那次）；T4a 侧用假终端捕获帧同类断言。**不**给生产代码加 `fullRedraws` 转发 |
 | Q23 | T4b 验收 = 你本机手跑一次；P3 后加 `workflow_dispatch` 常驻入口；不提权 |
@@ -125,8 +125,9 @@ stable 与 dev 的回归边界写清，不留「看起来有测试其实没跑�
 
 - **零写入真实 `~/.dsh`**（Q2）：temp `DSH_HOME` 承载 profiles/settings/sessions/presets 副本。
   宿主启动会规范化回写 profile 的 `cordis.yml`（finding 01-2/09-4）——回写落在副本上，是接受的幂等写。
-- **repo 本地 flock**（Q20ii）：`$REPO/.git/dsh-regression-gate.lock`，防两个终端并发抢共享 farm
-  （`~/.dsh/profiles/node_modules` 随最近一次 boot 整代自愈，finding 03-2/05-7）。
+- **repo 本地原子 mkdir 锁**（Q20ii）：`$REPO/.git/dsh-regression-gate.lock`，防两个终端并发抢共享 farm
+  （`~/.dsh/profiles/node_modules` 随最近一次 boot 整代自愈，finding 03-2/05-7）。用原子 `mkdir` + PID 记录 +
+  过期回收实现（macOS/Linux 通用；macOS 默认没有 `flock` 命令）——票据 12 Stage 7 按实现口径修正措辞。
 - **farm 代断言**：闸门断言「farm 解析到的 `@deepseek-ai/dsh` 版本 == `manifest.hostVersion`」，不符即 exit 2。
 
 ---
@@ -288,7 +289,7 @@ PTY 尺寸固定 120×30、`TERM=xterm-256color`；输出喂 `@xterm/headless`�
 
 **新增（Q15）**：`gates/composition/gate.patch.yml`（自持组合）与 `gates/composition/render-real.mjs`（运行期渲染）。
 
-### 4.2 隔离与串行 → 见 §2.2（本版新增 flock 与 farm 代断言）。
+### 4.2 隔离与串行 → 见 §2.2（本版新增原子 mkdir 锁与 farm 代断言）。
 
 ### 4.3 版本闸门 `gates/manifest.json`
 

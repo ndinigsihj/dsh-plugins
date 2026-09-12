@@ -1,0 +1,48 @@
+regression-gate: repo=/Users/vito/data/dev/dsh-plugins tiers=2 composition=gate report=experiments/regression-gate/evidence/13-stage7-t2.json
+[PRE] pass
+  PASS host.cli — dsh --version -> 0.1.5-rc.1
+  PASS host.pin.hostVersion — expected=0.1.5-rc.1 actual=0.1.5-rc.1
+  PASS host.pin.sessionFormatVersion — expected=3 actual=3
+[T2] pass
+  PASS stub.overlay-only — no stub provider/module/model reference outside gates/stub/**
+  PASS stub.bash-first-call.route.first-request — request/header#1 config=stub/stub-model
+  PASS stub.bash-first-call.bash.first-call-persistent-args — tool/call#1 name=bash arguments={"command":"pwd"}
+  PASS stub.bash-first-call.bash.first-call-not-rejected — no argument rejection; tool/result isError=true content=Error: posix_openpt failed: Operation not permitted
+  PASS stub.bash-first-call.bash.promoted-sandbox-visible — request/header seq=21 bash params=command,description,timeoutMs,workdir,run_in_background,sandbox_permissions,justification
+  PASS stub.bash-first-call.bash.second-call-accepted — tool/call#2 arguments={"command":"pwd","description":"二轮沙箱调用：确认当前目录"} result=isError=false error=<none>
+  PASS stub.bash-first-call.stub.no-aux-calls — conversation calls=3/3 aux=[]
+  PASS stub.bash-first-call.session.turn-completed — turn/end reason={"kind":"completed"}
+  PASS stub.bash-first-call.process-exit — exit 0 report=7/7 pass
+  PASS stub.bash-promotion-visible.route.first-request — request/header#1 config=stub/stub-model
+  PASS stub.bash-promotion-visible.bash.promoted-sandbox-visible — request/header seq=21 bash params=command,description,timeoutMs,workdir,run_in_background,sandbox_permissions,justification
+  PASS stub.bash-promotion-visible.compaction.completed — compaction/end seq=28 error=<none>
+  PASS stub.bash-promotion-visible.bash.compaction-fallback-persistent — request/header seq=34 bash params=command
+  PASS stub.bash-promotion-visible.stub.script-consumed — conversation calls=3/3 compaction calls=1
+  PASS stub.bash-promotion-visible.session.turn-completed — turn/end reason={"kind":"completed"}
+  PASS stub.bash-promotion-visible.process-exit — exit 0 report=6/6 pass
+  PASS stub.delegation-inherit-route.route.first-request — request/header#1 config=stub/stub-model
+  PASS stub.delegation-inherit-route.delegation.omitted-route — tool/call name=subagent arguments={"description":"route probe","prompt":"Reply with exactly: OK","run_in_background":false}
+  PASS stub.delegation-inherit-route.delegation.child-created — childIds=["627d06cc-26d8-499d-bdc8-3309a24b3f07"] child events=14
+  PASS stub.delegation-inherit-route.delegation.child-inherits-route — parent=stub/stub-model child=stub/stub-model
+  PASS stub.delegation-inherit-route.delegation.foreground-result — tool/result=isError=false turn/end={"kind":"completed"}
+  PASS stub.delegation-inherit-route.stub.child-route-call — stub call session=627d06cc-26d8-499d-bdc8-3309a24b3f07 route=stub/stub-model
+  PASS stub.delegation-inherit-route.stub.script-consumed — conversation calls=3/3
+  PASS stub.delegation-inherit-route.process-exit — exit 0 report=7/7 pass
+  PASS stub.delegation-reject-route.route.first-request — request/header#1 config=stub/stub-model
+  PASS stub.delegation-reject-route.delegation.forbidden-args — tool/call arguments={"description":"forbidden route probe","prompt":"Reply with exactly: OK","provider":"stub","model":"stub-model-forbidden","run_in_background":false}
+  PASS stub.delegation-reject-route.delegation.forbidden-rejected — tool/result isError=true error=Error: child LLM route "stub/stub-model-forbidden" is not allowed for this Session
+  PASS stub.delegation-reject-route.delegation.no-child-session — catalog childIds=[] sessions=["session-stub-delegation-reject-route-e18e110c-3b25-42d6-8b59-68bb453719b5"]
+  PASS stub.delegation-reject-route.delegation.no-forbidden-request — forbidden request/header=[] adapter calls=0
+  PASS stub.delegation-reject-route.session.turn-completed — turn/end reason={"kind":"completed"}
+  PASS stub.delegation-reject-route.process-exit — exit 0 report=6/6 pass
+  PASS stub.v3-resume-route.route.first-request — resumed request/header#1 config=stub/stub-model
+  PASS stub.v3-resume-route.resume.discovery-tool-visible — resumed request/header tools=ask_user_question,bash,create_goal,edit,exit_plan_mode,get_goal,glob,grep,interrupt_agent,job_kill,job_list,job_output,list_agents,list_subagent_models,ralph,read,read_image,send_message,skill,skill_load,skill_search,str_replace_editor,subagent,subagent_fork,todo_write,update_goal,web_fetch,web_search,workflow,write
+  PASS stub.v3-resume-route.resume.promoted-catalog — resumed request/header tool count=30 (bootstrap=2)
+  PASS stub.v3-resume-route.resume.policy-recorded — policy events=1 routes=stub/stub-model
+  PASS stub.v3-resume-route.resume.format-v3 — persisted session format version=3
+  PASS stub.v3-resume-route.session.turn-completed — resumed window turn/end reason={"kind":"completed"}
+  PASS stub.v3-resume-route.process-exit — exit 0 report=6/6 pass
+  PASS t2.isolation.real-home-untouched — signature identical before/after (strict zones; 0 observed-only changes)
+
+summary: 42 passed, 0 failed, 0 skipped — report experiments/regression-gate/evidence/13-stage7-t2.json
+regression-gate: exit=0 report=experiments/regression-gate/evidence/13-stage7-t2.json

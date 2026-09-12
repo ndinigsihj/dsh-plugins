@@ -1,0 +1,25 @@
+regression-gate: repo=/Users/vito/data/dev/dsh-plugins tiers=1 composition=gate report=experiments/regression-gate/evidence/13-nc-fixed-window.json
+[PRE] pass
+  PASS host.cli — dsh --version -> 0.1.5-rc.1
+  PASS host.pin.hostVersion — expected=0.1.5-rc.1 actual=0.1.5-rc.1
+  PASS host.pin.sessionFormatVersion — expected=3 actual=3
+[T1] fail
+  PASS composition.dump-config — exit 0 entries=92
+  PASS composition.loader-id-unique — in-process ids=92 cli ids=92 duplicates=0
+  PASS composition.no-stub — no stub provider/module reference
+  PASS smoke.anchored-first-turn — exit 0 R1=["bash","str_replace_editor"]
+  PASS smoke.promoted-catalog — tools=29 missing=[] unexpected=[] bashParamsMissing=[] preStepMissing=[]
+  PASS degrade.fail-open — exit 0 warning=true R1 tools=29
+  PASS seeded-preview.probe — exit 0 10/10 pass missing=0
+  PASS deployment.repo-matches-manifest — 8 files match
+  PASS deployment.repo-vs-deployed — exempted (absent) by --skip-deployment-check: agent.cordis.yml:absent, preset.yml:absent, compaction-epoch.mjs:absent, phase-swap-bash.mjs:absent, tool-bootstrap.mjs:absent, instruction-hint.mjs:absent, skill-search.mjs:absent, custom-bash.mjs:absent
+  PASS host.pin — anchor=0.1.5-rc.1 farm=0.1.5-rc.1 expected=0.1.5-rc.1
+  PASS session.format-version — runtime=3 manifest=3
+  FAIL isolation.real-home-untouched — [{"zone":"profiles","change":"changed","before":0,"after":1}]
+  PASS isolation.copy-rewrite-sha — cordis.yml sha256=c300dcf2ebc5
+  PASS gate.no-deployment-sync — no sync invocation in 8 gate sources
+
+!!! EXEMPTIONS APPLIED (report stays green but this run is NOT a full verification):
+!!!   deployment-sha: absent — agent.cordis.yml:absent, preset.yml:absent, compaction-epoch.mjs:absent, phase-swap-bash.mjs:absent, tool-bootstrap.mjs:absent, instruction-hint.mjs:absent, skill-search.mjs:absent, custom-bash.mjs:absent
+
+summary: 16 passed, 1 failed, 0 skipped — report experiments/regression-gate/evidence/13-nc-fixed-window.json

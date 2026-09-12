@@ -1,0 +1,294 @@
+{
+  "gateVersion": 1,
+  "startedAt": "2026-09-12T10:24:53.248Z",
+  "finishedAt": "2026-09-12T10:24:57.495Z",
+  "gitHead": "b6513e4",
+  "gitDirty": true,
+  "hostVersion": "0.1.5-rc.1",
+  "sessionFormatVersion": 3,
+  "composition": "gate",
+  "compositionVerified": "repo-patch",
+  "compositionSourcePath": "/Users/vito/data/dev/dsh-plugins/gates/composition/gate.patch.yml",
+  "compositionSourceSha": "a8fb9b41ce38bc19fb7d27942cbd8a71cb066453f7618762a9219111ce7d4040",
+  "compositionRenderedPath": null,
+  "compositionRenderedSha": null,
+  "compositionDumpSha": null,
+  "compositionReal": null,
+  "deployment": null,
+  "tiers": [
+    {
+      "id": "PRE",
+      "status": "pass",
+      "startedAt": "2026-09-12T10:24:53.248Z",
+      "durationMs": 0,
+      "assertions": [
+        {
+          "id": "host.cli",
+          "status": "pass",
+          "evidence": "dsh --version -> 0.1.5-rc.1"
+        },
+        {
+          "id": "host.pin.hostVersion",
+          "status": "pass",
+          "evidence": "expected=0.1.5-rc.1 actual=0.1.5-rc.1"
+        },
+        {
+          "id": "host.pin.sessionFormatVersion",
+          "status": "pass",
+          "evidence": "expected=3 actual=3"
+        }
+      ]
+    },
+    {
+      "id": "T2",
+      "status": "pass",
+      "startedAt": "2026-09-12T10:24:57.495Z",
+      "durationMs": 4099,
+      "assertions": [
+        {
+          "id": "stub.overlay-only",
+          "status": "pass",
+          "evidence": "no stub provider/module/model reference outside gates/stub/**"
+        },
+        {
+          "id": "stub.bash-first-call.route.first-request",
+          "status": "pass",
+          "evidence": "request/header#1 config=stub/stub-model"
+        },
+        {
+          "id": "stub.bash-first-call.bash.first-call-persistent-args",
+          "status": "pass",
+          "evidence": "tool/call#1 name=bash arguments={\"command\":\"pwd\"}"
+        },
+        {
+          "id": "stub.bash-first-call.bash.first-call-not-rejected",
+          "status": "pass",
+          "evidence": "no argument rejection; tool/result isError=true content=Error: posix_openpt failed: Operation not permitted"
+        },
+        {
+          "id": "stub.bash-first-call.bash.promoted-sandbox-visible",
+          "status": "pass",
+          "evidence": "request/header seq=21 bash params=command,description,timeoutMs,workdir,run_in_background,sandbox_permissions,justification"
+        },
+        {
+          "id": "stub.bash-first-call.bash.second-call-accepted",
+          "status": "pass",
+          "evidence": "tool/call#2 arguments={\"command\":\"pwd\",\"description\":\"二轮沙箱调用：确认当前目录\"} result=isError=false error=<none>"
+        },
+        {
+          "id": "stub.bash-first-call.stub.no-aux-calls",
+          "status": "pass",
+          "evidence": "conversation calls=3/3 aux=[]"
+        },
+        {
+          "id": "stub.bash-first-call.session.turn-completed",
+          "status": "pass",
+          "evidence": "turn/end reason={\"kind\":\"completed\"}"
+        },
+        {
+          "id": "stub.bash-first-call.process-exit",
+          "status": "pass",
+          "evidence": "exit 0 report=7/7 pass"
+        },
+        {
+          "id": "stub.bash-promotion-visible.route.first-request",
+          "status": "pass",
+          "evidence": "request/header#1 config=stub/stub-model"
+        },
+        {
+          "id": "stub.bash-promotion-visible.bash.promoted-sandbox-visible",
+          "status": "pass",
+          "evidence": "request/header seq=21 bash params=command,description,timeoutMs,workdir,run_in_background,sandbox_permissions,justification"
+        },
+        {
+          "id": "stub.bash-promotion-visible.compaction.completed",
+          "status": "pass",
+          "evidence": "compaction/end seq=28 error=<none>"
+        },
+        {
+          "id": "stub.bash-promotion-visible.bash.compaction-fallback-persistent",
+          "status": "pass",
+          "evidence": "request/header seq=34 bash params=command"
+        },
+        {
+          "id": "stub.bash-promotion-visible.stub.script-consumed",
+          "status": "pass",
+          "evidence": "conversation calls=3/3 compaction calls=1"
+        },
+        {
+          "id": "stub.bash-promotion-visible.session.turn-completed",
+          "status": "pass",
+          "evidence": "turn/end reason={\"kind\":\"completed\"}"
+        },
+        {
+          "id": "stub.bash-promotion-visible.process-exit",
+          "status": "pass",
+          "evidence": "exit 0 report=6/6 pass"
+        },
+        {
+          "id": "stub.delegation-inherit-route.route.first-request",
+          "status": "pass",
+          "evidence": "request/header#1 config=stub/stub-model"
+        },
+        {
+          "id": "stub.delegation-inherit-route.delegation.omitted-route",
+          "status": "pass",
+          "evidence": "tool/call name=subagent arguments={\"description\":\"route probe\",\"prompt\":\"Reply with exactly: OK\",\"run_in_background\":false}"
+        },
+        {
+          "id": "stub.delegation-inherit-route.delegation.child-created",
+          "status": "pass",
+          "evidence": "childIds=[\"627d06cc-26d8-499d-bdc8-3309a24b3f07\"] child events=14"
+        },
+        {
+          "id": "stub.delegation-inherit-route.delegation.child-inherits-route",
+          "status": "pass",
+          "evidence": "parent=stub/stub-model child=stub/stub-model"
+        },
+        {
+          "id": "stub.delegation-inherit-route.delegation.foreground-result",
+          "status": "pass",
+          "evidence": "tool/result=isError=false turn/end={\"kind\":\"completed\"}"
+        },
+        {
+          "id": "stub.delegation-inherit-route.stub.child-route-call",
+          "status": "pass",
+          "evidence": "stub call session=627d06cc-26d8-499d-bdc8-3309a24b3f07 route=stub/stub-model"
+        },
+        {
+          "id": "stub.delegation-inherit-route.stub.script-consumed",
+          "status": "pass",
+          "evidence": "conversation calls=3/3"
+        },
+        {
+          "id": "stub.delegation-inherit-route.process-exit",
+          "status": "pass",
+          "evidence": "exit 0 report=7/7 pass"
+        },
+        {
+          "id": "stub.delegation-reject-route.route.first-request",
+          "status": "pass",
+          "evidence": "request/header#1 config=stub/stub-model"
+        },
+        {
+          "id": "stub.delegation-reject-route.delegation.forbidden-args",
+          "status": "pass",
+          "evidence": "tool/call arguments={\"description\":\"forbidden route probe\",\"prompt\":\"Reply with exactly: OK\",\"provider\":\"stub\",\"model\":\"stub-model-forbidden\",\"run_in_background\":false}"
+        },
+        {
+          "id": "stub.delegation-reject-route.delegation.forbidden-rejected",
+          "status": "pass",
+          "evidence": "tool/result isError=true error=Error: child LLM route \"stub/stub-model-forbidden\" is not allowed for this Session"
+        },
+        {
+          "id": "stub.delegation-reject-route.delegation.no-child-session",
+          "status": "pass",
+          "evidence": "catalog childIds=[] sessions=[\"session-stub-delegation-reject-route-e18e110c-3b25-42d6-8b59-68bb453719b5\"]"
+        },
+        {
+          "id": "stub.delegation-reject-route.delegation.no-forbidden-request",
+          "status": "pass",
+          "evidence": "forbidden request/header=[] adapter calls=0"
+        },
+        {
+          "id": "stub.delegation-reject-route.session.turn-completed",
+          "status": "pass",
+          "evidence": "turn/end reason={\"kind\":\"completed\"}"
+        },
+        {
+          "id": "stub.delegation-reject-route.process-exit",
+          "status": "pass",
+          "evidence": "exit 0 report=6/6 pass"
+        },
+        {
+          "id": "stub.v3-resume-route.route.first-request",
+          "status": "pass",
+          "evidence": "resumed request/header#1 config=stub/stub-model"
+        },
+        {
+          "id": "stub.v3-resume-route.resume.discovery-tool-visible",
+          "status": "pass",
+          "evidence": "resumed request/header tools=ask_user_question,bash,create_goal,edit,exit_plan_mode,get_goal,glob,grep,interrupt_agent,job_kill,job_list,job_output,list_agents,list_subagent_models,ralph,read,read_image,send_message,skill,skill_load,skill_search,str_replace_editor,subagent,subagent_fork,todo_write,update_goal,web_fetch,web_search,workflow,write"
+        },
+        {
+          "id": "stub.v3-resume-route.resume.promoted-catalog",
+          "status": "pass",
+          "evidence": "resumed request/header tool count=30 (bootstrap=2)"
+        },
+        {
+          "id": "stub.v3-resume-route.resume.policy-recorded",
+          "status": "pass",
+          "evidence": "policy events=1 routes=stub/stub-model"
+        },
+        {
+          "id": "stub.v3-resume-route.resume.format-v3",
+          "status": "pass",
+          "evidence": "persisted session format version=3"
+        },
+        {
+          "id": "stub.v3-resume-route.session.turn-completed",
+          "status": "pass",
+          "evidence": "resumed window turn/end reason={\"kind\":\"completed\"}"
+        },
+        {
+          "id": "stub.v3-resume-route.process-exit",
+          "status": "pass",
+          "evidence": "exit 0 report=6/6 pass"
+        },
+        {
+          "id": "t2.isolation.real-home-untouched",
+          "status": "pass",
+          "evidence": "signature identical before/after (strict zones; 0 observed-only changes)",
+          "detail": {
+            "observedChanges": []
+          }
+        }
+      ]
+    }
+  ],
+  "exemptions": [],
+  "summary": {
+    "passed": 42,
+    "failed": 0,
+    "skipped": 0
+  },
+  "stub": {
+    "scenarios": [
+      {
+        "scenario": "bash-first-call",
+        "passed": 7,
+        "failed": 0,
+        "exit": 0,
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-UCdyh1/home/stub/bash-first-call.json"
+      },
+      {
+        "scenario": "bash-promotion-visible",
+        "passed": 6,
+        "failed": 0,
+        "exit": 0,
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-UCdyh1/home/stub/bash-promotion-visible.json"
+      },
+      {
+        "scenario": "delegation-inherit-route",
+        "passed": 7,
+        "failed": 0,
+        "exit": 0,
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-UCdyh1/home/stub/delegation-inherit-route.json"
+      },
+      {
+        "scenario": "delegation-reject-route",
+        "passed": 6,
+        "failed": 0,
+        "exit": 0,
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-UCdyh1/home/stub/delegation-reject-route.json"
+      },
+      {
+        "scenario": "v3-resume-route",
+        "passed": 6,
+        "failed": 0,
+        "exit": 0,
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-UCdyh1/home/stub/v3-resume-route.json"
+      }
+    ]
+  }
+}

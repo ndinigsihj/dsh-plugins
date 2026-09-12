@@ -21,6 +21,7 @@ import {
   requestHeaders,
   resultIsError,
   resultOfCall,
+  routeGuard,
   routeLabel,
   safeJson,
 } from '../inspect.mjs';
@@ -61,11 +62,8 @@ export function assert(events, { harness, stub } = {}) {
   const turnEnds = events.filter((event) => event.type === 'turn/end');
 
   // ① 路由护栏（Q25）。
-  push(
-    'route.first-request',
-    headerConfig(requestHeaders(events)[0])?.provider === 'stub' && headerConfig(requestHeaders(events)[0])?.model === 'stub-model',
-    `request/header#1 config=${routeLabel(headerConfig(requestHeaders(events)[0]))}`,
-  );
+  const guard = routeGuard(events);
+  push('route.first-request', guard.ok, guard.evidence);
 
   // ② 前提：委派调用确实省略了全部模型侧路由字段。
   push(

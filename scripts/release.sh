@@ -28,7 +28,7 @@ fi
 # Always the REAL tui-dev composition, runtime-rendered into a temp home; never
 # any exemption flag (D6) — a stale/absent deployment or a missing sibling
 # checkout must stop the release, not be waived. T0 covers tsc + npm test, T1 the
-# zero-LLM composition layer, T2 degrades to an explicit skip until tickets 06/07.
+# zero-LLM composition layer, T2 the scripted stub behaviour layer (tickets 06/07).
 # Delivery sequence: explicit preset sync -> this gate -> T3 real-model layer on
 # demand -> human sign-off.
 scripts/regression-gate.sh --tier 0,1,2 --composition real

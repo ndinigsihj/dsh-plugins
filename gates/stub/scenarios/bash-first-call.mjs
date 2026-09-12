@@ -28,6 +28,7 @@
  *   git apply experiments/regression-gate/evidence/12-2-fix.patch
  */
 import { toolCallTurn, textTurn } from '../adapter.mjs';
+import { routeGuard, turnCompleted } from '../inspect.mjs';
 
 export const id = 'bash-first-call';
 export const finding = 'finding 12-2（closeout §7.2）：promotion 时换 bash schema 拒掉首轮调用';
@@ -92,12 +93,8 @@ export function assert(events, { stub } = {}) {
   const turnEnds = events.filter((event) => event.type === 'turn/end');
 
   // ① 路由：首个请求头必须落在假模型上（Q25：防「忘改路由 → 打真实 provider」）
-  const firstConfig = requestHeaders[0]?.data?.header?.config;
-  push(
-    'route.first-request',
-    firstConfig?.provider === 'stub' && firstConfig?.model === 'stub-model',
-    `request/header#1 config=provider:${String(firstConfig?.provider)} model:${String(firstConfig?.model)}`,
-  );
+  const guard = routeGuard(events);
+  push('route.first-request', guard.ok, guard.evidence);
 
   // ② 首轮调用参数：模型看到的是 persistent schema，只产出 command
   const firstCall = toolCalls[0];
@@ -156,12 +153,8 @@ export function assert(events, { stub } = {}) {
   );
 
   // ⑦ 轮次正常收尾（错误收尾说明 agent loop 没跑完）
-  const lastTurnEnd = turnEnds[turnEnds.length - 1];
-  push(
-    'session.turn-completed',
-    lastTurnEnd?.data?.reason?.kind === 'completed',
-    `turn/end reason=${JSON.stringify(lastTurnEnd?.data?.reason ?? null)}`,
-  );
+  const completed = turnCompleted(events);
+  push('session.turn-completed', completed.ok, completed.evidence);
 
   return out;
 }

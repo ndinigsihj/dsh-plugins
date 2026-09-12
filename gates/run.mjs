@@ -161,13 +161,17 @@ export function strictIsolationDiffs(before, diffs) {
   return diffs.filter((diff) => before[diff.zone]?.strict !== false);
 }
 
-/** T3 的隔离断言（与 T1 第 ⑨ 条同口径：严格区零变化；活跃写入区只记录）。 */
-function t3IsolationAssertions(before, after) {
+/**
+ * 单次窗口的真实 home 零写入断言（与 T1 第 ⑨ 条同口径：严格区零变化；活跃写入区只记录）。
+ * 每层各取一次「运行开始 → 本层结束」的累计窗口：最后一个跑到的层天然覆盖全程，
+ * 因此 `--tier 0,1,2`（无 T3）也不会漏掉 T1/T2 自身的写入窗口。
+ */
+function isolationAssertions(id, before, after) {
   const t = createAssertions();
   const diffs = diffRealHome(before, after);
   const strict = strictIsolationDiffs(before, diffs);
   t[strict.length === 0 ? "pass" : "fail"](
-    "t3.isolation.real-home-untouched",
+    id,
     strict.length === 0
       ? `signature identical before/after (strict zones; ${String(diffs.length)} observed-only changes)`
       : JSON.stringify(strict),
@@ -496,8 +500,10 @@ function runT1(config, report) {
     `runtime=${String(SESSION_FORMAT_VERSION)} manifest=${String(config.manifestObj.sessionFormatVersion)}`,
   );
 
-  // ⑨ 真实 home 零写入（前后指纹对比；storages 等活跃写入区只记录）
-  const diffs = diffRealHome(config.realHomeBefore, config.realHomeAfter);
+  // ⑨ 真实 home 零写入（前快照在闸门启动时、后快照在本层子进程全部跑完后取；
+  //    storages 等活跃写入区只记录）
+  const realHomeAfter = scanRealHome(config.manifestObj);
+  const diffs = diffRealHome(config.realHomeBefore, realHomeAfter);
   const strictDiffs = strictIsolationDiffs(config.realHomeBefore, diffs);
   report.isolation = {
     strictZones: Object.entries(config.realHomeBefore)
@@ -834,7 +840,6 @@ export async function runGate(options) {
         exemptions,
         exemptionsApplied,
         realHomeBefore,
-        realHomeAfter: scanRealHome(manifest.manifest),
       };
       const t1Started = Date.now();
       tiers.push(recordTier("T1", runT1(config, report), t1Started));
@@ -856,8 +861,11 @@ export async function runGate(options) {
     if (preconditionsOk) {
       // T2 用自持的 stub 组合（headless + gates/stub/stub.patch.yml + repo preset 根），
       // 与 --composition 无关：它验的是 preset/agent-loop 机制，不是交付态组合内容。
+      // 隔离窗口取「运行开始 → T2 结束」累计，覆盖 T2 自身的写入面（票据 12 审查 c1）。
       const t2Started = Date.now();
-      tiers.push(recordTier("T2", runT2({ tempHome, env, report, manifestObj: manifest.manifest }), t2Started));
+      const t2Assertions = runT2({ tempHome, env, report, manifestObj: manifest.manifest });
+      t2Assertions.push(...isolationAssertions("t2.isolation.real-home-untouched", realHomeBefore, scanRealHome(manifest.manifest)));
+      tiers.push(recordTier("T2", t2Assertions, t2Started));
     } else {
       tiers.push(recordTier("T2", [{ id: "tier.T2", status: "skip", evidence: `precondition not met: ${String(preconditionDetail)}` }]));
     }
@@ -875,7 +883,7 @@ export async function runGate(options) {
       } catch (error) {
         assertions = [{ id: "t3.run", status: "fail", evidence: `T3 runner failed: ${String(error?.message ?? error)}` }];
       }
-      assertions.push(...t3IsolationAssertions(realHomeBefore, scanRealHome(manifest.manifest)));
+      assertions.push(...isolationAssertions("t3.isolation.real-home-untouched", realHomeBefore, scanRealHome(manifest.manifest)));
       tiers.push(recordTier("T3", assertions, t3Started));
     }
   }
