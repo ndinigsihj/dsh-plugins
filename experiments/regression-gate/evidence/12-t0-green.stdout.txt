@@ -1,0 +1,12 @@
+regression-gate: repo=/Users/vito/data/dev/dsh-plugins tiers=0 composition=gate report=experiments/regression-gate/evidence/12-t0-green.json
+[PRE] pass
+  PASS host.cli — dsh --version -> 0.1.5-rc.1
+  PASS host.pin.hostVersion — expected=0.1.5-rc.1 actual=0.1.5-rc.1
+  PASS host.pin.sessionFormatVersion — expected=3 actual=3
+[T0] pass
+  PASS tsc.noEmit — exit 0
+  PASS npm.test — exit 0 tests=154 pass=154 fail=0
+  PASS testfile.list-consistency — 14 files present
+
+summary: 6 passed, 0 failed, 0 skipped — report experiments/regression-gate/evidence/12-t0-green.json
+regression-gate: exit=0 report=experiments/regression-gate/evidence/12-t0-green.json

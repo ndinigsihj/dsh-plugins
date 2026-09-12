@@ -1,0 +1,70 @@
+TAP version 13
+# Subtest: patternTarget: 通配段之前是 base，无通配按精确文件，取反先剥离
+ok 1 - patternTarget: 通配段之前是 base，无通配按精确文件，取反先剥离
+  ---
+  duration_ms: 0.996167
+  type: 'test'
+  ...
+# Subtest: workflowTriggers: 布尔 on 键与字符串/数组形态都读出事件
+ok 2 - workflowTriggers: 布尔 on 键与字符串/数组形态都读出事件
+  ---
+  duration_ms: 0.294792
+  type: 'test'
+  ...
+# Subtest: 无 paths 的事件与只有 branches/tags 的事件不误判
+ok 3 - 无 paths 的事件与只有 branches/tags 的事件不误判
+  ---
+  duration_ms: 12.211875
+  type: 'test'
+  ...
+# Subtest: 布尔 on 的 YAML 1.1 形态 + 缺失 base：报告含文件、事件、模式
+ok 4 - 布尔 on 的 YAML 1.1 形态 + 缺失 base：报告含文件、事件、模式
+  ---
+  duration_ms: 1.594083
+  type: 'test'
+  ...
+# Subtest: paths-ignore、取反模式、精确文件与「base 不是目录」都校验
+ok 5 - paths-ignore、取反模式、精确文件与「base 不是目录」都校验
+  ---
+  duration_ms: 2.044167
+  type: 'test'
+  ...
+# Subtest: 负控：触发目录改坏 → 红；目录恢复 → 绿
+ok 6 - 负控：触发目录改坏 → 红；目录恢复 → 绿
+  ---
+  duration_ms: 2.293709
+  type: 'test'
+  ...
+# Subtest: YAML 不可解析与非映射根都变红
+ok 7 - YAML 不可解析与非映射根都变红
+  ---
+  duration_ms: 2.144375
+  type: 'test'
+  ...
+# Subtest: paths 非列表形态报为 schema 问题，而不是崩溃
+ok 8 - paths 非列表形态报为 schema 问题，而不是崩溃
+  ---
+  duration_ms: 0.827042
+  type: 'test'
+  ...
+# Subtest: workflowFiles: 只收 .yml/.yaml 且按名排序
+ok 9 - workflowFiles: 只收 .yml/.yaml 且按名排序
+  ---
+  duration_ms: 1.456625
+  type: 'test'
+  ...
+# Subtest: 真仓全部工作流：可解析 + 触发路径存在
+ok 10 - 真仓全部工作流：可解析 + 触发路径存在
+  ---
+  duration_ms: 2.098417
+  type: 'test'
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 76.830208

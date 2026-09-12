@@ -1,0 +1,90 @@
+TAP version 13
+# Subtest: patternTarget: 通配段之前是 base，无通配按精确文件，取反先剥离
+ok 1 - patternTarget: 通配段之前是 base，无通配按精确文件，取反先剥离
+  ---
+  duration_ms: 0.967833
+  type: 'test'
+  ...
+# Subtest: workflowTriggers: 布尔 on 键与字符串/数组形态都读出事件
+ok 2 - workflowTriggers: 布尔 on 键与字符串/数组形态都读出事件
+  ---
+  duration_ms: 0.284208
+  type: 'test'
+  ...
+# Subtest: 无 paths 的事件与只有 branches/tags 的事件不误判
+ok 3 - 无 paths 的事件与只有 branches/tags 的事件不误判
+  ---
+  duration_ms: 17.089084
+  type: 'test'
+  ...
+# Subtest: 布尔 on 的 YAML 1.1 形态 + 缺失 base：报告含文件、事件、模式
+ok 4 - 布尔 on 的 YAML 1.1 形态 + 缺失 base：报告含文件、事件、模式
+  ---
+  duration_ms: 1.454334
+  type: 'test'
+  ...
+# Subtest: paths-ignore、取反模式、精确文件与「base 不是目录」都校验
+ok 5 - paths-ignore、取反模式、精确文件与「base 不是目录」都校验
+  ---
+  duration_ms: 2.175
+  type: 'test'
+  ...
+# Subtest: 负控：触发目录改坏 → 红；目录恢复 → 绿
+ok 6 - 负控：触发目录改坏 → 红；目录恢复 → 绿
+  ---
+  duration_ms: 2.142875
+  type: 'test'
+  ...
+# Subtest: YAML 不可解析与非映射根都变红
+ok 7 - YAML 不可解析与非映射根都变红
+  ---
+  duration_ms: 2.070125
+  type: 'test'
+  ...
+# Subtest: paths 非列表形态报为 schema 问题，而不是崩溃
+ok 8 - paths 非列表形态报为 schema 问题，而不是崩溃
+  ---
+  duration_ms: 0.975
+  type: 'test'
+  ...
+# Subtest: workflowFiles: 只收 .yml/.yaml 且按名排序
+ok 9 - workflowFiles: 只收 .yml/.yaml 且按名排序
+  ---
+  duration_ms: 1.673166
+  type: 'test'
+  ...
+# Subtest: 真仓全部工作流：可解析 + 触发路径存在
+not ok 10 - 真仓全部工作流：可解析 + 触发路径存在
+  ---
+  duration_ms: 2.496625
+  type: 'test'
+  location: '/Users/vito/data/dev/dsh-plugins/gates/workflow-triggers.test.mjs:158:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    .github/workflows/regression-gate.yml [push] paths "gates-renamed/**": base directory gates-renamed does not exist
+    
+    1 !== 0
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 0
+  actual: 1
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/vito/data/dev/dsh-plugins/gates/workflow-triggers.test.mjs:168:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 9
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 79.695375

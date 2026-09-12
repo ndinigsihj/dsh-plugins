@@ -12,8 +12,12 @@
  */
 import { createRequire } from "node:module";
 
-/** 从 app-boot 安装位置解析 js-yaml（仓库依赖面里没有它）。 */
-function loadYaml() {
+/**
+ * 从 app-boot 安装位置解析 js-yaml（仓库依赖面里没有它）。
+ * 票据 12 的工作流触发路径断言（`gates/workflow-triggers.mjs`）复用同一入口，
+ * 不新增依赖。
+ */
+export function loadYaml() {
   const appBootManifest = createRequire(import.meta.url).resolve("@deepseek-ai/dsh-app-boot/package.json");
   const require = createRequire(appBootManifest);
   return require("js-yaml");

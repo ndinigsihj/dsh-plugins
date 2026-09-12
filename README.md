@@ -208,7 +208,7 @@ scripts/tui-pty-smoke.sh                                           # 按需：�
 
 | 层 | 内容 | 说明 |
 |---|---|---|
-| T0 | `tsc --noEmit` + `npm test` | 静态层；进程内 app 层（T4a，`lib/app.test.ts`，注入假 Terminal）随 `npm test` 执行 |
+| T0 | `tsc --noEmit` + `npm test` | 静态层；工作流触发路径存在性断言与进程内 app 层（T4a，`lib/app.test.ts`，注入假 Terminal）随 `npm test` 执行 |
 | T1 | 零 LLM 组合层 | 组合导出、逐 loader id 唯一、反 stub 劫持、首轮锚定/二轮提升冒烟、降级 fail-open、seeded 预览探针、部署位 sha、宿主钉版、真实 home 零写入 |
 | T2 | 假模型行为层 | `gates/stub/**` 脚本化 provider：首请求路由、12-2 沙箱 bash 红绿、compaction 回退、V3 恢复路由、委派策略 |
 | T3 | 真实模型层（按需） | M4 行为基线 + 模型选择/允许路由探针；需真实 `~/.dsh/settings.yaml`，永不进 release/CI |
@@ -236,6 +236,10 @@ T3 产物另按 `experiments/regression-gate/t3-<UTC 时间戳>/` 归档，跨�
 按 `gates/manifest.json` 的版本安装），部署位按「缺席」记账；T3 与 T4b 不进 CI。Windows 侧另见
 `.github/workflows/custom-bash-win-smoke.yml`（触发路径 = `presets/minimal-plus-next/**`，脚本 preset 路径由
 `CUSTOM_BASH_PRESET_ROOT` 参数化）。
+
+两个工作流的触发路径由 T0 常驻断言校验（`gates/workflow-triggers.mjs`，随 `npm test`）：逐事件检查
+`paths` / `paths-ignore` 的每条模式——目录 glob 断言其 base 目录存在、精确路径断言文件存在，
+防止再次出现「触发路径指向已删除目录 → 工作流永不触发」的静默失效。
 
 ## Tested
 

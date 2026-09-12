@@ -1,0 +1,83 @@
+{
+  "gateVersion": 1,
+  "startedAt": "2026-09-12T06:25:55.272Z",
+  "finishedAt": "2026-09-12T06:25:57.862Z",
+  "gitHead": "7a6decc",
+  "gitDirty": true,
+  "hostVersion": "0.1.5-rc.1",
+  "sessionFormatVersion": 3,
+  "composition": "gate",
+  "compositionVerified": "repo-patch",
+  "compositionSourcePath": "/Users/vito/data/dev/dsh-plugins/gates/composition/gate.patch.yml",
+  "compositionSourceSha": "a8fb9b41ce38bc19fb7d27942cbd8a71cb066453f7618762a9219111ce7d4040",
+  "compositionRenderedPath": null,
+  "compositionRenderedSha": null,
+  "compositionDumpSha": null,
+  "compositionReal": null,
+  "deployment": null,
+  "tiers": [
+    {
+      "id": "PRE",
+      "status": "pass",
+      "startedAt": "2026-09-12T06:25:55.272Z",
+      "durationMs": 0,
+      "assertions": [
+        {
+          "id": "host.cli",
+          "status": "pass",
+          "evidence": "dsh --version -> 0.1.5-rc.1"
+        },
+        {
+          "id": "host.pin.hostVersion",
+          "status": "pass",
+          "evidence": "expected=0.1.5-rc.1 actual=0.1.5-rc.1"
+        },
+        {
+          "id": "host.pin.sessionFormatVersion",
+          "status": "pass",
+          "evidence": "expected=3 actual=3"
+        }
+      ]
+    },
+    {
+      "id": "T0",
+      "status": "fail",
+      "startedAt": "2026-09-12T06:25:57.862Z",
+      "durationMs": 2330,
+      "assertions": [
+        {
+          "id": "tsc.noEmit",
+          "status": "pass",
+          "evidence": "exit 0",
+          "detail": {
+            "stderr": [
+              ""
+            ]
+          }
+        },
+        {
+          "id": "npm.test",
+          "status": "fail",
+          "evidence": "exit 1 tests=154 pass=153 fail=1",
+          "detail": {
+            "skipped": 0
+          }
+        },
+        {
+          "id": "testfile.list-consistency",
+          "status": "pass",
+          "evidence": "14 files present",
+          "detail": {
+            "declared": 14
+          }
+        }
+      ]
+    }
+  ],
+  "exemptions": [],
+  "summary": {
+    "passed": 5,
+    "failed": 1,
+    "skipped": 0
+  }
+}

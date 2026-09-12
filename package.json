@@ -8,7 +8,7 @@
     "node": ">=22.19.0"
   },
   "scripts": {
-    "test": "node --test lib/goal-bar.test.ts lib/transcript-area.test.ts lib/app.test.ts plugins/rewind-dsh.test.ts presets/minimal-plus-next/phase-swap-bash.test.mjs presets/minimal-plus-next/tool-bootstrap.test.mjs presets/minimal-plus-next/instruction-hint.test.mjs presets/minimal-plus-next/skill-search.test.mjs presets/minimal-plus-next/custom-bash.test.mjs gates/manifest.test.mjs gates/run.test.mjs gates/composition/render-real.test.mjs gates/t3/analysis.test.mjs"
+    "test": "node --test lib/goal-bar.test.ts lib/transcript-area.test.ts lib/app.test.ts plugins/rewind-dsh.test.ts presets/minimal-plus-next/phase-swap-bash.test.mjs presets/minimal-plus-next/tool-bootstrap.test.mjs presets/minimal-plus-next/instruction-hint.test.mjs presets/minimal-plus-next/skill-search.test.mjs presets/minimal-plus-next/custom-bash.test.mjs gates/manifest.test.mjs gates/run.test.mjs gates/workflow-triggers.test.mjs gates/composition/render-real.test.mjs gates/t3/analysis.test.mjs"
   },
   "dsh": {
     "bundle": {
