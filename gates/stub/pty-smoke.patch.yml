@@ -1,0 +1,29 @@
+# T4b PTY 冒烟覆盖层（票据 10；计划 §3.3）——叠在真实 tui-dev profile 之上。
+#
+#   scripts/tui-pty-smoke.sh
+#
+# 与 gates/stub/stub.patch.yml（T2 headless 层）的分工：T2 跑进程内 driver，
+# 场景经同进程 stubState 注入；本覆盖层跑真实 `dsh --profile tui-dev` 子进程，
+# 场景经 STUB_SCENARIO_FILE 文件注入、路由由 tui-runner 的 config 钉到假模型。
+#
+# 遏制规则（Q13）：假模型只出现在 gates/stub/*.patch.yml 与同目录模块里；
+# provider 名固定 `stub`，不占用任何真实名。本文件不在 T1/T2 组合中出现。
+
+# Q25 同源：首条人类消息后 session-title 会并发打同一路由，回放序列与断言口径
+# 都会多一条噪声调用，T4b 与 T2 一致关掉。
+- id: session-title-llm
+  disabled: true
+
+# 新会话路由钉到假模型（TUI run() 把 patch config 的 provider/model 作为
+# agentOptions；resume 会话走自身记录，不受影响）。preset 同时钉住，避免
+# 依赖用户 settings 的 agent-presets.default（finding 03-4）。
+- id: tui-runner
+  config:
+    provider: stub
+    model: stub-model
+    preset: minimal-plus-next
+
+- insert:
+    # `./adapter.mjs` 由加载器锚定到本补丁所在目录（anchorInsertedPluginNames）。
+    - id: gate-stub-adapter
+      name: ./adapter.mjs

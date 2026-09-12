@@ -1,0 +1,4 @@
+tui-pty-smoke: repo=/Users/vito/data/dev/dsh-plugins temp=/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T//dsh-pty-smoke-ubUKD7 report=experiments/regression-gate/evidence/10-negative-control-route.json
+pty-smoke: report experiments/regression-gate/evidence/10-negative-control-route.json
+pty-smoke: assertions 12/14 passed
+tui-pty-smoke: exit=1 report=experiments/regression-gate/evidence/10-negative-control-route.json

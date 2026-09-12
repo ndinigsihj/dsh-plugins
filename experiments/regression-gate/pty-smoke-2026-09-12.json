@@ -1,0 +1,155 @@
+{
+  "kind": "pty-smoke",
+  "version": 1,
+  "startedAt": "2026-09-12T01:25:24.408Z",
+  "finishedAt": "2026-09-12T01:25:45.415Z",
+  "gitHead": "467178d",
+  "gitDirty": true,
+  "hostVersion": "0.1.5-rc.1",
+  "sessionFormatVersion": 3,
+  "negativeControl": null,
+  "pty": {
+    "cols": 120,
+    "rows": 30,
+    "term": "xterm-256color"
+  },
+  "composition": {
+    "profile": "tui-dev",
+    "sourcePath": "/Users/vito/.dsh/profiles/tui-dev/cordis.patch.yml",
+    "sourceSha": "d6b283d68798a122c2f0fc01767945bb7d3c859a6b73296797c44c9f4d605e03",
+    "renderedPath": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-pty-smoke-Tgq0Zm/home/profiles/tui-dev/cordis.patch.yml",
+    "renderedSha": "d6b283d68798a122c2f0fc01767945bb7d3c859a6b73296797c44c9f4d605e03",
+    "preset": {
+      "name": "minimal-plus-next",
+      "source": "deployed",
+      "sourcePath": "/Users/vito/.dsh/.agent-presets/minimal-plus-next",
+      "stagedPath": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-pty-smoke-Tgq0Zm/home/.agent-presets/minimal-plus-next",
+      "root": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-pty-smoke-Tgq0Zm/home/.agent-presets"
+    },
+    "settings": {
+      "copied": true,
+      "sourcePath": "/Users/vito/.dsh/settings.yaml",
+      "sha": "422169d15f44c5dcb3daee31ba4813e08db72c2d6fc996368fab59002223e51c"
+    }
+  },
+  "metrics": {
+    "boot1": {
+      "bannerMs": 1315,
+      "firstDataMs": 1153,
+      "exit": {
+        "exitCode": 0,
+        "signal": 0
+      },
+      "chunks": 75,
+      "clears": 2,
+      "altEnter": 1,
+      "altExit": 1,
+      "cursorShow": 24
+    },
+    "boot2": {
+      "bannerMs": 1113,
+      "firstDataMs": 906,
+      "exit": {
+        "exitCode": 0,
+        "signal": 0
+      },
+      "chunks": 101,
+      "clears": 4,
+      "altEnter": 2,
+      "altExit": 2,
+      "cursorShow": 26
+    },
+    "streaming": {
+      "chunks": 12,
+      "intervals": 11,
+      "p50": 13,
+      "p95": 137,
+      "firstMs": 1845,
+      "lastMs": 2159,
+      "bursts": 4,
+      "burstP50": 93,
+      "burstP95": 137
+    }
+  },
+  "assertions": [
+    {
+      "id": "boot.banner",
+      "status": "pass",
+      "evidence": "boot1 banner=1315ms firstData=1153ms; boot2 banner=1113ms; workspace=/private/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-pty-smoke-Tgq0Zm/ws",
+      "detail": {
+        "profile": "tui-dev",
+        "preset": "minimal-plus-next",
+        "stubRoute": "stub/stub-model"
+      }
+    },
+    {
+      "id": "screen.normalized",
+      "status": "pass",
+      "evidence": "6 snapshots, maxWidth=120/120, problems=none"
+    },
+    {
+      "id": "sessions.visible",
+      "status": "pass",
+      "evidence": "Sessions in ws (1): | 1. first message [just now · live (current)]"
+    },
+    {
+      "id": "model.switched",
+      "status": "pass",
+      "evidence": "Switched notice + status bar = stub/stub-model-alt"
+    },
+    {
+      "id": "route.pinned",
+      "status": "pass",
+      "evidence": "session session-de36f5ea-7d26-4f55-8bca-5ccaec91c269 first request/header=stub/stub-model"
+    },
+    {
+      "id": "route.header.changed",
+      "status": "pass",
+      "evidence": "session session-de36f5ea-7d26-4f55-8bca-5ccaec91c269 request/header routes = [stub/stub-model, stub/stub-model-alt]"
+    },
+    {
+      "id": "rm.confirm-visible",
+      "status": "pass",
+      "evidence": "/rm confirm card showed session-de36f5ea-7d26-4f55-8bca-5ccaec91c269"
+    },
+    {
+      "id": "rm.store-changed",
+      "status": "pass",
+      "evidence": "session dir removed: /var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-pty-smoke-Tgq0Zm/home/sessions/--private-var-folders-zh-f_lsgtq11xj15plhbsydjy2r0000gn-T-dsh-pty-smoke-Tgq0Zm-ws--/session-de36f5ea-7d26-4f55-8bca-5ccaec91c269"
+    },
+    {
+      "id": "rewind.file-restored",
+      "status": "pass",
+      "evidence": "seq=14 created=true restored=true; stderr=dsh-rewind: restored files: /private/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-pty-smoke-Tgq0Zm/ws/target.txt\r"
+    },
+    {
+      "id": "rewind.child-persisted",
+      "status": "pass",
+      "evidence": "child=session-16bf5320-486a-44e4-8d87-bf58b247ec03 isSeeded=true parent=session-c733b5b2-866c-4973-9ead-7f608ea62b38; sessions count=2"
+    },
+    {
+      "id": "exit.code-zero",
+      "status": "pass",
+      "evidence": "exit events = 0, 0"
+    },
+    {
+      "id": "exit.terminal-restore",
+      "status": "pass",
+      "evidence": "altExit=1 cursor=24; altExit=2 cursor=26"
+    },
+    {
+      "id": "quant.clear-bound",
+      "status": "pass",
+      "evidence": "clears boot1=2 boot2=4 total=6 (bound 6/start, 3 starts)"
+    },
+    {
+      "id": "assertions.coverage",
+      "status": "pass",
+      "evidence": "all 13 declared assertions ran"
+    }
+  ],
+  "summary": {
+    "passed": 14,
+    "failed": 0
+  }
+}

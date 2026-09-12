@@ -10,6 +10,7 @@
  * 遏制规则（Q13）：provider 名固定 `stub`，不占用任何真实名；模块路径只允许出现在
  * `gates/stub/*.patch.yml`。组合行 / profile / 部署位出现它 = 回归。
  */
+import { readFileSync } from 'node:fs';
 import { LlmAdapter, ToolCallId } from '@deepseek-ai/dsh-llm';
 
 export const name = 'gate-stub-adapter';
@@ -22,6 +23,22 @@ export const STUB_MODEL = 'stub-model';
 
 /** 同进程共享状态：runner 写场景，适配器写调用记录。 */
 export const stubState = { scenario: undefined, calls: [] };
+
+/** 文件化场景的缓存（同一进程只读一次）。 */
+let fileScenario;
+
+/**
+ * 独立进程（T4b PTY 冒烟）拿不到同进程 `stubState`，改用 `STUB_SCENARIO_FILE`
+ * 指向 JSON 场景文件；T2 runner 仍走 `stubState.scenario`，行为不变。
+ * @returns 文件场景，或未配置/已由 runner 注入时的 `undefined`。
+ */
+export function scenarioFromFile() {
+  if (fileScenario !== undefined) return fileScenario;
+  const path = process.env.STUB_SCENARIO_FILE;
+  if (path === undefined || path === '') return undefined;
+  fileScenario = JSON.parse(readFileSync(path, 'utf8'));
+  return fileScenario;
+}
 
 /** 固定 usage，避免每次回放都带随机量。 */
 const USAGE = { type: 'usage', usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 } };
@@ -54,8 +71,22 @@ export function toolCallTurn({ id, name, arguments: args }) {
 }
 
 class ScriptedAdapter extends LlmAdapter {
+  /**
+   * T4b 的 `/model` 断言需要两条可切换的假路由。T2 不设 `STUB_MODELS`
+   * （默认返回空目录，与基线一致），避免影响既有场景的目录形状。
+   * 目录元数据必须带 `provider`/`name`：llm runtime 会逐条校验
+   * （dsh-llm lib/index.js:2018-2036，缺字段整条目录抛 INVALID_CATALOG）。
+   */
+  listModels(provider) {
+    const ids = (process.env.STUB_MODELS ?? '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter((id) => id !== '');
+    return Promise.resolve(ids.map((id) => ({ provider, id, name: id })));
+  }
+
   async *stream(options) {
-    const scenario = stubState.scenario;
+    const scenario = stubState.scenario ?? scenarioFromFile();
     if (scenario === undefined) {
       throw new Error('gate-stub: scenario not loaded (runner must set stubState.scenario before the agent runs)');
     }
@@ -78,7 +109,15 @@ class ScriptedAdapter extends LlmAdapter {
     // 辅助调用（session-title / compaction）应在覆盖层里关掉；若仍到达，回一个最小
     // 文本收尾，由场景断言把「辅助调用发生了」判红（Q25），而不是让回放序列错位。
     const chunks = turn ?? textTurn('gate-stub auxiliary call');
-    for (const chunk of chunks) yield chunk;
+    for (const chunk of chunks) {
+      // T4b 流式量化：`{type:'delay', ms}` 只等待、不产出块，让 TUI 按脚本节奏
+      // 逐步渲染，PTY 分块时间戳才有可测的间隔。T2 场景不使用该类型。
+      if (chunk.type === 'delay') {
+        await new Promise((resolve) => setTimeout(resolve, Number(chunk.ms) || 0));
+        continue;
+      }
+      yield chunk;
+    }
   }
 }
 

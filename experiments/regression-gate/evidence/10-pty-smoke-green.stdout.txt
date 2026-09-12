@@ -1,0 +1,4 @@
+tui-pty-smoke: repo=/Users/vito/data/dev/dsh-plugins temp=/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T//dsh-pty-smoke-Tgq0Zm
+pty-smoke: report /Users/vito/data/dev/dsh-plugins/experiments/regression-gate/pty-smoke-2026-09-12.json
+pty-smoke: assertions 14/14 passed
+tui-pty-smoke: exit=0
