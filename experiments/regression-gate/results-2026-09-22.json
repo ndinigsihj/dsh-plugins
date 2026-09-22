@@ -1,0 +1,711 @@
+{
+  "gateVersion": 1,
+  "startedAt": "2026-09-22T08:37:29.641Z",
+  "finishedAt": "2026-09-22T08:37:40.382Z",
+  "gitHead": "6a6c98a",
+  "gitDirty": false,
+  "hostVersion": "0.1.5-rc.1",
+  "sessionFormatVersion": 3,
+  "composition": "real",
+  "compositionVerified": "rendered-copy",
+  "compositionSourcePath": "/Users/vito/.dsh/profiles/tui-dev/cordis.patch.yml",
+  "compositionSourceSha": "96a0d5e0605f18def46caade304eff7cef39006be39a9c3e95b524092e234bc7",
+  "compositionRenderedPath": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-s6A0Zq/home/profiles/tui-dev/cordis.patch.yml",
+  "compositionRenderedSha": "96a0d5e0605f18def46caade304eff7cef39006be39a9c3e95b524092e234bc7",
+  "compositionDumpSha": "21501c73bfe6cfc3d246a59a3b4201a9d0dfa5e1afcc695581363092890e2d7b",
+  "compositionReal": {
+    "profile": "tui-dev",
+    "roots": [
+      {
+        "id": "plugins",
+        "env": "DSH_PLUGINS_ROOT",
+        "path": "/Users/vito/data/dev/dsh-plugins"
+      },
+      {
+        "id": "relay",
+        "env": "DSH_RELAY_ROOT",
+        "path": "/Users/vito/data/dev/dsh-relay"
+      },
+      {
+        "id": "endless",
+        "env": "DSH_ENDLESS_ROOT",
+        "path": "/Users/vito/data/dev/dsh-endless"
+      }
+    ],
+    "preset": {
+      "name": "minimal-plus-next",
+      "source": "deployed",
+      "sourcePath": "/Users/vito/.dsh/.agent-presets/minimal-plus-next",
+      "stagedPath": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-s6A0Zq/home/.agent-presets/minimal-plus-next",
+      "root": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-s6A0Zq/home/.agent-presets"
+    },
+    "settings": {
+      "copied": true,
+      "sourcePath": "/Users/vito/.dsh/settings.yaml",
+      "sha": "d340819f8bf426b0d7fcbe7e508d465a7edd1e1b80a089b121f47da1becfadcb"
+    }
+  },
+  "deployment": {
+    "status": "ok",
+    "manifestMatchesRepo": true,
+    "files": {
+      "agent.cordis.yml": {
+        "repo": "9087bf00b2edd520f91b2a97fc527cd6250f590ab8694b757420f57e3b31789c",
+        "deployed": "9087bf00b2edd520f91b2a97fc527cd6250f590ab8694b757420f57e3b31789c",
+        "expected": "9087bf00b2edd520f91b2a97fc527cd6250f590ab8694b757420f57e3b31789c",
+        "state": "ok"
+      },
+      "preset.yml": {
+        "repo": "8a0965bd624a179d1059849aafea878d981ecfd7512f6f250569fdfd09d1d1de",
+        "deployed": "8a0965bd624a179d1059849aafea878d981ecfd7512f6f250569fdfd09d1d1de",
+        "expected": "8a0965bd624a179d1059849aafea878d981ecfd7512f6f250569fdfd09d1d1de",
+        "state": "ok"
+      },
+      "compaction-epoch.mjs": {
+        "repo": "a17cdce7b871b57b35fe9dc5abae4fd7d6b3bcb3089278c7be97ad314e0d4feb",
+        "deployed": "a17cdce7b871b57b35fe9dc5abae4fd7d6b3bcb3089278c7be97ad314e0d4feb",
+        "expected": "a17cdce7b871b57b35fe9dc5abae4fd7d6b3bcb3089278c7be97ad314e0d4feb",
+        "state": "ok"
+      },
+      "phase-swap-bash.mjs": {
+        "repo": "c00fe48e5a4036196c8ac2af9548e91b2bb6add2d4cd1117730f821abc0bd298",
+        "deployed": "c00fe48e5a4036196c8ac2af9548e91b2bb6add2d4cd1117730f821abc0bd298",
+        "expected": "c00fe48e5a4036196c8ac2af9548e91b2bb6add2d4cd1117730f821abc0bd298",
+        "state": "ok"
+      },
+      "tool-bootstrap.mjs": {
+        "repo": "e3e05e677289d84f5b24e291061e92dc309e75768a5aad355b5ade28f2d2a6ed",
+        "deployed": "e3e05e677289d84f5b24e291061e92dc309e75768a5aad355b5ade28f2d2a6ed",
+        "expected": "e3e05e677289d84f5b24e291061e92dc309e75768a5aad355b5ade28f2d2a6ed",
+        "state": "ok"
+      },
+      "instruction-hint.mjs": {
+        "repo": "4a2a26cb74ee8307d17df72ea4cebbebf806a4f5c95b29b5e442b6c41fad0667",
+        "deployed": "4a2a26cb74ee8307d17df72ea4cebbebf806a4f5c95b29b5e442b6c41fad0667",
+        "expected": "4a2a26cb74ee8307d17df72ea4cebbebf806a4f5c95b29b5e442b6c41fad0667",
+        "state": "ok"
+      },
+      "skill-search.mjs": {
+        "repo": "61312f8b054035e52afc6df9d52f5d38b1847dd8ba2a9eb99d2381c794debfaf",
+        "deployed": "61312f8b054035e52afc6df9d52f5d38b1847dd8ba2a9eb99d2381c794debfaf",
+        "expected": "61312f8b054035e52afc6df9d52f5d38b1847dd8ba2a9eb99d2381c794debfaf",
+        "state": "ok"
+      },
+      "custom-bash.mjs": {
+        "repo": "3b26436ee419ce57594a9f2fcaad688b6b404780859a82ba143ddcf40abd427d",
+        "deployed": "3b26436ee419ce57594a9f2fcaad688b6b404780859a82ba143ddcf40abd427d",
+        "expected": "3b26436ee419ce57594a9f2fcaad688b6b404780859a82ba143ddcf40abd427d",
+        "state": "ok"
+      }
+    }
+  },
+  "tiers": [
+    {
+      "id": "PRE",
+      "status": "pass",
+      "startedAt": "2026-09-22T08:37:29.641Z",
+      "durationMs": 0,
+      "assertions": [
+        {
+          "id": "host.cli",
+          "status": "pass",
+          "evidence": "dsh --version -> 0.1.5-rc.1"
+        },
+        {
+          "id": "host.pin.hostVersion",
+          "status": "pass",
+          "evidence": "expected=0.1.5-rc.1 actual=0.1.5-rc.1"
+        },
+        {
+          "id": "host.pin.sessionFormatVersion",
+          "status": "pass",
+          "evidence": "expected=3 actual=3"
+        },
+        {
+          "id": "composition.real-render",
+          "status": "pass",
+          "evidence": "source=/Users/vito/.dsh/profiles/tui-dev/cordis.patch.yml sha256=96a0d5e0605f → rendered=/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-s6A0Zq/home/profiles/tui-dev/cordis.patch.yml sha256=96a0d5e0605f preset=deployed",
+          "detail": {
+            "roots": [
+              {
+                "id": "plugins",
+                "env": "DSH_PLUGINS_ROOT",
+                "path": "/Users/vito/data/dev/dsh-plugins"
+              },
+              {
+                "id": "relay",
+                "env": "DSH_RELAY_ROOT",
+                "path": "/Users/vito/data/dev/dsh-relay"
+              },
+              {
+                "id": "endless",
+                "env": "DSH_ENDLESS_ROOT",
+                "path": "/Users/vito/data/dev/dsh-endless"
+              }
+            ],
+            "preset": {
+              "name": "minimal-plus-next",
+              "source": "deployed",
+              "sourcePath": "/Users/vito/.dsh/.agent-presets/minimal-plus-next",
+              "stagedPath": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-s6A0Zq/home/.agent-presets/minimal-plus-next",
+              "root": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-s6A0Zq/home/.agent-presets"
+            },
+            "settings": {
+              "copied": true,
+              "sourcePath": "/Users/vito/.dsh/settings.yaml",
+              "sha": "d340819f8bf426b0d7fcbe7e508d465a7edd1e1b80a089b121f47da1becfadcb"
+            },
+            "loadedBy": "rendered-copy"
+          }
+        }
+      ]
+    },
+    {
+      "id": "T0",
+      "status": "pass",
+      "startedAt": "2026-09-22T08:37:32.441Z",
+      "durationMs": 2414,
+      "assertions": [
+        {
+          "id": "tsc.noEmit",
+          "status": "pass",
+          "evidence": "exit 0",
+          "detail": {
+            "stderr": [
+              "(node:46642) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.",
+              "(Use `node --trace-warnings ...` to show where the warning was created)"
+            ]
+          }
+        },
+        {
+          "id": "npm.test",
+          "status": "pass",
+          "evidence": "exit 0 tests=154 pass=154 fail=0",
+          "detail": {
+            "skipped": 0
+          }
+        },
+        {
+          "id": "testfile.list-consistency",
+          "status": "pass",
+          "evidence": "14 files present",
+          "detail": {
+            "declared": 14
+          }
+        }
+      ]
+    },
+    {
+      "id": "T1",
+      "status": "pass",
+      "startedAt": "2026-09-22T08:37:36.456Z",
+      "durationMs": 4015,
+      "assertions": [
+        {
+          "id": "composition.dump-config",
+          "status": "pass",
+          "evidence": "exit 0 entries=103",
+          "detail": {
+            "source": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-s6A0Zq/home/profiles/tui-dev/cordis.patch.yml",
+            "inProcessEntries": 103,
+            "stderr": [
+              "(node:46712) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.",
+              "(Use `node --trace-warnings ...` to show where the warning was created)"
+            ]
+          }
+        },
+        {
+          "id": "composition.loader-id-unique",
+          "status": "pass",
+          "evidence": "in-process ids=103 cli ids=103 duplicates=0",
+          "detail": {
+            "inProcess": {
+              "groups": 0,
+              "ids": 103,
+              "maxDepth": 0
+            },
+            "cli": {
+              "groups": 0,
+              "ids": 103,
+              "maxDepth": 0
+            },
+            "duplicates": []
+          }
+        },
+        {
+          "id": "composition.no-stub",
+          "status": "pass",
+          "evidence": "no stub provider/module reference"
+        },
+        {
+          "id": "smoke.anchored-first-turn",
+          "status": "pass",
+          "evidence": "exit 0 R1=[\"bash\",\"str_replace_editor\"]",
+          "detail": {
+            "stderr": [
+              "(node:46713) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.",
+              "(Use `node --trace-warnings ...` to show where the warning was created)"
+            ]
+          }
+        },
+        {
+          "id": "smoke.promoted-catalog",
+          "status": "pass",
+          "evidence": "tools=29 missing=[] unexpected=[] bashParamsMissing=[] preStepMissing=[]",
+          "detail": {
+            "preset": "minimal-plus-next"
+          }
+        },
+        {
+          "id": "degrade.fail-open",
+          "status": "pass",
+          "evidence": "exit 0 warning=true R1 tools=29",
+          "detail": {
+            "stderr": [
+              ""
+            ]
+          }
+        },
+        {
+          "id": "seeded-preview.probe",
+          "status": "pass",
+          "evidence": "exit 0 10/10 pass missing=0",
+          "detail": {
+            "summary": "10/10 pass",
+            "missing": [],
+            "stderr": [
+              "(node:46782) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.",
+              "(Use `node --trace-warnings ...` to show where the warning was created)"
+            ]
+          }
+        },
+        {
+          "id": "deployment.repo-matches-manifest",
+          "status": "pass",
+          "evidence": "8 files match",
+          "detail": {
+            "manifest": "/Users/vito/data/dev/dsh-plugins/gates/manifest.json"
+          }
+        },
+        {
+          "id": "deployment.repo-vs-deployed",
+          "status": "pass",
+          "evidence": "8 files ok"
+        },
+        {
+          "id": "host.pin",
+          "status": "pass",
+          "evidence": "anchor=0.1.5-rc.1 farm=0.1.5-rc.1 expected=0.1.5-rc.1",
+          "detail": {
+            "farmManifest": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-s6A0Zq/home/profiles/node_modules/@deepseek-ai/dsh/package.json"
+          }
+        },
+        {
+          "id": "session.format-version",
+          "status": "pass",
+          "evidence": "runtime=3 manifest=3"
+        },
+        {
+          "id": "isolation.real-home-untouched",
+          "status": "pass",
+          "evidence": "signature identical before/after (strict zones; 1 observed-only changes)",
+          "detail": {
+            "strictZones": [
+              "profiles",
+              "root:settings.yaml",
+              "root:.credentials.yaml",
+              "deployment:minimal-plus-next",
+              "sessions"
+            ],
+            "observedChanges": [
+              {
+                "zone": "storages",
+                "change": "changed",
+                "before": 520,
+                "after": 520
+              }
+            ]
+          }
+        },
+        {
+          "id": "isolation.copy-rewrite-sha",
+          "status": "pass",
+          "evidence": "headless cordis.yml sha256=c300dcf2ebc5 tui-dev cordis.yml sha256=c300dcf2ebc5",
+          "detail": {
+            "paths": [
+              "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-s6A0Zq/home/profiles/headless/cordis.yml",
+              "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-s6A0Zq/home/profiles/tui-dev/cordis.yml"
+            ]
+          }
+        },
+        {
+          "id": "gate.no-deployment-sync",
+          "status": "pass",
+          "evidence": "no sync invocation in 8 gate sources"
+        },
+        {
+          "id": "composition.source-profile-unchanged",
+          "status": "pass",
+          "evidence": "source /Users/vito/.dsh/profiles/tui-dev/cordis.patch.yml before=96a0d5e0605f after=96a0d5e0605f",
+          "detail": {
+            "sourcePath": "/Users/vito/.dsh/profiles/tui-dev/cordis.patch.yml",
+            "sourceSha": "96a0d5e0605f18def46caade304eff7cef39006be39a9c3e95b524092e234bc7",
+            "afterSha": "96a0d5e0605f18def46caade304eff7cef39006be39a9c3e95b524092e234bc7"
+          }
+        }
+      ]
+    },
+    {
+      "id": "T2",
+      "status": "pass",
+      "startedAt": "2026-09-22T08:37:40.382Z",
+      "durationMs": 3926,
+      "assertions": [
+        {
+          "id": "stub.overlay-only",
+          "status": "pass",
+          "evidence": "no stub provider/module/model reference outside gates/stub/**"
+        },
+        {
+          "id": "stub.bash-first-call.route.first-request",
+          "status": "pass",
+          "evidence": "request/header#1 config=stub/stub-model"
+        },
+        {
+          "id": "stub.bash-first-call.bash.first-call-persistent-args",
+          "status": "pass",
+          "evidence": "tool/call#1 name=bash arguments={\"command\":\"pwd\"}"
+        },
+        {
+          "id": "stub.bash-first-call.bash.first-call-not-rejected",
+          "status": "pass",
+          "evidence": "no argument rejection; tool/result isError=true content=Error: posix_openpt failed: Operation not permitted"
+        },
+        {
+          "id": "stub.bash-first-call.bash.promoted-sandbox-visible",
+          "status": "pass",
+          "evidence": "request/header seq=21 bash params=command,description,timeoutMs,workdir,run_in_background,sandbox_permissions,justification"
+        },
+        {
+          "id": "stub.bash-first-call.bash.second-call-accepted",
+          "status": "pass",
+          "evidence": "tool/call#2 arguments={\"command\":\"pwd\",\"description\":\"二轮沙箱调用：确认当前目录\"} result=isError=false error=<none>"
+        },
+        {
+          "id": "stub.bash-first-call.stub.no-aux-calls",
+          "status": "pass",
+          "evidence": "conversation calls=3/3 aux=[]"
+        },
+        {
+          "id": "stub.bash-first-call.session.turn-completed",
+          "status": "pass",
+          "evidence": "turn/end reason={\"kind\":\"completed\"}"
+        },
+        {
+          "id": "stub.bash-first-call.process-exit",
+          "status": "pass",
+          "evidence": "exit 0 report=7/7 pass"
+        },
+        {
+          "id": "stub.bash-promotion-visible.route.first-request",
+          "status": "pass",
+          "evidence": "request/header#1 config=stub/stub-model"
+        },
+        {
+          "id": "stub.bash-promotion-visible.bash.promoted-sandbox-visible",
+          "status": "pass",
+          "evidence": "request/header seq=21 bash params=command,description,timeoutMs,workdir,run_in_background,sandbox_permissions,justification"
+        },
+        {
+          "id": "stub.bash-promotion-visible.compaction.completed",
+          "status": "pass",
+          "evidence": "compaction/end seq=28 error=<none>"
+        },
+        {
+          "id": "stub.bash-promotion-visible.bash.compaction-fallback-persistent",
+          "status": "pass",
+          "evidence": "request/header seq=34 bash params=command"
+        },
+        {
+          "id": "stub.bash-promotion-visible.stub.script-consumed",
+          "status": "pass",
+          "evidence": "conversation calls=3/3 compaction calls=1"
+        },
+        {
+          "id": "stub.bash-promotion-visible.session.turn-completed",
+          "status": "pass",
+          "evidence": "turn/end reason={\"kind\":\"completed\"}"
+        },
+        {
+          "id": "stub.bash-promotion-visible.process-exit",
+          "status": "pass",
+          "evidence": "exit 0 report=6/6 pass"
+        },
+        {
+          "id": "stub.delegation-inherit-route.route.first-request",
+          "status": "pass",
+          "evidence": "request/header#1 config=stub/stub-model"
+        },
+        {
+          "id": "stub.delegation-inherit-route.delegation.omitted-route",
+          "status": "pass",
+          "evidence": "tool/call name=subagent arguments={\"description\":\"route probe\",\"prompt\":\"Reply with exactly: OK\",\"run_in_background\":false}"
+        },
+        {
+          "id": "stub.delegation-inherit-route.delegation.child-created",
+          "status": "pass",
+          "evidence": "childIds=[\"ccbd7f04-9902-4092-9a44-fd6b61df1559\"] child events=14"
+        },
+        {
+          "id": "stub.delegation-inherit-route.delegation.child-inherits-route",
+          "status": "pass",
+          "evidence": "parent=stub/stub-model child=stub/stub-model"
+        },
+        {
+          "id": "stub.delegation-inherit-route.delegation.foreground-result",
+          "status": "pass",
+          "evidence": "tool/result=isError=false turn/end={\"kind\":\"completed\"}"
+        },
+        {
+          "id": "stub.delegation-inherit-route.stub.child-route-call",
+          "status": "pass",
+          "evidence": "stub call session=ccbd7f04-9902-4092-9a44-fd6b61df1559 route=stub/stub-model"
+        },
+        {
+          "id": "stub.delegation-inherit-route.stub.script-consumed",
+          "status": "pass",
+          "evidence": "conversation calls=3/3"
+        },
+        {
+          "id": "stub.delegation-inherit-route.process-exit",
+          "status": "pass",
+          "evidence": "exit 0 report=7/7 pass"
+        },
+        {
+          "id": "stub.delegation-reject-route.route.first-request",
+          "status": "pass",
+          "evidence": "request/header#1 config=stub/stub-model"
+        },
+        {
+          "id": "stub.delegation-reject-route.delegation.forbidden-args",
+          "status": "pass",
+          "evidence": "tool/call arguments={\"description\":\"forbidden route probe\",\"prompt\":\"Reply with exactly: OK\",\"provider\":\"stub\",\"model\":\"stub-model-forbidden\",\"run_in_background\":false}"
+        },
+        {
+          "id": "stub.delegation-reject-route.delegation.forbidden-rejected",
+          "status": "pass",
+          "evidence": "tool/result isError=true error=Error: child LLM route \"stub/stub-model-forbidden\" is not allowed for this Session"
+        },
+        {
+          "id": "stub.delegation-reject-route.delegation.no-child-session",
+          "status": "pass",
+          "evidence": "catalog childIds=[] sessions=[\"session-stub-delegation-reject-route-36afaf36-3d6c-4b8a-a307-4b5cc8cc515b\"]"
+        },
+        {
+          "id": "stub.delegation-reject-route.delegation.no-forbidden-request",
+          "status": "pass",
+          "evidence": "forbidden request/header=[] adapter calls=0"
+        },
+        {
+          "id": "stub.delegation-reject-route.session.turn-completed",
+          "status": "pass",
+          "evidence": "turn/end reason={\"kind\":\"completed\"}"
+        },
+        {
+          "id": "stub.delegation-reject-route.process-exit",
+          "status": "pass",
+          "evidence": "exit 0 report=6/6 pass"
+        },
+        {
+          "id": "stub.v3-resume-route.route.first-request",
+          "status": "pass",
+          "evidence": "resumed request/header#1 config=stub/stub-model"
+        },
+        {
+          "id": "stub.v3-resume-route.resume.discovery-tool-visible",
+          "status": "pass",
+          "evidence": "resumed request/header tools=ask_user_question,bash,create_goal,edit,exit_plan_mode,get_goal,glob,grep,interrupt_agent,job_kill,job_list,job_output,list_agents,list_subagent_models,ralph,read,read_image,send_message,skill,skill_load,skill_search,str_replace_editor,subagent,subagent_fork,todo_write,update_goal,web_fetch,web_search,workflow,write"
+        },
+        {
+          "id": "stub.v3-resume-route.resume.promoted-catalog",
+          "status": "pass",
+          "evidence": "resumed request/header tool count=30 (bootstrap=2)"
+        },
+        {
+          "id": "stub.v3-resume-route.resume.policy-recorded",
+          "status": "pass",
+          "evidence": "policy events=1 routes=stub/stub-model"
+        },
+        {
+          "id": "stub.v3-resume-route.resume.format-v3",
+          "status": "pass",
+          "evidence": "persisted session format version=3"
+        },
+        {
+          "id": "stub.v3-resume-route.session.turn-completed",
+          "status": "pass",
+          "evidence": "resumed window turn/end reason={\"kind\":\"completed\"}"
+        },
+        {
+          "id": "stub.v3-resume-route.process-exit",
+          "status": "pass",
+          "evidence": "exit 0 report=6/6 pass"
+        },
+        {
+          "id": "t2.isolation.real-home-untouched",
+          "status": "pass",
+          "evidence": "signature identical before/after (strict zones; 1 observed-only changes)",
+          "detail": {
+            "observedChanges": [
+              {
+                "zone": "storages",
+                "change": "changed",
+                "before": 520,
+                "after": 520
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "exemptions": [],
+  "summary": {
+    "passed": 61,
+    "failed": 0,
+    "skipped": 0
+  },
+  "smoke": {
+    "r1Tools": [
+      "bash",
+      "str_replace_editor"
+    ],
+    "toolCount": 29,
+    "tools": [
+      "ask_user_question",
+      "bash",
+      "create_goal",
+      "edit",
+      "exit_plan_mode",
+      "get_goal",
+      "glob",
+      "grep",
+      "interrupt_agent",
+      "job_kill",
+      "job_list",
+      "job_output",
+      "list_agents",
+      "ralph",
+      "read",
+      "read_image",
+      "send_message",
+      "skill",
+      "skill_load",
+      "skill_search",
+      "str_replace_editor",
+      "subagent",
+      "subagent_fork",
+      "todo_write",
+      "update_goal",
+      "web_fetch",
+      "web_search",
+      "workflow",
+      "write"
+    ],
+    "preStepSources": [
+      "agent-instructions",
+      "skill-catalog",
+      "instruction-hint"
+    ]
+  },
+  "seededPreview": {
+    "checks": 10,
+    "ids": [
+      "fixture-store-prepared",
+      "fixture-copied-byte-identical",
+      "red-readSession-rejects-seeded",
+      "listEvents-has-corpus",
+      "green-reader-module-present",
+      "green-log-reconstructed",
+      "green-count-and-seq-match",
+      "green-inherited-count-recorded",
+      "green-warm-call",
+      "baseline-readSession-fastpath"
+    ]
+  },
+  "host": {
+    "expected": "0.1.5-rc.1",
+    "installAnchor": {
+      "path": "/Users/vito/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/package.json",
+      "version": "0.1.5-rc.1"
+    },
+    "farm": {
+      "path": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-s6A0Zq/home/profiles/node_modules/@deepseek-ai/dsh/package.json",
+      "version": "0.1.5-rc.1",
+      "healed": true
+    }
+  },
+  "isolation": {
+    "strictZones": [
+      "profiles",
+      "root:settings.yaml",
+      "root:.credentials.yaml",
+      "deployment:minimal-plus-next",
+      "sessions"
+    ],
+    "observedChanges": [
+      {
+        "zone": "storages",
+        "change": "changed",
+        "before": 520,
+        "after": 520
+      }
+    ],
+    "strictChanges": []
+  },
+  "compositionEntriesSha": "f42bfdd37c8382e6cfd6b592c2f25612b2e0ca14f0b187aaaf15a6b262cc34dd",
+  "compositionArtifact": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-s6A0Zq/home/tui-dev-composition.yml",
+  "copies": {
+    "profileCordisSha": "c300dcf2ebc5f02062d6591268d29d3db6fe45e0cb138f5467276fe2ba06076e",
+    "realProfileCordisSha": "c300dcf2ebc5f02062d6591268d29d3db6fe45e0cb138f5467276fe2ba06076e"
+  },
+  "stub": {
+    "scenarios": [
+      {
+        "scenario": "bash-first-call",
+        "passed": 7,
+        "failed": 0,
+        "exit": 0,
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-s6A0Zq/home/stub/bash-first-call.json"
+      },
+      {
+        "scenario": "bash-promotion-visible",
+        "passed": 6,
+        "failed": 0,
+        "exit": 0,
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-s6A0Zq/home/stub/bash-promotion-visible.json"
+      },
+      {
+        "scenario": "delegation-inherit-route",
+        "passed": 7,
+        "failed": 0,
+        "exit": 0,
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-s6A0Zq/home/stub/delegation-inherit-route.json"
+      },
+      {
+        "scenario": "delegation-reject-route",
+        "passed": 6,
+        "failed": 0,
+        "exit": 0,
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-s6A0Zq/home/stub/delegation-reject-route.json"
+      },
+      {
+        "scenario": "v3-resume-route",
+        "passed": 6,
+        "failed": 0,
+        "exit": 0,
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-s6A0Zq/home/stub/v3-resume-route.json"
+      }
+    ]
+  }
+}
