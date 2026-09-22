@@ -59,11 +59,37 @@ jobs:
       - name: Install project dependencies
         run: npm ci --no-audit --no-fund
 
+      # 0.1.5-rc.1/rc.2 的 0.1.5 线装不上干净 runner：宿主把
+      # `@deepseek-ai/dsh-web-app` 浮动到 0.1.5-rc.3，而 rc.3 又要求
+      # `@deepseek-ai/dsh-client-ui-sidebar-documentpreview@^0.1.5-rc.3`——该版本从未发布
+      # （2026-09-22 实测：`npm i -g @deepseek-ai/dsh@<rc.1|rc.2>` 都是 ETARGET）。本机
+      # 运行时的解法是 project 安装 + 把 UI/sidebar 家族钉在 rc.2（同款 overrides），CI 照搬。
       - name: Install the pinned host from the public registry
         run: |
           HOST_VERSION="$(node -p "require('./gates/manifest.json').hostVersion")"
           echo "installing @deepseek-ai/dsh@${HOST_VERSION}"
-          npm install -g --no-audit --no-fund "@deepseek-ai/dsh@${HOST_VERSION}"
+          HOST_DIR="$RUNNER_TEMP/host"
+          mkdir -p "$HOST_DIR"
+          node -e '
+            const fs = require("node:fs");
+            const version = process.argv[1];
+            const pins = {};
+            for (const name of [
+              "@deepseek-ai/dsh-web-app",
+              "@deepseek-ai/dsh-client-ui-sidebar",
+              "@deepseek-ai/dsh-client-ui-sidebar-files",
+              "@deepseek-ai/dsh-client-ui-sidebar-right",
+              "@deepseek-ai/dsh-client-ui-sidebar-documentpreview",
+            ]) {
+              pins[name] = "0.1.5-rc.2";
+            }
+            fs.writeFileSync(
+              process.argv[2],
+              `${JSON.stringify({ name: "dsh-ci-host", private: true, dependencies: { "@deepseek-ai/dsh": version }, overrides: pins }, null, 2)}\n`,
+            );
+          ' "$HOST_VERSION" "$HOST_DIR/package.json"
+          npm install --prefix "$HOST_DIR" --no-audit --no-fund
+          echo "DSH_HOST_DEPS_DIR=$HOST_DIR/node_modules/@deepseek-ai" >> "$GITHUB_ENV"
 
       - name: Link the host dependency tree
         run: bash scripts/link-global-dsh.sh

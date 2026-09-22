@@ -148,10 +148,10 @@ hub 侧的 `fleet-client` / `memory-sink`、worker 侧的 `remote-server` 挂载
 ## Agent preset (minimal-plus)
 
 `presets/minimal-plus/` 是当前唯一自研 preset，stable（`tui`）与 dev（`tui-dev`）共用同一份组合。
-2026-09-22 宿主统一到 0.1.5-rc.1/rc.2 后，原 `minimal-plus` 收敛回 `minimal-plus`：
+2026-09-22 宿主统一到 0.1.5-rc.2 后，原 `minimal-plus` 收敛回 `minimal-plus`：
 ADR-0002 的「dev/stable 宿主不同代、必须分叉」前提已消失。
 
-- persona 使用 0.1.5 宿主的 `prefix` 正文键（旧 `text` 键在 rc.1/rc.2 会被 schema 拒）。
+- persona 使用 0.1.5 宿主（rc.1/rc.2）的 `prefix` 正文键（旧 `text` 键会被 schema 拒）。
 - 按 ADR-0003 只声明与 rc.1 `dsh-base` 的差异：不重复 base 已有的挂载行，保留恒禁的
   `tool-bash` 与承载官方子代理模型选择的 `tool-subagent`（`modelSelectionSettings: true`）。
 - 两个行为：`phase-swap-bash.mjs` 二轮 bash 提权（`sandbox_permissions`）；二轮
@@ -176,6 +176,7 @@ scripts/regression-gate.sh --tier 0,1,2 --skip-deployment-check    # 部署位�
 scripts/regression-gate.sh --tier 0,1,2 --composition real         # 交付前：真实 tui-dev 组合
 scripts/regression-gate.sh --tier 3                                # 按需：真实模型层（需凭据，永不进 release/CI）
 scripts/tui-pty-smoke.sh                                           # 按需：独立 PTY 冒烟（T4b，不进 release）
+node scripts/preset-mount-smoke.mjs                                # stable 通道挂载冒烟（release.sh 收尾必跑）
 ```
 
 退出码：全过 `0`；任一断言失败 `1`；环境前置不满足 `2`（宿主或会话格式与 `gates/manifest.json` 不符、
@@ -201,11 +202,23 @@ T3 产物另按 `experiments/regression-gate/t3-<UTC 时间戳>/` 归档，跨�
 
 **仓库绿灯 ≠ 部署位生效**：`gate` 组合把仓库资产渲染进隔离临时 home 验证，而运行中的 TUI 加载的是
 `~/.dsh/.agent-presets/<preset>` 副本。交付前必须显式执行 `scripts/sync-agent-presets.sh <preset>` 同步部署位，
-再用 `--composition real` 跑真实 `tui-dev` 组合；序列：同步 → `--tier 0,1,2 --composition real` 全绿 → T3 按需 → 人工签收。
+再用 `--composition real` 跑真实 `tui-dev` 组合；序列：同步 → `--tier 0,1,2 --composition real` 全绿 → T3 按需 →
+`node scripts/preset-mount-smoke.mjs`（真 PTY 起 **stable profile** + 部署位 preset，`release.sh` 收尾自动执行）→ 人工签收。
 
-**边界**：闸门面向 `tui-dev` / `minimal-plus` / dev 侧脚本；stable `tui` 组合本身不在闸门内——
-`--composition real` 验的是 `tui-dev` 渲染副本，改 stable profile / stable 工作树必须在 stable 运行时手验
-（本次收敛已用隔离 HOME + 真 PTY 实跑验证）。
+**边界**：闸门面向 `tui-dev` / `minimal-plus` / dev 侧脚本；stable `tui` 组合**不在**闸门内——
+`--composition real` 验的是 `tui-dev` 渲染副本。stable profile 的宿主层差异（例如缺
+`subagent-model-selection-settings`）在闸门里完全不可见：v0.2.0 就是这样把 stable 通道发坏的（仓库全绿、
+`1mdsh` 起不来）。因此 stable 侧现在由 `scripts/preset-mount-smoke.mjs` 在发版收尾时真起一次，改 stable
+profile / stable 工作树同样应手跑它。
+
+**宿主 0.1.5-rc.2 的两个前提**（2026-09-22 实测）：
+
+- **安装**：`npm i -g @deepseek-ai/dsh@0.1.5-rc.1|rc.2` 都会 ETARGET——宿主把 `dsh-web-app` 浮动到
+  `0.1.5-rc.3`，而 rc.3 要求的 `dsh-client-ui-sidebar-documentpreview@^0.1.5-rc.3` 从未发布。可行装法是
+  project 安装 + 把 5 个 UI/sidebar 包 overrides 钉在 `0.1.5-rc.2`（本机运行时树与 CI 同款）。
+- **启动**：自定义 profile 默认 `patchReload: live`，CLI 会挂 `@deepseek-ai/cordis-plugin-hmr`，该插件要求
+  node 带 `--expose-internals`（该标志不允许写进 `NODE_OPTIONS`），否则启动即
+  `--expose-internals is required for HMR service`。因此 `~/.dsh/bin/dsh` 与稳定通道启动器都带此标志。
 
 **CI**：`.github/workflows/regression-gate.yml` 在托管 macOS runner 上零密钥跑 T0/T1/T2（宿主从公共 registry
 按 `gates/manifest.json` 的版本安装），部署位按「缺席」记账；T3 与 T4b 不进 CI。Windows 侧另见

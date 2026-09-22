@@ -45,7 +45,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { zstdDecompressSync } from "node:zlib";
 import { visibleWidth } from "@earendil-works/pi-tui/dist/utils.js";
@@ -56,6 +56,9 @@ import { MANIFEST_PATH, readManifest, resolveDeploymentRoot } from "../gates/man
 import { installAnchor } from "./host-runtime.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/u, "");
+const HOST_ANCHOR = installAnchor();
+/** 宿主 CLI 入口：`--expose-internals` 必须挂在它前面（见 PtyDriver 注释）。 */
+const HOST_BIN = join(dirname(HOST_ANCHOR), "lib", "bin.js");
 const OVERLAY = join(REPO_ROOT, "gates", "stub", "pty-smoke.patch.yml");
 const PRESET = "minimal-plus";
 const PROFILE = "tui-dev";
@@ -255,9 +258,13 @@ class PtyDriver {
     this.marks = new Map();
     const env = { ...process.env };
     delete env.DSH_CC_RESUME_SESSION;
+    // 宿主 CLI 直接起（而不是 PATH 上的 `dsh` shim）：0.1.5-rc.2 起自定义 profile 默认
+    // `patchReload: live`，CLI 会挂 cordis-plugin-hmr，该插件要求 node 带
+    // `--expose-internals`，否则启动即 `--expose-internals is required for HMR service`
+    // （2026-09-22 实测）。真实启动器（tui-stable / 1mdsh-dev）同样带这个标志。
     this.child = pty.spawn(
-      "dsh",
-      ["--profile", PROFILE, "--patch", OVERLAY],
+      process.execPath,
+      ["--expose-internals", HOST_BIN, "--profile", PROFILE, "--patch", OVERLAY],
       {
         name: TERM,
         cols: COLS,

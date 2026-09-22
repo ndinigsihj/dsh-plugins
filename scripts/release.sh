@@ -90,5 +90,18 @@ fi
 # ~/.dsh/.agent-presets so the stable TUI stops loading the dev worktree.
 DSH_HOST_DEPS_DIR="$HOST_DEPS_DIR" scripts/sync-agent-presets.sh
 
+# 收尾必检（2026-09-22 事故补检）：部署位已同步 → 真起 **stable profile**（隔离 home +
+# 真 PTY + 部署位 preset），断言 preset 真挂上了。回归闸门只渲染 tui-dev 组合，stable
+# profile 的宿主层差异（例如缺 subagent-model-selection-settings）在闸门里完全看不见：
+# 那次 v0.2.0 发版因此把 stable 通道发坏了。报告落 experiments/regression-gate/，
+# 与闸门报告一样由发版后的人工记录提交。
+STABLE_LAUNCHER="${DSH_STABLE_LAUNCHER:-/Users/vito/data/dev/dsh-runtime/stable/bin/tui-stable}"
+PRESET_MOUNT_REPORT="experiments/regression-gate/preset-mount-$(date -u +%Y-%m-%d).json"
+if [ -x "$STABLE_LAUNCHER" ]; then
+  node scripts/preset-mount-smoke.mjs --launcher "$STABLE_LAUNCHER" --json "$PRESET_MOUNT_REPORT"
+else
+  node scripts/preset-mount-smoke.mjs --json "$PRESET_MOUNT_REPORT"
+fi
+
 echo "stable = $STABLE @ $tag"
 echo "running TUI sessions must exit and relaunch to pick up the new code."

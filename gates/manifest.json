@@ -1,6 +1,6 @@
 {
   "gateVersion": 1,
-  "hostVersion": "0.1.5-rc.1",
+  "hostVersion": "0.1.5-rc.2",
   "sessionFormatVersion": 3,
   "deployment": {
     "minimal-plus": {
