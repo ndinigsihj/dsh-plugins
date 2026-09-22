@@ -90,6 +90,9 @@ jobs:
           ' "$HOST_VERSION" "$HOST_DIR/package.json"
           npm install --prefix "$HOST_DIR" --no-audit --no-fund
           echo "DSH_HOST_DEPS_DIR=$HOST_DIR/node_modules/@deepseek-ai" >> "$GITHUB_ENV"
+          # 闸门会调 PATH 上的 `dsh`（host.cli 断言 + T1 的 --dump-config），
+          # project 安装的 shim 不在 PATH 上，这里显式加进去。
+          echo "$HOST_DIR/node_modules/.bin" >> "$GITHUB_PATH"
 
       - name: Link the host dependency tree
         run: bash scripts/link-global-dsh.sh
