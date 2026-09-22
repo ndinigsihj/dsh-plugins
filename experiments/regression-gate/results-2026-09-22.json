@@ -1,18 +1,18 @@
 {
   "gateVersion": 1,
-  "startedAt": "2026-09-22T09:54:43.181Z",
-  "finishedAt": "2026-09-22T09:54:58.601Z",
-  "gitHead": "5caf766",
+  "startedAt": "2026-09-22T11:04:57.231Z",
+  "finishedAt": "2026-09-22T11:05:11.442Z",
+  "gitHead": "5496f8b",
   "gitDirty": false,
   "hostVersion": "0.1.5-rc.1",
   "sessionFormatVersion": 3,
   "composition": "real",
   "compositionVerified": "rendered-copy",
   "compositionSourcePath": "/Users/vito/.dsh/profiles/tui-dev/cordis.patch.yml",
-  "compositionSourceSha": "96a0d5e0605f18def46caade304eff7cef39006be39a9c3e95b524092e234bc7",
-  "compositionRenderedPath": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-ahEOR2/home/profiles/tui-dev/cordis.patch.yml",
-  "compositionRenderedSha": "96a0d5e0605f18def46caade304eff7cef39006be39a9c3e95b524092e234bc7",
-  "compositionDumpSha": "41d54ce182d663eb8982ded3fbd5af6b1a2c7e9752957218b76ff878e20e0b7e",
+  "compositionSourceSha": "d39a4f6458a9f254e7e0963cfaaa800dcb01108132bf0146482fba1c7f10d9ba",
+  "compositionRenderedPath": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-bqYt1o/home/profiles/tui-dev/cordis.patch.yml",
+  "compositionRenderedSha": "d39a4f6458a9f254e7e0963cfaaa800dcb01108132bf0146482fba1c7f10d9ba",
+  "compositionDumpSha": "2c84c49cbe055e2b3d38477cd448a6983c3370b7ccf4e711a5b115ab959280bc",
   "compositionReal": {
     "profile": "tui-dev",
     "roots": [
@@ -33,16 +33,16 @@
       }
     ],
     "preset": {
-      "name": "minimal-plus-next",
+      "name": "minimal-plus",
       "source": "deployed",
-      "sourcePath": "/Users/vito/.dsh/.agent-presets/minimal-plus-next",
-      "stagedPath": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-ahEOR2/home/.agent-presets/minimal-plus-next",
-      "root": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-ahEOR2/home/.agent-presets"
+      "sourcePath": "/Users/vito/.dsh/.agent-presets/minimal-plus",
+      "stagedPath": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-bqYt1o/home/.agent-presets/minimal-plus",
+      "root": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-bqYt1o/home/.agent-presets"
     },
     "settings": {
       "copied": true,
       "sourcePath": "/Users/vito/.dsh/settings.yaml",
-      "sha": "d340819f8bf426b0d7fcbe7e508d465a7edd1e1b80a089b121f47da1becfadcb"
+      "sha": "32b0d32045e3acc6074378ffe263a7d42884481afe6bf05e798d508e875bc5e4"
     }
   },
   "deployment": {
@@ -50,15 +50,15 @@
     "manifestMatchesRepo": true,
     "files": {
       "agent.cordis.yml": {
-        "repo": "9087bf00b2edd520f91b2a97fc527cd6250f590ab8694b757420f57e3b31789c",
-        "deployed": "9087bf00b2edd520f91b2a97fc527cd6250f590ab8694b757420f57e3b31789c",
-        "expected": "9087bf00b2edd520f91b2a97fc527cd6250f590ab8694b757420f57e3b31789c",
+        "repo": "e6887bb4e28f7371b2a646164176ad18e0e2a8c498fbddcf6fec35d4f85378b8",
+        "deployed": "e6887bb4e28f7371b2a646164176ad18e0e2a8c498fbddcf6fec35d4f85378b8",
+        "expected": "e6887bb4e28f7371b2a646164176ad18e0e2a8c498fbddcf6fec35d4f85378b8",
         "state": "ok"
       },
       "preset.yml": {
-        "repo": "8a0965bd624a179d1059849aafea878d981ecfd7512f6f250569fdfd09d1d1de",
-        "deployed": "8a0965bd624a179d1059849aafea878d981ecfd7512f6f250569fdfd09d1d1de",
-        "expected": "8a0965bd624a179d1059849aafea878d981ecfd7512f6f250569fdfd09d1d1de",
+        "repo": "96c6a947152227289f5a6440bc6121da17c90710c39c9104556a6317d6db1632",
+        "deployed": "96c6a947152227289f5a6440bc6121da17c90710c39c9104556a6317d6db1632",
+        "expected": "96c6a947152227289f5a6440bc6121da17c90710c39c9104556a6317d6db1632",
         "state": "ok"
       },
       "compaction-epoch.mjs": {
@@ -103,7 +103,7 @@
     {
       "id": "PRE",
       "status": "pass",
-      "startedAt": "2026-09-22T09:54:43.181Z",
+      "startedAt": "2026-09-22T11:04:57.231Z",
       "durationMs": 0,
       "assertions": [
         {
@@ -124,7 +124,7 @@
         {
           "id": "composition.real-render",
           "status": "pass",
-          "evidence": "source=/Users/vito/.dsh/profiles/tui-dev/cordis.patch.yml sha256=96a0d5e0605f → rendered=/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-ahEOR2/home/profiles/tui-dev/cordis.patch.yml sha256=96a0d5e0605f preset=deployed",
+          "evidence": "source=/Users/vito/.dsh/profiles/tui-dev/cordis.patch.yml sha256=d39a4f6458a9 → rendered=/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-bqYt1o/home/profiles/tui-dev/cordis.patch.yml sha256=d39a4f6458a9 preset=deployed",
           "detail": {
             "roots": [
               {
@@ -144,16 +144,16 @@
               }
             ],
             "preset": {
-              "name": "minimal-plus-next",
+              "name": "minimal-plus",
               "source": "deployed",
-              "sourcePath": "/Users/vito/.dsh/.agent-presets/minimal-plus-next",
-              "stagedPath": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-ahEOR2/home/.agent-presets/minimal-plus-next",
-              "root": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-ahEOR2/home/.agent-presets"
+              "sourcePath": "/Users/vito/.dsh/.agent-presets/minimal-plus",
+              "stagedPath": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-bqYt1o/home/.agent-presets/minimal-plus",
+              "root": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-bqYt1o/home/.agent-presets"
             },
             "settings": {
               "copied": true,
               "sourcePath": "/Users/vito/.dsh/settings.yaml",
-              "sha": "d340819f8bf426b0d7fcbe7e508d465a7edd1e1b80a089b121f47da1becfadcb"
+              "sha": "32b0d32045e3acc6074378ffe263a7d42884481afe6bf05e798d508e875bc5e4"
             },
             "loadedBy": "rendered-copy"
           }
@@ -163,8 +163,8 @@
     {
       "id": "T0",
       "status": "pass",
-      "startedAt": "2026-09-22T09:54:46.164Z",
-      "durationMs": 2511,
+      "startedAt": "2026-09-22T11:04:59.721Z",
+      "durationMs": 2071,
       "assertions": [
         {
           "id": "tsc.noEmit",
@@ -172,8 +172,7 @@
           "evidence": "exit 0",
           "detail": {
             "stderr": [
-              "(node:68041) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.",
-              "(Use `node --trace-warnings ...` to show where the warning was created)"
+              ""
             ]
           }
         },
@@ -198,19 +197,18 @@
     {
       "id": "T1",
       "status": "pass",
-      "startedAt": "2026-09-22T09:54:50.410Z",
-      "durationMs": 4246,
+      "startedAt": "2026-09-22T11:05:03.527Z",
+      "durationMs": 3806,
       "assertions": [
         {
           "id": "composition.dump-config",
           "status": "pass",
           "evidence": "exit 0 entries=103",
           "detail": {
-            "source": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-ahEOR2/home/profiles/tui-dev/cordis.patch.yml",
+            "source": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-bqYt1o/home/profiles/tui-dev/cordis.patch.yml",
             "inProcessEntries": 103,
             "stderr": [
-              "(node:68110) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.",
-              "(Use `node --trace-warnings ...` to show where the warning was created)"
+              ""
             ]
           }
         },
@@ -243,8 +241,7 @@
           "evidence": "exit 0 R1=[\"bash\",\"str_replace_editor\"]",
           "detail": {
             "stderr": [
-              "(node:68111) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.",
-              "(Use `node --trace-warnings ...` to show where the warning was created)"
+              ""
             ]
           }
         },
@@ -253,7 +250,7 @@
           "status": "pass",
           "evidence": "tools=29 missing=[] unexpected=[] bashParamsMissing=[] preStepMissing=[]",
           "detail": {
-            "preset": "minimal-plus-next"
+            "preset": "minimal-plus"
           }
         },
         {
@@ -274,8 +271,7 @@
             "summary": "10/10 pass",
             "missing": [],
             "stderr": [
-              "(node:68162) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.",
-              "(Use `node --trace-warnings ...` to show where the warning was created)"
+              ""
             ]
           }
         },
@@ -297,7 +293,7 @@
           "status": "pass",
           "evidence": "anchor=0.1.5-rc.1 farm=0.1.5-rc.1 expected=0.1.5-rc.1",
           "detail": {
-            "farmManifest": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-ahEOR2/home/profiles/node_modules/@deepseek-ai/dsh/package.json"
+            "farmManifest": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-bqYt1o/home/profiles/node_modules/@deepseek-ai/dsh/package.json"
           }
         },
         {
@@ -314,7 +310,7 @@
               "profiles",
               "root:settings.yaml",
               "root:.credentials.yaml",
-              "deployment:minimal-plus-next",
+              "deployment:minimal-plus",
               "sessions"
             ],
             "observedChanges": []
@@ -326,8 +322,8 @@
           "evidence": "headless cordis.yml sha256=c300dcf2ebc5 tui-dev cordis.yml sha256=c300dcf2ebc5",
           "detail": {
             "paths": [
-              "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-ahEOR2/home/profiles/headless/cordis.yml",
-              "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-ahEOR2/home/profiles/tui-dev/cordis.yml"
+              "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-bqYt1o/home/profiles/headless/cordis.yml",
+              "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-bqYt1o/home/profiles/tui-dev/cordis.yml"
             ]
           }
         },
@@ -339,11 +335,11 @@
         {
           "id": "composition.source-profile-unchanged",
           "status": "pass",
-          "evidence": "source /Users/vito/.dsh/profiles/tui-dev/cordis.patch.yml before=96a0d5e0605f after=96a0d5e0605f",
+          "evidence": "source /Users/vito/.dsh/profiles/tui-dev/cordis.patch.yml before=d39a4f6458a9 after=d39a4f6458a9",
           "detail": {
             "sourcePath": "/Users/vito/.dsh/profiles/tui-dev/cordis.patch.yml",
-            "sourceSha": "96a0d5e0605f18def46caade304eff7cef39006be39a9c3e95b524092e234bc7",
-            "afterSha": "96a0d5e0605f18def46caade304eff7cef39006be39a9c3e95b524092e234bc7"
+            "sourceSha": "d39a4f6458a9f254e7e0963cfaaa800dcb01108132bf0146482fba1c7f10d9ba",
+            "afterSha": "d39a4f6458a9f254e7e0963cfaaa800dcb01108132bf0146482fba1c7f10d9ba"
           }
         }
       ]
@@ -351,8 +347,8 @@
     {
       "id": "T2",
       "status": "pass",
-      "startedAt": "2026-09-22T09:54:58.601Z",
-      "durationMs": 8191,
+      "startedAt": "2026-09-22T11:05:11.442Z",
+      "durationMs": 7915,
       "assertions": [
         {
           "id": "stub.overlay-only",
@@ -447,7 +443,7 @@
         {
           "id": "stub.delegation-inherit-route.delegation.child-created",
           "status": "pass",
-          "evidence": "childIds=[\"f63e8d5b-476b-467b-a98e-791f6bfe6b07\"] child events=14"
+          "evidence": "childIds=[\"6a4e166f-ed86-47f5-87b9-03a120e66472\"] child events=14"
         },
         {
           "id": "stub.delegation-inherit-route.delegation.child-inherits-route",
@@ -462,7 +458,7 @@
         {
           "id": "stub.delegation-inherit-route.stub.child-route-call",
           "status": "pass",
-          "evidence": "stub call session=f63e8d5b-476b-467b-a98e-791f6bfe6b07 route=stub/stub-model"
+          "evidence": "stub call session=6a4e166f-ed86-47f5-87b9-03a120e66472 route=stub/stub-model"
         },
         {
           "id": "stub.delegation-inherit-route.stub.script-consumed",
@@ -492,7 +488,7 @@
         {
           "id": "stub.delegation-reject-route.delegation.no-child-session",
           "status": "pass",
-          "evidence": "catalog childIds=[] sessions=[\"session-stub-delegation-reject-route-c844a29e-56e9-4747-a66b-63ac1e9d9125\"]"
+          "evidence": "catalog childIds=[] sessions=[\"session-stub-delegation-reject-route-55f5a37a-e95d-4c9f-9efe-be2df3c2cdb0\"]"
         },
         {
           "id": "stub.delegation-reject-route.delegation.no-forbidden-request",
@@ -547,16 +543,9 @@
         {
           "id": "t2.isolation.real-home-untouched",
           "status": "pass",
-          "evidence": "signature identical before/after (strict zones; 1 observed-only changes)",
+          "evidence": "signature identical before/after (strict zones; 0 observed-only changes)",
           "detail": {
-            "observedChanges": [
-              {
-                "zone": "storages",
-                "change": "changed",
-                "before": 563,
-                "after": 563
-              }
-            ]
+            "observedChanges": []
           }
         }
       ]
@@ -633,7 +622,7 @@
       "version": "0.1.5-rc.1"
     },
     "farm": {
-      "path": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-ahEOR2/home/profiles/node_modules/@deepseek-ai/dsh/package.json",
+      "path": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-bqYt1o/home/profiles/node_modules/@deepseek-ai/dsh/package.json",
       "version": "0.1.5-rc.1",
       "healed": true
     }
@@ -643,14 +632,14 @@
       "profiles",
       "root:settings.yaml",
       "root:.credentials.yaml",
-      "deployment:minimal-plus-next",
+      "deployment:minimal-plus",
       "sessions"
     ],
     "observedChanges": [],
     "strictChanges": []
   },
-  "compositionEntriesSha": "f42bfdd37c8382e6cfd6b592c2f25612b2e0ca14f0b187aaaf15a6b262cc34dd",
-  "compositionArtifact": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-ahEOR2/home/tui-dev-composition.yml",
+  "compositionEntriesSha": "f89e5e162adfac5fa8a9c0a14d8d1f6f37f31fa3f4bc102dd18e6230a76ceefd",
+  "compositionArtifact": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-bqYt1o/home/tui-dev-composition.yml",
   "copies": {
     "profileCordisSha": "c300dcf2ebc5f02062d6591268d29d3db6fe45e0cb138f5467276fe2ba06076e",
     "realProfileCordisSha": "c300dcf2ebc5f02062d6591268d29d3db6fe45e0cb138f5467276fe2ba06076e"
@@ -662,35 +651,35 @@
         "passed": 7,
         "failed": 0,
         "exit": 0,
-        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-ahEOR2/home/stub/bash-first-call.json"
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-bqYt1o/home/stub/bash-first-call.json"
       },
       {
         "scenario": "bash-promotion-visible",
         "passed": 6,
         "failed": 0,
         "exit": 0,
-        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-ahEOR2/home/stub/bash-promotion-visible.json"
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-bqYt1o/home/stub/bash-promotion-visible.json"
       },
       {
         "scenario": "delegation-inherit-route",
         "passed": 7,
         "failed": 0,
         "exit": 0,
-        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-ahEOR2/home/stub/delegation-inherit-route.json"
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-bqYt1o/home/stub/delegation-inherit-route.json"
       },
       {
         "scenario": "delegation-reject-route",
         "passed": 6,
         "failed": 0,
         "exit": 0,
-        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-ahEOR2/home/stub/delegation-reject-route.json"
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-bqYt1o/home/stub/delegation-reject-route.json"
       },
       {
         "scenario": "v3-resume-route",
         "passed": 6,
         "failed": 0,
         "exit": 0,
-        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-ahEOR2/home/stub/v3-resume-route.json"
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-bqYt1o/home/stub/v3-resume-route.json"
       }
     ]
   }
