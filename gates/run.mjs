@@ -14,7 +14,7 @@
  * `experiments/regression-gate/t3-*`）。
  */
 import { createRequire } from "node:module";
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -121,7 +121,9 @@ function scanTree(path) {
       if (dirent.isDirectory()) walk(child, `${rel}/`);
       else {
         files += 1;
-        lines.push(`${rel}\t${String(statSync(child).size)}`);
+        // lstat: 真实 home 的 .dsh-module-fallback 常用指向 node_modules 的符号链接，
+        // 目标树可能缺失（悬空链接）；指纹只关心链接本身，不跟随目标。
+        lines.push(`${rel}\t${String(lstatSync(child).size)}`);
       }
     }
   };

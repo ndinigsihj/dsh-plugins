@@ -16,7 +16,7 @@
  * 回落到闸门自持组合——那会让「交付前验的是真实组合」变成假绿。
  */
 import { createHash } from "node:crypto";
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -170,6 +170,15 @@ export function renderRealComposition(options) {
   const sourceCordis = join(sourceProfileDir, "cordis.yml");
   if (existsSync(sourceCordis)) copyFileSync(sourceCordis, join(profileDir, "cordis.yml"));
   else writeFileSync(join(profileDir, "cordis.yml"), "# rendered by the regression gate\n[]\n");
+
+  // 真实 profile 的 node_modules（pnpm 安装的私有 bundle，如 dsh-antigravity-auth）：
+  // 只读符号链接进临时 profile，使 loadProfile 能解析 profile 声明的 bundles。
+  // 源目录在真实 home，闸门只读它、零写入（隔离指纹仍按 lstat 记录链接本身）。
+  const sourceNodeModules = join(sourceProfileDir, "node_modules");
+  const profileNodeModules = join(profileDir, "node_modules");
+  if (existsSync(sourceNodeModules) && !existsSync(profileNodeModules)) {
+    symlinkSync(sourceNodeModules, profileNodeModules, "dir");
+  }
 
   mkdirSync(join(tempHome, "sessions"), { recursive: true });
   // 真实 settings 的副本（计划 §2.1/Q2）：只落在 700 的临时 home 里，报告只记 sha；
