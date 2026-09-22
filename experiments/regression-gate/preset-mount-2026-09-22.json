@@ -1,0 +1,34 @@
+{
+  "kind": "preset-mount-smoke",
+  "version": 1,
+  "startedAt": "2026-09-22T12:00:41.264Z",
+  "profile": "tui",
+  "preset": "minimal-plus",
+  "launcher": "/Users/vito/data/dev/dsh-runtime/stable/bin/tui-stable",
+  "presetSource": "/Users/vito/.dsh/.agent-presets/minimal-plus",
+  "profileSource": "/Users/vito/.dsh/profiles/tui",
+  "capturedBytes": 9042,
+  "assertions": [
+    {
+      "id": "mount.no-error",
+      "status": "pass",
+      "evidence": "no failure signature in 9042 bytes"
+    },
+    {
+      "id": "boot.rendered",
+      "status": "pass",
+      "evidence": "screen clears=2"
+    },
+    {
+      "id": "mount.preset-visible",
+      "status": "pass",
+      "evidence": "output names minimal-plus"
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "finishedAt": "2026-09-22T12:00:56.278Z"
+}
