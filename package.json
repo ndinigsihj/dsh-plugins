@@ -1,6 +1,6 @@
 {
   "name": "im-dsh-tui",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "description": "Interactive terminal front door for DeepSeek Harness: pi-tui renderer mounted inside the dsh process.",
