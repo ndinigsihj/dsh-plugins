@@ -156,8 +156,10 @@ ADR-0002 的「dev/stable 宿主不同代、必须分叉」前提已消失。
   `tool-bash` 与承载官方子代理模型选择的 `tool-subagent`（`modelSelectionSettings: true`）。
 - 两个行为：`phase-swap-bash.mjs` 二轮 bash 提权（`sandbox_permissions`）；二轮
   `agent-instructions` 注入由宿主 base 行提供。
-- `modelSelectionSettings` 需要宿主作用域挂载 `subagent-model-selection-settings`：
-  `tui` / `tui-dev` 已挂载（enabled + 2 条允许路由），`headless` 挂载但关闭以保持测量口径。
+- `modelSelectionSettings` 需要宿主作用域挂载 `subagent-model-selection-settings`：**凡是
+  可能挂载本 preset 的 profile 都必须有这一行**，否则挂载即失败（`tool-subagent:
+  modelSelectionSettings requires … in the Host scope`）。当前部署：`tui` / `tui-dev`
+  enabled + 2 条允许路由，`worker` / `headless` 已挂但 `enabled: false`（保持固定路由口径）。
   维护与探针见 `docs/subagent-model-selection.md`。
 - 部署：`scripts/sync-agent-presets.sh`（无参即同步 `minimal-plus`）；冷启动加载的是
   `~/.dsh/.agent-presets/minimal-plus/` 副本，preset 改完必须重新同步并核 sha。

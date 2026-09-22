@@ -11,9 +11,9 @@
 # 按本轮决定跟随宿主，行已删除。保留的两处差异见下方 tool-bash 与 delegation 注释。
 # 2026-09-10 票据 11 在 delegation/tool-subagent 上开启官方模型选择
 # （`modelSelectionSettings: true`）：宿主作用域须挂载
-# `@deepseek-ai/dsh-tool-subagent/model-selection-settings`（部署基线在
-# ~/.dsh/profiles/{tui-dev,headless}/cordis.patch.yml；tui-dev 开启并给 2 条允许
-# 路由（票据 12 逐条探测后裁剪），headless 关闭以保持测量口径）。
+# `@deepseek-ai/dsh-tool-subagent/model-selection-settings`（凡是可能挂载本 preset 的
+# profile 都必须有这一行，否则挂载即失败：部署基线 tui/tui-dev enabled + 2 条允许路由
+# （票据 12 逐条探测后裁剪），worker/headless 已挂但 enabled=false 保固定路由口径）。
 #
 # 以 Minimal 语义为基底（前身 liangshen）做 5 处改动（设计文档 docs/minimal-plus-preset-design.md §1）：
 #   1-4. 本地复用物走 preset 目录内自研相对路径（tool-bootstrap / instruction-hint /
@@ -152,9 +152,9 @@
 # 按本轮决定跟随宿主（one-shot，不参与模型选择），行已删。保留 tool-subagent 作
 # 差异行——2026-09-10 票据 11 开启官方模型选择（`modelSelectionSettings: true`）：
 # 宿主作用域须挂载 `@deepseek-ai/dsh-tool-subagent/model-selection-settings`
-# （部署基线，tui-dev enabled=true；headless enabled=false 保测量口径），未记录
-# 策略的旧会话与 fork 来源子代理保持固定路由。两行 disabled 工具表达本部署不
-# 安装 codex / claude-code provider 的停用意图。
+# （缺行即挂载失败；部署基线 tui/tui-dev enabled=true，worker/headless enabled=false
+# 保固定路由口径），未记录策略的旧会话与 fork 来源子代理保持固定路由。两行 disabled
+# 工具表达本部署不安装 codex / claude-code provider 的停用意图。
 - id: delegation
   name: cordis:group
   group: true

@@ -6,7 +6,7 @@
     "minimal-plus": {
       "path": "~/.dsh/.agent-presets/minimal-plus",
       "files": {
-        "agent.cordis.yml": "e6887bb4e28f7371b2a646164176ad18e0e2a8c498fbddcf6fec35d4f85378b8",
+        "agent.cordis.yml": "26cbf828766c1dc3006e49cf6fda45781f279fe427e018ab5fbf573af3c35fa9",
         "preset.yml": "96c6a947152227289f5a6440bc6121da17c90710c39c9104556a6317d6db1632",
         "compaction-epoch.mjs": "a17cdce7b871b57b35fe9dc5abae4fd7d6b3bcb3089278c7be97ad314e0d4feb",
         "phase-swap-bash.mjs": "c00fe48e5a4036196c8ac2af9548e91b2bb6add2d4cd1117730f821abc0bd298",
