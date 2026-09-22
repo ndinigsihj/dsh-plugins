@@ -1,5 +1,5 @@
 /**
- * 票据 11 行为探针 — 官方子代理模型选择（rc.1）在 minimal-plus-next + 开启基线下的实跑验收。
+ * 票据 11 行为探针 — 官方子代理模型选择（rc.1）在 minimal-plus + 开启基线下的实跑验收。
  *
  * 运行：experiments/subagent-model-selection/run.sh
  *   （预置 /tmp/dsh-ticket11/settings.yaml 副本 + 旧会话副本，再跑
@@ -21,7 +21,7 @@ import { ToolCallId, createUserMessage } from "@deepseek-ai/dsh-llm";
 export const name = "ticket11-probe";
 export const inject = [];
 
-const PRESET = "minimal-plus-next";
+const PRESET = "minimal-plus";
 /**
  * 父会话路由（2026-09-12 起）：opencode-go 月度额度停用后改用 commandcode 的 v4.1-flash，
  * 与 `experiments/m4/results-minimal-plus-next-commandcode-v41-2026-09-12.jsonl` 同源，

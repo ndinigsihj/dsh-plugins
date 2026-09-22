@@ -13,8 +13,8 @@
  * 记录 firstMessage/firstToolCall/r2/header/toolSequence/error/elapsedMs。
  *
  * 2026-09-10 升级 rc.1：会话事件读取改 snapshotEvents()（events getter 已移除）；
- * 组表 E 指向开发侧组合 minimal-plus-next（旧名 liangshen-bash → minimal-plus，
- * rc.1 分叉后开发侧为 minimal-plus-next）；M4_MODEL 可显式覆盖宿主默认路由
+ * 组表 E 指向统一组合 minimal-plus（历史名 liangshen-bash → minimal-plus-next，
+ * 2026-09-22 宿主统一后收敛回 minimal-plus）；M4_MODEL 可显式覆盖宿主默认路由
  * （默认路由额度期时用，值必须为 provider/model，记录字段 model 反映实际路由）。
  *
  * 2026-09-11 票 05：报告默认归档到 <repo>/experiments/regression-gate/results-m4-<日期>.jsonl
@@ -40,7 +40,7 @@ function defaultOutPath() {
 }
 
 const DEPLOYED_PRESETS = {
-  E: "minimal-plus-next", // rc.1 开发侧组合；历史名 liangshen-bash → minimal-plus 后于 2026-09-10 分叉
+  E: "minimal-plus", // 统一组合（历史名 liangshen-bash → minimal-plus-next → minimal-plus）
   C: "liangshen", // 2026-09-03 已随更名删除，仅历史；重跑 C 需先恢复基线
   A: "liangshen-plus", // 历史组已删除；保留键位以便脚本兼容旧 env
 };

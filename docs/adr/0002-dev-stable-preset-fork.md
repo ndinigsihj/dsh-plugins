@@ -1,3 +1,6 @@
+> **Superseded（2026-09-22）**：宿主已统一到 0.1.5-rc.1/rc.2，`minimal-plus-next` 已改名为
+> `minimal-plus`、旧 `minimal-plus` 删除；本 ADR 的「两台宿主分叉」前提消失，保留为历史决策记录。
+
 # dev 与 stable 使用不同 preset，stable 宿主保持钉版
 
 `tui`、`tui-dev`、`tui-central` 原先共用同一份 `minimal-plus` preset。dsh `0.1.5-rc.1` 把 persona 配置由 `text` 拆成 `prefix`/`suffix`（system-prompt 侧 `persona` 拆成 `personaPrefix`/`personaSuffix`），与 stable 宿主 `0.1.1-rc.2` 的字段不兼容，单份文件无法同时服务两个宿主。

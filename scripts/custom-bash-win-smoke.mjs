@@ -8,7 +8,7 @@
  *  3. 缺 bash 时 apply 跳过注册 + warn（fail-open）。
  *
  * preset 路径参数化（票据 09；计划 §6-1）：测试对象默认是 dev 侧
- * `presets/minimal-plus-next`，可用 `CUSTOM_BASH_PRESET_ROOT` 覆盖
+ * `presets/minimal-plus`，可用 `CUSTOM_BASH_PRESET_ROOT` 覆盖
  * （绝对路径，或相对仓库根），CI 用同名 env 传入。
  *
  * 运行：node scripts/custom-bash-win-smoke.mjs
@@ -19,7 +19,7 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const presetRoot = process.env.CUSTOM_BASH_PRESET_ROOT || join("presets", "minimal-plus-next");
+const presetRoot = process.env.CUSTOM_BASH_PRESET_ROOT || join("presets", "minimal-plus");
 const presetDir = isAbsolute(presetRoot) ? presetRoot : join(REPO_ROOT, presetRoot);
 const customBashPath = join(presetDir, "custom-bash.mjs");
 if (!existsSync(customBashPath)) {

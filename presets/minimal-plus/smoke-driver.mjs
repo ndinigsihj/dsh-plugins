@@ -4,7 +4,8 @@
  * 在 headless 组合里创建 agent 并挂载 minimal-plus preset，然后：
  *   R1. system-prompt/assemble → 首轮可见目录（应为 {bash persistent, str_replace_editor}）
  *   R1. agent/pre-step → 首轮注入（应无 agent-instructions / skill-catalog）
- *   ↳  append tool/call（promotion）→ phase-swap-bash 对该 agent swap
+ *   ↳  append tool/call（promotion）→ 断言目录未变；append tool/result（结算）→
+ *      phase-swap-bash 对该 agent swap（finding 12-2：swap 以结算为触发点）
  *   R2. system-prompt/assemble → 二轮目录（bash 应带 sandbox_permissions）
  *   R2. agent/pre-step → 二轮注入（应含 agent-instructions）
  *
@@ -13,8 +14,8 @@
  */
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { installModelSelection } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-agent/lib/index.js";
-import { SessionId } from "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai/dsh-session/lib/index.js";
+import { installModelSelection } from "@deepseek-ai/dsh-agent";
+import { SessionId } from "@deepseek-ai/dsh-session";
 
 export const name = "minimal-plus-smoke";
 export const inject = [];
@@ -84,8 +85,18 @@ async function run(ctx) {
   assert.ok(!r1Sources.includes("agent-instructions"), "R1 must not inject agent-instructions");
   assert.ok(!r1Sources.includes("skill-catalog"), "R1 must not inject skill-catalog");
 
-  // 首个 durable tool/call（promotion）→ swap
-  agent.session.append("tool/call", { callId: "smoke-1", name: "bash", arguments: "{}" });
+  // 首个 durable tool/call（promotion）→ 结算后 swap（finding 12-2：swap 延后到 tool/result）
+  const callSeq = agent.session.append("tool/call", { callId: "smoke-1", name: "bash", arguments: "{}" }).seq;
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  // tool/call 落盘瞬间不得 swap：该调用的参数仍按 persistent schema 校验
+  const pending = summary(await agent.ctx.systemPrompt.assemble(context));
+  console.log("ROUND1.5 catalog (pending call):", JSON.stringify(pending));
+  assert.ok(!pending.bashParams.includes("sandbox_permissions"), "tool/call 未结算时不得 swap");
+  agent.session.append(
+    "tool/result",
+    { message: { content: [{ type: "tool-result", toolCallId: "smoke-1", content: [], isError: false }] } },
+    { surfaceOp: "append", sourceEventSeqs: [callSeq] },
+  );
   await new Promise((resolve) => setTimeout(resolve, 500));
 
   // R2 assembly（swap 结果以 R2 目录为准：bash 应为沙箱 schema）

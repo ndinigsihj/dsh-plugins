@@ -113,7 +113,9 @@ test("缺 bootstrap 工具 → fail-open 暴露全量目录（warn once）", asy
 test("过滤器抛错 → fail-open 返回原样（assemble 与 pre-step）", async () => {
   const bootState = catalogs(boot());
   const agent = makeAgent(bootState, "sess-broken");
-  agent.session.events = {}; // 非可迭代 → promotion.status 会抛错
+  agent.session.snapshotEvents = () => {
+    throw new TypeError("session log unavailable"); // 快照读取失败 → promotion.status 会抛错
+  };
   const out = await runAssemble(bootState, agent, baseAssembly());
   assert.deepEqual(toolNames(out), toolNames(baseAssembly()), "assemble 过滤器抛错应返回原样");
 

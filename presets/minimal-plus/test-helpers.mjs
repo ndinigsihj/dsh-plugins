@@ -8,11 +8,10 @@
  * 运行：node --test presets/minimal-plus/<file>.test.mjs
  */
 
-const DEP = "/Users/vito/data/dev/dsh-plugins/node_modules/@deepseek-ai";
-const { Context } = await import(`${DEP}/cordis/lib/index.js`);
-const { createScope, scopeOf } = await import(`${DEP}/dsh-scope/lib/index.js`);
-const { ToolRuntime } = await import(`${DEP}/dsh-tools/lib/index.js`);
-const persistentBash = await import(`${DEP}/dsh-tool-bash-persistent/lib/index.js`);
+const { Context } = await import("@deepseek-ai/cordis");
+const { createScope, scopeOf } = await import("@deepseek-ai/dsh-scope");
+const { ToolRuntime } = await import("@deepseek-ai/dsh-tools");
+const persistentBash = await import("@deepseek-ai/dsh-tool-bash-persistent");
 
 export const PERSISTENT_DESC = "persistent probe bash";
 export const PARAM_KEYS = (tool) => Object.keys(tool?.parameters?.properties ?? {});
@@ -21,7 +20,9 @@ export const VIEW = (agentCtx) => agentCtx.tools.view(scopeOf(agentCtx)).visible
 /** 构建一个带 host 服务 + ToolRuntime + agents 存根的根 ctx。 */
 export function boot({ withSandboxPolicy = true, sandboxPolicyMode = "workspace-write" } = {}) {
   const root = new Context();
-  root.provide("systemPrompt", { tools() {}, section() {} });
+  // rc.1 dsh-tool-bash registers its guidance section with an explicit ordering
+  // key, so the stub must answer getSectionOrder like the real service.
+  root.provide("systemPrompt", { tools() {}, section() {}, getSectionOrder: () => 0 });
   const tools = new ToolRuntime(root, {});
   tools.layers.onChange = () => {};
   root.provide("shell", { sandboxMode: sandboxPolicyMode });
@@ -60,12 +61,39 @@ export function boot({ withSandboxPolicy = true, sandboxPolicyMode = "workspace-
   return { root, tools, warnings, agentStore, listeners };
 }
 
+/** Backing logs of the fake sessions — kept off the object so plugin code
+ *  cannot sneak back to the removed rc.1 `session.events` array. */
+const sessionLogs = new WeakMap();
+
+/** Fake session owned by a test: rc.1 reads go through snapshotEvents(). */
+export function makeSession(id, events = []) {
+  const log = [...events];
+  const session = {
+    id,
+    header: {},
+    snapshotEvents: () => log,
+    eventAt: (seq) => log.find((event) => event.seq === seq),
+    get seq() {
+      return log.length;
+    },
+  };
+  sessionLogs.set(session, log);
+  return session;
+}
+
+/** Backing log of one fake session (test bookkeeping only). */
+export function sessionLog(session) {
+  const log = sessionLogs.get(session);
+  if (log === undefined) throw new Error("not a fake session from makeSession()");
+  return log;
+}
+
 /** 造一个 agent：scoped ctx + session + 注册进 store。 */
 export function makeAgent(bootState, id, events = []) {
   const agentScope = createScope(bootState.root, id);
   const agent = {
     id,
-    session: { id, events, header: {} },
+    session: makeSession(id, events),
     ctx: agentScope.ctx,
   };
   bootState.agentStore.set(id, agent);
@@ -74,7 +102,7 @@ export function makeAgent(bootState, id, events = []) {
 
 /** 触发任意 session 事件（模拟 session.append：先写 log 再以 (session,event) 调监听器）。 */
 export async function fireEvent(bootState, session, event) {
-  session.events.push(event);
+  sessionLog(session).push(event);
   for (const listener of bootState.listeners.session) {
     listener(session, event);
   }
@@ -84,7 +112,21 @@ export async function fireEvent(bootState, session, event) {
 
 /** 触发一个 tool/call session 事件（首个 durable tool call → promotion）。 */
 export async function fireToolCall(bootState, session) {
-  const event = { type: "tool/call", seq: session.events.length, data: {} };
+  const event = { type: "tool/call", seq: sessionLog(session).length, data: {} };
+  await fireEvent(bootState, session, event);
+}
+
+/**
+ * 触发一个 tool/result session 事件（结算上一条 tool/call）。
+ * finding 12-2 起，phase-swap-bash 的 swap 以此事件为触发点：tool/call 只 promotion、
+ * 不换 schema，避免同一 step 已产出的参数被沙箱 schema 拒。
+ */
+export async function fireToolResult(bootState, session, callId = "call-1") {
+  const event = {
+    type: "tool/result",
+    seq: sessionLog(session).length,
+    data: { message: { content: [{ type: "tool-result", toolCallId: callId, content: [], isError: false }] } },
+  };
   await fireEvent(bootState, session, event);
 }
 

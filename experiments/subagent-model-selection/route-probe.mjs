@@ -23,7 +23,7 @@ import { ToolCallId, createUserMessage } from "@deepseek-ai/dsh-llm";
 export const name = "ticket12-route-probe";
 export const inject = [];
 
-const PRESET = "minimal-plus-next";
+const PRESET = "minimal-plus";
 /**
  * 父会话路由（2026-09-12 起）：opencode-go 月度额度停用后改用 commandcode 的 v4.1-flash，
  * 与 M4 基线同源，工具调用能力已验证。

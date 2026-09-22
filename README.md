@@ -145,50 +145,23 @@ hub 侧的 `fleet-client` / `memory-sink`、worker 侧的 `remote-server` 挂载
 | `/task <id>` | attach-client | 查询后台任务状态 | ✅ 已实现 |
 | `/tasks` | attach-client | 列出最近后台任务 | ✅ 已实现 |
 
-## Agent presets (minimal-plus / minimal-plus-next)
+## Agent preset (minimal-plus)
 
-### minimal-plus（stable / `tui`，宿主 0.1.1-rc.2）
+`presets/minimal-plus/` 是当前唯一自研 preset，stable（`tui`）与 dev（`tui-dev`）共用同一份组合。
+2026-09-22 宿主统一到 0.1.5-rc.1/rc.2 后，原 `minimal-plus` 收敛回 `minimal-plus`：
+ADR-0002 的「dev/stable 宿主不同代、必须分叉」前提已消失。
 
-`presets/minimal-plus/` keeps the Minimal base (historically the liangshen
-preset) **verbatim** (Minimal persona with `includeRuntimeContext: false`,
-`instruction-hint`, `skill-search`)
-and adds only two behaviors (design: `docs/minimal-plus-preset-design.md`):
-
-1. **Round-2+ bash privilege swap** — `phase-swap-bash.mjs` shadows the shared
-   persistent bash with the sandboxed `dsh-tool-bash` (per-agent scope layer),
-   re-adding `sandbox_permissions`/`justification` escalation after anchoring.
-2. **Explicit round-2 AGENTS.md injection** — an `dsh-agent-instructions` row
-   (the host layer already provides this source, so the row makes the intent
-   explicit and self-contained).
-
-Known tradeoff: with `includeRuntimeContext: false` the model sees the
-`sandbox_permissions` schema but not the current file-policy snapshot.
-
-| File | Purpose |
-|---|---|
-| `agent.cordis.yml` | Preset composition (Minimal base + 2 rows; deployed to `~/.dsh/.agent-presets/minimal-plus/`) |
-| `preset.yml` | Display name/description for `/preset` |
-| `phase-swap-bash.mjs` | The swap plugin (per-agent shadow) |
-| `phase-swap-bash.test.mjs` | Unit tests (node --test) |
-| `smoke-boot.mjs` / `smoke-driver.mjs` | No-LLM composition smoke (round-1 catalog, round-2 swap+injection) |
-
-Use: `CC_TUI_PRESET=minimal-plus dsh --profile tui` then `/new`.
-
-### minimal-plus-next（dev / `tui-dev`，宿主 0.1.5-rc.1）
-
-`presets/minimal-plus-next/` 是开发侧的分叉（ADR-0002：stable 宿主钉版，不能与 rc.1 字段共用一份 preset）：
-
-- 与 `minimal-plus` 的字段差异只有 persona 正文键（rc.1 用 `prefix`，stable 只认 `text`）。
-- 按 ADR-0003 只声明与 rc.1 `dsh-base` 的差异：删除 16 个逐字重复行（含原显式的
-  `agent-instructions` 行，改由宿主 base 提供）与 `planning`/`compaction` 空组，仅保留
-  恒禁的 `tool-bash` 与承载官方子代理模型选择的 `tool-subagent`。不要为了让 preset
-  「自包含」把 base 已有的行抄回来。
-- `npm test` 的 preset 条目与部署位冒烟走 `presets/minimal-plus-next/`；stable 的
-  `minimal-plus` 副本冻结在 rc.2 代码，不在 rc.1 宿主下运行。
-- 部署：`scripts/sync-agent-presets.sh minimal-plus-next`（无参仍只同步 `minimal-plus`）；
-  冷启动加载的是 `~/.dsh/.agent-presets/` 副本，preset 改完必须重新同步并核 sha。
-- 子代理模型选择（`modelSelectionSettings`）的开关、宿主设置服务、允许路由维护与探针见
-  `docs/subagent-model-selection.md`。
+- persona 使用 0.1.5 宿主的 `prefix` 正文键（旧 `text` 键在 rc.1/rc.2 会被 schema 拒）。
+- 按 ADR-0003 只声明与 rc.1 `dsh-base` 的差异：不重复 base 已有的挂载行，保留恒禁的
+  `tool-bash` 与承载官方子代理模型选择的 `tool-subagent`（`modelSelectionSettings: true`）。
+- 两个行为：`phase-swap-bash.mjs` 二轮 bash 提权（`sandbox_permissions`）；二轮
+  `agent-instructions` 注入由宿主 base 行提供。
+- `modelSelectionSettings` 需要宿主作用域挂载 `subagent-model-selection-settings`：
+  `tui` / `tui-dev` 已挂载（enabled + 2 条允许路由），`headless` 挂载但关闭以保持测量口径。
+  维护与探针见 `docs/subagent-model-selection.md`。
+- 部署：`scripts/sync-agent-presets.sh`（无参即同步 `minimal-plus`）；冷启动加载的是
+  `~/.dsh/.agent-presets/minimal-plus/` 副本，preset 改完必须重新同步并核 sha。
+- Use: `CC_TUI_PRESET=minimal-plus dsh --profile tui` then `/new`.
 
 ## Regression gate（回归闸门）
 
@@ -228,13 +201,13 @@ T3 产物另按 `experiments/regression-gate/t3-<UTC 时间戳>/` 归档，跨�
 `~/.dsh/.agent-presets/<preset>` 副本。交付前必须显式执行 `scripts/sync-agent-presets.sh <preset>` 同步部署位，
 再用 `--composition real` 跑真实 `tui-dev` 组合；序列：同步 → `--tier 0,1,2 --composition real` 全绿 → T3 按需 → 人工签收。
 
-**边界**：闸门只面向 `tui-dev` / `minimal-plus-next` / dev 侧脚本；stable 的 `minimal-plus` 不在闸门内，
-`npm test` 也不跑它（stable 冻结在 rc.2 宿主）——改 stable 文件（含 `presets/minimal-plus/**`）必须在其运行时手验；
-两份 preset 的测试文件会长期不一致（有意取舍）。
+**边界**：闸门面向 `tui-dev` / `minimal-plus` / dev 侧脚本；stable `tui` 组合本身不在闸门内——
+`--composition real` 验的是 `tui-dev` 渲染副本，改 stable profile / stable 工作树必须在 stable 运行时手验
+（本次收敛已用隔离 HOME + 真 PTY 实跑验证）。
 
 **CI**：`.github/workflows/regression-gate.yml` 在托管 macOS runner 上零密钥跑 T0/T1/T2（宿主从公共 registry
 按 `gates/manifest.json` 的版本安装），部署位按「缺席」记账；T3 与 T4b 不进 CI。Windows 侧另见
-`.github/workflows/custom-bash-win-smoke.yml`（触发路径 = `presets/minimal-plus-next/**`，脚本 preset 路径由
+`.github/workflows/custom-bash-win-smoke.yml`（触发路径 = `presets/minimal-plus/**`，脚本 preset 路径由
 `CUSTOM_BASH_PRESET_ROOT` 参数化）。
 
 两个工作流的触发路径由 T0 常驻断言校验（`gates/workflow-triggers.mjs`，随 `npm test`）：逐事件检查

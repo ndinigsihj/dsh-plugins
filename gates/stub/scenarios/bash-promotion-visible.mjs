@@ -9,7 +9,7 @@
  * 两条断言互相独立：swap 从未发生 → A 红 B 绿（没有沙箱可回退）；swap 未随 compaction
  *   注销 → A 绿 B 红。
  *
- * 来源：presets/minimal-plus-next/phase-swap-bash.mjs 头注释（compaction 回 controlled phase）
+ * 来源：presets/minimal-plus/phase-swap-bash.mjs 头注释（compaction 回 controlled phase）
  *       与其 `compaction/end` 处理；docs/regression-test-automation-plan.md §3.1 场景 2、§5.4；
  *       finding 12-2 同源（promotion 语义，swap 延后修复见票据 06）。
  *

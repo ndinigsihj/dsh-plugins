@@ -35,7 +35,7 @@ export function createSessionFeed(ctx) {
 /**
  * @param options.ctx 已 boot 的根 ctx
  * @param options.agents / options.agentPresets 组合里的宿主服务
- * @param options.preset 挂载的 preset id（minimal-plus-next）
+ * @param options.preset 挂载的 preset id（minimal-plus）
  * @param options.wait (promise, label) => promise 的超时包装（runner 的 withTimeout）
  * @param options.scenarioId 用于生成可辨认的 session id
  */

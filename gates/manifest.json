@@ -3,11 +3,11 @@
   "hostVersion": "0.1.5-rc.1",
   "sessionFormatVersion": 3,
   "deployment": {
-    "minimal-plus-next": {
-      "path": "~/.dsh/.agent-presets/minimal-plus-next",
+    "minimal-plus": {
+      "path": "~/.dsh/.agent-presets/minimal-plus",
       "files": {
-        "agent.cordis.yml": "9087bf00b2edd520f91b2a97fc527cd6250f590ab8694b757420f57e3b31789c",
-        "preset.yml": "8a0965bd624a179d1059849aafea878d981ecfd7512f6f250569fdfd09d1d1de",
+        "agent.cordis.yml": "e6887bb4e28f7371b2a646164176ad18e0e2a8c498fbddcf6fec35d4f85378b8",
+        "preset.yml": "96c6a947152227289f5a6440bc6121da17c90710c39c9104556a6317d6db1632",
         "compaction-epoch.mjs": "a17cdce7b871b57b35fe9dc5abae4fd7d6b3bcb3089278c7be97ad314e0d4feb",
         "phase-swap-bash.mjs": "c00fe48e5a4036196c8ac2af9548e91b2bb6add2d4cd1117730f821abc0bd298",
         "tool-bootstrap.mjs": "e3e05e677289d84f5b24e291061e92dc309e75768a5aad355b5ade28f2d2a6ed",
@@ -24,7 +24,7 @@
       "hostVersion": "0.1.5-rc.1",
       "capturedAt": "2026-09-10T12:11:52.000Z",
       "model": "opencode-go/deepseek-v4-flash",
-      "preset": "minimal-plus-next",
+      "preset": "minimal-plus",
       "runs": 9
     },
     "m4-deduped-2026-09-10": {
@@ -33,7 +33,7 @@
       "hostVersion": "0.1.5-rc.1",
       "capturedAt": "2026-09-10T14:25:33.000Z",
       "model": "opencode-go/deepseek-v4-flash",
-      "preset": "minimal-plus-next",
+      "preset": "minimal-plus",
       "runs": 9
     },
     "m4-commandcode-v41-2026-09-12": {
@@ -42,7 +42,7 @@
       "hostVersion": "0.1.5-rc.1",
       "capturedAt": "2026-09-12T02:24:07.000Z",
       "model": "commandcode/deepseek/deepseek-v4.1-flash",
-      "preset": "minimal-plus-next",
+      "preset": "minimal-plus",
       "runs": 9
     }
   },

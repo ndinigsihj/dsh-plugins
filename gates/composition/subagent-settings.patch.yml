@@ -1,4 +1,4 @@
-# 宿主作用域：官方子代理模型选择的单例（minimal-plus-next 的
+# 宿主作用域：官方子代理模型选择的单例（minimal-plus 的
 # delegation/tool-subagent 开了 `modelSelectionSettings: true`，缺这行 preset 挂不起来）。
 #
 # 为什么单独一个补丁文件：闸门组合（gates/composition/gate.patch.yml）同时含本仓库

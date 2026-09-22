@@ -4,7 +4,7 @@
 #   dsh --profile headless --patch experiments/m4/m4.patch.yml
 #
 # 2026-09-10 升级 rc.1 后：preset 走 user root（~/.dsh/.agent-presets 部署位副本），
-# E = minimal-plus-next；M4_MODEL 按需覆盖默认路由（见 m4-runner.mjs 头注释）。
+# E = minimal-plus；M4_MODEL 按需覆盖默认路由（见 m4-runner.mjs 头注释）。
 #
 # 票 05：会话写隔离根（M4_SESSION_ROOT，默认 /tmp/dsh-probe/m4-sessions），
 # 不再写真实 ~/.dsh/sessions；报告默认归档到 <repo>/experiments/regression-gate/（M4_OUT 可覆盖）。
@@ -27,7 +27,7 @@
     - id: agent-presets
       name: "@deepseek-ai/dsh-agent-presets"
       config:
-        default: minimal-plus-next
+        default: minimal-plus
         roots: []
         includeUserRoot: true
 

@@ -74,13 +74,13 @@ test("parseCompositionDump: 解析 !!js 标量的 dump，并可用于重复 id �
     "  name: '@deepseek-ai/dsh-llm'",
     "- id: runner",
     "  config:",
-    "    preset: !!js process.env.CC_TUI_PRESET ?? 'minimal-plus-next'",
+    "    preset: !!js process.env.CC_TUI_PRESET ?? 'minimal-plus'",
     "",
   ].join("\n");
   const parsed = parseCompositionDump(dump);
   assert.equal(parsed.error, undefined);
   assert.deepEqual(findDuplicateIds(parsed.entries), []);
-  assert.equal(parsed.entries[1].config.preset.__jsExpr, "process.env.CC_TUI_PRESET ?? 'minimal-plus-next'");
+  assert.equal(parsed.entries[1].config.preset.__jsExpr, "process.env.CC_TUI_PRESET ?? 'minimal-plus'");
 
   const duplicate = parseCompositionDump("- id: a\n- id: a\n");
   assert.deepEqual(findDuplicateIds(duplicate.entries), [{ path: "", id: "a", count: 2 }]);

@@ -129,7 +129,7 @@ function checkDependencies(renderedText, { profileDir, installAnchor }) {
  *
  * @param options.repoRoot 本 checkout 根（`DSH_PLUGINS_ROOT` 未设时的插件根默认值）。
  * @param options.tempHome 隔离临时 home（DSH_HOME/HOME 的指向）。
- * @param options.presetName 要随组合一起物化的 preset（默认 `minimal-plus-next`）。
+ * @param options.presetName 要随组合一起物化的 preset（默认 `minimal-plus`）。
  * @param options.deploymentRoot 部署位 preset 目录（缺省/不完整时回落仓库副本并在结果里标注）。
  * @param options.installAnchor 宿主包 `package.json` 绝对路径（裸包名解析基准）。
  * @param options.homeDir 真实 home（`~` 展开基准；测试可注入假 home）。
@@ -137,7 +137,7 @@ function checkDependencies(renderedText, { profileDir, installAnchor }) {
  */
 export function renderRealComposition(options) {
   const { repoRoot, tempHome, deploymentRoot, installAnchor } = options;
-  const presetName = options.presetName ?? "minimal-plus-next";
+  const presetName = options.presetName ?? "minimal-plus";
   const env = options.env ?? process.env;
   const homeDir = options.homeDir ?? homedir();
   const roots = resolveRepoRoots(repoRoot, env);

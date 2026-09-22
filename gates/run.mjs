@@ -30,7 +30,7 @@ import { t3ProvenanceProblems } from "./t3/analysis.mjs";
 
 // `new URL("..")` 带尾斜杠；去掉它，路径显示（`file.slice(REPO_ROOT.length + 1)`）才正确。
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/u, "");
-const PRESET = "minimal-plus-next";
+const PRESET = "minimal-plus";
 const GATE_PATCH = join(REPO_ROOT, "gates", "composition", "gate.patch.yml");
 const SMOKE_BOOT = join(REPO_ROOT, "presets", PRESET, "smoke-boot.mjs");
 const DEGRADE_SMOKE = join(REPO_ROOT, "scripts", "degrade-smoke.sh");

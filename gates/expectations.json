@@ -1,7 +1,7 @@
 {
   "comment": "闸门 T1 零 LLM 冒烟的期望面（票据 03）。宿主换代时清单（gates/manifest.json）先变红 exit 2，重采基线时同步更新本文件。",
   "presets": {
-    "minimal-plus-next": {
+    "minimal-plus": {
       "round1": {
         "tools": ["bash", "str_replace_editor"],
         "bashParamsExcludes": ["sandbox_permissions"]

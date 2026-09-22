@@ -1,3 +1,6 @@
+> 2026-09-22 收敛说明：宿主已统一到 0.1.5-rc.1/rc.2，原 `minimal-plus-next` 已改名为
+> `minimal-plus`（旧 `minimal-plus` 删除）。本文正文保留当时的 dev/stable 分叉记录，当前口径以 README 为准。
+
 # dsh-plugins 回归测试自动化方案 v2（施工图）
 
 > 状态：**计划 v2，待批准**。本版把所有已定决策（D1–D8 + Q1–Q27）落成可施工形态：

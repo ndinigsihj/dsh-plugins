@@ -2,8 +2,9 @@
  * phase-swap-bash — swap the persistent bash for the sandboxed bash on promotion.
  *
  * liangshen+ 组合 preset 的第三个机制：首轮用 persistent bash（Minimal 锚定对），
- * 首个 durable tool/call 后（promotion），把该 agent 的 bash 换成
- * `dsh-tool-bash`（沙箱 + sandbox_permissions 提权），二轮起生效。
+ * 首个 durable tool/call 触发 promotion，但 swap 延后到该调用结算（tool/result）之后：
+ * 同一 step 内 dispatch 仍按产出参数时的 persistent schema 校验（finding 12-2），
+ * 下一次请求起换成 `dsh-tool-bash`（沙箱 + sandbox_permissions 提权）生效。
  *
  * 为什么是 per-agent shadow 而不是 dispose+register：
  *  - `dsh-tool-bash-persistent.apply()` 与 `dsh-tool-bash.apply()` 都只调
@@ -126,6 +127,14 @@ export function apply(ctx, config) {
       // 所以 resume 一个已经 promoted 的会话时，任意首个事件都能触发 swap，
       // 不会一直保持 persistent bash 直到再次出现 tool/call（H5 冷启动回归）。
       if (!promotion.status(agent).promoted) return
+      // finding 12-2：promotion 由本次 tool/call 触发，但该调用的参数已按上一个请求的
+      // persistent bash schema 产出，而 dsh-agent-loop 是「先 appendToolCall 再
+      // tools.prepare/dispatch」（loop:586-588），dispatch 用 live registry 解析工具。
+      // 此刻 swap 会让同一 step 的参数被沙箱 schema 拒（missing required property
+      // "description"）。因此 swap 延后到触发 promotion 的调用结算（tool/result）或任何
+      // 表明本 step 已无 pending call 的事件；promotion 状态本身不变，冷启动/resume 仍
+      // 由首个非 tool/call 事件触发（见上一条注释的 H5 回归）。
+      if (event.type === 'tool/call') return
       // Register sandbox bash into THIS agent's scope layer, shadowing the
       // shared persistent bash for this session only. `dsh-tool-bash.apply`
       // resolves ctx.shell / ctx.sandboxPolicy / ctx.approval / ctx.systemPrompt
@@ -143,7 +152,9 @@ export function apply(ctx, config) {
         let definition
         const spyCtx = injectedCtx.extend({
           tools: { register: (d) => { definition = d; return () => {} } },
-          systemPrompt: { section() {}, tools() {} },
+          // rc.1 dsh-tool-bash registers its guidance section through
+          // getSectionOrder; the spy must answer it like the real service.
+          systemPrompt: { section() {}, tools() {}, getSectionOrder: () => 0 },
         })
         sandboxBash.apply(spyCtx, swapConfig)
         if (definition?.description !== undefined) {

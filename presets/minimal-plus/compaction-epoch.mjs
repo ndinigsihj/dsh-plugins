@@ -33,7 +33,9 @@ export function createEpochPromotion(promoteEvents, options = {}) {
   const scan = (session) => {
     let boundary = -1
     let promoted = false
-    for (const event of session.events) {
+    // rc.1 removed the `session.events` getter: read the immutable on-demand
+    // snapshot instead (same durable log, ordered by seq).
+    for (const event of session.snapshotEvents()) {
       const seq = event.seq ?? 0 // events without a seq are treated as post-boundary
       if (event.type === 'compaction/end') {
         boundary = seq

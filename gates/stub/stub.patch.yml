@@ -40,7 +40,7 @@
     - id: gate-stub-agent-presets
       name: '@deepseek-ai/dsh-agent-presets'
       config:
-        default: minimal-plus-next
+        default: minimal-plus
         roots:
           - path: !!js process.env.STUB_PRESET_ROOT ?? 'presets'
             trust: system

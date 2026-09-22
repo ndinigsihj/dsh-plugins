@@ -39,7 +39,7 @@ const STUB_PATCH = join(STUB_DIR, 'stub.patch.yml');
 /** preset 的 delegation/tool-subagent 开了 modelSelectionSettings，缺宿主单例挂不起来（同 T1 冒烟）。 */
 const SUBAGENT_SETTINGS_PATCH = join(REPO_ROOT, 'gates', 'composition', 'subagent-settings.patch.yml');
 const SCENARIOS_DIR = join(STUB_DIR, 'scenarios');
-const PRESET = 'minimal-plus-next';
+const PRESET = 'minimal-plus';
 const INSTALL_ANCHOR = installAnchor();
 
 // ── CLI ─────────────────────────────────────────────────────────────────────

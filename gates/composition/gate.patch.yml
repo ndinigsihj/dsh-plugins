@@ -19,14 +19,14 @@
     - id: tui-runner
       name: '../../lib/index.ts'
       config:
-        preset: !!js process.env.CC_TUI_PRESET ?? 'minimal-plus-next'
+        preset: !!js process.env.CC_TUI_PRESET ?? 'minimal-plus'
 
     # repo preset 根（system 信任）：闸门不读 ~/.dsh/.agent-presets，避免部署位漂移
     # 污染组合层断言；部署位一致性由 T1 的独立 sha 断言表达（见计划 §2.1）。
     - id: gate-agent-presets
       name: '@deepseek-ai/dsh-agent-presets'
       config:
-        default: minimal-plus-next
+        default: minimal-plus
         roots:
           - path: !!js process.env.GATE_PRESET_ROOT ?? 'presets'
             trust: system

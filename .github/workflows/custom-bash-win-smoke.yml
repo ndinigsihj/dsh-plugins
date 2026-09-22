@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - "presets/minimal-plus-next/custom-bash.mjs"
-      - "presets/minimal-plus-next/custom-bash.test.mjs"
+      - "presets/minimal-plus/custom-bash.mjs"
+      - "presets/minimal-plus/custom-bash.test.mjs"
       - "scripts/custom-bash-win-smoke.mjs"
       - ".github/workflows/custom-bash-win-smoke.yml"
 
@@ -16,13 +16,13 @@ jobs:
   win-smoke:
     runs-on: windows-latest
     env:
-      CUSTOM_BASH_PRESET_ROOT: presets/minimal-plus-next
+      CUSTOM_BASH_PRESET_ROOT: presets/minimal-plus
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Pure function contract tests
-        run: node --test presets/minimal-plus-next/custom-bash.test.mjs
+        run: node --test presets/minimal-plus/custom-bash.test.mjs
       - name: Real Windows smoke (resolve/echo/WSL reject/missing-bash fail-open)
         run: node scripts/custom-bash-win-smoke.mjs

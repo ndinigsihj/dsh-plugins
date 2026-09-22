@@ -57,7 +57,7 @@ import { installAnchor } from "./host-runtime.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/u, "");
 const OVERLAY = join(REPO_ROOT, "gates", "stub", "pty-smoke.patch.yml");
-const PRESET = "minimal-plus-next";
+const PRESET = "minimal-plus";
 const PROFILE = "tui-dev";
 const COLS = 120;
 const ROWS = 30;

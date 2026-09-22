@@ -1,3 +1,6 @@
+> 2026-09-22 收敛说明：宿主已统一到 0.1.5-rc.1/rc.2，原 `minimal-plus-next` 已改名为
+> `minimal-plus`（旧 `minimal-plus` 删除）。本文正文保留当时的 dev/stable 分叉记录，当前口径以 README 为准。
+
 # dsh-plugins 升级至 0.1.5-rc.1 — 收口记录（as-built）
 
 > 日期：2026-09-11（票据 13 文档收口）。状态：**文档已成文、未提交，等待用户审阅**。

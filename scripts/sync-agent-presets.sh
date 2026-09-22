@@ -2,9 +2,8 @@
 # Sync the repo's agent-preset definitions to ~/.dsh/.agent-presets.
 #
 # Usage: scripts/sync-agent-presets.sh [preset ...]
-#   No argument syncs `minimal-plus` only (the stable side, as before). Pass
-#   explicit ids to sync others without touching it, e.g.
-#     scripts/sync-agent-presets.sh minimal-plus-next
+#   No argument syncs `minimal-plus` (the only self-built preset). Pass
+#   explicit ids to sync others without touching it.
 #
 # The repo is the source of truth; deployed profiles mount the files from
 # ~/.dsh/.agent-presets. Run this after changing presets/ so deployments pick
@@ -18,11 +17,11 @@
 # user-preset location.
 #
 # Dependency target: synced presets are linked to $DSH_HOST_DEPS_DIR, or to the
-# CURRENT global host's tree when unset. Since dev and stable pin different
-# host generations (minimal-plus-next → global rc.1, minimal-plus → stable
-# rc.2), the stable side must be synced with an explicit target — release.sh
-# sets DSH_HOST_DEPS_DIR to the stable runtime before calling this. Do not run
-# a bare sync to "refresh" the stable preset against the global host.
+# CURRENT global host's tree when unset. 2026-09-22 the two profiles run the
+# same host generation (0.1.5-rc.1), so both targets name the same tree; syncs
+# still go through an explicit target (release.sh passes the pinned stable
+# runtime) so advancing the deployed preset never depends on which global host
+# happens to be installed.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."

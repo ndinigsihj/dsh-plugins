@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 降级路径实测（验收 #7；票据 03 起默认 dev 侧 minimal-plus-next）：
+# 降级路径实测（验收 #7；票据 03 起默认 dev 侧 minimal-plus）：
 # 临时构造一份 bootstrapTools 含不存在工具的 agent.cordis.yml，运行真实
 # headless 挂载冒烟，验证 tool-bootstrap 的 fail-open（缺工具 → warn once +
 # 暴露全量目录），会话不 brick，promotion 后两轮行为仍正常。
@@ -13,7 +13,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-PRESET="${DEGRADE_SMOKE_PRESET:-minimal-plus-next}"
+PRESET="${DEGRADE_SMOKE_PRESET:-minimal-plus}"
 SOURCE_ROOT="${DEGRADE_SMOKE_SOURCE_ROOT:-presets}"
 ROOT="${DEGRADE_SMOKE_ROOT:-.tmp-degrade-$PRESET}"
 rm -rf "$ROOT"

@@ -45,7 +45,7 @@
     - id: agent-presets
       name: "@deepseek-ai/dsh-agent-presets"
       config:
-        default: minimal-plus-next
+        default: minimal-plus
         roots: []
         includeUserRoot: true
 

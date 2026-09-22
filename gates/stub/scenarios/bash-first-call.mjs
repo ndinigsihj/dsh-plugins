@@ -13,13 +13,13 @@
  *       docs/regression-test-automation-plan.md §3.1、§5.4；实测见 docs/subagent-model-selection.md
  *       的 deepseek-official 行（首次缺 description 被参数校验拒）。
  *
- * 红绿复现（票据 06 / Q26；绿要求 presets/minimal-plus-next/phase-swap-bash.mjs 的 swap
+ * 红绿复现（票据 06 / Q26；绿要求 presets/minimal-plus/phase-swap-bash.mjs 的 swap
  * 延后修复在位）：
  *   # 绿
  *   node gates/stub/run.mjs --scenario bash-first-call \
  *     --json experiments/regression-gate/evidence/12-2-green.json
  *   # 临时回退修复（同一份 diff 反向应用；-R 只动插件文件）
- *   git diff -- presets/minimal-plus-next/phase-swap-bash.mjs \
+ *   git diff -- presets/minimal-plus/phase-swap-bash.mjs \
  *     > experiments/regression-gate/evidence/12-2-fix.patch
  *   git apply -R experiments/regression-gate/evidence/12-2-fix.patch
  *   node gates/stub/run.mjs --scenario bash-first-call \

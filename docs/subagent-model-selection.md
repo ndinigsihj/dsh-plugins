@@ -10,7 +10,7 @@
 ## 1. 结论先行
 
 - 本仓库在开发侧采用 dsh `0.1.5-rc.1` 自带的子代理模型选择机制，落点有两处：
-  **preset 开关**（仓库文件 `presets/minimal-plus-next/agent.cordis.yml`，
+  **preset 开关**（仓库文件 `presets/minimal-plus/agent.cordis.yml`，
   `delegation/tool-subagent` 的 `modelSelectionSettings: true`）与
   **宿主作用域设置服务**（`@deepseek-ai/dsh-tool-subagent/model-selection-settings`，
   部署在 `~/.dsh/profiles/*/cordis.patch.yml`）。
@@ -68,8 +68,8 @@ allowedModels:
 | --- | --- | --- |
 | `~/.dsh/profiles/tui-dev/cordis.patch.yml` | `subagent-model-selection-settings` insert：`enabled: true` + 2 条允许路由（§4.1） | `96a0d5e0…` |
 | `~/.dsh/profiles/headless/cordis.patch.yml` | 同 id 挂载：`enabled: false` + 同 2 条（保 M4/轨迹/冒烟 29 工具口径） | `6ef872ea…` |
-| `presets/minimal-plus-next/agent.cordis.yml` | `delegation/tool-subagent` 的 `modelSelectionSettings: true` | `9087bf00…` |
-| `~/.dsh/.agent-presets/minimal-plus-next/agent.cordis.yml` | 部署位副本，与仓库逐字节一致（8/8 生产文件 sha 一致） | `9087bf00…` |
+| `presets/minimal-plus/agent.cordis.yml` | `delegation/tool-subagent` 的 `modelSelectionSettings: true` | `b6828199…` |
+| `~/.dsh/.agent-presets/minimal-plus/agent.cordis.yml` | 部署位副本，与仓库逐字节一致（8/8 生产文件 sha 一致） | `b6828199…` |
 | `~/.dsh/settings.yaml` | 用户层当前**无** `subagent-model-selection:` 段；`agent-default-model` 已切 `commandcode/deepseek/deepseek-v4.1-flash`（2026-09-12） | 复核时 sha `84299548…`（其后仅默认模型行更新） |
 
 补充事实：
@@ -159,7 +159,7 @@ preset 的 `modelSelectionSettings: true` 仅在宿主挂载了服务时才有�
 
 | 文件 | 用途 |
 | --- | --- |
-| `presets/minimal-plus-next/agent.cordis.yml` | preset 开关（`modelSelectionSettings: true`） |
+| `presets/minimal-plus/agent.cordis.yml` | preset 开关（`modelSelectionSettings: true`） |
 | `~/.dsh/profiles/tui-dev/cordis.patch.yml` | 生产部署基线：开启 + 允许路由 |
 | `~/.dsh/profiles/headless/cordis.patch.yml` | 测量基线：关闭 + 同一集合 |
 | `~/.dsh/settings.yaml` | 用户层覆盖（可选；当前不存在该段） |

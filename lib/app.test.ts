@@ -18,7 +18,7 @@ import { FakeTerminal } from "./testing/fake-terminal.ts";
 import type { ToolPresenters } from "./transcript.ts";
 
 const MODEL = "opencode-go/deepseek-v4-flash";
-const PRESET = "minimal-plus-next";
+const PRESET = "minimal-plus";
 
 const presenters: ToolPresenters = {
   presentCall: () => undefined,

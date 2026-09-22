@@ -21,7 +21,7 @@
   config:
     provider: stub
     model: stub-model
-    preset: minimal-plus-next
+    preset: minimal-plus
 
 - insert:
     # `./adapter.mjs` 由加载器锚定到本补丁所在目录（anchorInsertedPluginNames）。

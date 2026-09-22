@@ -1,7 +1,13 @@
 # headless 跑 minimal-plus 轨迹实测（Phase 3）用的 --patch 覆盖层。
 #
-# 用法：TRAJECTORY_TASK=... TRAJECTORY_OUT=... \
+# 用法：TRAJECTORY_TASK=... \
 #   dsh --profile headless --patch presets/minimal-plus/trajectory.patch.yml
+#
+# 路径不写死：preset 根由 TRAJECTORY_PRESET_ROOT 覆盖，默认取相对当前工作目录的
+# presets（文档约定的调用方式即在仓库根执行）；driver 由 patch 文件位置锚定。
+#
+# 票 05：会话写隔离根（TRAJECTORY_SESSION_ROOT，默认 /tmp/dsh-probe/trajectory-sessions），
+# 不再写真实 ~/.dsh/sessions；报告默认归档到 <repo>/experiments/regression-gate/（TRAJECTORY_OUT 可覆盖）。
 - id: headless-runner
   disabled: true
 
@@ -12,15 +18,20 @@
 - id: tool-bash
   disabled: true
 
+# 票 05：会话隔离写（范式同票 11/12 探针与票 02 seeded 探针）
+- id: session-persistence-jsonl
+  config:
+    root: !!js process.env.TRAJECTORY_SESSION_ROOT ?? '/tmp/dsh-probe/trajectory-sessions'
+
 - insert:
     - id: agent-presets
       name: "@deepseek-ai/dsh-agent-presets"
       config:
         default: minimal-plus
         roots:
-          - path: /Users/vito/data/dev/dsh-plugins/presets
+          - path: !!js process.env.TRAJECTORY_PRESET_ROOT ?? 'presets'
             trust: system
         includeUserRoot: true
 
     - id: liangshen-trajectory
-      name: /Users/vito/data/dev/dsh-plugins/presets/minimal-plus/trajectory-driver.mjs
+      name: ./trajectory-driver.mjs

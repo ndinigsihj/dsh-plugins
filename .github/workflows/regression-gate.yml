@@ -16,7 +16,7 @@ on:
     paths:
       - "lib/**"
       - "plugins/**"
-      - "presets/minimal-plus-next/**"
+      - "presets/minimal-plus/**"
       - "gates/**"
       - "experiments/fixtures/**"
       - "experiments/session-preview-seeded/**"
@@ -31,7 +31,7 @@ on:
     paths:
       - "lib/**"
       - "plugins/**"
-      - "presets/minimal-plus-next/**"
+      - "presets/minimal-plus/**"
       - "gates/**"
       - "experiments/fixtures/**"
       - "experiments/session-preview-seeded/**"

@@ -80,7 +80,7 @@ test("renderRealComposition: 渲染到临时 home、源只读、preset 取自部
       ".dsh/profiles/tui-dev/cordis.patch.yml": sourceText,
       ".dsh/profiles/tui-dev/package.json": '{"name":"dsh-profile-tui-dev","private":true}\n',
       ".dsh/profiles/tui-dev/cordis.yml": "[]\n",
-      ".dsh/settings.yaml": "agent-presets:\n  default: minimal-plus-next\n",
+      ".dsh/settings.yaml": "agent-presets:\n  default: minimal-plus\n",
     });
     const checkouts = {
       plugins: join(root, "work/plugins"),
@@ -90,7 +90,7 @@ test("renderRealComposition: 渲染到临时 home、源只读、preset 取自部
     writeTree(checkouts.plugins, { "lib/startup.ts": "// plugins\n" });
     writeTree(checkouts.relay, { "src/client.ts": "// relay\n" });
     writeTree(checkouts.endless, { "src/tools.ts": "// endless\n" });
-    const deploymentRoot = join(root, "deployed/minimal-plus-next");
+    const deploymentRoot = join(root, "deployed/minimal-plus");
     writeTree(deploymentRoot, { "preset.yml": "name: fixture\n", "agent.cordis.yml": "[]\n" });
     const repoRoot = join(root, "repo");
     writeTree(repoRoot, { "presets/unused/preset.yml": "name: unused\n" });
@@ -100,7 +100,7 @@ test("renderRealComposition: 渲染到临时 home、源只读、preset 取自部
     const result = renderRealComposition({
       repoRoot,
       tempHome,
-      presetName: "minimal-plus-next",
+      presetName: "minimal-plus",
       deploymentRoot,
       installAnchor: import.meta.url,
       env: { DSH_PLUGINS_ROOT: checkouts.plugins, DSH_RELAY_ROOT: checkouts.relay, DSH_ENDLESS_ROOT: checkouts.endless },
@@ -136,14 +136,14 @@ test("renderRealComposition: 部署位缺席时回落仓库 preset 副本并标�
     const checkout = join(root, "checkout/dsh-endless");
     writeTree(checkout, { "src/tools.ts": "// endless\n" });
     const repoRoot = join(root, "repo");
-    writeTree(repoRoot, { "presets/minimal-plus-next/preset.yml": "name: fixture\n" });
+    writeTree(repoRoot, { "presets/minimal-plus/preset.yml": "name: fixture\n" });
     const tempHome = join(root, "temp-home");
     mkdirSync(tempHome, { recursive: true });
 
     const result = renderRealComposition({
       repoRoot,
       tempHome,
-      presetName: "minimal-plus-next",
+      presetName: "minimal-plus",
       deploymentRoot: join(root, "no-such-deployment"),
       installAnchor: import.meta.url,
       env: { DSH_PLUGINS_ROOT: checkout, DSH_RELAY_ROOT: checkout, DSH_ENDLESS_ROOT: checkout },

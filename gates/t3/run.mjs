@@ -28,7 +28,7 @@ import { summarize } from "../../experiments/m4/summarize.mjs";
 import { m4Outcome, probeOutcome, routeOutcome, t3ProvenanceProblems } from "./analysis.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
-const PRESET = "minimal-plus-next";
+const PRESET = "minimal-plus";
 /** T3 专用隔离 profile：headless 骨架 + 宿主作用域模型选择单例（默认 disabled）。 */
 const T3_PROFILE = "t3-headless";
 const M4_GROUP = "E";
@@ -98,7 +98,7 @@ function createArchiveDir() {
  * T3 专用隔离 profile：与 `prepareProfile` 的 headless 骨架同构，额外挂宿主作用域的
  * `subagent-model-selection-settings`（插件默认 enabled=false）。
  *
- * 为什么需要：minimal-plus-next 的 delegation/tool-subagent 声明了
+ * 为什么需要：minimal-plus 的 delegation/tool-subagent 声明了
  * `modelSelectionSettings: true`，宿主缺单例时 preset 直接挂载失败；真实运行态里这行
  * 由 profile patch 提供（tui-dev enabled=true；headless 机器上为 enabled=false）。
  * T3 的两个探针 patch 只做 `- id: … config:` 覆盖，所以单例必须先在 profile 层插入。
