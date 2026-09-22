@@ -40,13 +40,13 @@
     enableRunInBackground: true
 
 # ── identity ────────────────────────────────────────────────────────────────
-# Minimal persona（照抄 Minimal 基线，byte-identical to Minimal preset）：`complete`
+# Minimal persona（正文与 Minimal 基线一致，改用 0.1.5 宿主的 `prefix` 键）：`complete`
 # 防止 Harness identity 与 per-tool 指引改写 system prompt；includeRuntimeContext:false
 # 让任务与仓库规则只走 user message 与显式文件读取（固有取舍见文件头）。
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
-    text: >-
+    prefix: >-
       You are a helpful software engineer assistant.
 
       When a todo list is active, call todo_write to mark each item completed the moment it is done; before finishing a turn, ensure no completed task is left in_progress/pending and close the list (all completed) once all work is complete.
