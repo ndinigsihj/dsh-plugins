@@ -65,6 +65,23 @@ test("step 中途不 swap，step/end 同步 swap：view 显示沙箱 bash", asyn
   assert.equal(bootState.tools.view(undefined).visible.get("bash").description, PERSISTENT_DESC);
 });
 
+test("swap 后可执行：沙箱定义的 execute 不再缺服务（2026-09-23 回归）", async () => {
+  const bootState = bootWithPlugin();
+  const agent = makeAgent(bootState, "sess-exec");
+  await fireStepStart(bootState, agent.session);
+  await fireToolCall(bootState, agent.session);
+  await fireToolResult(bootState, agent.session);
+  await fireStepEnd(bootState, agent.session);
+  // 工具定义把 spy ctx 闭包进 execute：dsh-tool-bash 声明的服务漏一个，真实执行就抛
+  // "Cannot read properties of undefined"（2026-09-23 生产回归：漏 shellEnv → 换相后每条
+  // bash 都在 ctx.shellEnv.collect(exec) 处 TypeError）。只断言 schema 挡不住这类回归。
+  const bash = VIEW(agent.ctx).get("bash");
+  const exec = { signal: new AbortController().signal, agent: { session: { header: {} } } };
+  const out = await bash.execute({ command: "true", description: "probe" }, exec);
+  assert.equal(out.kind, "foreground");
+  assert.equal(out.exitCode, 0);
+});
+
 test("多调用 step（批量 bash）：step/end 之前两条调用都不换 schema", async () => {
   const bootState = bootWithPlugin();
   const agent = makeAgent(bootState, "sess-batch");

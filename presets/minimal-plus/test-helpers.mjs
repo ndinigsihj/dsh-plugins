@@ -25,7 +25,22 @@ export function boot({ withSandboxPolicy = true, sandboxPolicyMode = "workspace-
   root.provide("systemPrompt", { tools() {}, section() {}, getSectionOrder: () => 0 });
   const tools = new ToolRuntime(root, {});
   tools.layers.onChange = () => {};
-  root.provide("shell", { sandboxMode: sandboxPolicyMode });
+  // 沙箱 bash 的 execute 走 ctx.shell.resolve/run；存根返回成功的假执行结果，让
+  // 「swap 后的定义真的可执行」成为可断言的接缝（2026-09-23 回归：spy ctx 漏 shellEnv
+  // 时 execute 在 ctx.shellEnv.collect 处抛 TypeError，只有真跑一次才暴露）。
+  root.provide("shell", {
+    sandboxMode: sandboxPolicyMode,
+    resolve: (request) => request,
+    run: async (request) => ({
+      exitCode: 0,
+      signal: null,
+      timedOut: false,
+      aborted: false,
+      timeoutMs: request?.timeoutMs ?? 1000,
+      stdout: { text: "probe ok", truncated: false },
+      stderr: { text: "", truncated: false },
+    }),
+  });
   if (withSandboxPolicy) {
     root.provide("sandboxPolicy", {
       resolve: () => ({ mode: sandboxPolicyMode, workspaceRoot: process.cwd() }),

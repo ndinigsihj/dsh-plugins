@@ -12,8 +12,10 @@
  * 关键实现约束：swap 必须在「下一次请求的工具快照」之前完成，而快照发生在
  * `system-prompt/assemble` 内部（工具 provider 先收集、waterfall 后跑——在 assemble
  * 监听器里注册已经太晚），因此换 schema 只能在 step/end 事件里 **同步** 完成：
- * 用 root 服务一次性捕获沙箱工具定义（spy 吞掉 guidance section 注册），再用
- * `agent.ctx.tools.register(definition)` 直接注册进该 agent 的 scope layer。
+ * 用 root 服务一次性捕获沙箱工具定义（spy 吞掉 guidance section 注册；spy 的服务
+ * 属性按 `dsh-tool-bash` 的 inject 声明派生——execute 闭包会属性访问它们，漏一个
+ * 就在真实执行时报 undefined），再用 `agent.ctx.tools.register(definition)` 直接
+ * 注册进该 agent 的 scope layer。
  * 早期的 `agent.ctx.inject([...])` 路线是异步 fiber，会与下一次装配赛跑（实测漏 swap）。
  * `step/start` → `step/end` 的开合状态是守卫：step 中途（含 tool/call、tool/result）
  * 一律不换 schema，避免 dispatch 用 live registry 解析工具时被换掉本 step 已产出的参数。
@@ -130,8 +132,12 @@ export function apply(ctx, config) {
   const captureSandboxDefinition = () => {
     if (sandboxDefinition !== undefined) return sandboxDefinition
     let captured
+    // spy ctx 的服务按 dsh-tool-bash 声明的 inject 列表派生：工具定义把该 ctx 闭包
+    // 进 execute，并以属性访问这些服务（如 ctx.shellEnv.collect(exec)），漏一个就会
+    // 在真实执行时抛 "Cannot read properties of undefined"——2026-09-23 回归：裸
+    // 字面量漏了 shellEnv，promotion 换相后每条 bash 调用都挂（单测只断言 schema 挡不住）。
     const spyCtx = {
-      shell: ctx.get('shell'),
+      ...Object.fromEntries(sandboxBash.inject.map((service) => [service, ctx.get(service)])),
       get: (service) => ctx.get(service),
       // dsh-tool-bash 的 guidance section 经 getSectionOrder 注册；spy 按真实服务应答。
       systemPrompt: { section() {}, tools() {}, getSectionOrder: () => 0 },
