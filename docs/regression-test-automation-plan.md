@@ -196,6 +196,9 @@ stable 与 dev 的回归边界写清，不留「看起来有测试其实没跑�
 3. `v3-resume-route`（票据 11）：V3 会话 resume 后首个 `request/header` 含 `list_subagent_models`。
 4. `rewind-fork-persist`（06-1）：**落 T4b**（见 Q27/Q28）。
 5. `delegation-policy`（票据 11）：省略路由继承父路由 / 集合外路由被拒（stub 下确定性复现）。
+6. `bash-first-step-batch`（12-2 多调用残留，2026-09-23 新增）：turn1 一条 assistant 消息两条
+   `bash{command}`（无 `description`）→ 断言两条都无 `INVALID_ARGS` 拒，且沙箱 schema 只在该
+   step 结算（`step/end`）之后的下一次请求出现；turn2 补 `description`。
 
 **确定性护栏（Q25）**：overlay 内 `{id:'session-title-llm', disabled:true}`（首条人类消息后会**并发**打同一路由：
 `dsh-session-title/lib/index.js:380-394`；调用点 `dsh-session-title-llm/lib/index.js:196-232`；失败被吞 `:437-442`），
@@ -398,6 +401,7 @@ scripts/regression-gate.sh --tier 0,1 --composition real          # Q15：真实
 | 首个 `request/header.config` == `stub/stub-model` | Q25 | T2 |
 | 首个 anchored bash 调用无 `INVALID_ARGS`（12-2 红→绿） | 12-2 | T2 |
 | promotion 后沙箱 bash 可见；compaction 后回退 persistent | 12-2 同源 | T2 |
+| 触发 step 的多条 anchored bash 调用均无 `INVALID_ARGS`，swap 只在 `step/end` 后可见 | 12-2 多调用残留 | T2 |
 | V3 会话 resume 后首个 `request/header` 含 `list_subagent_models` | 11 | T2 |
 | 委派策略：省略路由继承父路由；集合外路由被拒 | 11 | T2 |
 | 启动帧含 alt-screen 进入；退出帧含 `\x1b[?1049l`+`\x1b[?25h`；Ctrl+C 双按退出 | `ARCHITECTURE.md` | T4a |

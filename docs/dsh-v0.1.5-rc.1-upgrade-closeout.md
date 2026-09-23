@@ -185,10 +185,22 @@
 - **首轮 anchored bash 首次调用必先参数校验失败**：promotion 前模型看到的是持久 bash schema（只要 `command`），
   而 phase-swap 已把该 agent 换成沙箱 bash（要 `command`+`description`），首次调用报
   `missing required property "description"`，能自纠的模型重发即成功。机制线索
-  `presets/minimal-plus-next/phase-swap-bash.mjs`。**2026-09-11 已修（票据 06，方向 A）**：swap 延后到
+  `presets/minimal-plus/phase-swap-bash.mjs`。**2026-09-11 已修（票据 06，方向 A）**：swap 延后到
   触发 promotion 的调用结算（`tool/result`）之后，首轮调用按产出参数时的 persistent schema 校验，
   下一次请求起沙箱 schema 生效；红→绿证据见 `experiments/regression-gate/evidence/12-2-red.json` /
   `12-2-green.json` 与 `docs/tickets/regression-test-automation/evidence/06-stub-model-tier-and-12-2.md`。
+  **2026-09-23 补修（同一残留的多调用形态）**：`tool/result` 只是单条调用的结算，一个 step 可以携带
+  多条 tool/call（模型在一条 assistant 消息里批量发出独立调用，全局 AGENTS.md 还明确要求这么做）；
+  dsh-agent-loop 逐条 appendToolCall → prepare/dispatch → appendToolResult，全部结算后才 append
+  `step/end`。因此第一个 `tool/result` 时同 step 仍有 pending 调用，它们按 persistent schema 产出的
+  参数被沙箱 schema 拒——TUI 实测 `session-291c37fa`：首轮两条 bash，第二条
+  `ToolArgsError/INVALID_ARGS: missing required property "description"`。修复：swap 改到触发 step
+  的结算（`step/end`；resume 则是首个 `turn/start`）时**同步**注册——工具定义用 root 服务一次性
+  捕获，`agent.ctx.tools.register()` 直接落进该 agent 的 scope layer，因此必在 loop 的
+  `preStep()` 工具装配之前生效（早期 `agent.ctx.inject([...])` 是异步 fiber，会与下一次装配
+  赛跑，实测漏 swap）；`step/start` → `step/end` 开合守卫挡住 step 中途的装配。换 schema 与
+  「一个请求一个工具快照」同粒度，回归锁 `gates/stub/scenarios/bash-first-step-batch.mjs`
+  （红→绿证据 `experiments/regression-gate/evidence/12-3-red.json` / `12-3-green.json`）。
 - **seeded 子会话 hover 预览**：已于 2026-09-11 Stage 7 修复（`lib/session-preview-log.ts` 回退 + 真实 fixture 红→绿探针，见 `evidence/13-stage7-fixes.md`），不再列为残留。
 - **relay 未验证**：`agent/assistant-stream` 是否由 relay 镜像转发、V3/`SessionHandle` 迁移均未做，
   属后续独立轮次（finding 04-4；spec out of scope）。

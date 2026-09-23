@@ -1,9 +1,12 @@
-# `minimal-plus` 组合 preset（0.1.5-rc.1 宿主）：Minimal 全量基底 + 二轮 bash 提权 + 二轮 AGENTS.md 注入。
+# `minimal-plus` 组合 preset（0.1.5-rc.2 宿主）：Minimal 全量基底 + 二轮 bash 提权 + 二轮 AGENTS.md 注入。
 #
 # 2026-09-10 依 ADR-0002 分叉出开发侧副本 `minimal-plus-next`（当时 dev/stable 两台宿主不同代：
 # rc.1 的 `@deepseek-ai/dsh-persona` 用 `prefix` 正文键，rc.2 只认 `text`，单份文件无法同时服务）。
 # 2026-09-22 宿主统一到 0.1.5-rc.1 后分叉收敛：本目录即原 `minimal-plus-next`，改名为
 # `minimal-plus`，旧 stable 副本删除（ADR-0002 已 Superseded）。
+# 2026-09-23 复核：宿主已升至 0.1.5-rc.2（gates/manifest.json hostVersion=0.1.5-rc.2），
+# 而该版 `@deepseek-ai/dsh-persona` 仍以 `prefix` 为必填正文键并映射到 `text`——上述
+# 「rc.2 只认 text」的差异描述已过期，本 preset 的 persona 行在 rc.2 宿主上正常挂载。
 # 2026-09-10 票据 09 按 ADR-0003 去重：本文件只声明与 rc.1 `dsh-base` 的差异。删除与宿主
 # 逐字重复的挂载行（agent-instructions / tool-pwsh / tool-fs / tool-fs-search / tool-jobs /
 # skill-filesystem / tool-goal / tool-todo）与删空的分组（planning / compaction）；
@@ -20,8 +23,10 @@
 #        custom-bash / skill-search；S7 部署位决策，相对路径 + sync 整树同步，部署
 #        副本不引用 dev 工作树；文件自研替换 vendor，契约见 docs/
 #        minimal-plus-preset-self-host-implementation.md）。
-#   5. 新增 phase-swap-bash 行：首轮 tool/call（promotion）后把该 agent 的 bash 从
-#      persistent 换成沙箱 dsh-tool-bash（sandbox_permissions 提权）。
+#   5. 新增 phase-swap-bash 行：触发 promotion 的 step 结算（`step/end`，resume 则是
+#      首个 `turn/start`）时把该 agent 的 bash 从 persistent 同步换成沙箱
+#      dsh-tool-bash（sandbox_permissions 提权）；换 schema 与「一个请求一个工具
+#      快照」同粒度，step 内批量调用不受影响。
 # persona 保持 Minimal 版（前身 liangshen 同款）（rc.1 前缀键 + complete:true +
 # includeRuntimeContext:false）；二轮 agent-instructions 注入由宿主 base 行提供
 # （原显式行与宿主逐字重复，票据 09 已删）。
@@ -43,11 +48,11 @@
     suppressedContextSources: [agent-instructions, skill-catalog]
 
 # ── phase-swap-bash ─────────────────────────────────────────────────────────
-# 首轮 tool/call 后（promotion）把该 agent 的 bash 从 persistent 换成沙箱
-# dsh-tool-bash。per-agent shadow 语义：对该 agent 的 ctx 调 dsh-tool-bash.apply()，
-# 注册进该 agent 的 scope layer，shadow 掉全局 persistent bash，其他 session/子代理
-# 不受影响；swap 失败 warn once + 保持 persistent bash。插件单一来源：repo
-# presets/minimal-plus/phase-swap-bash.mjs（本 preset 版本化）。
+# 触发 promotion 的 step 结算（`step/end`，resume 则是首个 `turn/start`）时把该 agent
+# 的 bash 从 persistent 同步换成沙箱 dsh-tool-bash。per-agent shadow 语义：对该 agent
+# 的 ctx 调 tools.register()，注册进该 agent 的 scope layer，shadow 掉全局 persistent
+# bash，其他 session/子代理不受影响；swap 失败 warn once + 保持 persistent bash。
+# 插件单一来源：repo presets/minimal-plus/phase-swap-bash.mjs（本 preset 版本化）。
 - id: phase-swap-bash
   name: './phase-swap-bash.mjs'
   config:
@@ -81,7 +86,7 @@
   name: '@deepseek-ai/dsh-tool-bash'
   # 差异行（票据 09 保留）：宿主同行只在 win32 禁用；本组合始终禁用——
   # persistent-shell 组注册了同名 bash（首轮锚定），沙箱 bash 由
-  # phase-swap-bash 在 promotion 时对该 agent 动态注册（per-agent shadow）。
+  # phase-swap-bash 在触发 step 结算（step/end / turn/start）时对该 agent 动态注册（per-agent shadow）。
   disabled: true
 
 # Minimal 的 persistent shell（PTY）：首轮 bash 就是它（锚定），disposed 语义由

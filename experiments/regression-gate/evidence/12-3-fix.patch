@@ -1,0 +1,186 @@
+diff --git a/presets/minimal-plus/phase-swap-bash.mjs b/presets/minimal-plus/phase-swap-bash.mjs
+index 971fef4..c598e19 100644
+--- a/presets/minimal-plus/phase-swap-bash.mjs
++++ b/presets/minimal-plus/phase-swap-bash.mjs
+@@ -2,9 +2,21 @@
+  * phase-swap-bash — swap the persistent bash for the sandboxed bash on promotion.
+  *
+  * liangshen+ 组合 preset 的第三个机制：首轮用 persistent bash（Minimal 锚定对），
+- * 首个 durable tool/call 触发 promotion，但 swap 延后到该调用结算（tool/result）之后：
+- * 同一 step 内 dispatch 仍按产出参数时的 persistent schema 校验（finding 12-2），
+- * 下一次请求起换成 `dsh-tool-bash`（沙箱 + sandbox_permissions 提权）生效。
++ * 首个 durable tool/call 触发 promotion，但 swap 只在该 step 结算（`step/end`）后执行：
++ * 一个 step 可以携带多条 tool/call（模型在一条 assistant 消息里批量发出独立调用），
++ * dsh-agent-loop 逐条 appendToolCall → prepare/dispatch → appendToolResult，全部结算
++ * 后才 append step/end。换 schema 的边界因此与「一个请求一个工具快照」同粒度，无论该
++ * step 携带几条调用（finding 12-2 及其多调用残留），下一次请求起换成
++ * `dsh-tool-bash`（沙箱 + sandbox_permissions 提权）生效。
++ *
++ * 关键实现约束：swap 必须在「下一次请求的工具快照」之前完成，而快照发生在
++ * `system-prompt/assemble` 内部（工具 provider 先收集、waterfall 后跑——在 assemble
++ * 监听器里注册已经太晚），因此换 schema 只能在 step/end 事件里 **同步** 完成：
++ * 用 root 服务一次性捕获沙箱工具定义（spy 吞掉 guidance section 注册），再用
++ * `agent.ctx.tools.register(definition)` 直接注册进该 agent 的 scope layer。
++ * 早期的 `agent.ctx.inject([...])` 路线是异步 fiber，会与下一次装配赛跑（实测漏 swap）。
++ * `step/start` → `step/end` 的开合状态是守卫：step 中途（含 tool/call、tool/result）
++ * 一律不换 schema，避免 dispatch 用 live registry 解析工具时被换掉本 step 已产出的参数。
+  *
+  * 为什么是 per-agent shadow 而不是 dispose+register：
+  *  - `dsh-tool-bash-persistent.apply()` 与 `dsh-tool-bash.apply()` 都只调
+@@ -90,11 +102,13 @@ export function apply(ctx, config) {
+   })
+ 
+   /** Per-session swap memo: sessionId → sandbox-registration disposer. The
+-   * disposer comes from registering the spy-captured tool definition into the
+-   * real agent scope, so compaction can actually UNREGISTER the sandbox and
+-   * return to the controlled (persistent bash) phase — re-registering the
+-   * same name in the same agent scope would throw ("already registered"). */
++   * disposer comes from registering the captured tool definition into the real
++   * agent scope, so compaction can actually UNREGISTER the sandbox and return
++   * to the controlled (persistent bash) phase — re-registering the same name
++   * in the same agent scope would throw ("already registered"). */
+   const swapDisposers = new Map()
++  /** Per-session open-step flag: true between `step/start` and `step/end`. */
++  const openSteps = new Set()
+   let warned = false
+   const warnOnce = (message) => {
+     if (warned) return
+@@ -106,73 +120,75 @@ export function apply(ctx, config) {
+     }
+   }
+ 
+-  ctx.on('session/event', async (session, event) => {
+-    try {
+-      const agent = ctx.get('agents')?.get(session.id)
+-      if (agent === undefined) return
+-
+-      if (event.type === 'compaction/end') {
+-        // compaction 后回到 controlled phase：注销该 agent scope 里的沙箱
+-        // bash，露出全局 persistent bash；下次 promotion 再重新 swap。
+-        const disposer = swapDisposers.get(session.id)
+-        if (disposer !== undefined) {
+-          disposer()
+-          swapDisposers.delete(session.id)
+-        }
+-        return
++  /**
++   * 沙箱 bash 的工具定义：用 root 服务跑一次 `dsh-tool-bash.apply()`，spy 吞掉
++   * guidance section 注册并捕获 definition。定义只随 composition 的 shell
++   * sandboxMode 变化（全局），因此捕获一次即可；捕获与注册全程同步，才能保证
++   * step/end 之后的下一次请求装配看到新 schema。
++   */
++  let sandboxDefinition
++  const captureSandboxDefinition = () => {
++    if (sandboxDefinition !== undefined) return sandboxDefinition
++    let captured
++    const spyCtx = {
++      shell: ctx.get('shell'),
++      get: (service) => ctx.get(service),
++      // dsh-tool-bash 的 guidance section 经 getSectionOrder 注册；spy 按真实服务应答。
++      systemPrompt: { section() {}, tools() {}, getSectionOrder: () => 0 },
++      tools: { register: (definition) => { captured = definition; return () => {} } },
++    }
++    sandboxBash.apply(spyCtx, swapConfig)
++    if (captured?.description !== undefined) {
++      captured = {
++        ...captured,
++        description: captured.description
++          + '\n* Network access is not blocked by the sandbox; do not pass sandbox_permissions just for curl/wget.',
+       }
++    }
++    sandboxDefinition = captured
++    return sandboxDefinition
++  }
+ 
+-      if (swapDisposers.has(session.id)) return
+-      // 不只响应新 tool/call：promotion.status() 会冷扫描 session 日志，
+-      // 所以 resume 一个已经 promoted 的会话时，任意首个事件都能触发 swap，
+-      // 不会一直保持 persistent bash 直到再次出现 tool/call（H5 冷启动回归）。
+-      if (!promotion.status(agent).promoted) return
+-      // finding 12-2：promotion 由本次 tool/call 触发，但该调用的参数已按上一个请求的
+-      // persistent bash schema 产出，而 dsh-agent-loop 是「先 appendToolCall 再
+-      // tools.prepare/dispatch」（loop:586-588），dispatch 用 live registry 解析工具。
+-      // 此刻 swap 会让同一 step 的参数被沙箱 schema 拒（missing required property
+-      // "description"）。因此 swap 延后到触发 promotion 的调用结算（tool/result）或任何
+-      // 表明本 step 已无 pending call 的事件；promotion 状态本身不变，冷启动/resume 仍
+-      // 由首个非 tool/call 事件触发（见上一条注释的 H5 回归）。
+-      if (event.type === 'tool/call') return
+-      // Register sandbox bash into THIS agent's scope layer, shadowing the
+-      // shared persistent bash for this session only. `dsh-tool-bash.apply`
+-      // resolves ctx.shell / ctx.sandboxPolicy / ctx.approval / ctx.systemPrompt
+-      // / ctx.tools up the chain from the agent ctx, exactly like standard.
+-      // 注意：直接 apply(agent.ctx) 会因 cordis 的 "without inject" 检查失败
+-      // （属性访问需要 inject 声明）——用 ctx.inject 建立注入子 ctx 再调。
+-      let sandboxDisposer
+-      // dsh-tool-bash 的 apply 需要 tools/shell/systemPrompt/shellEnv（另用
+-      // ctx.get 取 sandboxPolicy/approval，不走 inject）；真实 harness 的 agent
+-      // ctx 是 fiber 上下文，未注入的属性访问会抛 "without inject"。注入列表必须
+-      // 与其 `inject` 声明一致，spy ctx 也要基于 injectedCtx 派生以保留声明。
+-      await agent.ctx.inject(['tools', 'shell', 'systemPrompt', 'shellEnv'], (injectedCtx) => {
+-        // apply() 本身不返回 disposer；先用一个只捕获 definition 的 spy ctx
+-        // 跑一遍 apply 拿到工具定义，再注册进真实 agent scope 以捕获注销句柄。
+-        let definition
+-        const spyCtx = injectedCtx.extend({
+-          tools: { register: (d) => { definition = d; return () => {} } },
+-          // rc.1 dsh-tool-bash registers its guidance section through
+-          // getSectionOrder; the spy must answer it like the real service.
+-          systemPrompt: { section() {}, tools() {}, getSectionOrder: () => 0 },
+-        })
+-        sandboxBash.apply(spyCtx, swapConfig)
+-        if (definition?.description !== undefined) {
+-          definition = {
+-            ...definition,
+-            description: definition.description
+-              + '\n* Network access is not blocked by the sandbox; do not pass sandbox_permissions just for curl/wget.',
+-          }
+-        }
+-        sandboxDisposer = injectedCtx.tools.register(definition)
+-      })
+-      // Mark swapped only after the swap actually succeeded: a transient
+-      // failure must leave the session eligible for a future retry.
+-      if (sandboxDisposer !== undefined) swapDisposers.set(session.id, sandboxDisposer)
++  ctx.on('session/event', (session, event) => {
++    if (event.type === 'compaction/end') {
++      openSteps.delete(session.id)
++      // compaction 后回到 controlled phase：注销该 agent scope 里的沙箱
++      // bash，露出全局 persistent bash；下次 promotion 再重新 swap。
++      const disposer = swapDisposers.get(session.id)
++      if (disposer !== undefined) {
++        disposer()
++        swapDisposers.delete(session.id)
++      }
++      return
++    }
++    if (event.type === 'step/start') {
++      openSteps.add(session.id)
++      return
++    }
++    if (event.type === 'step/end') openSteps.delete(session.id)
++    // 只在两个已知安全点换相：step/end（触发 step 已结算，下一 step 尚未
++    // step/start）与 turn/start（resume 的第一次请求之前）。同步注册保证 loop 在
++    // preStep 里 await 的工具装配看得到新 schema；step 中途（含 tool/call、
++    // tool/result）一律跳过，避免 dispatch 用 live registry 解析工具时把本 step
++    // 已产出的参数换到新 schema 上（finding 12-2 原形）。
++    if (event.type !== 'step/end' && event.type !== 'turn/start') return
++    if (openSteps.has(session.id) || swapDisposers.has(session.id)) return
++    const agent = ctx.get('agents')?.get(session.id)
++    if (agent === undefined) return
++    // 冷启动/resume：promotion.status() 冷扫描 session 日志，恢复会话在首个
++    // step 已结算的事件即换相，不必等新的 tool/call（H5 冷启动回归）。
++    if (!promotion.status(agent).promoted) return
++    try {
++      // 直接访问 agent.ctx.tools（服务解析沿 fiber 链找到 tools 实现，无需 inject），
++      // register 落在该 agent 的 scope layer：shadow 全局 persistent bash，
++      // 其他 session/子代理不受影响；失败保留 persistent（目录全开但无提权）。
++      const disposer = agent.ctx.tools.register(captureSandboxDefinition())
++      // Mark swapped only after the swap actually succeeded: a transient failure
++      // must leave the session eligible for a future retry.
++      if (disposer !== undefined) swapDisposers.set(session.id, disposer)
+     } catch (error) {
+-      // Degrade: keep persistent bash (full directory but no escalation).
+       warnOnce(
+-        `${name}: swap to sandboxed bash failed for session ${session.id}, keeping persistent bash: `
++        `${name}: swap to sandboxed bash failed for session ${String(session.id)}, keeping persistent bash: `
+         + `${String((error && error.message) || error)}`,
+       )
+     }

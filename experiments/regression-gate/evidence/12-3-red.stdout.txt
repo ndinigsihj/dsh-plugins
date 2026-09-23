@@ -1,0 +1,10 @@
+[T2] scenario=bash-first-step-batch finding=finding 12-2 多调用残留：批量 bash 的 step 内 swap 提前到首个 tool/result
+  PASS route.first-request — request/header#1 config=stub/stub-model
+  PASS bash.step1-request-persistent — request/header#1 bash params=command
+  PASS bash.step1-batch-two-calls — step1 bash calls=2 args={"command":"pwd"} || {"command":"echo batch-2"}
+  FAIL bash.step1-no-arg-rejection — rejected calls=[{"callId":"stub-call-2","error":"INVALID_ARGS"}]
+  PASS bash.swap-only-after-step-end — step/end seq=18 sandbox header seq=20 headers before step/end with sandbox=0
+  PASS bash.second-call-accepted — tool/call after step/end arguments={"command":"pwd","description":"二轮沙箱调用：确认当前目录"} result=isError=undefined error=<none>
+  PASS stub.no-aux-calls — conversation calls=3/3 aux=[]
+  PASS session.turn-completed — turn/end reason={"kind":"completed"}
+[T2] summary: 7 passed, 1 failed — report experiments/regression-gate/evidence/12-3-red.json

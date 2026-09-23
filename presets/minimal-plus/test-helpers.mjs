@@ -118,8 +118,8 @@ export async function fireToolCall(bootState, session) {
 
 /**
  * 触发一个 tool/result session 事件（结算上一条 tool/call）。
- * finding 12-2 起，phase-swap-bash 的 swap 以此事件为触发点：tool/call 只 promotion、
- * 不换 schema，避免同一 step 已产出的参数被沙箱 schema 拒。
+ * 2026-09-23 起 swap 不再以调用结算为触发点（同一 step 可能还有 pending 调用）；
+ * 换相点只有 step/end 与 turn/start（见 fireStepEnd）。
  */
 export async function fireToolResult(bootState, session, callId = "call-1") {
   const event = {
@@ -127,6 +127,18 @@ export async function fireToolResult(bootState, session, callId = "call-1") {
     seq: sessionLog(session).length,
     data: { message: { content: [{ type: "tool-result", toolCallId: callId, content: [], isError: false }] } },
   };
+  await fireEvent(bootState, session, event);
+}
+
+/** 触发 step/start（openSteps 守卫：step 中途的 assemble 不得换 schema）。 */
+export async function fireStepStart(bootState, session) {
+  const event = { type: "step/start", seq: sessionLog(session).length, data: {} };
+  await fireEvent(bootState, session, event);
+}
+
+/** 触发 step/end（一个 step 的全部 tool call 都已结算）。 */
+export async function fireStepEnd(bootState, session) {
+  const event = { type: "step/end", seq: sessionLog(session).length, data: {} };
   await fireEvent(bootState, session, event);
 }
 

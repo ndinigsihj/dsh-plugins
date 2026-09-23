@@ -1,0 +1,163 @@
+{
+  "schema": "dsh-gate-stub/1",
+  "scenario": {
+    "id": "bash-first-step-batch",
+    "finding": "finding 12-2 多调用残留：批量 bash 的 step 内 swap 提前到首个 tool/result",
+    "invariant": "触发 step 的两条 bash 调用全部按 persistent schema 校验通过；沙箱 schema 自该 step 之后的下一次请求才可见",
+    "path": "/Users/vito/data/dev/dsh-plugins/gates/stub/scenarios/bash-first-step-batch.mjs"
+  },
+  "hostVersion": "0.1.5-rc.2",
+  "startedAt": "2026-09-23T10:56:10.811Z",
+  "finishedAt": "2026-09-23T10:56:12.380Z",
+  "durationMs": 1569,
+  "route": {
+    "provider": "stub",
+    "model": "stub-model"
+  },
+  "sessionId": "session-stub-bash-first-step-batch-bb65a195-8c48-4784-aff0-995039e4b5d0",
+  "sessions": [
+    {
+      "id": "session-stub-bash-first-step-batch-bb65a195-8c48-4784-aff0-995039e4b5d0",
+      "label": "main",
+      "role": "created"
+    }
+  ],
+  "facts": {},
+  "calls": [
+    {
+      "provider": "stub",
+      "model": "stub-model",
+      "purpose": null,
+      "sessionId": "session-stub-bash-first-step-batch-bb65a195-8c48-4784-aff0-995039e4b5d0",
+      "toolNames": [
+        "bash",
+        "str_replace_editor"
+      ],
+      "turnIndex": 0
+    },
+    {
+      "provider": "stub",
+      "model": "stub-model",
+      "purpose": null,
+      "sessionId": "session-stub-bash-first-step-batch-bb65a195-8c48-4784-aff0-995039e4b5d0",
+      "toolNames": [
+        "ask_user_question",
+        "bash",
+        "create_goal",
+        "edit",
+        "exit_plan_mode",
+        "get_goal",
+        "glob",
+        "grep",
+        "interrupt_agent",
+        "job_kill",
+        "job_list",
+        "job_output",
+        "list_agents",
+        "list_subagent_models",
+        "ralph",
+        "read",
+        "read_image",
+        "send_message",
+        "skill",
+        "skill_load",
+        "skill_search",
+        "str_replace_editor",
+        "subagent",
+        "subagent_fork",
+        "todo_write",
+        "update_goal",
+        "web_fetch",
+        "web_search",
+        "workflow",
+        "write"
+      ],
+      "turnIndex": 1
+    },
+    {
+      "provider": "stub",
+      "model": "stub-model",
+      "purpose": null,
+      "sessionId": "session-stub-bash-first-step-batch-bb65a195-8c48-4784-aff0-995039e4b5d0",
+      "toolNames": [
+        "ask_user_question",
+        "bash",
+        "create_goal",
+        "edit",
+        "exit_plan_mode",
+        "get_goal",
+        "glob",
+        "grep",
+        "interrupt_agent",
+        "job_kill",
+        "job_list",
+        "job_output",
+        "list_agents",
+        "list_subagent_models",
+        "ralph",
+        "read",
+        "read_image",
+        "send_message",
+        "skill",
+        "skill_load",
+        "skill_search",
+        "str_replace_editor",
+        "subagent",
+        "subagent_fork",
+        "todo_write",
+        "update_goal",
+        "web_fetch",
+        "web_search",
+        "workflow",
+        "write"
+      ],
+      "turnIndex": 2
+    }
+  ],
+  "assertions": [
+    {
+      "id": "route.first-request",
+      "status": "pass",
+      "evidence": "request/header#1 config=stub/stub-model"
+    },
+    {
+      "id": "bash.step1-request-persistent",
+      "status": "pass",
+      "evidence": "request/header#1 bash params=command"
+    },
+    {
+      "id": "bash.step1-batch-two-calls",
+      "status": "pass",
+      "evidence": "step1 bash calls=2 args={\"command\":\"pwd\"} || {\"command\":\"echo batch-2\"}"
+    },
+    {
+      "id": "bash.step1-no-arg-rejection",
+      "status": "pass",
+      "evidence": "all 2 step1 calls dispatched without argument rejection"
+    },
+    {
+      "id": "bash.swap-only-after-step-end",
+      "status": "pass",
+      "evidence": "step/end seq=18 sandbox header seq=20 headers before step/end with sandbox=0"
+    },
+    {
+      "id": "bash.second-call-accepted",
+      "status": "pass",
+      "evidence": "tool/call after step/end arguments={\"command\":\"pwd\",\"description\":\"二轮沙箱调用：确认当前目录\"} result=isError=undefined error=<none>"
+    },
+    {
+      "id": "stub.no-aux-calls",
+      "status": "pass",
+      "evidence": "conversation calls=3/3 aux=[]"
+    },
+    {
+      "id": "session.turn-completed",
+      "status": "pass",
+      "evidence": "turn/end reason={\"kind\":\"completed\"}"
+    }
+  ],
+  "summary": {
+    "passed": 8,
+    "failed": 0
+  }
+}

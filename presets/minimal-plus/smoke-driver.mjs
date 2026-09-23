@@ -4,8 +4,9 @@
  * 在 headless 组合里创建 agent 并挂载 minimal-plus preset，然后：
  *   R1. system-prompt/assemble → 首轮可见目录（应为 {bash persistent, str_replace_editor}）
  *   R1. agent/pre-step → 首轮注入（应无 agent-instructions / skill-catalog）
- *   ↳  append tool/call（promotion）→ 断言目录未变；append tool/result（结算）→
- *      phase-swap-bash 对该 agent swap（finding 12-2：swap 以结算为触发点）
+ *   ↳  append step/start + tool/call（promotion）→ 断言目录未变；tool/result + step/end
+ *      （step 结算，同步注册）后 R2 assembly 才看到沙箱 bash（finding 12-2 多调用残留：
+ *      换 schema 只发生在 step/end / turn/start，step 中途的装配不得换）
  *   R2. system-prompt/assemble → 二轮目录（bash 应带 sandbox_permissions）
  *   R2. agent/pre-step → 二轮注入（应含 agent-instructions）
  *
@@ -85,10 +86,14 @@ async function run(ctx) {
   assert.ok(!r1Sources.includes("agent-instructions"), "R1 must not inject agent-instructions");
   assert.ok(!r1Sources.includes("skill-catalog"), "R1 must not inject skill-catalog");
 
-  // 首个 durable tool/call（promotion）→ 结算后 swap（finding 12-2：swap 延后到 tool/result）
+  // 首个 durable tool/call（promotion）→ step 结算（step/end）时同步 swap（finding 12-2
+  // 多调用残留：一个 step 可携带多条调用，只有 step/end 之后才是安全的换 schema 点，
+  // 且必须同步注册才能赶在下一次请求装配前生效）。
+  // 这里照 loop 形状先 append step/start：openSteps 守卫据此挡住 step 中途的装配。
+  agent.session.append("step/start", { turn: 1, step: 1 });
   const callSeq = agent.session.append("tool/call", { callId: "smoke-1", name: "bash", arguments: "{}" }).seq;
   await new Promise((resolve) => setTimeout(resolve, 200));
-  // tool/call 落盘瞬间不得 swap：该调用的参数仍按 persistent schema 校验
+  // step 未结束（tool/call 落盘、调用未结算）：此刻的装配不得 swap，参数仍按 persistent schema 校验
   const pending = summary(await agent.ctx.systemPrompt.assemble(context));
   console.log("ROUND1.5 catalog (pending call):", JSON.stringify(pending));
   assert.ok(!pending.bashParams.includes("sandbox_permissions"), "tool/call 未结算时不得 swap");
@@ -97,7 +102,12 @@ async function run(ctx) {
     { message: { content: [{ type: "tool-result", toolCallId: "smoke-1", content: [], isError: false }] } },
     { surfaceOp: "append", sourceEventSeqs: [callSeq] },
   );
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  // step 仍未结束：装配依旧不得 swap（openSteps 守卫）
+  const afterResult = summary(await agent.ctx.systemPrompt.assemble(context));
+  assert.ok(!afterResult.bashParams.includes("sandbox_permissions"), "step 结算前装配不得 swap");
+  agent.session.append("step/end", { turn: 1, step: 1 });
+  await new Promise((resolve) => setTimeout(resolve, 200));
 
   // R2 assembly（swap 结果以 R2 目录为准：bash 应为沙箱 schema）
   const r2 = await agent.ctx.systemPrompt.assemble(context);

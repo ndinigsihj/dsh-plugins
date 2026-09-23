@@ -55,19 +55,29 @@ export function textTurn(text) {
 }
 
 /**
- * 一个工具调用轮次。`arguments` 以对象传入，按原始 JSON 字符串发出
+ * 一个工具调用轮次（可携带多条调用）：`calls` 以数组传入，块索引按数组下标分配，
+ * 因此多条调用落在同一条 assistant 消息里——复刻模型「一条消息批量发独立调用」的形状
+ * （12-2 多调用残留场景需要它）。`arguments` 以对象传入，按原始 JSON 字符串发出
  * （生产适配器里工具参数就是字符串，装配器不再二次序列化）。
  */
-export function toolCallTurn({ id, name, arguments: args }) {
-  const argumentsJson = JSON.stringify(args);
-  const callId = ToolCallId(id);
-  return [
-    { type: 'block-start', index: 0, blockType: 'tool-call' },
-    { type: 'tool-call-delta', index: 0, id: callId, name, argumentsDelta: argumentsJson },
-    { type: 'block-end', index: 0, block: { type: 'tool-call', id: callId, name, arguments: argumentsJson } },
-    USAGE,
-    { type: 'finish', reason: { kind: 'tool-calls' } },
-  ];
+export function toolCallsTurn(calls) {
+  const chunks = [];
+  calls.forEach((call, index) => {
+    const argumentsJson = JSON.stringify(call.arguments);
+    const callId = ToolCallId(call.id);
+    chunks.push(
+      { type: 'block-start', index, blockType: 'tool-call' },
+      { type: 'tool-call-delta', index, id: callId, name: call.name, argumentsDelta: argumentsJson },
+      { type: 'block-end', index, block: { type: 'tool-call', id: callId, name: call.name, arguments: argumentsJson } },
+    );
+  });
+  chunks.push(USAGE, { type: 'finish', reason: { kind: 'tool-calls' } });
+  return chunks;
+}
+
+/** 单调用轮次（`toolCallsTurn` 的单元素壳，保持既有场景的块形状不变）。 */
+export function toolCallTurn(call) {
+  return toolCallsTurn([call]);
 }
 
 class ScriptedAdapter extends LlmAdapter {
