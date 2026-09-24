@@ -91,6 +91,12 @@
 
 # Minimal 的 persistent shell（PTY）：首轮 bash 就是它（锚定），disposed 语义由
 # phase-swap-bash 的 per-agent shadow 实现——不 dispose 共享实例。
+#
+# 2026-09-24：bash 工具描述对齐上游 0.1.7 `minimal`（`dsh-web-app/presets/minimal.patch.yml`）——
+# 删掉不实的 "You don't have access to the internet via this tool."（本机 shell 子进程继承
+# harness 注入的 HTTP(S)_PROXY，出网实测可用）与 darwin 无关的 apt/pip 镜像行，改用上游措辞
+# "Network access depends on the task environment. Prefer configured mirrors/proxies when they
+# are available."。对齐后与上游该段逐行一致。
 - id: persistent-shell
   name: cordis:group
   group: true
@@ -113,8 +119,7 @@
         description: |-
           Run commands in a bash shell
           * When invoking this tool, the contents of the "command" parameter does NOT need to be XML-escaped.
-          * You don't have access to the internet via this tool.
-          * You do have access to a mirror of common linux and python packages via apt and pip.
+          * Network access depends on the task environment. Prefer configured mirrors/proxies when they are available.
           * State is persistent across command calls and discussions with the user.
           * To inspect a particular line range of a file, e.g. lines 10-25, try 'sed -n 10,25p /path/to/the/file'.
           * Please avoid commands that may produce a very large amount of output.
