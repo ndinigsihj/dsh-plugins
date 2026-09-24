@@ -15,8 +15,8 @@
 
 1. **版本事实先对齐**：npm dist-tags 为 `latest → 0.1.5-rc.3`、`next → 0.1.7-rc.1`、`alpha → 0.1.7-alpha.2`。直接 `npm i -g @deepseek-ai/dsh` 拿到的是 0.1.5-rc.3，**必须显式指定版本；已裁决锁定 `@0.1.7-rc.1`，不跟随 `next`**。本机两个全局安装点（v22.22.1 → 0.1.5-rc.1，v24.21.0 → 0.1.5-rc.2）都还不是目标版本。
 2. **三个最高风险面**（都会让现有代码不可用，不是体验差异）：
-   - **会话日志 V4**：写入格式升级，官方提供批量迁移工具，**不支持降级读**；
-   - **会话历史 / Agent 生命周期 / Shell 沙箱接口异步化**：`snapshotEvents` 一类同步读取接口先弃用、后改形，本仓库 `lib/index.ts` 有 14 处调用 + 2 处类型声明（grep 口径）依赖；
+   - **会话日志 V4**：写入格式升级，**没有面向用户的批量迁移工具**（C0 ②），迁移在会话写开时惰性发生（C0 ③），**不支持降级读**；
+   - **会话历史 / Agent 生命周期 / Shell 沙箱接口异步化**：`snapshotEvents` 一类同步读取接口**已在 rc.1 弃用但签名未变**（C0 ①），本仓库 `lib/index.ts` 有 14 处调用 + 2 处类型声明（grep 口径）不因升级而破坏；异步替代面 `ctx.sessionQuery` 已随 dsh-base 挂载，**本轮维持同步、不迁移**（2026-09-24 裁决；票据 05 deferred）；
    - **预设与设置的载体变更**：Agent 预设改由插件组合包声明安装、设置改存当前 Profile 的插件配置（旧 `settings.yaml` 只导入一次）——两者正好是本仓库部署位与闸门的基础。
 3. **两个能力缺口**：
    - **subagent 会话的显示与折叠**：上游 0.1.7 已把它做成"一等会话 + 可折叠过程组"；本 TUI 目前只有状态行下的一条气氛行（`lib/app.ts` `renderSubagentsLine`）。
@@ -31,12 +31,12 @@
 | --- | --- | --- |
 | 目标版本 | **精确锁定 `0.1.7-rc.1`**，不跟随 `next` 浮动 | 安装命令写死精确版本；`gates/manifest.json` 的 `hostVersion` 同步改为 `0.1.7-rc.1`；不引入跟随浮动 tag 的升级路径（目标漂移规则见 §7 第 0/3 步） |
 | 升级窗口 | **tui-dev 与 headless 同步升级** | 两侧宿主机版本、profile 插件树、部署位 preset 一起到位；`subagent-model-selection-settings` 行分别保持 tui-dev `enabled: true`（30 工具）/ headless `enabled: false`（29 工具）——同步的是**宿主版本**，不是合并两边口径 |
-| 会话迁移 | **接受"迁移到 V4 后不可降级读"，且不再保留"先不迁"分支**（2026-09-24，Q15） | 迁移仍在本轮路径内；C0 只回答"怎么迁"（有无批量工具 / 0.1.7 对 V3 是否打开即改写）。**冷备与还原演练前移到首次启动 0.1.7 之前**（§7 第 1 步），第 10 步只执行迁移并抽样验证 |
+| 会话迁移 | **接受"迁移到 V4 后不可降级读"，且不再保留"先不迁"分支**（2026-09-24，Q15） | 迁移仍在本轮路径内；**C0 已回答"怎么迁"：无批量工具、无 dry-run；读开不落盘，只有写开才发布 v4 后继且源文件保留**。**冷备与还原演练前移到首次启动 0.1.7 之前**（§7 第 1 步），第 10 步只执行迁移并抽样验证 |
 | Agent Team | **本轮开启；启用范围 = C 方案（profile 划分）**（2026-09-23 裁决） | Team 是 **profile 层能力**，不做 preset 变体（§5.2 纠正）。现 profile（tui-dev / headless）保持不带 Team，另建带 Team 的 profile（如 `tui-team`）。开启后该 profile 内 `subagent` / `subagent_fork` 被组合期禁用且无模型选择入口（§5.0 / §5.2）；使用场景与边界见 §5.4 |
 | 自研 preset 去留 | **保留**（2026-09-24 裁决）：含 `phase-swap-bash` 二轮沙箱提权与 delegation 行 | §3.6 的证据缺口与淘汰框架转为**后续瘦身参考**，不作为本轮动作；淘汰评估改为**事件触发复评**（§3.6）；因 delegation 行随 preset 保留，Team profile 的 preset 组合行为必须实测（票 B1.5，升为硬前置） |
 | preset 载体 | **真源留在仓库，目标载体改为 0.1.7 的 bundle patch 形态**（2026-09-24，Q11） | `presets/minimal-plus/` 仍是唯一真源；`@deepseek-ai/dsh-agent-preset` 行 + registry 是目标形态；`scripts/sync-agent-presets.sh` 改造为 profile 侧产物生成器并先补 `--dry-run`（§3.5、§7 第 11 步）。**该项是迁移第一工作项，B1.5 依赖它** |
 | 计划边界 | **拆分**（2026-09-24，Q3/Q12）：升级计划 = 宿主升级 + 兼容迁移 + 部署收口；功能计划 = A1–A4 第一切片、Team 体验 B2–B4 第二切片 | Team 的兼容/部署面（B1.5、`tui-team` 建立、冒烟、per-profile expectations）留在本计划，"一起部署"不变；A/B 票面作为功能计划输入（§4.3、§5.3） |
-| 前置取证 | **新增 C0 取证票**（2026-09-24，Q5）：临时前缀安装 rc.1，不碰真实安装 | C0 交付：异步接口确切签名、迁移工具真实形态、rc.3 包树 diff、0.1.7 对 V3 的读/写行为、目录 preset 兼容性（§7 第 0 步、§8）；C0 绿之前禁止 P0 代码迁移与第 10 步 |
+| 前置取证 | **C0 已完成**（2026-09-24，Q5；临时前缀 + 独立 cache，真实 `~/.dsh` 只读、零写入） | 六项事实 + 附件/storages 判定已取证并归档（`evidence/02-preflight-*`）；P0 代码迁移与第 10 步解除阻塞，验收口径已按事实改写（§7 第 0 步、§8） |
 | manifest 口径 | **两阶段**（2026-09-24，grill 修正） | `deployment.repo-matches-manifest` 不可豁免（`gates/run.mjs:463-472`）→ preset sha 随仓库更新为 `8cd01c68…`；`hostVersion`/`sessionFormatVersion` 在宿主切换那批改；`--allow-stale-deployment` 只豁免部署位滞后（`gates/run.mjs:474-483`、`README.md:195`），收口消除 |
 | 收口定义 | **清单化 + 每阶段 stop/go**（2026-09-24，Q4） | 见 §7 收口清单；任一步失败停在原地、退回上一已验收状态，不带着失败往下走 |
 | 闸门基线 | **expectations 增 profile/composition 维度；T3 在 0.1.7-rc.1 新采基线**（2026-09-24，Q8/Q13） | 禁止整文件再生成，增删工具附行级 diff + 理由；T3 旧基线留史不删，采不了显式记"新宿主未跑"，绝不跨宿主对比；"T3 口径改为为白名单背书"与新基线同批（§5.5、§6） |
@@ -102,7 +102,7 @@ rc.1 的 `Full Changelog` 基线是 `dsh-v0.1.5-rc.3`，因此"rc.2 → rc.1"整
 - **`minimal` 的内容几乎没变**：仍是"persona（`You are a helpful software engineer assistant.` + `complete: true` + `includeRuntimeContext: false`）+ persistent-shell 组（bash / pwsh 按平台门控）"，**不含** delegation / fs / skills / compaction。细节差异只有两处：bash 描述里 "You don't have access to the internet via this tool." 换成 "Network access depends on the task environment. Prefer configured mirrors/proxies when they are available."（**本仓库已于 2026-09-24 对齐，含删去 darwin 无关的 apt/pip 镜像行**）；pwsh 双栈（`terminal-pwsh` 带 `shellDialect: pwsh`）**本轮不处理**——本仓库 win32 走 `custom-bash.mjs`，双栈改造不在范围内。
 - **对照 `standard`**：含 `delegation` 组的才是 standard，且其 `tool-subagent` 行**自带 `modelSelectionSettings: true`**、`tool-subagent-fork` 为 `backgroundMode: continuable`；`tool-ralph` 与 `tool-plugin-manager` 均 `disabled: true`；工作流执行器已更名为 `workflow-ptc`。
 - **对本仓库的含义**：`minimal-plus` 相对上游 `minimal` 的增量是 5 个自研插件 + delegation 行；若跟随上游 minimal，则**不再有 `subagent` 委派能力**（那属于 standard 的增量）。在 0.1.7 模型下，自研 preset 的合理形态是"作为 bundle patch 插入自己的 `@deepseek-ai/dsh-agent-preset` 行"，而不是维护目录副本。
-- **已裁决（2026-09-24，Q11）**：采用上述形态。`presets/minimal-plus/` 保留为唯一真源；`scripts/sync-agent-presets.sh` 从"写 `~/.dsh/.agent-presets/`"改为生成 profile 侧 bundle 产物，并先补 `--dry-run`（当前无 dry-run，直接写并 `rm -rf vendor`）。旧目录形态仅在 C0 确认 0.1.7 仍加载时作为过渡。该改造是迁移第一工作项，B1.5 依赖它。
+- **已裁决（2026-09-24，Q11）**：采用上述形态。`presets/minimal-plus/` 保留为唯一真源；`scripts/sync-agent-presets.sh` 从"写 `~/.dsh/.agent-presets/`"改为生成 profile 侧 bundle 产物，并先补 `--dry-run`（当前无 dry-run，直接写并 `rm -rf vendor`）。**C0 ④ 已确认 0.1.7 不再加载旧目录形态，无过渡分支**。该改造是迁移第一工作项，B1.5 依赖它。
 
 ### 3.6 自研 preset 的证据缺口与淘汰判断（讨论稿，2026-09-24）
 
@@ -369,11 +369,11 @@ P0 = 不迁移就跑不起来或会丢数据；P1 = 行为变化需适配；P2 =
 
 | 级别 | 上游变更（落地版本） | 本仓库落点 | 动作 | 验收 |
 | --- | --- | --- | --- | --- |
-| P0 | Session 日志 V4 + 批量迁移工具；部分缺 turn-end 的 V3 兼容；**不支持降级读**（0.1.7-alpha.1/rc.1） | `~/.dsh/sessions/**`、`gates/*` 的会话隔离面、`gates/manifest.json:sessionFormatVersion` | **冷备 + 还原演练前移到首次启动 0.1.7 之前**（§7 第 1 步）；迁移机制以 C0 结论为准（有无批量工具 / 是否打开即改写）；迁移后**不得**回退到旧版本读同一批日志；6 个 bak/corrupt 变体先定处理规则（跳过/隔离/报错） | C0 结论 + 静默后冷备清单 + 抽样会话在新宿主可打开；"迁移工具 dry-run"仅在 C0 确认该工具存在时保留 |
-| P0 | 会话历史/生命周期/沙箱接口异步化（0.1.7-rc.1）；`snapshotEvents`/`eventAt`/`ownEvents` 弃用（0.1.6-alpha.1） | `lib/index.ts`（14 处调用 + 2 处类型声明）、`plugins/rewind-dsh.ts`、`presets/minimal-plus/{compaction-epoch,trajectory-driver}.mjs`、`experiments/m4/m4-runner.mjs`、`gates/stub/run.mjs`、`presets/minimal-plus/test-helpers.mjs` | **先由 C0 取得确切签名再动手**（§7 第 0 步、§8）；C0 绿之前不动这些文件 | `npm test` 全绿 + T1/T2 闸门 |
-| P0 | Agent 预设改由插件组合包声明与安装；旧目录预设需迁移（0.1.7-alpha.1/rc.1） | `presets/minimal-plus/`、`scripts/sync-agent-presets.sh`、`~/.dsh/.agent-presets/**`、`gates/manifest.json` | **目标载体 = `@deepseek-ai/dsh-agent-preset` bundle patch（profile 侧产物）**；真源留仓库（§3.5）；`sync-agent-presets.sh` 改造为生成器并先补 `--dry-run`；旧目录形态仅在 C0 确认兼容时过渡。**迁移第一工作项** | 生成器 dry-run 输出与仓库真源一致；`tui-team`/tui-dev 挂载冒烟（`presets/minimal-plus/smoke-boot.mjs` + 部署位冒烟）通过 |
+| P0 | Session 日志 V4；**无批量迁移工具**（C0 ②）；写开发布 v4 后继、源文件保留（C0 ③）；部分缺 turn-end 的 V3 兼容；**不支持降级读**（0.1.7-alpha.1/rc.1） | `~/.dsh/sessions/**`、`gates/*` 的会话隔离面、`gates/manifest.json:sessionFormatVersion` | **冷备 + 还原演练前移到首次启动 0.1.7 之前**（§7 第 1 步；冷备范围按 C0 ⑦ 含 `attachments/`）；迁移按会话在首次写开时惰性发生，无 dry-run、无批量命令；旧文件保留，但**新宿主写开后不得再用旧宿主读同一批日志**；6 个 bak/corrupt 变体先定处理规则（跳过/隔离/报错） | C0 结论（`evidence/02-preflight-*`）+ 静默后冷备清单 + 抽样会话在新宿主可打开 + 仍为旧格式的会话清单 |
+| P0 | 会话历史/生命周期/沙箱接口异步化（0.1.7-rc.1）；`snapshotEvents`/`eventAt`/`ownEvents` 弃用（0.1.6-alpha.1） | `lib/index.ts`（14 处调用 + 2 处类型声明）、`plugins/rewind-dsh.ts`、`presets/minimal-plus/{compaction-epoch,trajectory-driver}.mjs`、`experiments/m4/m4-runner.mjs`、`gates/stub/run.mjs`、`presets/minimal-plus/test-helpers.mjs` | **C0 ① 已核实：rc.1 三个同步方法签名与 0.1.5-rc.2 逐字相同**（仅新增 `@deprecated`），存量调用可保留、禁止新增；异步替代面 = `ctx.sessionQuery`（dsh-base 默认挂载，签名见证据）。**不再作为宿主升级阻塞**；**2026-09-24 用户裁决：本轮维持同步读取、不迁移**（票据 05 相应置为 deferred），未来需要时再单独评估 | `npm test` 全绿 + T1/T2 闸门（两个 profile 形态）；无新增同步读取调用 |
+| P0 | Agent 预设改由插件组合包声明与安装；旧目录预设需迁移（0.1.7-alpha.1/rc.1） | `presets/minimal-plus/`、`scripts/sync-agent-presets.sh`、`~/.dsh/.agent-presets/**`、`gates/manifest.json` | **目标载体 = `@deepseek-ai/dsh-agent-preset` bundle patch（profile 侧产物）**；真源留仓库（§3.5）；`sync-agent-presets.sh` 改造为生成器并先补 `--dry-run`；**C0 ④ 已确认旧目录形态不再被加载，无过渡分支**（硬切换）。**迁移第一工作项** | 生成器 dry-run 输出与仓库真源一致；`tui-team`/tui-dev 挂载冒烟（`presets/minimal-plus/smoke-boot.mjs` + 部署位冒烟）通过 |
 | P1 | 自研 preset **保留**（已裁决 2026-09-24）；bash 描述已对齐上游（新 sha `8cd01c68…`），部署推迟（§1.1） | `presets/minimal-plus/*`、`scripts/sync-agent-presets.sh`、`gates/manifest.json`、`docs/minimal-plus-preset-design.md` | 保留 `phase-swap-bash` 与 delegation 行；瘦身框架留作后续参考（§3.6，事件触发复评）；**manifest 两阶段**（§1.1）：preset sha 随仓库改为 `8cd01c68…`、`hostVersion`/`sessionFormatVersion` 随宿主改；部署位写入等收口 | 窗口内 T1 用 `--allow-stale-deployment`（只豁免部署位滞后）；收口后：部署位 sha 一致 + preset 冒烟 + `npm test` 全绿、豁免标志移出调用链 |
-| P0 | 设置改存当前 Profile 的插件配置；旧 `settings.yaml` **仅导入一次**（0.1.7-alpha.1/rc.1） | `~/.dsh/settings.yaml`（`agent-presets.default`、`subagent-model-selection:`）、`~/.dsh/profiles/*/cordis.patch.yml` | 升级前备份并记录 sha；由 C0 确认一次性导入的落点与回滚方式 | `--dump-config` + 设置读回一致 |
+| P0 | 设置改存当前 Profile 的插件配置；旧 `settings.yaml` **仅导入一次**（0.1.7-alpha.1/rc.1） | `~/.dsh/settings.yaml`（`agent-presets.default`、`subagent-model-selection:`）、`~/.dsh/profiles/*/cordis.patch.yml` | 升级前备份并记录 sha；**C0 附带核实**：导入只发生一次——写前先把 `settings.yaml` 改名为 `settings.yaml.imported`，各 section 按自身名字写入同 id entry（例外是 3 条改名映射：`ui-developer-tools`→`ui-settings`、`ui-onboarding`→`ui-settings-general`、`shell`→平台 shell executor），被组合拒绝的 section 只留在改名后的文件里；回滚需从第 1 步备份恢复 `settings.yaml` | `--dump-config` + 设置读回一致 |
 | P0 | 官方 DeepSeek 适配器仅用 Messages API，移除 Chat Completions 与 `protocol`；旧根地址改为 `https://api.deepseek.com/anthropic`（0.1.6-alpha.1 → rc.1） | profile 中的 llm-deepseek 配置行 | 删除 `protocol`，清理旧根地址覆盖 | 真实模型一次工具调用（T3） |
 | P0 | 工具结果文本+图片统一 token 预算；`spill-policy` 的 `maxInlineBytes` → `maxInlineTokens`（0.1.7-alpha.2/rc.1） | `lib/app.ts:356,483`（spill 通知渲染正则） | 配置改名；核对通知文案是否仍匹配 | 超长工具结果渲染冒烟 |
 | P1 | Node PTC 独立进程执行、`process.env` 为空、有输出/堆限制；PTC 包名统一 `ptc-runtime`;工作流执行器改名 `workflow-ptc`（0.1.6-alpha.1） | `presets/minimal-plus/agent.cordis.yml`（组名/插件名）、`experiments/m4/m4.patch.yml` | 更新引用的包名与服务名 | `--dump-config` id 计数为 1 |
@@ -385,7 +385,7 @@ P0 = 不迁移就跑不起来或会丢数据；P1 = 行为变化需适配；P2 =
 | P1 | 委派路由能力在两条路径上不对称（本仓库实证，非上游 release note） | `docs/subagent-model-selection.md`、ADR-0001、`experiments/subagent-model-selection/*`、`gates/t3/*` | 按 §5.5：把 ADR-0001 适用边界显式收窄为"非 Team profile 的 `subagent` 委派"；评估三个改善方向（prompt 策略 / catalog 文本 / 口径改为白名单背书） | 文档与探针口径一致；T3 结论不再隐含"模型会自主选路由" |
 | P2 | `@deepseek-ai/cordis-plugin-hmr` → `@deepseek-ai/dsh-hmr`（CLI 运行时依赖变化） | `~/.dsh/bin/dsh` wrapper（为前者补 `--expose-internals`） | **已核实仍需该标志**（§8 第 3 条）→ wrapper 保持不动 | 启动冒烟 |
 | P2 | 插件安装/启动做版本兼容性检查，可按精确版本豁免（0.1.7-rc.1） | 自研插件包与 bundle | 标注兼容版本范围 | 安装/启动路径无兼容性拒绝 |
-| P0 | **C0 取证票（本计划新增，2026-09-24）** | 临时前缀（复用 B1 方式，独立 cache，不碰真实 `~/.dsh`） | 交付：① 异步替代接口确切签名；② 0.1.7 是否真有面向用户的批量迁移工具及命令；③ 0.1.7 对 V3 会话的读/写行为；④ 0.1.7 是否仍加载目录预设；⑤ rc.3 包树 diff；⑥ 安装/回滚细节（`0.1.5-rc.2` 可重取性） | §8 第 1/2 条替换为已核实事实；C0 绿之前禁止 P0 代码迁移与 §7 第 10 步 |
+| P0 | **C0 取证票 — ✅ 已完成（2026-09-24）** | 临时前缀 `/tmp/dsh-c0-20260924-152002`（独立 npm cache；真实 `~/.dsh` 只读、零写入，核验见证据） | 六项事实全部取证 + 附件/storages 判定，证据归档 `docs/tickets/dsh-v0.1.7-rc.1-upgrade/evidence/02-preflight-*`；复现脚本 `02-preflight-repro.sh`（调用归档探针） | ① 同步签名未变、异步面 = `ctx.sessionQuery`；② 无批量迁移工具；③ 读开不落盘 / 写开发布 v4 后继且源文件保留（v0/v3 均实测）；④ 目录预设不再加载；⑤ rc.3 = 依赖钉版 republish；⑥ rc.2 可重取但是混合树。§8 第 1/2/10/11/12/14 条已替换为事实，P0 迁移与 §7 第 10 步解除阻塞 |
 | P0 | 宿主钉版与会话格式版本断言（`gates/run.mjs:488-503`，两条均不可豁免） | `gates/manifest.json` | 宿主切换那批同步改 `hostVersion` → `0.1.7-rc.1`、`sessionFormatVersion` → 运行时值；preset sha 随仓库批次改为 `8cd01c68…`（待批准落地） | T1 `host.pin` / `session.format-version` 在 0.1.7 宿主上绿 |
 | P1 | T3 基线带 `hostVersion` 戳（`gates/manifest.json.baselines` + `gates/t3/analysis.mjs` provenance） | `gates/manifest.json`、`experiments/m4/*`、`gates/t3/*` | **在 0.1.7-rc.1 上新采一条基线**（同 preset/模型/参数）；旧条目留史不删；窗口内采不了就显式记"新宿主未跑 T3"；"T3 口径改为为白名单背书"与新基线同批（§5.5） | 新基线入库 + provenance 检查绿；探针、基线、文档三处口径一致 |
 | P2 | 升级节奏无政策（本轮是"版本链拉长后补课"） | `README.md` 或本计划末尾 | 立轻政策：日常宿主跟 `latest` stable；`next`/rc 只在临时前缀侦察；每个新 stable 按 C0 模板取证并在固定窗口内升级（§7 末尾） | 政策写入文档；下一次 stable 出现时按政策执行 |
@@ -394,20 +394,21 @@ P0 = 不迁移就跑不起来或会丢数据；P1 = 行为变化需适配；P2 =
 
 ## 7. 升级与回滚程序
 
-**第 0 步：前置取证票 C0（2026-09-24 新增）**
+**第 0 步：前置取证票 C0 — ✅ 已完成（2026-09-24）**
 
-0. 复用 B1 的临时前缀方式（独立 npm cache，不碰真实 `~/.dsh`、不改任何 profile/部署位）安装 `@deepseek-ai/dsh@0.1.7-rc.1`，交付以下事实并归档到 `docs/tickets/dsh-v0.1.7-rc.1-upgrade/evidence/`：
-   - ① `snapshotEvents` 等异步替代接口的**确切签名**（文件路径 + 类型原文）；
-   - ② 0.1.7 是否真有面向用户的**批量迁移工具**及其命令/帮助文本；
-   - ③ 0.1.7 对 V3 会话的**读/写行为**（只读不改写 vs 打开即改写）；
-   - ④ 0.1.7 是否仍加载 `~/.dsh/.agent-presets/**` **目录预设**；
-   - ⑤ `0.1.5-rc.3` 与 rc.2 的**包树 diff**（无文档版本的实际变更面）；
-   - ⑥ 安装/回滚细节：`0.1.5-rc.2` 是否仍可从 registry 重取（回滚不依赖它，见第 2/12 步）。
-   **C0 绿之前禁止 P0 代码迁移与第 10 步。** 目标漂移规则：锁定 rc.1 直到收口；期间若 0.1.7 正式版发布，收口后单开一次小步升级，不中途换靶（安全修复需重新裁决）。
+0. 临时前缀 `/tmp/dsh-c0-20260924-152002` 安装 `@deepseek-ai/dsh@0.1.7-rc.1`（独立 npm cache；未碰真实 `~/.dsh`，配置面前后逐字节一致，零写入核验见 `evidence/02-preflight-snapshot-diff.txt`）。实测结论（原文证据均归档到 `docs/tickets/dsh-v0.1.7-rc.1-upgrade/evidence/`，复现脚本 `02-preflight-repro.sh`）：
+   - ① **异步替代接口**：`eventAt`/`snapshotEvents`/`ownEvents` 与 0.1.5-rc.2 类型签名**逐字相同**，rc.1 仅加 `@deprecated`；异步替代面是 `ctx.sessionQuery.readSession()/listSessions()/observeSession()/readEvent()`（dsh-base 默认挂载 `session-query-sqlite`）。宿主升级无签名破坏，迁移非前置。
+   - ② **批量迁移工具**：不存在（全树仅 3 个 bin，CLI 唯一子命令 `plugin`），无 dry-run；迁移由格式 catalog 在会话打开时惰性执行。
+   - ③ **旧格式读写行为**：读开 = 内存迁移、不落盘；写开 = 发布 `session.v4.jsonl.zstd` 后继 + `session.lock`，**源文件保留且逐字节不变**（v0/v3 均已实测）。
+   - ④ **目录预设**：`~/.dsh/.agent-presets/**` 不再被加载（全树零代码引用 + 运行时哨兵 `Unknown agent preset`）；载体必须是 profile/bundle 内的声明行。
+   - ⑤ **rc.3 变更面**：解析树 552 个包名仅 6 个版本集合不同；rc.3 把浮动依赖精确钉版，tarball 逐文件比对无代码差异（republish）。
+   - ⑥ **旧包可重取性**：`npm pack @0.1.5-rc.2` 成功且 shasum 与 registry 一致；但新装 rc.2 会解析出 "rc.2 CLI + rc.3 子包" 的混合树 → **本地副本仍是唯一精确回滚入口**。
+   - ⑦ **附件/storages**：附件属于恢复面（181/1491 个会话引用 2795 个对象，全部在 `attachments/v1/objects`），冷备需含 `attachments/`；`storages/` 是投影缓存，不属于恢复面。
+   **C0 已绿，第 10 步与 P0 代码迁移解除阻塞。** 目标漂移规则不变：锁定 rc.1 直到收口；期间若 0.1.7 正式版发布，收口后单开一次小步升级，不中途换靶（安全修复需重新裁决）。
 
 **升级前（冻结，第 1 步必须在首次启动 0.1.7 之前完成）**
 
-1. **静默 + 冷备 + 演练**（顺序不可换）：关闭所有 dsh 写者（TUI/headless）→ 冷备 `~/.dsh/sessions/**` 到 `sessions` 之外，附文件数与 sha 清单 → **还原演练**：把备份还原到 scratch 路径、用旧宿主（0.1.5-rc.2）打开 ≥2 个代表会话（含一个带子代理的）；读不出来就不进后续步骤。同时备份并记录 sha：`~/.dsh/settings.yaml`、`~/.dsh/.agent-presets/**`、`~/.dsh/profiles/*/cordis.patch.yml`。附件的取舍（`~/.dsh/attachments` 1.0G）在 C0 结论里明确（备 or 明确不备）。丢失窗口 = 本步快照之后新建的会话，快照时间点记入案；冷备保留期至少到迁移后的宿主稳定走过一次正式版升级。
+1. **静默 + 冷备 + 演练**（顺序不可换）：关闭所有 dsh 写者（TUI/headless）→ 冷备 `~/.dsh/sessions/**` 到 `sessions` 之外，附文件数与 sha 清单 → **还原演练**：把备份还原到 scratch 路径、用旧宿主（0.1.5-rc.2）打开 ≥2 个代表会话（含一个带子代理的）；读不出来就不进后续步骤。同时备份并记录 sha：`~/.dsh/settings.yaml`、`~/.dsh/.agent-presets/**`、`~/.dsh/profiles/*/cordis.patch.yml`。**附件按 C0 ⑦ 结论纳入冷备**：备份 `~/.dsh/attachments/**`（181 个会话引用 2795 个对象；可排除派生的 `request-images/` 与空 `tmp/`）；`~/.dsh/storages/**` 是投影缓存，不进恢复面（含也会被旧宿主重建）。丢失窗口 = 本步快照之后新建的会话，快照时间点记入案；冷备保留期至少到迁移后的宿主稳定走过一次正式版升级。
 2. 记录当前两支全局安装的版本与路径（v22.22.1 → 0.1.5-rc.1 / v24.21.0 → 0.1.5-rc.2），以及 `~/.dsh/bin/dsh` 指向哪一支；**把 v24 的 `0.1.5-rc.2` 包目录另存一份本地副本**（回滚不依赖 registry 上该版本仍在）。
 
 **升级（分阶段，每阶段可停）**
@@ -419,7 +420,7 @@ P0 = 不迁移就跑不起来或会丢数据；P1 = 行为变化需适配；P2 =
 7. `--dump-config` 干跑：exit 0，逐 loader id 递归计数均为 1（注意 `--dump-config` 会回写 profile 目录下的 `cordis.yml`，属宿主规范化行为）；**两个形态各跑一次**（不带 Team 的 tui-dev / headless、带 Team 的 `tui-team`）。
 8. 只读冒烟：`presets/minimal-plus/smoke-boot.mjs`（仓库根预设）+ 部署位冒烟各一次；Team profile 另跑一次工具面快照。
 9. 逐票迁移 + 闸门：`npm test` → T0/T1/T2（`--composition real`）→ T3（真实模型，需 `~/.dsh/settings.yaml`；**新基线须在 0.1.7-rc.1 上采**，旧基线留史，采不了显式记"新宿主未跑 T3"）。expectations 变更必须附行级 diff + 理由，禁止整文件再生成。
-10. **会话迁移（只执行，不决策）**：机制以 C0 结论为准——有批量工具则跑工具并抽样打开；若 0.1.7 打开即改写，则迁移在第 3 步之后首次启动时就已实际发生，本步改为对剩余会话做批量收尾 + 抽样验证。这一步不与前面步骤混批。
+10. **会话迁移（只执行，不决策）**：C0 ②③ 已定——没有批量工具、没有 dry-run；迁移按会话在**首次写开**时惰性发生（发布 `session.v4.jsonl.zstd` 后继，`session.jsonl.zstd` / `session.v3.jsonl.zstd` 等源文件保留且逐字节不变）。执行步 = 逐会话写开（resume/继续）或接受按需惰性迁移，之后抽样打开验证，并留"仍为旧格式的会话清单"。这一步不与前面步骤混批。
 
 **收口定义（2026-09-24，Q4）**——以下全绿才算收口：
 
@@ -438,8 +439,8 @@ P0 = 不迁移就跑不起来或会丢数据；P1 = 行为变化需适配；P2 =
 
 **回滚**
 
-12. 恢复 v24 本地副本（第 2 步留存）或用 `DSH_CLI` 指回 0.1.5-rc.2（必要时 `npm i -g @deepseek-ai/dsh@0.1.5-rc.2`）+ 恢复第 1 步备份：可回到旧宿主、旧 profile、旧预设。
-13. **不可逆边界（已接受，无"先不迁"分支）**：会话日志一旦迁移到 V4，旧版本不支持降级读。回滚到 0.1.5-rc.2 时，第 1 步快照之前的历史会话可由冷备恢复，**快照之后新增/已迁移的会话会丢失**——这是 Q15 裁决明确承认的代价。
+12. 恢复 v24 本地副本（第 2 步留存）或用 `DSH_CLI` 指回 0.1.5-rc.2（必要时 `npm i -g @deepseek-ai/dsh@0.1.5-rc.2`）+ 恢复第 1 步备份：可回到旧宿主、旧 profile、旧预设。**C0 ⑥ 已核实**：registry 仍在供 rc.2（可重取），但今天新装会解析出"rc.2 CLI + rc.3 子包"的混合树，已非旧安装的原样副本——**精确回滚只认第 2 步的本地副本**。
+13. **不可逆边界（已接受，无"先不迁"分支）**：会话日志一旦迁移到 V4，旧版本不支持降级读。回滚到 0.1.5-rc.2 时，第 1 步快照之前的历史会话可由冷备恢复，**快照之后新增/已迁移的会话会丢失**——这是 Q15 裁决明确承认的代价。**C0 ③ 补充**：写开只发布 v4 后继、旧代文件保留，但上游明确不提供降级支持；旧宿主对"同一目录里同时存在旧代与 v4 后继"的选取行为**未取证**（§8 第 15 条），因此按"不可降级"保守处理：迁移后的新增事件仍计入丢失窗口。
 
 **升级节奏政策（2026-09-24，Q14）**
 
@@ -458,7 +459,7 @@ P0 = 不迁移就跑不起来或会丢数据；P1 = 行为变化需适配；P2 =
 | 部署时机 | **已裁决：推迟到收口后统一部署**（第 11 步） |
 | 计划边界拆分 | **已裁决**（2026-09-24，Q3/Q12） |
 | preset 目标载体 = 0.1.7 bundle patch | **已裁决**（2026-09-24，Q11） |
-| C0 前置取证 | **已裁决**（2026-09-24，Q5） |
+| C0 前置取证 | **已完成**（2026-09-24；六项事实 + 附件/storages 判定，证据 `evidence/02-preflight-*`） |
 | manifest 两阶段 | **已裁决**（2026-09-24，grill 修正） |
 | expectations 增 profile 维度 / T3 新基线 | **已裁决**（2026-09-24，Q8/Q13） |
 | B1.5 硬前置 + 不可测回退 | **已裁决**（2026-09-24，Q7） |
@@ -468,8 +469,8 @@ P0 = 不迁移就跑不起来或会丢数据；P1 = 行为变化需适配；P2 =
 
 ## 8. 未验证清单（不得当作结论使用）
 
-1. **`snapshotEvents` 的异步替代接口确切名称与签名**：rc.1 标签下 `packages/core/session/src/types.ts` 只有 `SESSION_FORMAT_VERSION = 4`、`SessionSeq` / `SessionLogOffset` 品牌类型与事件表；Session 类所在的 `session.ts` 路径 404，未取得实证。迁移前必须先定位该类文件。
-2. **0.1.5-rc.3 的变更内容**：npm `latest` 指向它，但 GitHub 无 release notes（404），无公开说明。
+1. ~~**`snapshotEvents` 的异步替代接口确切名称与签名**~~ → **已核实（2026-09-24，C0 ①）**：rc.1 安装产物中 `eventAt`/`snapshotEvents`/`ownEvents` 的类型签名与 0.1.5-rc.2 逐字相同，仅新增 `@deprecated`（存量可暂不迁移、禁止新增）。异步替代面 = `ctx.sessionQuery`（`@deepseek-ai/dsh-session-query`，dsh-base 默认挂载）：`readSession(id): Promise<SessionLogSnapshot>` 等。宿主升级不因该接口阻塞。原文见 `evidence/02-preflight-signatures.txt`。
+2. ~~**0.1.5-rc.3 的变更内容**~~ → **已核实（2026-09-24，C0 ⑤）**：rc.3 是把浮动依赖精确钉版的 republish；解析树 552 个包名仅 6 个版本集合不同（cordis / plugin-include / plugin-loader / plugin-timer / schemastery / 自身版本），`@deepseek-ai/dsh` 与 `dsh-base` 的 tarball 逐文件比对无代码差异。见 `evidence/02-preflight-pkgtree-diff.txt`。
 3. ~~**`dsh-hmr` 是否仍需 `--expose-internals`**~~ → **已核实（2026-09-23）：需要**。`dsh-hmr@0.1.7-rc.1` 构造函数内 `if (!this.ctx.loader.internal) throw new Error("--expose-internals is required for HMR service")`；包名从 `cordis-plugin-hmr` 换成 `dsh-hmr` 不改变该要求，`~/.dsh/bin/dsh` 的 wrapper 无需改动。
 4. ~~**Team 的实验性 bundle 是否随 CLI 自动挂载**~~ → **已核实（2026-09-23）：不自动挂载**（`OPTIONAL_BUNDLES`，且不在任何 `PROFILE_TEMPLATES` 中）；显式加入 bundle 后 4 行 subagent 为**组合期 `disabled: true`**。preset 逃生门的存在性由票 B1.5 回答（2026-09-24 升为 `tui-team` 建立前的硬前置）。
 5. **`subagent_fork` 在非 Team 会话中是否仍存在**：**已在 profile 层确认存在**（base dump 中 `tool-subagent-fork` enabled），且非 Team profile 的工具面实测含 `subagent` + `subagent_fork`（`evidence/02-*`）；Team profile 中两者均被组合期禁用。`gates/expectations.json` 的工具面快照需按 profile 区分后重新采集。
@@ -477,11 +478,12 @@ P0 = 不迁移就跑不起来或会丢数据；P1 = 行为变化需适配；P2 =
 7. **catalog 的 model `description` 是否可写**：`list_subagent_models` 返回 `{provider}/{model.id} — {model.name}: {model.description}`，值来自 `llm.listModels()`（adapter 元数据）。自定义 provider 的 `models` 对象已知支持回填名称 / 上下文窗口 / 最大输出 token，**description 是否可写未核实**——这决定 §5.5 改善方向 2 是否可行。
 8. ~~**Team 里的 teammate 继承哪条 LLM 路由**~~ → **已核实（2026-09-23）：继承 Lead，且无覆盖入口**（源码三层证据 + 实跑，见 §5.5「D 实跑补充」）。附带核实：teammate **继承 Lead 的 preset**（`childSessionMeta` 复制 `composedPreset`），工具面与 Lead 相同但 `spawn_teammate` 可见不可用。
 9. **Team 成员上限是否含 Lead**：`journal` 以 `state.members.length >= maxMembers` 判定，Lead 是否计入未逐字确认（组合包覆盖值 `maxMembers: 8`，服务默认 16）。
-10. **0.1.7 对 V3 会话的读/写行为**：只读不改写，还是打开即改写？决定迁移形态与第 10 步的做法（C0 ③）。
-11. **0.1.7 是否有面向用户的批量迁移工具**：本机 0.1.5 安装只有内部 catalog + 打开时惰性迁移（`dsh-session-format-catalog` / `dsh-session-persistence-jsonl`），无 bin（C0 ②）。
-12. **0.1.7 是否仍加载 `~/.dsh/.agent-presets/**` 目录预设**：决定载体改造能否用过渡形态（C0 ④）。
+10. ~~**0.1.7 对 V3 会话的读/写行为**~~ → **已核实（C0 ③）**：读开 = 内存迁移、不落盘；写开 = 发布 `session.v4.jsonl.zstd` 后继 + `session.lock`，源文件逐字节不变（非原地改写）。见 `evidence/02-preflight-session-rw.txt`。
+11. ~~**0.1.7 是否有面向用户的批量迁移工具**~~ → **已核实（C0 ②）：没有**。0.1.7-rc.1 全树仅 3 个包暴露 bin，CLI 唯一子命令是 `plugin`；迁移仍由内部 format catalog 在会话打开时惰性执行，无 dry-run。
+12. ~~**0.1.7 是否仍加载 `~/.dsh/.agent-presets/**` 目录预设**~~ → **已核实（C0 ④）：不再加载**。全树零代码引用；运行时哨兵 `resolve("c0-sentinel")` 报 `Unknown agent preset`。载体改造无过渡分支，必须切到声明行。
 13. **6 个 bak/corrupt 会话变体的迁移行为**：`~/.dsh/sessions` 里有 6 个 `*.bak*/corrupt*` 变体，迁移工具/惰性迁移遇到时是跳过还是报错未验证（迁移票）。
-14. **附件与 storages 是否属于会话恢复面**：`~/.dsh/attachments` 1.0G、`storages` 13M；会话日志是否引用附件、回滚还原是否需要一并恢复未核实（C0 / 第 1 步）。
+14. ~~**附件与 storages 是否属于会话恢复面**~~ → **已核实（C0 ⑦）**：附件**属于**（181/1491 个会话引用 2795 个 id，全部命中 `attachments/v1/objects`）；`storages` 是投影缓存，会话日志才是真源，不属于恢复面。冷备范围见 §7 第 1 步。
+15. **旧宿主（0.1.5-rc.2）对"旧代 + v4 后继"共存目录的选取行为**：C0 只测了 0.1.7 的读写开（源文件保留），未测旧宿主会读哪一代。C0 ③ 的结论按保守口径使用（迁移后的新增事件计入丢失窗口）；若回滚票需要更精确的边界，先补这一项实测（用本地副本在临时 home 打开共存目录的会话）。
 
 ---
 
@@ -496,5 +498,6 @@ P0 = 不迁移就跑不起来或会丢数据；P1 = 行为变化需适配；P2 =
 - npm registry：`@deepseek-ai/dsh` 的 dist-tags 与 `0.1.7-rc.1` / `0.1.5-rc.3` 元数据。
 - 本仓库（只读核查）：`lib/index.ts`、`lib/app.ts`、`presets/minimal-plus/agent.cordis.yml`、`docs/subagent-model-selection.md`、`ARCHITECTURE.md`、`gates/expectations.json`、`scripts/sync-agent-presets.sh`。
 - 闸门口径（2026-09-24 只读侦察）：`gates/manifest.mjs:156-175`（三态比对：`repoMatches` / `state`）、`gates/run.mjs:463-483`（`repo-matches-manifest` 不可豁免、`repo-vs-deployed` 可豁免）、`gates/run.mjs:488-503`（`host.pin` / `session.format-version`）、`README.md:195`（豁免范围）。
-- 本机侦察（2026-09-24，只读）：全局安装 v22.22.1 → 0.1.5-rc.1、v24.21.0 → 0.1.5-rc.2；`~/.dsh/bin/dsh` 钉 v24 全局 `lib/bin.js`、支持 `DSH_CLI`、带 `--expose-internals`；`~/.dsh/sessions` 1480 会话目录 / 629M（576 个显式 v3、908 个无版本后缀、6 个 bak/corrupt）；部署位 `minimal-plus/agent.cordis.yml` sha256 `318c4884…`。
+- 本机侦察（2026-09-24，只读）：全局安装 v22.22.1 → 0.1.5-rc.1、v24.21.0 → 0.1.5-rc.2；`~/.dsh/bin/dsh` 钉 v24 全局 `lib/bin.js`、支持 `DSH_CLI`、带 `--expose-internals`；`~/.dsh/sessions` 1486 个会话目录 / 约 630M（1491 个 jsonl：583 个显式 v3、908 个无版本后缀；6 个 bak/corrupt，C0 证据口径）；部署位 `minimal-plus/agent.cordis.yml` sha256 `318c4884…`。
 - 2026-09-24 grill 访谈：§1.1 与 §7 的 Q1–Q15 裁决、以及 manifest 两阶段修正的来源。
+- 2026-09-24 前置取证（C0，临时前缀 `/tmp/dsh-c0-20260924-152002`，独立 npm cache，真实 `~/.dsh` 只读、零写入）：`docs/tickets/dsh-v0.1.7-rc.1-upgrade/evidence/02-preflight-*`（结论、接口原文、CLI/迁移面、读写开实测、目录预设哨兵、包树 diff、附件/storages 统计、零写入核验、三个归档探针与复现脚本）。

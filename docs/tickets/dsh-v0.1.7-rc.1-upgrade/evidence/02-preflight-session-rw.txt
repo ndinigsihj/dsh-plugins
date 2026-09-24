@@ -1,0 +1,117 @@
+# 事实③ — 0.1.7-rc.1 对旧格式会话的读/写行为（实跑）
+
+生成时间：2026-09-24T08:05Z（含 v3 写开补测）
+临时前缀：`/tmp/dsh-c0-20260924-152002`（`DSH_HOME=<root>/home`，独立 npm cache；真实 `~/.dsh` 只读、零写入）
+探针（已归档，复现见 `02-preflight-repro.sh`）：`02-preflight-probe-read.mjs`、`02-preflight-probe-write.mjs`
+
+## 1. 结论
+
+| 打开方式 | 旧文件 | 新文件 | 说明 |
+| --- | --- | --- | --- |
+| **读开**（`ctx.sessionQuery.readSession()`，列表/导出/查询路径） | 逐字节不变 | **不产生** | 迁移只在内存发生 |
+| **写开**（`ctx.sessionPersistence.open(id, 'write')`、headless 采纳/resume、TUI 继续会话） | 逐字节不变 | 发布 `session.v4.jsonl.zstd` 后继 + `session.lock` | 非原地改写；旧代文件保留 |
+
+→ 迁移是**逐会话、按需**的。计划里"打开即改写"的口径应改为"首次写开时发布 v4 后继、源文件保留"。
+v0（无版本后缀）与 v3 两种旧格式**都实测了写开**；读开只在 v3 上实测（同一 persistence 读路径）。
+
+## 2. v0 写开实测（headless 采纳，真实 app 路径）
+
+夹具来源（只读复制，源文件未被改动）：
+
+- 源：`~/.dsh/sessions/--private-tmp-dsh-tui-depcheck--/session-25054cd5-ca70-4936-9202-55adeabc427a/session.jsonl.zstd`
+- sha256（复制前后一致）：`d12159d3dead03232af8eda7d9b9885e287411a305fd39b1ddcd8469e795e7fd`
+- 夹具头部（脱敏）：`version: 0`、0 事件、`cwd: /private/tmp/dsh-tui-depcheck`、无 agentPreset
+
+命令（cwd=`/private/tmp/dsh-tui-depcheck`，`DSH_HOME`=临时前缀）：
+
+```sh
+node <root>/cli/node_modules/@deepseek-ai/dsh/lib/bin.js --profile c0 \
+  --session-id session-25054cd5-ca70-4936-9202-55adeabc427a "c0 v0 probe"
+```
+
+结果（stderr，exit 1）：
+
+```text
+dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-official";
+store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it),
+or export DEEPSEEK_API_KEY in the launching environment
+```
+
+会话目录 before → after：
+
+```text
+before: session.jsonl.zstd            294 B
+after:  session.jsonl.zstd            294 B   sha256 d12159d3…（不变）
+        session.lock                    0 B
+        session.v4.jsonl.zstd       11824 B   sha256 2f43a58c…
+```
+
+v4 后继的结构（多帧 zstd，用 `zstd -dc` 全量解码；脱敏，仅头字段与事件类型）：
+
+```json
+{"version":4,"agentPreset":null,"lines":19,"events":18,"eventTypes":{
+  "permission/preset":1,"sandbox/mode":1,"approval/policy":1,"session/end-seed":1,
+  "agent/inbox/spliced":2,"turn/start":1,"step/start":1,"system/message":1,
+  "user/message":2,"request/header":1,"request/context":1,"session/title":1,
+  "session/title-llm-request":1,"assistant/attempt":1,"step/end":1,"turn/end":1}}
+```
+
+说明：模型调用因临时 home 无凭据而失败，但**后继发布发生在凭据检查之前**；后继里的 18 个事件
+是该次 headless 运行写入的（用户消息 + 失败轮次的合成收尾），不是源 v0 的迁移内容（源本身 0 事件）。
+该失败不影响"源文件保留 + 后继发布"这一结论。
+
+## 3. v3 读开实测（ctx.sessionQuery）
+
+夹具来源（只读复制）：
+
+- 源：`~/.dsh/sessions/--Users-vito--/session-aebc6e9c-577b-4a47-b08d-2f3c154888cf/session.v3.jsonl.zstd`
+- sha256（复制前后一致）：`7dc3b02937852af5f9de98486f752319b34ae495e8274837972a09b4c6a1e37b`
+
+探针：`02-preflight-probe-read.mjs`（`loadProfile(..., "c0base")` → `boot(...)` → `ctx.get("sessionQuery").readSession("<id>")`）。
+
+输出：
+
+```json
+{
+ "ok": true,
+ "id": "session-aebc6e9c-577b-4a47-b08d-2f3c154888cf",
+ "version": 4,
+ "agentPreset": "minimal-plus",
+ "events": 6
+}
+```
+
+会话目录 before/after：均为 `session.v3.jsonl.zstd`（1968 B，sha256 不变），**无 v4 后继、无 lock**。
+
+## 4. v3 写开实测（ctx.sessionPersistence.open(id, 'write')）
+
+同一夹具，紧接读开之后执行写开探针；写开后目录：
+
+```text
+before: session.v3.jsonl.zstd       1968 B   sha256 7dc3b029…
+after:  session.v3.jsonl.zstd       1968 B   sha256 7dc3b029…（不变）
+        session.lock                   0 B
+        session.v4.jsonl.zstd       1874 B   sha256 f4ba7e62…
+```
+
+v4 后继结构（多帧解码）：
+
+```json
+{"version":4,"agentPreset":"minimal-plus","lines":7,"events":6,"eventTypes":{
+  "permission/preset":1,"sandbox/mode":1,"approval/policy":1,
+  "subagent/model-selection-policy":1,"agent/inbox/spliced":2}}
+```
+
+源 v3 的 6 个事件类型逐项相同（`permission/preset`、`sandbox/mode`、`approval/policy`、
+`subagent/model-selection-policy`、`agent/inbox/spliced` ×2）→ **迁移保留全部事件**，只把
+header `version: 3` 提升为 4。
+
+## 5. 上游 README 原文（安装产物）
+
+`node_modules/@deepseek-ai/dsh-session-persistence-jsonl/README.md:82`：
+
+> For historical input, a read open decodes and migrates the source once, validates the current logical result, and returns it without publishing a successor. A write open reuses that revision-keyed preparation when available, or performs the same preparation, then encodes a same-directory temporary file in bounded chunks, verifies it in a Worker Thread, rechecks the source revision, and publishes the current successor without overwrite before returning. The source remains byte-identical.
+
+## 6. 附：源夹具未被改动
+
+实测后重新哈希真实源文件，与复制时记录一致（v3 `7dc3b029…`、v0 `d12159d3…`）。

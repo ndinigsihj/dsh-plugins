@@ -1,0 +1,62 @@
+# 事实④ — 旧目录形态 Preset（`$DSH_HOME/.agent-presets/<id>/`）：0.1.7-rc.1 不再加载
+
+生成时间：2026-09-24T07:54Z
+安装产物：`/tmp/dsh-c0-20260924-152002/cli/node_modules/@deepseek-ai/…`（0.1.7-rc.1）
+
+## 1. 结论
+
+**不再加载。** 预设必须改为 profile 侧的声明行（bundle patch 中 `insert` 一条
+`@deepseek-ai/dsh-agent-preset`），旧目录形态没有过渡期；仓库的载体改造是硬前置，
+不是"视兼容性决定是否切换"。
+
+## 2. 静态证据（安装产物原文）
+
+1. `node_modules/@deepseek-ai/dsh-agent-preset/skills/editing-cordis-compositions/SKILL.md:70`：
+
+   > Before declaration rows, a user preset was a directory `$DSH_HOME/.agent-presets/<id>/`
+   > holding `preset.yml` (display `name`, `description`, `order`) and `agent.cordis.yml`
+   > (the plugin entry list). **Nothing reads that directory any more.** To migrate one,
+   > create a bundle as above whose declaration takes `id` from the directory name …
+
+2. `node_modules/@deepseek-ai/dsh-agent-preset-registry/README.md`：
+
+   > Definitions are ordinary plugin rows; **the registry neither scans directories nor
+   > accepts preset paths.**
+
+3. 全安装树（567 个包）grep `\.agent-presets`：仅命中上述 SKILL.md 一处，**零代码引用**。
+
+```
+$ grep -rl "\.agent-presets" node_modules/@deepseek-ai | sed 's#^.*/##'
+dsh-agent-preset/skills/editing-cordis-compositions/SKILL.md
+```
+
+## 3. 运行时哨兵实测（临时 DSH_HOME）
+
+- 在临时 home 放旧目录形态预设：`<root>/home/.agent-presets/c0-sentinel/{preset.yml,agent.cordis.yml}`
+  （`preset.yml` 含 `name/description/order`，`agent.cordis.yml` 为 `[]`）。
+- profile 只用声明行定义一个预设 `declared-c0`：
+  `agent-preset-registry`（`default: declared-c0`）+ `@deepseek-ai/dsh-agent-preset`（`id: declared-c0`）。
+- 探针 `02-preflight-probe-preset.mjs`（归档件；复现见 `02-preflight-repro.sh`）：
+  `boot(...)` 后 `ctx.get("agentPresets").list()` 与 `resolve("c0-sentinel")`。
+
+输出：
+
+```json
+{
+ "ids": [
+  "declared-c0"
+ ],
+ "declaredListed": true,
+ "sentinelListed": false,
+ "resolveSentinel": "rejected: Unknown agent preset: c0-sentinel"
+}
+```
+
+→ 目录里的 `c0-sentinel` 既不在列表里，也无法 resolve；声明行 `declared-c0` 正常出现
+（同时证明 0.1.7 的载体形态就是 profile/bundle 里的声明行）。
+
+## 4. 对计划的含义
+
+- §6 "旧目录形态仅在 C0 确认兼容时过渡" 的条件不成立 → 直接切换，不存在过渡分支。
+- 自研 Preset 的产物生成器（`scripts/sync-agent-presets.sh`）必须以声明行 + 插件列表为输出，
+  且这个改造是迁移第一工作项。

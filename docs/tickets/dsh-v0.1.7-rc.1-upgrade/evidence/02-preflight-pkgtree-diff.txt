@@ -1,0 +1,62 @@
+# 事实⑤/⑥ — 0.1.5-rc.3（无文档版本）实际变更面，与 0.1.5-rc.2 可重取性
+
+生成时间：2026-09-24T07:54Z
+方法：两个独立临时目录做 `npm i --package-lock-only`（只解析，不落盘安装）后逐名比对；
+关键包用 `npm pack` 下载 tarball 逐文件比对。独立 cache：`<root>/npm-cache-pack`。
+
+## 1. npm 元数据（实测）
+
+| 版本 | tarball | shasum (sha1) | integrity |
+| --- | --- | --- | --- |
+| 0.1.5-rc.2 | `https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-0.1.5-rc.2.tgz` | `2c78db39568d910868f1e4f34062a4f346d4815d` | `sha512-8Xc8hCQHcIWRmTCVU/xZdp6/qMsWMeAd2ObChKDEsfhUPJFXx6H0lgeb1DxUMD86HZrrVN+1bCvn1ppjZ/fOxw==` |
+| 0.1.5-rc.3 | `https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-0.1.5-rc.3.tgz` | `c4f8da125449a3046bd48963a978905fd58ce7d4` | `sha512-c0W6Xqc4ChjFcCJkbzPeIxZQdnbKqe+QAcJzWGtogg0ZzsnZRcw3vopMyZ5oZU6E2fmyqGcyDR1sBeiCH4yHcg==` |
+
+dist-tags（实测当日）：`latest = 0.1.5-rc.3`、`next = 0.1.7-rc.1`、`alpha = 0.1.7-alpha.2`。
+
+## 2. 解析树 diff（名称级，版本集合比对）
+
+- rc.2 树 588 个条目 / rc.3 树 584 个；去重后都是 552 个包名。
+- **版本集合不同的包名只有 6 个**：
+
+```
+@deepseek-ai/cordis:                 [4.0.2,4.0.4] -> [4.0.2]
+@deepseek-ai/cordis-plugin-include:  [1.0.7,1.0.9] -> [1.0.7]
+@deepseek-ai/cordis-plugin-loader:   [1.0.3,1.0.5] -> [1.0.3]
+@deepseek-ai/cordis-plugin-timer:    [1.1.4,1.1.6] -> [1.1.4]
+@deepseek-ai/schemastery:            [3.18.2,3.18.4] -> [3.18.2]
+@deepseek-ai/dsh:                    [0.1.5-rc.2] -> [0.1.5-rc.3]
+```
+
+- 其余同名包解析结果逐字节一致（integrity 无差异）。
+- 关键点：rc.2 的 `^` 浮动范围在**今天**解析时，第三方依赖会被提升到更新的 patch
+  （cordis 4.0.4 等），而 rc.3 把依赖**精确钉版**回 4.0.2 / 1.0.7 / 1.0.3 / 1.1.4 / 3.18.2。
+- 另一个关键点：`@deepseek-ai/dsh-*` 子包在**两棵树里都解析到 0.1.5-rc.3**
+  （rc.2 的 `^0.1.5-rc.2` 接受 rc.3；0.1.7 代被 0.x 的 ^ 语义挡住）。
+  即今天新装 rc.2 得到的是 "rc.2 CLI + rc.3 子包" 的混合树。
+
+## 3. tarball 内容 diff（实测）
+
+| 包 | 文件清单 | 内容差异 |
+| --- | --- | --- |
+| `@deepseek-ai/dsh` | **完全一致**（10 个文件） | 仅 `package.json`：`version` + 依赖 `^` → 精确版本（227 行 diff，全部是版本字符串） |
+| `@deepseek-ai/dsh-base` | **完全一致** | 仅 `package.json`：同上 |
+
+tarball shasum 与 registry 元数据一致：
+
+```
+dsh-0.1.5-rc.2.tgz       2c78db39568d910868f1e4f34062a4f346d4815d  (pack 实测，= registry)
+dsh-0.1.5-rc.3.tgz       c4f8da125449a3046bd48963a978905fd58ce7d4  (pack 实测，= registry)
+dsh-base-0.1.5-rc.2.tgz  db255ff653110eee54a68b418b60ace5e3efc080
+dsh-base-0.1.5-rc.3.tgz  b18077f9afcf69e4d2742202b232ed9003e7443f
+```
+
+## 4. 结论
+
+- **rc.3 的实际变更面 = 依赖钉版（可复现构建），无代码差异**（就 CLI 包与 dsh-base 这两个可逐文件比对的产物而言）。
+  这与"无 release notes"的观感一致：它是把浮动依赖钉回已测版本的 republish。
+- **事实⑥：0.1.5-rc.2 仍可从 registry 重取**（`npm pack` 实测下载成功、shasum 与元数据一致；
+  也可 `npm i -g @deepseek-ai/dsh@0.1.5-rc.2`，解析成功）。
+  但重取的是**混合树**（rc.2 CLI + rc.3 子包），不等于当前本机旧安装的原样副本。
+- 因此计划 §7 第 2 步"本地留一份旧版本包副本"仍是唯一能精确还原旧树的路径；
+  回滚**不依赖** registry 上 rc.2 是否仍在（当前在，但已不可逐字节复现原树）。
+- 目标版本锁定不变：`0.1.7-rc.1`；正式版未发布（`latest` 仍是 0.1.5-rc.3，属无文档 republish）。

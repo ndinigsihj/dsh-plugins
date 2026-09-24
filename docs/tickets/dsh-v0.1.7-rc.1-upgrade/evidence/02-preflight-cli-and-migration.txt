@@ -1,0 +1,94 @@
+# 事实② — 面向用户的批量迁移工具：不存在；迁移是存储内部惰性行为
+
+生成时间：2026-09-24T07:54:17Z
+安装产物：`/tmp/dsh-c0-20260924-152002/cli`（@deepseek-ai/dsh@0.1.7-rc.1，npm 精确版本）
+
+## 1. CLI 命令面（DSH_HOME=临时前缀）
+
+```
+Usage: dsh [--profile] <name> [options] [app-args...]
+       dsh plugin --profile <name> <pnpm-args...>
+
+dsh: boot a DeepSeek Harness profile — an ordered stack of plugin-bundle patch
+layers under your own overrides.
+
+Arguments:
+  args                           arguments for the booted profile's app (see:
+                                 dsh --profile <name> --help)
+
+Options:
+  -V, --version                  output the version number
+  --profile <name>               the profile under $DSH_HOME/profiles to boot
+  --from-default-profile <name>  initialize a new custom profile from a shipped
+                                 profile template
+  --patch <path>                 extra patch-list overlay applied after the
+                                 profile layer (repeatable)
+  --dump-config                  print the composed profile tree and exit
+  --dump-config-schema           print JSON Schema for profile entries and
+                                 patches without mounting
+  --dump-default-config          print the profile tree without its user layer
+                                 or --patch overlays and exit
+
+Examples:
+  dsh web                                   boot the web profile (same as: dsh --profile web)
+  dsh rescue --from-default-profile web
+                                            create rescue from the shipped web template, then boot it
+  dsh headless "run the tests"              answer one task, print the result, and exit
+  dsh tui --patch ./extra.yml               boot a custom profile with one extra overlay
+  dsh tui --resume <session>                arguments after the launcher flags reach the app
+  dsh web --help                            the web app's own flags and help
+  dsh plugin --profile tui add <package>    install a plugin into the tui profile
+
+```
+
+## 2. headless app 参数面
+
+```
+Usage: dsh --profile headless [options] [task...]
+
+Answer one task and exit; the answer goes to stdout and diagnostics to stderr.
+
+Arguments:
+  task               the task text; multiple words are joined by spaces, and `-`
+                     reads stdin
+
+Options:
+  --json             write newline-delimited run events to stdout instead of the
+                     final message
+  --session-id <id>  adopt the persisted Session with this id; an unknown id is
+                     an error
+  -h, --help         show this help
+
+Examples:
+  dsh --profile headless "run the tests"          answer one task and exit
+  echo "run the tests" | dsh --profile headless   read the task from stdin
+  dsh --profile headless --json "run the tests"   emit machine-readable run events
+  dsh --profile headless --session-id session-… "continue"   resume an existing Session
+```
+
+## 3. 安装树 bin 清单（全量扫描 package.json.bin）
+
+```
+@deepseek-ai/cordis -> bin.js
+@deepseek-ai/dsh -> lib/bin.js
+@deepseek-ai/libreoffice-kit -> ./lib/cli.js
+（session 相关包全部 bin: null：dsh-session-format、dsh-session-format-catalog、dsh-session-format-v3-to-v4、dsh-session-persistence-jsonl、dsh-session-log-export）
+```
+
+CLI 源码中的命令注册只有 plugin：
+115:		const plugin = program.command("plugin").description("manage a profile's plugins by forwarding the remaining arguments to pnpm in the profile directory");
+dsh/lib 内 migrate 命中行数: 0
+
+## 4. 迁移机制的第一方自述（安装产物 README）
+
+- `node_modules/@deepseek-ai/dsh-session-format-catalog/README.md:46`：
+  "Production historical reads select `{ recovery: 'recoverable', validation: 'transformed' }`."
+  同 README:50："`historicalSessionFormatCatalog` restores V0–V3 using the fixed released-V3 event vocabulary …"
+  该包 `package.json` 依赖即迁移链本身：`dsh-session-format-v0-to-v1` / `v1-to-v2` / `v2-to-v3` / `v3-to-v4`（均为 0.1.7-rc.1 精确版本）。
+- `node_modules/@deepseek-ai/dsh-session-persistence-jsonl/README.md:82`：
+  "`open(id, 'read'|'write')` ... For historical input, a read open decodes and migrates the source once ... and returns it without publishing a successor. A write open ... publishes the current successor without overwrite before returning. The source remains byte-identical."
+
+## 5. 结论
+- **无**面向用户的批量迁移命令/工具；无 dry-run 形态可保留（0.1.7-rc.1 没有该工具）。
+- 迁移按会话惰性发生：读开只在内存迁移、不落盘；写开（resume/首次追加）发布 v4 后继文件，旧文件保留且逐字节不变。
+- 因此 §7 第 10 步只能改写为"逐会话写开 + 抽样验证"，不存在批量命令路径。

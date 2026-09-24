@@ -1,0 +1,53 @@
+# 零写入核验 — 取证前后真实 `~/.dsh` 快照差异与归属
+
+生成时间：2026-09-24T07:56Z
+快照位置（临时目录，未入库）：
+
+- `<root>/snapshot-before/`（15:20 CST 起）
+- `<root>/snapshot-after/`（15:53 CST 起）
+- `<root> = /tmp/dsh-c0-20260924-152002`
+
+## 1. 方法
+
+| 快照项 | 内容 |
+| --- | --- |
+| `files-stat.txt` | `~/.dsh` 全部 8197 个文件：`路径\|大小\|mtime\|inode`（不取 atime） |
+| `dirs-stat.txt` | 全部 2986 个目录：`路径\|mtime\|inode` |
+| `config-sha.txt` | `settings.yaml`、`profiles/**`、`.agent-presets/**`、`bin/**` 的内容 sha256 清单（1858 行） |
+| `attachments-stat.txt` / `storages-stat.txt` | 两个存储面的文件 `路径\|大小\|mtime` 清单 |
+| `sessions-dir-count.txt` | `~/.dsh/sessions` 顶层 cwd 目录数 |
+
+隔离约束：本次取证的全部 `node`/`npm` 调用都显式设 `DSH_HOME=<root>/home`，
+npm 全部走 `<root>/npm-cache` 或 `<root>/npm-cache-pack`；对真实 `~/.dsh` 只执行
+`find`/`stat`/`shasum`/`zstd -dc` 读取。
+
+## 2. 结果
+
+| 面 | 结论 |
+| --- | --- |
+| 配置面（settings.yaml / profiles / .agent-presets / bin） | **逐字节一致**（`config-sha.txt` diff 为空） |
+| `~/.dsh/sessions` 顶层 cwd 目录数 | 28 → 28 |
+| `~/.dsh` 文件清单 diff | 35 行（新增/变更），全部可归属（见下） |
+| `attachments` 清单 diff | +24 个 `objects/` 对象，0 删除 |
+| `storages` 清单 diff | 3 个 `session_projcache/sessions/*.json` 变更/新增 |
+
+## 3. 差异归属（全部为在线宿主自身活动）
+
+窗口内真实 home 的唯一写者是**取证开始前就在运行的 TUI 宿主进程**（0.1.5-rc.2，
+`--profile tui --resume session-282ee0cc…`，DSH_HOME=`~/.dsh`）。归属证据：
+
+1. 变更/新增的会话目录只有 3 个，全部属于该在线宿主：
+   `session-282ee0cc`（在线 TUI 会话）、`session-6e75a36e`（cwd=本仓库）、`session-81a7b99b`；
+   三者头部均为 `version: 3`、`agentPreset: minimal-plus`，由旧宿主写入。
+2. storages 差异恰好是这 3 个会话的投影缓存文件（`session_projcache/sessions/<id>.json`）。
+3. 24 个新增附件对象：逐个在 3 个在线会话日志里检出引用
+   （每个对象被 1–2 个在线会话引用），0 个未被引用。
+4. 本次取证产生的所有产物（v4 后继、lock、探针输出、临时 home profile）都只存在于
+   `<root>/home` 与 `<root>/cli`，未出现在真实 home。
+
+## 4. 结论
+
+- 取证对真实用户目录**零写入**：配置面逐字节一致，会话顶层结构不变；观测到的增量
+  全部来自在线宿主进程自身的会话/缓存/附件写入。
+- 已知环境事实（写回计划）：取证期间存在持续写者，因此"前后快照完全一致"只对配置面成立；
+  对 sessions/attachments/storages 使用"差异归属"证明，而不是机械的全树 diff 相等。

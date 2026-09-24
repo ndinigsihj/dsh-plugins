@@ -1,0 +1,61 @@
+# 事实⑦ — 附件与 storages 是否属于会话恢复面（只读扫描实据）
+
+生成时间：2026-09-24T07:56Z
+方法：`zstd -dc` 流式解码全部真实会话日志（多帧格式，不能用一次性解码），只统计
+`"attachmentId"` 引用计数与集合，不打印任何消息内容；storages 只读布局 + 上游 README 判定。
+
+## 1. 会话日志引用附件统计（真实 `~/.dsh/sessions`，1491 个 `.jsonl.zstd`）
+
+| 指标 | 值 |
+| --- | --- |
+| 会话日志文件 | 1491（583 个 `session.v3.*` + 908 个无版本后缀） |
+| 解码失败 | 0 |
+| 含 `attachmentId` 引用的会话文件 | **181** |
+| 引用总次数 | 3519 |
+| 去重后的 attachmentId | **2795**（全部形如 `sha256:<64hex>`） |
+
+## 2. 引用 id 与附件存储的对应（`~/.dsh/attachments/v1`）
+
+扫描时刻布局（objects 仍因在线写者缓慢增长）：
+
+```
+objects/        2794 个内容寻址对象
+request-images/   79 个按请求生成的派生图
+tmp/               0
+```
+
+- 2795 个被引用 id（去掉 `sha256:` 前缀）**全部**命中 `objects/`；缺失 0。
+- 无任何被引用 id 命中 `request-images/`（该目录是派生面，可从 objects 重新生成）。
+
+## 3. 类型契约（安装产物）
+
+- `node_modules/@deepseek-ai/dsh-attachment/lib/types/types.d.ts:7-41`：
+  `ImageAttachmentRef { attachmentId, mediaType, bytes, width, height, name? }`、
+  `FileAttachmentRef { attachmentId, name, bytes }`；`attachmentId` 注释为
+  "Opaque content-addressed storage identifier"，即**字节不在会话日志内**。
+- `node_modules/@deepseek-ai/dsh-attachment-local/lib/index.js`：存储根为
+  "absolute `DSH_HOME/attachments/v1` root"（对象文件按 `<2hex>/<hash>` 布局）。
+
+## 4. storages 判定（`~/.dsh/storages`）
+
+- 布局：`session_projcache/sessions/*.json`（取证前 734 个，随在线会话缓慢增长）、`session_projcache.json`、`workspace.json`。
+- 挂载：`node_modules/@deepseek-ai/dsh-base/cordis.patch.yml:168-176` —
+  `storage-json` 的 `root: !!js dshHomePath('storages')` + `storage-domain`。
+- 语义（`node_modules/@deepseek-ai/dsh-session-projection-cache/README.md`）：
+
+  > **The session log remains authoritative**: a crash can leave a checkpoint stale, but never
+  > ahead of committed events, and incompatible records are ignored or backed up.
+
+  → `session_projcache` 是**派生缓存**（历史列表/统计/goal 快照的加速），不是恢复真源；
+  旧宿主读不到它就重建。`workspace.json` 由 `dsh-workspace` 维护（工作区注册表），
+  同样不属于会话历史恢复面。
+
+## 5. 结论（写回计划）
+
+- **附件：属于恢复面。** 当前语料 181 个会话（约 12%）内嵌 `attachmentId`，且 2795 个对象全部在
+  `attachments/v1/objects`；冷备若不含 `attachments`，这些会话的图片/文件内容即断链。
+  冷备范围应包含 `attachments/`（1.0G），可排除 `request-images/`（派生）与空 `tmp/`。
+- **storages：不属于恢复面。** 它是投影缓存，会话日志是真源；冷备可含可不含（含也无害，
+  13M 成本极低），但**不应**被当作会话历史的一部分要求一致。
+- 补充归属说明：取证窗口内该目录新增了 24 个对象（随后又 +2），实测全部被在线会话引用，
+  属运行中宿主自身行为，与本次只读取证无关（见 `02-preflight-snapshot-diff.txt`）。
