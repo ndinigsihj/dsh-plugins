@@ -1,0 +1,32 @@
+
+[combined] remaining diffs=1
+  tiers[2].assertions[13].evidence
+    before: "no sync invocation in 8 gate sources"
+    after:  "no sync invocation in 20 gate sources"
+
+[real] remaining diffs=1
+  tiers[1].assertions[13].evidence
+    before: "no sync invocation in 8 gate sources"
+    after:  "no sync invocation in 20 gate sources"
+
+[stale-red] remaining diffs=1
+  tiers[1].assertions[13].evidence
+    before: "no sync invocation in 8 gate sources"
+    after:  "no sync invocation in 20 gate sources"
+
+[stale-green] remaining diffs=1
+  tiers[1].assertions[13].evidence
+    before: "no sync invocation in 8 gate sources"
+    after:  "no sync invocation in 20 gate sources"
+
+[absent-red] remaining diffs=1
+  tiers[1].assertions[13].evidence
+    before: "no sync invocation in 8 gate sources"
+    after:  "no sync invocation in 20 gate sources"
+
+[absent-green] remaining diffs=1
+  tiers[1].assertions[13].evidence
+    before: "no sync invocation in 8 gate sources"
+    after:  "no sync invocation in 20 gate sources"
+
+TOTAL_REMAINING=6

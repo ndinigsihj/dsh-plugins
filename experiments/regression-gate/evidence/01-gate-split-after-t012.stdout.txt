@@ -1,0 +1,51 @@
+regression-gate: repo=/Users/vito/data/dev/dsh-plugins tiers=0,1,2 composition=gate report=/tmp/t01-after3-combined.json
+[PRE] pass
+  PASS host.cli — dsh --version -> 0.1.5-rc.2
+  PASS host.pin.hostVersion — expected=0.1.5-rc.2 actual=0.1.5-rc.2
+  PASS host.pin.sessionFormatVersion — expected=3 actual=3
+[T0] pass
+  PASS tsc.noEmit — exit 0
+  PASS npm.test — exit 0 tests=157 pass=157 fail=0
+  PASS testfile.list-consistency — 14 files present
+[T1] pass
+  PASS composition.dump-config — exit 0 entries=92
+  PASS composition.loader-id-unique — in-process ids=92 cli ids=92 duplicates=0
+  PASS composition.no-stub — no stub provider/module reference
+  PASS smoke.anchored-first-turn — exit 0 R1=["bash","str_replace_editor"]
+  PASS smoke.promoted-catalog — tools=29 missing=[] unexpected=[] bashParamsMissing=[] preStepMissing=[]
+  PASS degrade.fail-open — exit 0 warning=true R1 tools=29
+  PASS seeded-preview.probe — exit 0 10/10 pass missing=0
+  PASS deployment.repo-matches-manifest — 8 files match
+  PASS deployment.repo-vs-deployed — exempted (stale) by --allow-stale-deployment: agent.cordis.yml:stale
+  PASS host.pin — anchor=0.1.5-rc.2 farm=0.1.5-rc.2 expected=0.1.5-rc.2
+  PASS session.format-version — runtime=3 manifest=3
+  PASS isolation.real-home-untouched — signature identical before/after (strict zones; 1 observed-only changes)
+  PASS isolation.copy-rewrite-sha — cordis.yml sha256=c300dcf2ebc5
+  PASS gate.no-deployment-sync — no sync invocation in 20 gate sources
+[T2] fail
+  PASS stub.overlay-only — no stub provider/module/model reference outside gates/stub/**
+  FAIL stub.bash-first-call — exit null no scenario report at /var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-SfhQNf/home/stub/bash-first-call.json
+  FAIL stub.bash-first-step-batch — exit null no scenario report at /var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-SfhQNf/home/stub/bash-first-step-batch.json
+  FAIL stub.bash-promotion-visible — exit null no scenario report at /var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-SfhQNf/home/stub/bash-promotion-visible.json
+  PASS stub.delegation-inherit-route.route.first-request — request/header#1 config=stub/stub-model
+  PASS stub.delegation-inherit-route.delegation.omitted-route — tool/call name=subagent arguments={"description":"route probe","prompt":"Reply with exactly: OK","run_in_background":false}
+  PASS stub.delegation-inherit-route.delegation.child-created — childIds=["aed3709d-66a4-4049-8a28-72103e9910ff"] child events=14
+  PASS stub.delegation-inherit-route.delegation.child-inherits-route — parent=stub/stub-model child=stub/stub-model
+  PASS stub.delegation-inherit-route.delegation.foreground-result — tool/result=isError=false turn/end={"kind":"completed"}
+  PASS stub.delegation-inherit-route.stub.child-route-call — stub call session=aed3709d-66a4-4049-8a28-72103e9910ff route=stub/stub-model
+  PASS stub.delegation-inherit-route.stub.script-consumed — conversation calls=3/3
+  PASS stub.delegation-inherit-route.process-exit — exit 0 report=7/7 pass
+  PASS stub.delegation-reject-route.route.first-request — request/header#1 config=stub/stub-model
+  PASS stub.delegation-reject-route.delegation.forbidden-args — tool/call arguments={"description":"forbidden route probe","prompt":"Reply with exactly: OK","provider":"stub","model":"stub-model-forbidden","run_in_background":false}
+  PASS stub.delegation-reject-route.delegation.forbidden-rejected — tool/result isError=true error=Error: child LLM route "stub/stub-model-forbidden" is not allowed for this Session
+  PASS stub.delegation-reject-route.delegation.no-child-session — catalog childIds=[] sessions=["session-stub-delegation-reject-route-0d1a2626-df2a-480e-a46f-dab4fc65da59"]
+  PASS stub.delegation-reject-route.delegation.no-forbidden-request — forbidden request/header=[] adapter calls=0
+  PASS stub.delegation-reject-route.session.turn-completed — turn/end reason={"kind":"completed"}
+  PASS stub.delegation-reject-route.process-exit — exit 0 report=6/6 pass
+  FAIL stub.v3-resume-route — exit null no scenario report at /var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-SfhQNf/home/stub/v3-resume-route.json
+  PASS t2.isolation.real-home-untouched — signature identical before/after (strict zones; 1 observed-only changes)
+
+!!! EXEMPTIONS APPLIED (report stays green but this run is NOT a full verification):
+!!!   deployment-sha: stale — agent.cordis.yml:stale
+
+summary: 37 passed, 4 failed, 0 skipped — report /tmp/t01-after3-combined.json

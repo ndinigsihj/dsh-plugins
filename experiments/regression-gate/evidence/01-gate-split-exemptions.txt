@@ -1,0 +1,34 @@
+# 01 闸门拆模块 — 两种豁免红/绿路径实测（拆分前 HEAD 6a432b5 ↔ 拆分后工作树）
+
+## stale，未豁免
+- 拆分前：T1=fail，summary={"passed":16,"failed":1,"skipped":0}，exemptions=[]
+- 拆分后：T1=fail，summary={"passed":16,"failed":1,"skipped":0}，exemptions=[]
+  - before PASS deployment.repo-matches-manifest — 8 files match
+  - before FAIL deployment.repo-vs-deployed — stale: agent.cordis.yml:stale
+  - after PASS deployment.repo-matches-manifest — 8 files match
+  - after FAIL deployment.repo-vs-deployed — stale: agent.cordis.yml:stale
+
+## stale + --allow-stale-deployment
+- 拆分前：T1=pass，summary={"passed":17,"failed":0,"skipped":0}，exemptions=[{"layer":"deployment-sha","reason":"stale","detail":"agent.cordis.yml:stale"}]
+- 拆分后：T1=pass，summary={"passed":17,"failed":0,"skipped":0}，exemptions=[{"layer":"deployment-sha","reason":"stale","detail":"agent.cordis.yml:stale"}]
+  - before PASS deployment.repo-matches-manifest — 8 files match
+  - before PASS deployment.repo-vs-deployed — exempted (stale) by --allow-stale-deployment: agent.cordis.yml:stale
+  - after PASS deployment.repo-matches-manifest — 8 files match
+  - after PASS deployment.repo-vs-deployed — exempted (stale) by --allow-stale-deployment: agent.cordis.yml:stale
+
+## absent（HOME=空目录），未豁免
+- 拆分前：T1=fail，summary={"passed":16,"failed":1,"skipped":0}，exemptions=[]
+- 拆分后：T1=fail，summary={"passed":16,"failed":1,"skipped":0}，exemptions=[]
+  - before PASS deployment.repo-matches-manifest — 8 files match
+  - before FAIL deployment.repo-vs-deployed — absent: agent.cordis.yml:absent, preset.yml:absent, compaction-epoch.mjs:absent, phase-swap-bash.mjs:absent, tool-bootstrap.mjs:absent, instruction-hint.mjs:absent, skill-search.mjs:absent, custom-bash.mjs:absent
+  - after PASS deployment.repo-matches-manifest — 8 files match
+  - after FAIL deployment.repo-vs-deployed — absent: agent.cordis.yml:absent, preset.yml:absent, compaction-epoch.mjs:absent, phase-swap-bash.mjs:absent, tool-bootstrap.mjs:absent, instruction-hint.mjs:absent, skill-search.mjs:absent, custom-bash.mjs:absent
+
+## absent + --skip-deployment-check
+- 拆分前：T1=pass，summary={"passed":17,"failed":0,"skipped":0}，exemptions=[{"layer":"deployment-sha","reason":"absent","detail":"agent.cordis.yml:absent, preset.yml:absent, compaction-epoch.mjs:absent, phase-swap-bash.mjs:absent, tool-bootstrap.mjs:absent, instruction-hint.mjs:absent, skill-search.mjs:absent, custom-bash.mjs:absent"}]
+- 拆分后：T1=pass，summary={"passed":17,"failed":0,"skipped":0}，exemptions=[{"layer":"deployment-sha","reason":"absent","detail":"agent.cordis.yml:absent, preset.yml:absent, compaction-epoch.mjs:absent, phase-swap-bash.mjs:absent, tool-bootstrap.mjs:absent, instruction-hint.mjs:absent, skill-search.mjs:absent, custom-bash.mjs:absent"}]
+  - before PASS deployment.repo-matches-manifest — 8 files match
+  - before PASS deployment.repo-vs-deployed — exempted (absent) by --skip-deployment-check: agent.cordis.yml:absent, preset.yml:absent, compaction-epoch.mjs:absent, phase-swap-bash.mjs:absent, tool-bootstrap.mjs:absent, instruction-hint.mjs:absent, skill-search.mjs:absent, custom-bash.mjs:absent
+  - after PASS deployment.repo-matches-manifest — 8 files match
+  - after PASS deployment.repo-vs-deployed — exempted (absent) by --skip-deployment-check: agent.cordis.yml:absent, preset.yml:absent, compaction-epoch.mjs:absent, phase-swap-bash.mjs:absent, tool-bootstrap.mjs:absent, instruction-hint.mjs:absent, skill-search.mjs:absent, custom-bash.mjs:absent
+

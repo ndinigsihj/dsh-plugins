@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { diffRealHome, parseTestCounts, stableJson } from "./gate-helpers.mjs";
 import { parseCompositionDump } from "./dump-parse.mjs";
-import { strictIsolationDiffs } from "./run.mjs";
+import { strictIsolationDiffs } from "./isolation.mjs";
 import { countEntries, findDuplicateIds } from "./unique-ids.mjs";
 
 test("findDuplicateIds: 顶层重复 id 被抓", () => {

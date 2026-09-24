@@ -50,6 +50,22 @@ export function run(command, args, options = {}) {
   };
 }
 
+/**
+ * 读 JSON：缺失返回 `undefined`，其它读取/解析错误返回 `{ error }`（不抛，供断言使用）。
+ */
+export function readJson(path) {
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch (error) {
+    return error?.code === "ENOENT" ? undefined : { error: String(error.message ?? error) };
+  }
+}
+
+/** 取文本末尾 n 行（断言证据只留子进程输出的尾部）。 */
+export function tailLines(text, count) {
+  return text.trim().split("\n").slice(-count);
+}
+
 /** 从 `node --test` 的输出里取统计行（spec 用 `ℹ`，TAP / npm 透传用 `#`）。 */
 export function parseTestCounts(stdout) {
   const counts = {};
