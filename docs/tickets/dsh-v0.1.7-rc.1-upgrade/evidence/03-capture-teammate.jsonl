@@ -1,0 +1,5 @@
+{"tag":"created","agent":"session-89162af8-d44c-4d2b-9961-d11a1fe2e936","role":"lead","name":"lead"}
+{"tag":"created","agent":"c74be88c-36ee-4376-b9c5-f0aa6206626e","role":"teammate","name":"probe"}
+{"tag":"teammate-tools","count":28,"tools":["bash","create_goal","edit","exit_plan_mode","get_goal","glob","grep","interrupt_agent","job_kill","job_list","job_output","list_agents","read","read_image","send_message","skill","spawn_teammate","team_task_create","team_task_get","team_task_list","team_task_update","todo_write","update_goal","wait_agent","web_fetch","web_search","workflow","write"]}
+{"tag":"teammate-header","hearder":{"version":4,"id":"c74be88c-36ee-4376-b9c5-f0aa6206626e","createdAt":1790181376728,"cwd":"/Users/vito/data/dev/dsh-plugins","parentSession":"session-89162af8-d44c-4d2b-9961-d11a1fe2e936","isSeeded":false,"origin":"subagent","delegationDepth":1}}
+{"tag":"spawned","memberModel":"deepseek-flash"}
