@@ -5,3 +5,9 @@ dsh `0.1.5-rc.1` 的 `dsh-tool-subagent` 自带模型选择：开启后把允许
 理由：官方机制覆盖了同一目标（会话级固定、子代继承、不可事后改写），且额外提供发现与创建前校验；自研层只会重复这些语义并与之持续漂移。
 
 代价：放弃"按角色名固定模型"的表达。若日后确有该需求，用多个官方工具实例配静态 `agentOptions`（纯配置）表达，而不是恢复自研 adapter。
+
+**适用边界（2026-09-23 补充）**：本决策只适用于**非 Team profile 的 `subagent` 委派**。实测（见 `docs/dsh-v0.1.7-rc.1-upgrade-plan.md` §5.0 / §5.5）：
+
+- 启用 `@deepseek-ai/dsh-experimental-agent-team-profile` 的 profile 中，`tool-subagent` / `tool-subagent-fork`（及全局 child control 两行）被组合期 `disabled: true`，`subagent` 与 `spawn_teammate` **不并存**；
+- `spawn_teammate` 的工具 schema 与 `SpawnTeammateRequest` 均**没有 LLM 路由字段**（其 `provider` 是 subagent 传输层名 spawn/fork）——Team 形态下模型选择不是"被禁用"，而是**无处表达**；
+- 本机制的性质是"**白名单 + 可选覆盖**"，不携带成本/时延/能力语义：模型侧决策信息只有 `list_subagent_models` 返回的 id / 名称 / 描述，分流策略无法由机制表达（本仓库决定不额外注入策略，见升级计划 §5.5 决策 B）。
