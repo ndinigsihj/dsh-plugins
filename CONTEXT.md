@@ -15,7 +15,7 @@ _Avoid_: global scope、base layer
 _Avoid_: preset scope
 
 **Preset**:
-一次 session 的模型可见组合，涵盖工具、prompt 段与 persona，以可发布的目录为单位。
+一次 session 的模型可见组合，涵盖工具、prompt 段与 persona；以可发布的单位声明，并可按标识覆盖。
 _Avoid_: agent profile、bundle、模板
 
 **Shadowing（遮蔽）**:
@@ -61,6 +61,22 @@ _Avoid_: temporary subagent
 **Continuable child（可持续子代理）**:
 拥有持久 session id、可继续投递消息、可冷恢复的子代理。
 _Avoid_: persistent subagent、background agent
+
+**Team（团队）**:
+以 root session 为 TeamId 的隐式协作单元；成员共享同一工作区，模型侧按成员名寻址。
+_Avoid_: squad、swarm、多智能体
+
+**Lead（队长）**:
+Team 的 root agent；唯一可创建 teammate、唯一可中断成员的角色。
+_Avoid_: manager、orchestrator、主代理
+
+**Teammate（队友）**:
+由 Lead 创建的具名、可继续子代理；继承 Lead 的路由与 preset，模型可见名不可变。
+_Avoid_: worker、member、普通子代理
+
+**Team task（团队任务）**:
+Team 成员共享的任务，带依赖关系与提示性的预期写范围；写范围不是锁。
+_Avoid_: ticket、issue、工单
 
 **Route（路由）**:
 一次模型调用的 provider 与 model 组合。
