@@ -1,0 +1,1 @@
+dsh: skipping profile bundle "@dsh-plugins/minimal-plus-preset": Error: dsh: cannot resolve profile bundle "@dsh-plugins/minimal-plus-preset" from the dsh installation or /Users/vito/.dsh/profiles/tui-dev; run 'dsh plugin --profile tui-dev install' if its dependency is not installed

@@ -86,12 +86,13 @@ if [ "$prevLock" != "$newLock" ]; then
   (cd "$STABLE" && npm i --no-fund --no-audit)
 fi
 (cd "$STABLE" && DSH_HOST_DEPS_DIR="$HOST_DEPS_DIR" scripts/link-global-dsh.sh)
-# Preset carrier sync (ticket 07): the tool now defaults to dry-run and only
-# checks the generated 0.1.7 bundle against the repo source. The real
-# deployment write (profile-side bundle) is the closeout ticket 12's approved
-# step; the stable channel still runs the legacy 0.1.5 directory carrier until
-# then, so this call intentionally does not write the deployment position.
-scripts/sync-agent-presets.sh --dry-run
+# Preset carrier (tickets 07/12): the 0.1.7 deployment is the profile-side bundle, so the
+# release path runs the plan in `--check` mode — exit 1 when the real profiles are absent or
+# stale (the earlier `--tier 0,1,2 --composition real` gate already fails on that layer
+# without any exemption; this check is the named pre-flight). Real writes stay explicit and
+# user-approved (`--write`); the stable channel still reads the legacy 0.1.5 directory
+# carrier until it migrates.
+node scripts/deploy-preset-carrier-cli.mjs --check
 
 # 收尾必检（2026-09-22 事故补检）：部署位已同步 → 真起 **stable profile**（隔离 home +
 # 真 PTY + 部署位 preset），断言 preset 真挂上了。回归闸门只渲染 tui-dev 组合，stable

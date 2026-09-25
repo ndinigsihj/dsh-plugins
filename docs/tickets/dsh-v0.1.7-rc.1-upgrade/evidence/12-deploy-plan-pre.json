@@ -1,0 +1,207 @@
+{
+  "kind": "deploy-preset-carrier",
+  "version": 1,
+  "hostVersion": "0.1.7-rc.1",
+  "mode": "dry-run",
+  "startedAt": "2026-09-25T15:45:52.324Z",
+  "plan": {
+    "ok": true,
+    "problems": [],
+    "preset": {
+      "id": "minimal-plus",
+      "packageName": "@dsh-plugins/minimal-plus-preset",
+      "sourceDir": "/Users/vito/data/dev/dsh-plugins/presets/minimal-plus",
+      "artifactDir": "/Users/vito/data/dev/dsh-plugins/generated/minimal-plus-preset",
+      "sourceLabel": "presets/minimal-plus"
+    },
+    "profilesRoot": "/Users/vito/.dsh/profiles",
+    "profiles": [
+      {
+        "kind": "dev",
+        "name": "tui-dev",
+        "dir": "/Users/vito/.dsh/profiles/tui-dev",
+        "exists": true,
+        "bundles": [
+          "@deepseek-ai/dsh-base",
+          "dsh-antigravity-auth"
+        ],
+        "plannedBundles": [
+          "@deepseek-ai/dsh-base",
+          "dsh-antigravity-auth",
+          "@dsh-plugins/minimal-plus-preset"
+        ],
+        "selection": false,
+        "patch": {
+          "path": "/Users/vito/.dsh/profiles/tui-dev/cordis.patch.yml",
+          "sha256": "d39a4f6458a9f254e7e0963cfaaa800dcb01108132bf0146482fba1c7f10d9ba",
+          "legacyRowStrip": true,
+          "strippedText": "# Combined profile: 自研 pi-tui 前端（dsh-plugins/lib）+ endless memory layer。\n#\n# 2026-08-22 自 endless-tui（已弃用）迁移：第三方 @deepseek-harness-tui/dsh-tui 行替换为\n# 本仓库的 tui-startup / tui-runner；其余插件原样搬入。两处有意不迁移：\n#   - approval-tui：自研前端已在 tui-runner 内建 approval/request 审批对话框，\n#     双挂会重复弹窗；\n#   - activity/activityFrames/contextBar/fullscreen/effort/cwd/sessionId：\n#     官方插件私有 config 键，自研 runner 不消费（sessionId 由\n#     DSH_CC_RESUME_SESSION 环境变量在 startup 层承接）。\n# preset 沿用 CC_TUI_PRESET 环境变量覆盖 + 默认 minimal-plus（开发侧 rc.1 组合，\n# ADR-0002；patch 层部署钉选；stable 侧的 tui profile 仍钉 minimal-plus）。\n# 2026-08-22 补挂 dsh-tool-ask-user：dsh-base 只带 user-questions 服务不带\n# 问卷工具（官方 TUI bundle 才有）；自研 CheckboxList 多选问卷需要它。\n# 2026-09-10 rc.1 适配（票据 05）：rc.1 dsh-base 已挂载 storage / storage-json /\n# storage-domain / session-projection-cache（重复 insert 会导致\n# duplicate loader entry id 而整套 profile 挂不起来）。前三行删除、跟随 base；\n# projection-cache 改为文件末尾的按 id config 覆盖，保留原有 400/30000 节流。\n# 2026-09-10 票据 11：insert 官方子代理模型选择设置服务（宿主作用域；preset 的\n# delegation/tool-subagent 已开 `modelSelectionSettings: true`，缺此挂载组合即抛错）。\n# 2026-09-12：opencode-go 月度额度停用；随后 commandcode v4-flash 与\n# deepseek-official v4-flash 也退役，部署基线改为 2 条允许路由\n# （commandcode/deepseek/deepseek-v4.1-flash + deepseek-official/deepseek-flash）；\n# 用户仍可在 settings.yaml 的 `subagent-model-selection:` 段覆盖 enabled/allowedModels。\n\n- insert:\n    # 官方子代理模型选择的宿主侧单例：新顶层会话组合委派工具时采样，\n    # 记录进会话并由子会话继承。允许路由由票据 12 逐条真实工具调用探测后裁剪。\n    - id: subagent-model-selection-settings\n      name: '@deepseek-ai/dsh-tool-subagent/model-selection-settings'\n      config:\n        enabled: true\n        allowedModels:\n          - provider: commandcode\n            model: deepseek/deepseek-v4.1-flash\n          - provider: deepseek-official\n            model: deepseek-flash\n\n    - id: tui-startup\n      name: '/Users/vito/data/dev/dsh-plugins/lib/startup.ts'\n    - id: tui-runner\n      name: '/Users/vito/data/dev/dsh-plugins/lib/index.ts'\n      config:\n        preset: !!js process.env.CC_TUI_PRESET ?? 'minimal-plus'\n    - id: tool-ask-user\n      name: '@deepseek-ai/dsh-tool-ask-user'\n    - id: session-reference\n      name: '@deepseek-ai/dsh-session-reference'\n\n    - id: file-reference-local\n      name: '@deepseek-ai/dsh-file-reference-local'\n\n    - id: relay-client\n      name: '/Users/vito/data/dev/dsh-relay/src/client.ts'\n      inject: [loader, agents, sessions, userQuestions, endlessStorage, tools, timer, approval]\n    - id: tui-rename-session\n      name: '/Users/vito/data/dev/dsh-plugins/plugins/rename-session.ts'\n      inject: [sessionTitle, commands, agents]\n    - id: dsh-rewind\n      name: '/Users/vito/data/dev/dsh-plugins/plugins/rewind-dsh.ts'\n      inject: [agents, sessions, commands]\n    - id: endless-storage\n      name: '/Users/vito/data/dev/dsh-endless/src/storage-plugin.ts'\n    - id: endless-capture\n      name: '/Users/vito/data/dev/dsh-endless/src/capture.ts'\n      inject: [endlessStorage]\n      config:\n        repoIdentity: true\n    - id: endless-distill\n      name: '/Users/vito/data/dev/dsh-endless/src/distill.ts'\n      inject: [endlessStorage, llm, agentDefaultModel]\n      config:\n        provider: deepseek-official\n        model: deepseek-v4-flash\n        maxTokens: 2000\n        reasoningEffort: \"off\"\n    - id: endless-inject\n      name: '/Users/vito/data/dev/dsh-endless/src/inject.ts'\n      inject: [endlessStorage]\n      config:\n        repoIdentity: true\n    - id: endless-tools\n      name: '/Users/vito/data/dev/dsh-endless/src/tools.ts'\n      inject: [endlessStorage, tools]\n      config:\n        repoIdentity: true\n\n    # B4 spike（docs/mcp-inventory-design.md §3.1/§6）：官方测试器 server，\n    # 工具多而无副作用；2026-08-26 链路验证完毕后停用（S3 已过）。\n    # 生产 server 按同模板解除注释/自行加行。\n    # - id: mcp-everything\n    #   name: '@deepseek-ai/dsh-mcp-client'\n    #   config:\n    #     serverName: everything\n    #     transport: stdio\n    #     command: npx\n    #     args: ['-y', '@modelcontextprotocol/server-everything']\n\n# rc.1 dsh-base 已挂载 session-projection-cache（默认 200/5000）；按 id 覆盖为\n# 本 profile 原有的节流参数。storage / storage-json / storage-domain 跟随 base。\n- id: session-projection-cache\n  name: '@deepseek-ai/dsh-session-projection-cache'\n  config:\n    writeEveryEvents: 400\n    writeIntervalMs: 30000\n"
+        },
+        "bundleTarget": {
+          "state": "absent",
+          "repoOk": true,
+          "files": [
+            {
+              "path": "compaction-epoch.mjs",
+              "sha256": "a17cdce7b871b57b35fe9dc5abae4fd7d6b3bcb3089278c7be97ad314e0d4feb",
+              "repoStatus": "match",
+              "targetStatus": "absent"
+            },
+            {
+              "path": "cordis.patch.yml",
+              "sha256": "e29ae81cd00c3c7ae1f1a3057a905639685aa104a6bca1c50f8b5bd407c34fe7",
+              "repoStatus": "match",
+              "targetStatus": "absent"
+            },
+            {
+              "path": "custom-bash.mjs",
+              "sha256": "8422b4acd6f8f256491b09c3dfed7b03909a7724d99d48e03eed7e55dcf55044",
+              "repoStatus": "match",
+              "targetStatus": "absent"
+            },
+            {
+              "path": "instruction-hint.mjs",
+              "sha256": "4a2a26cb74ee8307d17df72ea4cebbebf806a4f5c95b29b5e442b6c41fad0667",
+              "repoStatus": "match",
+              "targetStatus": "absent"
+            },
+            {
+              "path": "package.json",
+              "sha256": "e478937e5eb6ca3d6bac1dbd579226fa4618afb77d75dd4243db550d31c5c4b2",
+              "repoStatus": "match",
+              "targetStatus": "absent"
+            },
+            {
+              "path": "phase-swap-bash.mjs",
+              "sha256": "8248a7d8aa7fb8ff6d64850e3bd462de9569fea74ca185f324c3628cfff185df",
+              "repoStatus": "match",
+              "targetStatus": "absent"
+            },
+            {
+              "path": "plugin-teardown.mjs",
+              "sha256": "f3f49a4933eb939336b4a23ee6a13f22659e65f86142eced933dc807674a5daa",
+              "repoStatus": "match",
+              "targetStatus": "absent"
+            },
+            {
+              "path": "skill-search.mjs",
+              "sha256": "25eb10fa9d2bdbc3ffbdd5bb35736e10628b74e9c97a36bdc9b06a682de4909a",
+              "repoStatus": "match",
+              "targetStatus": "absent"
+            },
+            {
+              "path": "source-manifest.json",
+              "sha256": "79f1b7f351c01861d0cdaf90cbeb844354621b6969381e367d6949ae2d12a2c3",
+              "repoStatus": "match",
+              "targetStatus": "absent"
+            },
+            {
+              "path": "tool-bootstrap.mjs",
+              "sha256": "e3e05e677289d84f5b24e291061e92dc309e75768a5aad355b5ade28f2d2a6ed",
+              "repoStatus": "match",
+              "targetStatus": "absent"
+            }
+          ]
+        }
+      },
+      {
+        "kind": "team",
+        "name": "tui-team",
+        "dir": "/Users/vito/.dsh/profiles/tui-team",
+        "exists": false,
+        "source": "tui-dev",
+        "bundles": [],
+        "plannedBundles": [
+          "@deepseek-ai/dsh-base",
+          "dsh-antigravity-auth",
+          "@deepseek-ai/dsh-experimental-agent-team-profile",
+          "@dsh-plugins/minimal-plus-preset"
+        ],
+        "selection": false,
+        "manifest": {
+          "name": "dsh-profile-tui-team",
+          "private": true,
+          "dsh": {
+            "profile": {
+              "bundles": [
+                "@deepseek-ai/dsh-base",
+                "dsh-antigravity-auth",
+                "@deepseek-ai/dsh-experimental-agent-team-profile"
+              ]
+            }
+          },
+          "dependencies": {
+            "dsh-antigravity-auth": "0.1.4-rc.1"
+          }
+        },
+        "bundleTarget": {
+          "state": "absent",
+          "repoOk": true,
+          "files": [
+            {
+              "path": "compaction-epoch.mjs",
+              "sha256": "a17cdce7b871b57b35fe9dc5abae4fd7d6b3bcb3089278c7be97ad314e0d4feb",
+              "repoStatus": "match",
+              "targetStatus": "absent"
+            },
+            {
+              "path": "cordis.patch.yml",
+              "sha256": "e29ae81cd00c3c7ae1f1a3057a905639685aa104a6bca1c50f8b5bd407c34fe7",
+              "repoStatus": "match",
+              "targetStatus": "absent"
+            },
+            {
+              "path": "custom-bash.mjs",
+              "sha256": "8422b4acd6f8f256491b09c3dfed7b03909a7724d99d48e03eed7e55dcf55044",
+              "repoStatus": "match",
+              "targetStatus": "absent"
+            },
+            {
+              "path": "instruction-hint.mjs",
+              "sha256": "4a2a26cb74ee8307d17df72ea4cebbebf806a4f5c95b29b5e442b6c41fad0667",
+              "repoStatus": "match",
+              "targetStatus": "absent"
+            },
+            {
+              "path": "package.json",
+              "sha256": "e478937e5eb6ca3d6bac1dbd579226fa4618afb77d75dd4243db550d31c5c4b2",
+              "repoStatus": "match",
+              "targetStatus": "absent"
+            },
+            {
+              "path": "phase-swap-bash.mjs",
+              "sha256": "8248a7d8aa7fb8ff6d64850e3bd462de9569fea74ca185f324c3628cfff185df",
+              "repoStatus": "match",
+              "targetStatus": "absent"
+            },
+            {
+              "path": "plugin-teardown.mjs",
+              "sha256": "f3f49a4933eb939336b4a23ee6a13f22659e65f86142eced933dc807674a5daa",
+              "repoStatus": "match",
+              "targetStatus": "absent"
+            },
+            {
+              "path": "skill-search.mjs",
+              "sha256": "25eb10fa9d2bdbc3ffbdd5bb35736e10628b74e9c97a36bdc9b06a682de4909a",
+              "repoStatus": "match",
+              "targetStatus": "absent"
+            },
+            {
+              "path": "source-manifest.json",
+              "sha256": "79f1b7f351c01861d0cdaf90cbeb844354621b6969381e367d6949ae2d12a2c3",
+              "repoStatus": "match",
+              "targetStatus": "absent"
+            },
+            {
+              "path": "tool-bootstrap.mjs",
+              "sha256": "e3e05e677289d84f5b24e291061e92dc309e75768a5aad355b5ade28f2d2a6ed",
+              "repoStatus": "match",
+              "targetStatus": "absent"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "ok": true
+}

@@ -56,6 +56,10 @@ dsh-relay 的 fleet 侧挂载（hub：`fleet-client` / `memory-sink`；worker：
 `tui-dev` 创建方式：`cp -R ~/.dsh/profiles/tui ~/.dsh/profiles/tui-dev` 后按上表
 改回 dev 路径（profile 仅 3 个文件、无本地 node_modules，复制成本可忽略）。
 
+`tui-team`（Team 组合，票据 12）由 `node scripts/deploy-preset-carrier-cli.mjs --write`
+从 `tui-dev` 派生（摘旧目录 preset 行、追加 `@deepseek-ai/dsh-experimental-agent-team-profile`
+与 profile 侧 preset bundle），不手工 `cp`；dry-run 默认，写入前先审计划。
+
 版本肉眼校验：banner 版本号读自所在树的 package.json——日常窗口显示已发布
 tag 版本，开发窗口显示工作树版本。
 
@@ -70,10 +74,12 @@ tag 版本，开发窗口显示工作树版本。
    **顺序铁律：任何 npm i 之前先摘 `node_modules/@deepseek-ai` 符号链接，装完再由
    link 脚本重建**——npm 会把已存在的链接当作 extraneous 包穿透删除，清空全局
    dsh 依赖树（2026-08-24 实际事故，npm i -g 重装恢复）。
-5. preset 载体同步（0.1.7 起，票据 07）：`scripts/sync-agent-presets.sh` 默认 **dry-run**，
-   逐文件核对仓库真源 ↔ `generated/minimal-plus-preset/` ↔ 目标位，不写任何真实路径；
-   `--write` 才落目标位。真实部署位落点与 profile 安装（bundle）归收口票 12；stable 通道
-   迁到 0.1.7 之前仍是 0.1.5 目录形态，部署位写入未收口前 release 会被闸门的部署位断言拦下。
+5. preset 载体同步（0.1.7 起，票据 07/12）：`node scripts/deploy-preset-carrier-cli.mjs` 默认
+   **dry-run** 出计划（逐文件核对 `generated/minimal-plus-preset/` ↔ `tui-dev`/`tui-team` 的
+   `preset-bundles/` 并报告旧目录 preset 行是否需要摘除）；release 路径跑 `--check`，部署位
+   缺席/滞后即退出 1；真实写入用 `--write`（显式、需用户批准）。默认 dry-run 的退出码 0 只表示
+   「计划可执行」，不代表部署位已就绪。stable 通道迁到 0.1.7 之前仍是 0.1.5 目录形态
+   （`~/.dsh/.agent-presets/minimal-plus` 只服务 stable）。
 6. 打印结果行：`stable = ~/dev/dsh-plugins-stable @ v<version>`；提示运行中的 TUI 需退出重启（或 /resume 重进）才吃到新代码。
 
 边界约定：

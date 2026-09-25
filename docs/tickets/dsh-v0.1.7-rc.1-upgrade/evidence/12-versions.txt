@@ -1,0 +1,5 @@
+== versions 2026-09-25T23:54:51+08:00
+wrapper ~/.dsh/bin/dsh: 0.1.7-rc.1
+direct v24 global:       0.1.7-rc.1
+old copy via DSH_CLI:    0.1.5-rc.2
+v22 global (pinned, out of scope): 0.1.5-rc.1

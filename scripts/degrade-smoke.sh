@@ -7,8 +7,9 @@
 # 用法：scripts/degrade-smoke.sh   （默认在仓库 .tmp-degrade-<preset> 下建临时 preset 树）
 # 可覆盖：DEGRADE_SMOKE_PRESET=<preset id>（stable 手验可设 minimal-plus）
 #         DEGRADE_SMOKE_ROOT=<dir>
-#         DEGRADE_SMOKE_SOURCE_ROOT=<dir>（preset 来源根，默认 presets；real 组合模式
-#           传闸门物化的部署位副本根，degrade 与主冒烟才验同一份 preset）
+#         DEGRADE_SMOKE_SOURCE_ROOT=<dir>（preset 真源根，默认 presets；degrade 需要可改坏的
+#           真源，real 组合模式的部署位是 bundle、不传此值——主冒烟改由 SMOKE_PRESET_BUNDLE
+#           装载部署位那一份）
 #         SMOKE_SESSION_ROOT=<dir>（沿透给 smoke-boot；闸门落临时 home）
 set -euo pipefail
 cd "$(dirname "$0")/.."

@@ -1,0 +1,72 @@
+== tui-dev profile
+total 160
+drwxr-xr-x  12 vito  staff    384  9月 25 23:47 .
+drwxr-xr-x  12 vito  staff    384  9月 25 23:47 ..
+-rw-r--r--   1 vito  staff   5052  9月 25 23:47 cordis.patch.yml
+-rw-r--r--   1 vito  staff   5764  9月 12 19:59 cordis.patch.yml.bak-20260912-203701
+-rw-r--r--   1 vito  staff   5749  9月 25 23:47 cordis.patch.yml.bak-20260925-234726
+-rw-r--r--   1 vito  staff    223  9月 26 00:00 cordis.yml
+drwxr-xr-x  14 vito  staff    448  9月 25 23:47 node_modules
+-rw-r--r--   1 vito  staff    295  9月 26 00:00 package.json
+-rw-r--r--   1 vito  staff    153  9月 12 19:59 package.json.bak-20260912-203701
+-rw-r--r--   1 vito  staff  37227  9月 16 23:44 pnpm-lock.yaml
+-rw-r--r--   1 vito  staff    114  9月 12 19:59 pnpm-lock.yaml.bak-20260912-203701
+drwxr-xr-x   3 vito  staff     96  9月 25 23:47 preset-bundles
+d9588220475c49ea7c70eb3c874b8b337a825a20fb0e31309a1bf6c13bf69d7d  /Users/vito/.dsh/profiles/tui-dev/cordis.patch.yml
+c300dcf2ebc5f02062d6591268d29d3db6fe45e0cb138f5467276fe2ba06076e  /Users/vito/.dsh/profiles/tui-dev/cordis.yml
+313a8cdad88bb71096f2c398ee8a68a23b7b9f34389b14e1a802332555e0cb9a  /Users/vito/.dsh/profiles/tui-dev/package.json
+d39a4f6458a9f254e7e0963cfaaa800dcb01108132bf0146482fba1c7f10d9ba  /Users/vito/.dsh/profiles/tui-dev/cordis.patch.yml.bak-20260925-234726
+== tui-team profile
+total 32
+drwxr-xr-x   7 vito  staff   224  9月 25 23:47 .
+drwxr-xr-x  12 vito  staff   384  9月 25 23:47 ..
+-rw-r--r--   1 vito  staff  5052  9月 25 23:47 cordis.patch.yml
+-rw-r--r--   1 vito  staff   223  9月 26 00:00 cordis.yml
+drwxr-xr-x  14 vito  staff   448  9月 25 23:47 node_modules
+-rw-r--r--   1 vito  staff   356  9月 25 23:47 package.json
+drwxr-xr-x   3 vito  staff    96  9月 25 23:47 preset-bundles
+d9588220475c49ea7c70eb3c874b8b337a825a20fb0e31309a1bf6c13bf69d7d  /Users/vito/.dsh/profiles/tui-team/cordis.patch.yml
+c300dcf2ebc5f02062d6591268d29d3db6fe45e0cb138f5467276fe2ba06076e  /Users/vito/.dsh/profiles/tui-team/cordis.yml
+962553200abcf324b9f804eecb2292116ccdfb59a0698980bd96aca3cd6a2b0a  /Users/vito/.dsh/profiles/tui-team/package.json
+== deployed preset bundles (tui-dev then tui-team)
+a17cdce7b871b57b35fe9dc5abae4fd7d6b3bcb3089278c7be97ad314e0d4feb  compaction-epoch.mjs
+e29ae81cd00c3c7ae1f1a3057a905639685aa104a6bca1c50f8b5bd407c34fe7  cordis.patch.yml
+8422b4acd6f8f256491b09c3dfed7b03909a7724d99d48e03eed7e55dcf55044  custom-bash.mjs
+4a2a26cb74ee8307d17df72ea4cebbebf806a4f5c95b29b5e442b6c41fad0667  instruction-hint.mjs
+e478937e5eb6ca3d6bac1dbd579226fa4618afb77d75dd4243db550d31c5c4b2  package.json
+8248a7d8aa7fb8ff6d64850e3bd462de9569fea74ca185f324c3628cfff185df  phase-swap-bash.mjs
+f3f49a4933eb939336b4a23ee6a13f22659e65f86142eced933dc807674a5daa  plugin-teardown.mjs
+25eb10fa9d2bdbc3ffbdd5bb35736e10628b74e9c97a36bdc9b06a682de4909a  skill-search.mjs
+79f1b7f351c01861d0cdaf90cbeb844354621b6969381e367d6949ae2d12a2c3  source-manifest.json
+e3e05e677289d84f5b24e291061e92dc309e75768a5aad355b5ade28f2d2a6ed  tool-bootstrap.mjs
+a17cdce7b871b57b35fe9dc5abae4fd7d6b3bcb3089278c7be97ad314e0d4feb  compaction-epoch.mjs
+e29ae81cd00c3c7ae1f1a3057a905639685aa104a6bca1c50f8b5bd407c34fe7  cordis.patch.yml
+8422b4acd6f8f256491b09c3dfed7b03909a7724d99d48e03eed7e55dcf55044  custom-bash.mjs
+4a2a26cb74ee8307d17df72ea4cebbebf806a4f5c95b29b5e442b6c41fad0667  instruction-hint.mjs
+e478937e5eb6ca3d6bac1dbd579226fa4618afb77d75dd4243db550d31c5c4b2  package.json
+8248a7d8aa7fb8ff6d64850e3bd462de9569fea74ca185f324c3628cfff185df  phase-swap-bash.mjs
+f3f49a4933eb939336b4a23ee6a13f22659e65f86142eced933dc807674a5daa  plugin-teardown.mjs
+25eb10fa9d2bdbc3ffbdd5bb35736e10628b74e9c97a36bdc9b06a682de4909a  skill-search.mjs
+79f1b7f351c01861d0cdaf90cbeb844354621b6969381e367d6949ae2d12a2c3  source-manifest.json
+e3e05e677289d84f5b24e291061e92dc309e75768a5aad355b5ade28f2d2a6ed  tool-bootstrap.mjs
+== node_modules links (must point into each profile's own preset-bundles)
+/Users/vito/.dsh/profiles/tui-dev/node_modules/@dsh-plugins/:
+total 0
+drwxr-xr-x   3 vito  staff   96  9月 26 00:00 .
+drwxr-xr-x  14 vito  staff  448  9月 25 23:47 ..
+lrwxr-xr-x   1 vito  staff   68  9月 26 00:00 minimal-plus-preset -> /Users/vito/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset
+
+/Users/vito/.dsh/profiles/tui-team/node_modules/@dsh-plugins/:
+total 0
+drwxr-xr-x   3 vito  staff   96  9月 25 23:47 .
+drwxr-xr-x  14 vito  staff  448  9月 25 23:47 ..
+lrwxr-xr-x   1 vito  staff   69  9月 25 23:47 minimal-plus-preset -> /Users/vito/.dsh/profiles/tui-team/preset-bundles/minimal-plus-preset
+== legacy dir (stable channel; untouched)
+a17cdce7b871b57b35fe9dc5abae4fd7d6b3bcb3089278c7be97ad314e0d4feb  ~/.dsh/.agent-presets/minimal-plus/compaction-epoch.mjs
+e3e05e677289d84f5b24e291061e92dc309e75768a5aad355b5ade28f2d2a6ed  ~/.dsh/.agent-presets/minimal-plus/tool-bootstrap.mjs
+318c4884862416cc49973f8ddfd2a5ea03326f6cf4a23cfd1451270b5043d887  ~/.dsh/.agent-presets/minimal-plus/agent.cordis.yml
+3b26436ee419ce57594a9f2fcaad688b6b404780859a82ba143ddcf40abd427d  ~/.dsh/.agent-presets/minimal-plus/custom-bash.mjs
+61312f8b054035e52afc6df9d52f5d38b1847dd8ba2a9eb99d2381c794debfaf  ~/.dsh/.agent-presets/minimal-plus/skill-search.mjs
+4a2a26cb74ee8307d17df72ea4cebbebf806a4f5c95b29b5e442b6c41fad0667  ~/.dsh/.agent-presets/minimal-plus/instruction-hint.mjs
+96c6a947152227289f5a6440bc6121da17c90710c39c9104556a6317d6db1632  ~/.dsh/.agent-presets/minimal-plus/preset.yml
+96577a646e53887823f7d8caf8a9f24da9d450f47f79c8ad56a5aa38107dd911  ~/.dsh/.agent-presets/minimal-plus/phase-swap-bash.mjs

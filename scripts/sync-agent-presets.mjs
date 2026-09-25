@@ -149,10 +149,10 @@ function applyPlan(options, plan, stdout) {
   stdout.write(`sync-agent-presets: wrote ${String(plan.files.length)} files to ${options.targetDir}\n`);
 }
 
-/** 打印旧目录退场提示（只读探测，不删除）。 */
+/** 打印旧目录提示（只读探测，不删除）。 */
 function legacyNotice(options, stdout) {
   if (existsSync(options.legacyDir)) {
-    stdout.write(`sync-agent-presets: legacy directory ${options.legacyDir} is no longer read by 0.1.7; removal is deferred to the deployment ticket (needs approval)\n`);
+    stdout.write(`sync-agent-presets: legacy directory ${options.legacyDir} is not read by 0.1.7; it stays as the stable 0.1.5 channel's carrier (ticket 12)\n`);
   }
 }
 

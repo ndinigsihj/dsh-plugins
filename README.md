@@ -155,11 +155,14 @@ hub 侧的 `fleet-client` / `memory-sink`、worker 侧的 `remote-server` 挂载
   `cordis.patch.yml`（registry 行 + `preset-minimal-plus` 声明行 + 自研插件列表）、逐字节复制的
   `*.mjs` 与 `source-manifest.json`（真源 sha256）。profile 通过 `dsh.profile.bundles` 选择它。
 - 生成/对账：`node scripts/agent-preset-bundle-cli.mjs` 重生成；`--check` 逐文件核对；`npm test` 里有一条
-  「仓库产物 = 真源再生」断言，漂移即红。
-- 同步工具：`scripts/sync-agent-presets.sh`（默认 dry-run，逐文件比对真源 ↔ 仓库产物 ↔ 目标位，不写任何
-  真实路径）；`--write` 才落目标位，`--profile <name>` 直接接进 profile（bundle + node_modules 链接 +
-  `dsh.profile.bundles` 选择）。真实部署位写入在收口票 12（当前部署位仍是 0.1.5 目录形态，闸门窗口
-  用 `--skip-deployment-check` 记账）。
+  「仓库产物 = 真源再生」断言，漂移即红。**三层一致性链**：真源 ↔ 产物（T0 `npm test`，不可豁免）→
+  产物 ↔ 清单（T1 `deployment.repo-matches-manifest`，不可豁免）→ 清单 ↔ 部署位（T1
+  `deployment.repo-vs-deployed`，滞后可临时豁免、收口后必须零豁免）。
+- 同步/部署工具：单 profile 产物写入用 `scripts/sync-agent-presets.sh`（默认 dry-run，`--write` 才落）；
+  多 profile 收口入口是 `node scripts/deploy-preset-carrier-cli.mjs`（默认 dry-run 出计划，`--check`
+  在部署位缺席/滞后时退出 1，`--write` 经批准后执行：tui-dev 摘旧目录 preset 行 + 装 bundle，
+  tui-team 从 tui-dev 派生）。0.1.7 的部署位是 `~/.dsh/profiles/{tui-dev,tui-team}/preset-bundles/minimal-plus-preset`；
+  旧目录 `~/.dsh/.agent-presets/minimal-plus` 只服务 stable 0.1.5 通道，不再被 0.1.7 读取。
 - 行为不变：persona（`prefix` 正文键 + `complete` + `includeRuntimeContext: false`）、恒禁 `tool-bash`、
   `phase-swap-bash` 二轮提权、`tool-subagent` 的 `modelSelectionSettings: true`、`instruction-hint` /
   `skill-search` 等行都逐行进了生成产物（断言见 `scripts/agent-preset-bundle.test.mjs` 与 T1 冒烟）。
@@ -182,6 +185,7 @@ scripts/regression-gate.sh --tier 0,1,2 --skip-deployment-check    # 部署位�
 scripts/regression-gate.sh --tier 0,1,2 --composition real         # 交付前：真实 tui-dev 组合
 scripts/regression-gate.sh --tier 3                                # 按需：真实模型层（需凭据，永不进 release/CI）
 node gates/team-profile.mjs --json <path>                          # tui-team 派生 + 配置导出检查（只写临时 home）
+node scripts/deploy-preset-carrier-cli.mjs                         # 部署计划（dry-run；--write 才落真实 profile，需批准）
 scripts/tui-pty-smoke.sh                                           # 按需：独立 PTY 冒烟（T4b，不进 release）
 scripts/tui-pty-smoke.sh --profile tui-team --probe-tools          # 按需：Team 形态工具面期望（自动追加 Team bundle）
 node scripts/preset-mount-smoke.mjs                                # stable 通道挂载冒烟（release.sh 收尾必跑）
@@ -195,7 +199,9 @@ node scripts/preset-mount-smoke.mjs                                # stable 通�
 按 `--profile` 名核对注册面与模型可见目录（preset 哨兵缺席一律判红，回退口径只在期望声明里核对，
 不冒充「未测」）。`--composition real` 另会从真实 tui-dev 派生 `tui-team`
 （只追加 Team bundle，源只读）并断言 `composition.team-profile`：`--dump-config` exit 0、逐 loader id
-计数为 1。真实 `~/.dsh/profiles/tui-team` 的物化与 preset 落位归收口票 12；本仓库只维护派生与检查。
+计数为 1。真实 `~/.dsh/profiles/tui-team` 的物化与 preset 落位由
+`node scripts/deploy-preset-carrier-cli.mjs --write` 完成（票据 12；dry-run 默认，写入需批准）；
+本仓库只维护派生与检查。
 
 退出码：全过 `0`；任一断言失败 `1`；环境前置不满足 `2`（宿主或会话格式与 `gates/manifest.json` 不符、
 组合渲染缺依赖、`real` 缺相邻 `../dsh-relay`/`../dsh-endless`、T3 版本/基线来源不符或真实 settings 缺失）。
@@ -210,7 +216,9 @@ node scripts/preset-mount-smoke.mjs                                # stable 通�
 
 **两种豁免**（默认拒绝；被豁免时报告写 `exemptions[]` 并在 stdout 打醒目警告，绝不静默变绿）：
 
-- `--allow-stale-deployment`：只豁免「仓库 preset ↔ `~/.dsh/.agent-presets/<preset>` sha 一致」这一层。
+- `--allow-stale-deployment`：只豁免「仓库生成产物 ↔ profile 侧 `preset-bundles/<pkg>` sha 一致」这一层
+  （`gates/manifest.json` 的 `deployment.minimal-plus`：`repoPath` = `generated/minimal-plus-preset`，
+  `targets` = `~/.dsh/profiles/{tui-dev,tui-team}/preset-bundles/minimal-plus-preset`）。
   豁免状态下冒烟/探针验的是**旧副本**，不代表仓库当前内容。
 - `--skip-deployment-check`：只用于部署位**不存在**（CI/隔离环境），报告记 `reason: "absent"`。
 - release 路径（`scripts/release.sh`）永不传任何豁免参数。
@@ -219,11 +227,12 @@ node scripts/preset-mount-smoke.mjs                                # stable 通�
 T3 产物另按 `experiments/regression-gate/t3-<UTC 时间戳>/` 归档，跨轮次不覆盖。
 
 **仓库绿灯 ≠ 部署位生效**：`gate` 组合把仓库资产渲染进隔离临时 home 验证；0.1.7 的真实 TUI 加载
-的是 profile 选择的 preset bundle（部署位落点与 profile 安装归收口票 12，当前部署位仍是 0.1.5 目录形态）。
-交付前序列：`scripts/sync-agent-presets.sh --dry-run` 逐文件核对 →（12 批准后）`--write` 落位并安装到
-profile → `--tier 0,1,2 --composition real` 全绿 → T3 按需 → `node scripts/preset-mount-smoke.mjs`
-（真 PTY 起 **stable profile** + 部署位 preset，`release.sh` 收尾自动执行；stable 通道迁到 0.1.7 前仍是
-旧目录形态）→ 人工签收。
+的是 profile 选择的 preset bundle（0.1.5 目录形态已不再被读取）。交付前序列：
+`node scripts/deploy-preset-carrier-cli.mjs`（dry-run，逐文件核对 `generated/minimal-plus-preset` ↔
+`tui-dev`/`tui-team` 的 `preset-bundles/`）→（用户批准后）`--write` 落位并安装到 profile →
+`--tier 0,1,2 --composition real` 全绿 → T3 按需 → `node scripts/preset-mount-smoke.mjs`
+（真 PTY 起 **stable profile** + stable 通道 preset，`release.sh` 收尾自动执行；stable 通道迁到 0.1.7
+前仍是旧目录形态，`~/.dsh/.agent-presets/minimal-plus` 只服务 stable）→ 人工签收。
 
 **边界**：闸门面向 `tui-dev` / `minimal-plus` / dev 侧脚本；stable `tui` 组合**不在**闸门内——
 `--composition real` 验的是 `tui-dev` 渲染副本。stable profile 的宿主层差异（例如缺

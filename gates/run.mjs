@@ -55,7 +55,16 @@ function renderRealInto(ctx) {
       env: process.env,
       homeDir: homedir(),
     });
-    ctx.env.SMOKE_PRESET_ROOT = real.preset.root;
+    // 冒烟装载面（票 12）：部署位是 bundle 时直接装载部署位那一份（SMOKE_PRESET_BUNDLE），
+    // 验的就是真实 profile 会加载的产物；回落仓库真源时给真源扫描根。degrade 冒烟需要可
+    // 改坏的真源，固定走仓库 `presets/`（见 gates/t1/preset.mjs 的 DEGRADE_SMOKE_SOURCE_ROOT）。
+    if (real.preset.source === "deployed") {
+      delete ctx.env.SMOKE_PRESET_ROOT;
+      ctx.env.SMOKE_PRESET_BUNDLE = real.preset.sourcePath;
+    } else {
+      ctx.env.SMOKE_PRESET_ROOT = real.preset.root;
+      delete ctx.env.SMOKE_PRESET_BUNDLE;
+    }
     pre.pass(
       "composition.real-render",
       `source=${real.sourcePath} sha256=${real.sourceSha.slice(0, 12)} → rendered=${real.renderedPath} sha256=${real.renderedSha.slice(0, 12)} preset=${real.preset.source}`,

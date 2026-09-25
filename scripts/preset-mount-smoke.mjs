@@ -2,8 +2,9 @@
 /**
  * preset 部署位挂载冒烟（2026-09-22 事故补检；v0.2.1 起随发版序列执行）。
  *
- * 用途：在**真 PTY** 里启动一个**真实 profile**（默认 `tui`，即 `1mdsh` 那条路径），
- * 加载**部署位** preset（`~/.dsh/.agent-presets/<preset>`），断言 preset 真的挂上了。
+ * 用途：在**真 PTY** 里启动一个**真实 profile**（默认 `tui`，即 `1mdsh` 那条路径），加载**部署位**
+ * preset（`~/.dsh/.agent-presets/<preset>`，stable 通道的旧载体；0.1.7 dev profile 走 profile 侧
+ * bundle，归闸门 `--composition real` 与 `deploy-preset-carrier-cli.mjs`），断言 preset 真的挂上了。
  *
  * 为什么需要（2026-09-22 实测）：仓库侧可以全绿而 stable 通道照样挂不起来——回归闸门
  * 只渲染 `tui-dev` 组合，而预设收敛后统一 `minimal-plus` 声明了

@@ -1,11 +1,15 @@
 /**
- * `gates/manifest.json` 的读取与三态比对（票 02）。
+ * `gates/manifest.json` 的读取与三态比对（票 02；0.1.7 载体扩展见票 12）。
  *
  * 闸门（票据 03）只消费本模块的结果，不自己解析清单：
  *   - 清单本身：`ok` / `missing` / `invalid`
  *   - 部署位逐文件：`ok`（相符）/ `stale`（不符）/ `absent`（缺失）
  *   - 宿主钉版（宿主版本 + 会话格式版本）：逐字段 `ok` / `mismatch`
  *   - 真实模型基线文件：`ok` / `stale` / `absent`
+ *
+ * 部署位（票 12，0.1.7 carrier）：一项可声明 `repoPath`（仓库侧比对基准目录，
+ * 缺省 `presets/<key>`）与 `targets`（产物落点，如各 profile 的
+ * `preset-bundles/<pkg>`）；旧的单项 `path` 仍支持。逐目标判态、聚合取最严重。
  *
  * 全部是纯函数 + 只读 fs：不写任何文件，不抛「缺失」类异常（缺失是一种状态）。
  */
@@ -84,8 +88,24 @@ function deploymentShapeProblem(deployment) {
   if (!isRecord(deployment)) return "deployment must be an object";
   for (const [preset, entry] of Object.entries(deployment)) {
     if (!isRecord(entry)) return `deployment["${preset}"] must be an object`;
-    if (typeof entry.path !== "string" || entry.path.length === 0) {
+    if (entry.repoPath !== undefined && (typeof entry.repoPath !== "string" || entry.repoPath.length === 0)) {
+      return `deployment["${preset}"].repoPath must be a non-empty string`;
+    }
+    if (entry.path !== undefined && (typeof entry.path !== "string" || entry.path.length === 0)) {
       return `deployment["${preset}"].path must be a non-empty string`;
+    }
+    if (entry.targets !== undefined) {
+      if (!Array.isArray(entry.targets) || entry.targets.length === 0) {
+        return `deployment["${preset}"].targets must be a non-empty array`;
+      }
+      for (const target of entry.targets) {
+        if (typeof target !== "string" || target.length === 0) {
+          return `deployment["${preset}"].targets entries must be non-empty strings`;
+        }
+      }
+    }
+    if (entry.path === undefined && entry.targets === undefined) {
+      return `deployment["${preset}"] needs a non-empty path or targets`;
     }
     if (!isRecord(entry.files)) return `deployment["${preset}"].files must be an object`;
     for (const [name, sha] of Object.entries(entry.files)) {
@@ -129,11 +149,25 @@ function t3ShapeProblem(t3, baselines) {
   return undefined;
 }
 
-/** 部署位 `path` 展开：`~` / `~/x` 用 homeDir，其余按原样。 */
+/** 单个部署位路径展开：`~` / `~/x` 用 homeDir，其余按原样。 */
+function expandDeploymentPath(path, homeDir) {
+  if (path === "~") return homeDir;
+  if (path.startsWith("~/")) return join(homeDir, path.slice(2));
+  return path;
+}
+
+/**
+ * 一项部署声明的目标列表：`targets`（0.1.7 多 profile）优先，旧清单回落单项 `path`。
+ * @param options.homeDir `~` 的展开基准。
+ */
+export function resolveDeploymentTargets(entry, homeDir = homedir()) {
+  const declared = entry.targets ?? (entry.path === undefined ? [] : [entry.path]);
+  return declared.map((path) => expandDeploymentPath(path, homeDir));
+}
+
+/** 部署目标的首项（渲染/staging 锚点）；多目标清单下等价于 `targets[0]`。 */
 export function resolveDeploymentRoot(entry, homeDir = homedir()) {
-  if (entry.path === "~") return homeDir;
-  if (entry.path.startsWith("~/")) return join(homeDir, entry.path.slice(2));
-  return entry.path;
+  return resolveDeploymentTargets(entry, homeDir)[0];
 }
 
 /** 实际值 vs 期望 sha：缺失 / 不符 / 相符。 */
@@ -149,25 +183,33 @@ function aggregate(states) {
 }
 
 /**
- * 逐 preset、逐生产文件比对「仓库 ↔ 清单 ↔ 部署位」。
- * @param options.repoRoot 仓库根（用于 `presets/<preset>/<name>`）；省略则不比对仓库侧。
+ * 逐 preset、逐生产文件比对「仓库 ↔ 清单 ↔ 部署位（全部目标）」。
+ * 仓库侧基准取该项的 `repoPath`（缺省 `presets/<key>`）。
+ * @param options.repoRoot 仓库根；省略则不比对仓库侧。
  * @param options.homeDir 部署位 `~` 的展开基准。
  */
 export function checkDeployment(manifest, { repoRoot, homeDir = homedir() } = {}) {
   const files = [];
   for (const [preset, entry] of Object.entries(manifest.deployment)) {
-    const deployedRoot = resolveDeploymentRoot(entry, homeDir);
+    const repoBase = entry.repoPath ?? join("presets", preset);
+    const targets = resolveDeploymentTargets(entry, homeDir);
     for (const [name, expected] of Object.entries(entry.files)) {
-      const repo = repoRoot === undefined ? undefined : sha256File(join(repoRoot, "presets", preset, name));
-      const deployed = sha256File(join(deployedRoot, name));
+      const repo = repoRoot === undefined ? undefined : sha256File(join(repoRoot, repoBase, name));
+      const targetStates = targets.map((path) => {
+        const deployed = sha256File(join(path, name));
+        return { path, deployed, state: fileState(deployed, expected) };
+      });
+      const state = aggregate(targetStates.map((target) => target.state));
+      const worst = targetStates.find((target) => target.state === state);
       files.push({
         preset,
         name,
         expected,
         repo,
-        deployed,
-        state: fileState(deployed, expected),
         repoMatches: repo === expected,
+        deployed: worst?.deployed,
+        state,
+        targets: targetStates,
       });
     }
   }

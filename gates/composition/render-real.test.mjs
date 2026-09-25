@@ -13,6 +13,7 @@ import { join } from "node:path";
 import test from "node:test";
 import {
   LEGACY_PRESET_PACKAGE,
+  PRESET_BUNDLE_REQUIREMENTS,
   RenderRealError,
   collectModuleNames,
   renderRealComposition,
@@ -21,7 +22,7 @@ import {
   stripLegacyPresetRow,
 } from "./render-real.mjs";
 import { writePresetSource, writeTree } from "./render-real.fixtures.mjs";
-import { BUNDLE_PACKAGE_NAME, PRESET_SOURCE_REQUIREMENTS } from "../../scripts/agent-preset-bundle.mjs";
+import { BUNDLE_PACKAGE_NAME, generatePresetBundle } from "../../scripts/agent-preset-bundle.mjs";
 
 const REAL_PATCH = [
   "- insert:",
@@ -108,8 +109,10 @@ test("renderRealComposition: 渲染到临时 home、源只读、preset 取自部
     writeTree(checkouts.plugins, { "lib/startup.ts": "// plugins\n" });
     writeTree(checkouts.relay, { "src/client.ts": "// relay\n" });
     writeTree(checkouts.endless, { "src/tools.ts": "// endless\n" });
-    const deploymentRoot = join(root, "deployed/minimal-plus");
-    writePresetSource(deploymentRoot, { name: "Fixture" });
+    const deploymentRoot = join(root, "deployed/minimal-plus-preset");
+    const presetSource = join(root, "preset-src/minimal-plus");
+    writePresetSource(presetSource, { name: "Fixture" });
+    generatePresetBundle({ sourceDir: presetSource, outDir: deploymentRoot, packageName: BUNDLE_PACKAGE_NAME, sourceLabel: "fixture" });
     const repoRoot = join(root, "repo");
     writeTree(repoRoot, { "presets/unused/preset.yml": "name: unused\n" });
 
@@ -139,8 +142,10 @@ test("renderRealComposition: 渲染到临时 home、源只读、preset 取自部
     assert.equal(result.preset.legacyRowStripped, true);
     assert.equal(result.preset.deployedFallback, undefined);
 
-    // 生成 bundle 装进渲染 profile：声明行 + package 子路径 + bundles 选择 + node_modules 链接。
+    // 部署位 bundle 逐字节装进渲染 profile（不现场再生）：声明行 + package 子路径 +
+    // bundles 选择 + node_modules 链接。
     const generated = readFileSync(join(result.preset.bundleDir, "cordis.patch.yml"), "utf8");
+    assert.equal(generated, readFileSync(join(deploymentRoot, "cordis.patch.yml"), "utf8"), "staged bundle must be the deployed artifact");
     assert.ok(generated.includes(`${BUNDLE_PACKAGE_NAME}/tool-bootstrap.mjs`));
     const profileManifest = JSON.parse(readFileSync(join(result.profileDir, "package.json"), "utf8"));
     assert.ok(profileManifest.dsh.profile.bundles.includes(BUNDLE_PACKAGE_NAME));
@@ -181,14 +186,14 @@ test("renderRealComposition: 部署位缺席时回落仓库 preset 真源并标�
     assert.equal(result.preset.root, join(repoRoot, "presets"));
     assert.ok(existsSync(join(result.preset.bundleDir, "cordis.patch.yml")));
     assert.equal(result.preset.legacyRowStripped, false);
-    assert.deepEqual(result.preset.deployedFallback, { path: join(root, "no-such-deployment"), missing: PRESET_SOURCE_REQUIREMENTS });
+    assert.deepEqual(result.preset.deployedFallback, { path: join(root, "no-such-deployment"), missing: PRESET_BUNDLE_REQUIREMENTS });
     assert.equal(result.settings.copied, false);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("renderRealComposition: 部署位副本不完整时回落仓库真源并记录缺件", () => {
+test("renderRealComposition: 部署位 bundle 不完整时回落仓库真源并记录缺件", () => {
   const root = mkdtempSync(join(tmpdir(), "render-real-partial-"));
   try {
     const fakeHome = join(root, "home");
@@ -200,8 +205,8 @@ test("renderRealComposition: 部署位副本不完整时回落仓库真源并记
     writeTree(checkout, { "src/tools.ts": "// endless\n" });
     const repoRoot = join(root, "repo");
     writePresetSource(join(repoRoot, "presets", "minimal-plus"), { name: "Fixture" });
-    const deploymentRoot = join(root, "deployed/minimal-plus");
-    writeTree(deploymentRoot, { "preset.yml": "name: stale\n" });
+    const deploymentRoot = join(root, "deployed/minimal-plus-preset");
+    writeTree(deploymentRoot, { "package.json": "{}\n" });
     const tempHome = join(root, "temp-home");
     mkdirSync(tempHome, { recursive: true });
 
@@ -217,7 +222,7 @@ test("renderRealComposition: 部署位副本不完整时回落仓库真源并记
     assert.equal(result.preset.source, "repo");
     assert.equal(result.preset.deployedFallback.path, deploymentRoot);
     assert.ok(result.preset.deployedFallback.missing.includes("plugin-teardown.mjs"));
-    assert.ok(result.preset.deployedFallback.missing.includes("agent.cordis.yml"));
+    assert.ok(result.preset.deployedFallback.missing.includes("cordis.patch.yml"));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

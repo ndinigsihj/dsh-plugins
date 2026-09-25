@@ -8,7 +8,7 @@
  *   4. stagePresetBundle 的 profile 侧落位（bundles 选择 + node_modules 链接）。
  */
 import assert from "node:assert/strict";
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -153,5 +153,29 @@ test("stagePresetBundle: profile 选择 bundle 并落好 node_modules 链接", (
     stagePresetBundle({ sourceDir: SOURCE_DIR, profileDir, sourceLabel: BUNDLE_SOURCE_DIR });
     const again = JSON.parse(readFileSync(join(profileDir, "package.json"), "utf8"));
     assert.equal(again.dsh.profile.bundles.filter((name) => name === BUNDLE_PACKAGE_NAME).length, 1);
+  });
+});
+
+test("stagePresetBundle: 源 node_modules 已含 @scope 目录时，不得穿过 scope 链接写回真实 profile（票 12 回归）", () => {
+  withTemp((dir) => {
+    // 真实 profile 已装过本 bundle：node_modules/@dsh-plugins/minimal-plus-preset 已存在。
+    const realNodeModules = join(dir, "real-profile", "node_modules");
+    const oldTarget = join(dir, "old-bundle");
+    mkdirSync(join(realNodeModules, "@dsh-plugins"), { recursive: true });
+    mkdirSync(oldTarget, { recursive: true });
+    writeFileSync(join(oldTarget, "sentinel.txt"), "old\n");
+    const sourceLink = join(realNodeModules, BUNDLE_PACKAGE_NAME);
+    symlinkSync(oldTarget, sourceLink, "dir");
+    const profileDir = join(dir, "profiles", "tui-dev");
+    mkdirSync(profileDir, { recursive: true });
+    symlinkSync(realNodeModules, join(profileDir, "node_modules"), "dir");
+
+    stagePresetBundle({ sourceDir: SOURCE_DIR, profileDir, sourceLabel: BUNDLE_SOURCE_DIR });
+
+    assert.ok(!lstatSync(join(profileDir, "node_modules")).isSymbolicLink(), "temp node_modules must be a real directory");
+    assert.equal(readlinkSync(sourceLink), oldTarget, "source profile's bundle link must not be rewritten");
+    const tempLink = join(profileDir, "node_modules", BUNDLE_PACKAGE_NAME);
+    assert.equal(readlinkSync(tempLink), join(profileDir, "preset-bundles", "minimal-plus-preset"), "temp link must point at the temp bundle");
+    assert.ok(existsSync(join(tempLink, "cordis.patch.yml")));
   });
 });

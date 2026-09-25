@@ -8,7 +8,7 @@
     "node": ">=22.19.0"
   },
   "scripts": {
-    "test": "node --test lib/goal-bar.test.ts lib/transcript-area.test.ts lib/app.test.ts lib/spill-notice.test.ts plugins/rewind-dsh.test.ts presets/minimal-plus/phase-swap-bash.test.mjs presets/minimal-plus/tool-bootstrap.test.mjs presets/minimal-plus/instruction-hint.test.mjs presets/minimal-plus/skill-search.test.mjs presets/minimal-plus/custom-bash.test.mjs presets/minimal-plus/plugin-lifecycle.test.mjs scripts/agent-preset-bundle.test.mjs scripts/sync-agent-presets.test.mjs scripts/profile-home.test.mjs gates/manifest.test.mjs gates/run.test.mjs gates/workflow-triggers.test.mjs gates/profile-expectations.test.mjs gates/composition/render-real.test.mjs gates/composition/render-real-derived.test.mjs gates/t3/analysis.test.mjs"
+    "test": "node --test lib/goal-bar.test.ts lib/transcript-area.test.ts lib/app.test.ts lib/spill-notice.test.ts plugins/rewind-dsh.test.ts presets/minimal-plus/phase-swap-bash.test.mjs presets/minimal-plus/tool-bootstrap.test.mjs presets/minimal-plus/instruction-hint.test.mjs presets/minimal-plus/skill-search.test.mjs presets/minimal-plus/custom-bash.test.mjs presets/minimal-plus/plugin-lifecycle.test.mjs scripts/agent-preset-bundle.test.mjs scripts/sync-agent-presets.test.mjs scripts/deploy-preset-carrier.test.mjs scripts/profile-home.test.mjs gates/manifest.test.mjs gates/run.test.mjs gates/workflow-triggers.test.mjs gates/profile-expectations.test.mjs gates/composition/render-real.test.mjs gates/composition/render-real-derived.test.mjs gates/t3/analysis.test.mjs"
   },
   "dsh": {
     "bundle": {

@@ -21,8 +21,9 @@
  * `@dsh-plugins/minimal-plus-preset/tool-bootstrap.mjs`，安装后才解析得到。
  */
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, readlinkSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
+import { materializeNodeModules } from "./node-modules-mirror.mjs";
 
 /** 生成 bundle 的包名；`config.plugins` 的相对名按本包名改写成子路径。 */
 export const BUNDLE_PACKAGE_NAME = "@dsh-plugins/minimal-plus-preset";
@@ -216,18 +217,6 @@ export function checkPresetBundle({ sourceDir, bundleDir, packageName = BUNDLE_P
   } finally {
     rmSync(scratch, { recursive: true, force: true });
   }
-}
-
-/** node_modules 是符号链接时就地物化成真目录（render-real 的真实 profile 情形）。 */
-function materializeNodeModules(nodeModules) {
-  // lstat：statSync 会跟随链接，isSymbolicLink() 永远为 false，会把 @scope 目录
-  // 直接 mkdir 进链接目标（真实 profile 的 node_modules）——渲染副本必须零写入源。
-  if (!lstatSync(nodeModules).isSymbolicLink()) return;
-  const target = resolve(dirname(nodeModules), readlinkSync(nodeModules));
-  const entries = readdirSync(target);
-  rmSync(nodeModules, { recursive: true, force: true });
-  mkdirSync(nodeModules, { recursive: true });
-  for (const entry of entries) symlinkSync(join(target, entry), join(nodeModules, entry));
 }
 
 /**

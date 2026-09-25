@@ -1,0 +1,11 @@
+ok    compaction-epoch.mjs a17cdce7b871
+ok    cordis.patch.yml e29ae81cd00c
+ok    custom-bash.mjs 8422b4acd6f8
+ok    instruction-hint.mjs 4a2a26cb74ee
+ok    package.json e478937e5eb6
+ok    phase-swap-bash.mjs 8248a7d8aa7f
+ok    plugin-teardown.mjs f3f49a4933eb
+ok    skill-search.mjs 25eb10fa9d2b
+ok    source-manifest.json 79f1b7f351c0
+ok    tool-bootstrap.mjs e3e05e677289
+agent-preset-bundle: 10 files match generated/minimal-plus-preset

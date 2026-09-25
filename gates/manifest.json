@@ -4,17 +4,22 @@
   "sessionFormatVersion": 4,
   "deployment": {
     "minimal-plus": {
-      "path": "~/.dsh/.agent-presets/minimal-plus",
+      "repoPath": "generated/minimal-plus-preset",
+      "targets": [
+        "~/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset",
+        "~/.dsh/profiles/tui-team/preset-bundles/minimal-plus-preset"
+      ],
       "files": {
-        "agent.cordis.yml": "8cd01c685032eda95f68ded9b0796f72d0578e9d22a2274fe50aad8435dcc47b",
-        "preset.yml": "96c6a947152227289f5a6440bc6121da17c90710c39c9104556a6317d6db1632",
         "compaction-epoch.mjs": "a17cdce7b871b57b35fe9dc5abae4fd7d6b3bcb3089278c7be97ad314e0d4feb",
-        "phase-swap-bash.mjs": "8248a7d8aa7fb8ff6d64850e3bd462de9569fea74ca185f324c3628cfff185df",
-        "tool-bootstrap.mjs": "e3e05e677289d84f5b24e291061e92dc309e75768a5aad355b5ade28f2d2a6ed",
-        "instruction-hint.mjs": "4a2a26cb74ee8307d17df72ea4cebbebf806a4f5c95b29b5e442b6c41fad0667",
-        "skill-search.mjs": "25eb10fa9d2bdbc3ffbdd5bb35736e10628b74e9c97a36bdc9b06a682de4909a",
+        "cordis.patch.yml": "e29ae81cd00c3c7ae1f1a3057a905639685aa104a6bca1c50f8b5bd407c34fe7",
         "custom-bash.mjs": "8422b4acd6f8f256491b09c3dfed7b03909a7724d99d48e03eed7e55dcf55044",
-        "plugin-teardown.mjs": "f3f49a4933eb939336b4a23ee6a13f22659e65f86142eced933dc807674a5daa"
+        "instruction-hint.mjs": "4a2a26cb74ee8307d17df72ea4cebbebf806a4f5c95b29b5e442b6c41fad0667",
+        "package.json": "e478937e5eb6ca3d6bac1dbd579226fa4618afb77d75dd4243db550d31c5c4b2",
+        "phase-swap-bash.mjs": "8248a7d8aa7fb8ff6d64850e3bd462de9569fea74ca185f324c3628cfff185df",
+        "plugin-teardown.mjs": "f3f49a4933eb939336b4a23ee6a13f22659e65f86142eced933dc807674a5daa",
+        "skill-search.mjs": "25eb10fa9d2bdbc3ffbdd5bb35736e10628b74e9c97a36bdc9b06a682de4909a",
+        "source-manifest.json": "79f1b7f351c01861d0cdaf90cbeb844354621b6969381e367d6949ae2d12a2c3",
+        "tool-bootstrap.mjs": "e3e05e677289d84f5b24e291061e92dc309e75768a5aad355b5ade28f2d2a6ed"
       }
     }
   },

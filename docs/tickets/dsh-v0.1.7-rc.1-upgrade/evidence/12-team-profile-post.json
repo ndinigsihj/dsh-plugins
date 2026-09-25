@@ -1,0 +1,47 @@
+{
+  "kind": "team-profile",
+  "version": 1,
+  "startedAt": "2026-09-25T15:55:02.079Z",
+  "finishedAt": "2026-09-25T15:55:02.221Z",
+  "hostVersion": "0.1.7-rc.1",
+  "target": {
+    "profile": "tui-team",
+    "sourceProfile": "tui-dev",
+    "extraBundles": [
+      "@deepseek-ai/dsh-experimental-agent-team-profile"
+    ],
+    "preset": "minimal-plus"
+  },
+  "composition": {
+    "sourcePath": "/Users/vito/.dsh/profiles/tui-dev/cordis.patch.yml",
+    "sourceSha": "d9588220475c49ea7c70eb3c874b8b337a825a20fb0e31309a1bf6c13bf69d7d",
+    "renderedPath": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-team-profile-JtEftZ/home/profiles/tui-team/cordis.patch.yml",
+    "renderedSha": "d9588220475c49ea7c70eb3c874b8b337a825a20fb0e31309a1bf6c13bf69d7d",
+    "bundles": [
+      "@deepseek-ai/dsh-base",
+      "dsh-antigravity-auth",
+      "@dsh-plugins/minimal-plus-preset",
+      "@deepseek-ai/dsh-experimental-agent-team-profile"
+    ],
+    "presetSource": "deployed",
+    "presetRoot": "/Users/vito/.dsh/profiles/tui-dev/preset-bundles",
+    "presetBundleDir": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-team-profile-JtEftZ/home/profiles/tui-team/preset-bundles/minimal-plus-preset",
+    "legacyRowStripped": false,
+    "settings": {
+      "copied": true,
+      "sourcePath": "/Users/vito/.dsh/settings.yaml",
+      "sha": "8b0ca437d47e35bfc28a508b1488ca1f8d9747aab70381ee4742e88469a88619"
+    }
+  },
+  "dump": {
+    "exit": 0,
+    "parseError": null,
+    "ids": 115,
+    "duplicates": [],
+    "stdoutSha": "7d6378107979763cd5d97fd87ec2e942fbece5e9d6ccdcbd6511cb5274b41977",
+    "stderrTail": [
+      ""
+    ]
+  },
+  "ok": true
+}

@@ -49,6 +49,8 @@ export function assertPresetSmoke(t, config, report) {
   const r2 = jsonField(smoke.stdout, "ROUND2 catalog:");
   const preStep2 = jsonField(smoke.stdout, "ROUND2 pre-step sources:");
   const roster = jsonField(smoke.stdout, "ROSTER preset:");
+  // 装载面证据（票 12）：real 模式装载部署位 bundle，普通模式装载入库产物。
+  const bundleLine = smoke.stdout.split("\n").find((line) => line.startsWith("SMOKE bundle:")) ?? "";
 
   // 载体断言（票据 07）：0.1.7 声明行真的进了 registry roster，且展示名来自 preset.yml。
   const rosterOk = roster?.id === PRESET && typeof roster?.name === "string" && roster.name.length > 0 && roster.broken === undefined;
@@ -82,15 +84,16 @@ export function assertPresetSmoke(t, config, report) {
       : `tools=${String(r2Tools.length)} missing=${JSON.stringify(r2Diff.missing)} unexpected=${JSON.stringify(r2Diff.unexpected)} bashParamsMissing=${JSON.stringify(r2BashMissing)} preStepMissing=${JSON.stringify(r2SourcesMissing)}`,
     { preset: PRESET },
   );
-  report.smoke = { preset: roster, r1Tools, toolCount: r2Tools.length, tools: r2Tools, preStepSources: r2Sources };
+  report.smoke = { preset: roster, bundle: bundleLine, r1Tools, toolCount: r2Tools.length, tools: r2Tools, preStepSources: r2Sources };
 }
 
-/** ⑤ 降级路径冒烟（缺 bootstrap 工具 → fail-open 全量目录）。preset 来源跟随组合模式。 */
+/** ⑤ 降级路径冒烟（缺 bootstrap 工具 → fail-open 全量目录）。degrade 需要可改坏的真源，固定走仓库
+ * `presets/`（real 模式的部署位是 bundle，主冒烟改由 `SMOKE_PRESET_BUNDLE` 装载部署位那一份；
+ * 这里必须显式清掉它，否则 degrade 会装载部署位而绕开被改坏的真源）。 */
 export function assertDegradeFailOpen(t, config) {
-  const degrade = run("bash", [DEGRADE_SMOKE], {
-    cwd: REPO_ROOT,
-    env: { ...config.env, DEGRADE_SMOKE_ROOT: join(config.tempHome, "degrade"), DEGRADE_SMOKE_SOURCE_ROOT: config.env.SMOKE_PRESET_ROOT },
-  });
+  const degradeEnv = { ...config.env, DEGRADE_SMOKE_ROOT: join(config.tempHome, "degrade"), DEGRADE_SMOKE_SOURCE_ROOT: config.env.SMOKE_PRESET_ROOT ?? join(REPO_ROOT, "presets") };
+  delete degradeEnv.SMOKE_PRESET_BUNDLE;
+  const degrade = run("bash", [DEGRADE_SMOKE], { cwd: REPO_ROOT, env: degradeEnv });
   const degradeOut = `${degrade.stdout}\n${degrade.stderr}`;
   const failOpen = degradeOut.includes("bootstrap disabled, full catalog exposed");
   const r1Degraded = jsonField(degrade.stdout, "ROUND1 catalog:");

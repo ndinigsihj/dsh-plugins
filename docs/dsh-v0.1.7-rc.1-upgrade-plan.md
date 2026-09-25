@@ -450,10 +450,29 @@ P0 = 不迁移就跑不起来或会丢数据；P1 = 行为变化需适配；P2 =
 - 部署位 sha 与 manifest 一致，调用链里不再出现 `--allow-stale-deployment`；
 - 每阶段 stop 规则：任一步失败停在原地、退回上一已验收状态，不带着失败往下走。
 
+**已完成（票据 12，2026-09-25）**：上列各项的命名命令与证据见
+`docs/tickets/dsh-v0.1.7-rc.1-upgrade/evidence/12-closeout-verification-and-deployment.md` §5——
+零豁免 real 84/0/0 + gate 80/0/0、PTY 双形态 16/16、部署位 `10 files ok`、两入口 0.1.7-rc.1 留档、
+回滚入口与冷备复验、`--allow-stale-deployment` 已不在任何调用链（仅机制定义与文档说明）。
+「两处安装点」按 2026-09-25 裁决解释为 wrapper `~/.dsh/bin/dsh` + v24 直接入口；v22 安装点按 spec
+「稳定树与另一支旧安装点保持钉版」留在 0.1.5-rc.1，未动。
+
 **部署（统一在收口后执行，2026-09-24 裁决）**
 
 11. preset 载体改造产物（bash 描述对齐，新 sha `8cd01c68…`）与 Team profile **一起落部署位**：先跑 `scripts/sync-agent-presets.sh --dry-run`（**该 flag 需先补**，见 §6 载体行）核对生成结果，再执行真实写入（profile 侧 bundle 产物，需批准）+ 更新 `gates/manifest.json` 的 sha + 建立 `tui-team` profile。
     在此之前不动部署位；仓库 ↔ 部署位 sha 的临时不一致按 `--allow-stale-deployment` 豁免处理（**只覆盖部署位滞后这一层**），收口时消除。
+
+    **已完成（票据 12，2026-09-25，用户批准后执行）**：部署位锚定切到 0.1.7 载体（裁决 B）——
+    `gates/manifest.json` 的 `deployment.minimal-plus` = `generated/minimal-plus-preset/`（`repoPath`）
+    + 两个 profile 目标（`targets: ~/.dsh/profiles/{tui-dev,tui-team}/preset-bundles/minimal-plus-preset`）；
+    新增 `scripts/deploy-preset-carrier{-cli}.mjs`（dry-run 默认、`--check` 部署预检、`--write` 显式）
+    并真实写入：tui-dev 摘旧
+    `agent-presets` 块（备份 `cordis.patch.yml.bak-20260925-234726`）+ 装 bundle，tui-team 从 tui-dev 派生
+    （Team bundle + 同份 preset）。零豁免闸门 real 84/0/0、gate 80/0/0，PTY 双形态 16/16，真实
+    `--dump-config` tui-dev 112 / tui-team 115。旧目录 `~/.dsh/.agent-presets/minimal-plus` 保留为 stable
+    0.1.5 通道载体（不删）。收口期发现并修复「隔离渲染穿过 `@scope` 链接回写真实部署位」缺陷（新增
+    `scripts/node-modules-mirror.mjs` + 回归测试，修复真实链接后复跑全绿）。证据
+    `docs/tickets/dsh-v0.1.7-rc.1-upgrade/evidence/12-closeout-verification-and-deployment.md`。
 
 **回滚**
 

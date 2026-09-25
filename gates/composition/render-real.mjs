@@ -20,7 +20,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, symlinkSyn
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
-import { BUNDLE_PACKAGE_NAME, PRESET_SOURCE_REQUIREMENTS, mutateProfileBundles, stagePresetBundle } from "../../scripts/agent-preset-bundle.mjs";
+import { BUNDLE_PACKAGE_NAME, BUNDLE_PLUGIN_FILES, PRESET_SOURCE_REQUIREMENTS, mutateProfileBundles, stageBundleArtifact, stagePresetBundle } from "../../scripts/agent-preset-bundle.mjs";
 import { parseCompositionDump } from "../dump-parse.mjs";
 
 /** 真实开发 profile 名（计划 §2.1 的运行态定义）。 */
@@ -28,6 +28,9 @@ export const REAL_PROFILE_NAME = "tui-dev";
 
 /** 0.1.7 已移除的旧目录 preset 服务名；渲染时按 id 摘掉（票据 07 硬切换）。 */
 export const LEGACY_PRESET_PACKAGE = "@deepseek-ai/dsh-agent-presets";
+
+/** 生成 bundle 必须齐备的文件（票 12：部署位 artifact 识别与逐字节装载共用）。 */
+export const PRESET_BUNDLE_REQUIREMENTS = ["cordis.patch.yml", "package.json", "source-manifest.json", ...BUNDLE_PLUGIN_FILES];
 
 /**
  * 三类仓库根：profile 文本里的路径标记 / env 覆盖键 / 默认位置。
@@ -195,7 +198,8 @@ export function renderRealComposition(options) {
   }
   const sourceText = readFileSync(sourcePath, "utf8");
   // 载体迁移（票据 07）：真实 profile 仍带着旧目录 preset 行时，渲染副本里摘掉它；
-  // 新的 0.1.7 bundle 由下面的 stagePresetBundle 装进渲染 profile 并进入 bundles 选择。
+  // 新的 0.1.7 bundle 由下面 stagePresetIntoProfile 装进渲染 profile 并进入 bundles 选择
+  // （部署位有完整 bundle 时装载部署位那一份，见票 12）。
   const rewrittenText = rewriteRepoRoots(sourceText, roots);
   const renderedText = stripLegacyPresetRow(rewrittenText);
   const legacyRowStripped = renderedText !== rewrittenText;
@@ -262,31 +266,28 @@ export function renderRealComposition(options) {
 }
 
 /**
- * preset 真源解析 + 0.1.7 bundle 落位（renderRealComposition 的 preset 面）：
- * 部署位副本完整则用部署位，否则回落仓库真源并把「部署位缺哪些文件」写进结果
- * （部署位一致性另有 T1 的 sha 断言，这里不静默）。
+ * 部署位解析 + bundle 落位：部署位是生成 bundle（票 12）时逐字节装进渲染 profile；
+ * 缺失/不完整则回落仓库真源再生，并记录「部署位缺哪些文件」（一致性另有 T1 sha 断言）。
  */
 function stagePresetIntoProfile({ repoRoot, deploymentRoot, presetName, profileDir }) {
-  const deployedMissing = deploymentRoot === undefined ? ["<no deployment root>"] : PRESET_SOURCE_REQUIREMENTS.filter((name) => !existsSync(join(deploymentRoot, name)));
-  const deployedUsable = deploymentRoot !== undefined && deployedMissing.length === 0;
-  const presetSourcePath = deployedUsable ? deploymentRoot : join(repoRoot, "presets", presetName);
+  const deployedMissing = deploymentRoot === undefined ? ["<no deployment root>"] : PRESET_BUNDLE_REQUIREMENTS.filter((name) => !existsSync(join(deploymentRoot, name)));
+  if (deploymentRoot !== undefined && deployedMissing.length === 0) {
+    const staged = stageBundleArtifact({ artifactDir: deploymentRoot, profileDir, packageName: BUNDLE_PACKAGE_NAME });
+    return { name: presetName, source: "deployed", sourcePath: deploymentRoot, root: dirname(deploymentRoot), bundleDir: staged.bundleDir, packageName: BUNDLE_PACKAGE_NAME };
+  }
+  const presetSourcePath = join(repoRoot, "presets", presetName);
   const repoMissing = PRESET_SOURCE_REQUIREMENTS.filter((name) => !existsSync(join(presetSourcePath, name)));
   if (repoMissing.length > 0) {
     throw new RenderRealError(`preset to stage is incomplete: ${presetSourcePath} missing ${repoMissing.join(", ")}`, { presetSourcePath, missing: repoMissing });
   }
-  const staged = stagePresetBundle({
-    sourceDir: presetSourcePath,
-    profileDir,
-    packageName: BUNDLE_PACKAGE_NAME,
-    sourceLabel: deployedUsable ? presetSourcePath : relative(repoRoot, presetSourcePath),
-  });
+  const staged = stagePresetBundle({ sourceDir: presetSourcePath, profileDir, packageName: BUNDLE_PACKAGE_NAME, sourceLabel: relative(repoRoot, presetSourcePath) });
   return {
     name: presetName,
-    source: deployedUsable ? "deployed" : "repo",
+    source: "repo",
     sourcePath: presetSourcePath,
     root: dirname(presetSourcePath),
     bundleDir: staged.bundleDir,
     packageName: BUNDLE_PACKAGE_NAME,
-    deployedFallback: deployedUsable || deploymentRoot === undefined ? undefined : { path: deploymentRoot, missing: deployedMissing },
+    deployedFallback: deploymentRoot === undefined ? undefined : { path: deploymentRoot, missing: deployedMissing },
   };
 }

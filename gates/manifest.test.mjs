@@ -13,7 +13,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { checkBaselines, checkDeployment, checkHostPin, readManifest, resolveDeploymentRoot } from "./manifest.mjs";
+import { checkBaselines, checkDeployment, checkHostPin, readManifest, resolveDeploymentRoot, resolveDeploymentTargets } from "./manifest.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DEPLOYED_TEXT = "plugins: []\n";
@@ -156,6 +156,87 @@ test("部署位文件缺失或目录整体缺失 → absent", (t) => {
   assert.equal(dirMissing.status, "absent");
   assert.equal(dirMissing.files[0].deployed, undefined);
 });
+
+test("repoPath：仓库侧比对改读生成产物目录（0.1.7 载体）", (t) => {
+  const { repoRoot, homeDir } = workspace(t);
+  const artifactDir = join(repoRoot, "generated", "demo-preset");
+  const targetDir = join(homeDir, ".dsh", "profiles", "demo", "preset-bundles", "demo-preset");
+  mkdirSync(artifactDir, { recursive: true });
+  mkdirSync(targetDir, { recursive: true });
+  writeFileSync(join(artifactDir, "cordis.patch.yml"), DEPLOYED_TEXT);
+  writeFileSync(join(targetDir, "cordis.patch.yml"), DEPLOYED_TEXT);
+  const manifest = demoManifest();
+  manifest.deployment.demo = {
+    repoPath: "generated/demo-preset",
+    path: "~/.dsh/profiles/demo/preset-bundles/demo-preset",
+    files: { "cordis.patch.yml": sha256(DEPLOYED_TEXT) },
+  };
+  const result = checkDeployment(manifest, { repoRoot, homeDir });
+  assert.equal(result.status, "ok");
+  assert.equal(result.files[0].repoMatches, true, "repo side comes from repoPath, not presets/<key>");
+  assert.equal(result.files[0].state, "ok");
+});
+
+test("多目标：逐目标判态、聚合取最严重，resolveDeploymentRoot 取首个", (t) => {
+  const { repoRoot, homeDir } = workspace(t);
+  writeFileSync(repoFile(repoRoot), DEPLOYED_TEXT);
+  const first = join(homeDir, "targets", "one");
+  const second = join(homeDir, "targets", "two");
+  mkdirSync(first, { recursive: true });
+  mkdirSync(second, { recursive: true });
+  writeFileSync(join(first, "agent.cordis.yml"), DEPLOYED_TEXT);
+  writeFileSync(join(second, "agent.cordis.yml"), "plugins: [tampered]\n");
+  const manifest = demoManifest();
+  manifest.deployment.demo = { targets: [first, second], files: { "agent.cordis.yml": sha256(DEPLOYED_TEXT) } };
+
+  assert.deepEqual(resolveDeploymentTargets(manifest.deployment.demo, homeDir), [first, second]);
+  assert.equal(resolveDeploymentRoot(manifest.deployment.demo, homeDir), first, "staging anchor stays the first target");
+
+  const stale = checkDeployment(manifest, { repoRoot, homeDir });
+  assert.equal(stale.status, "stale");
+  assert.deepEqual(
+    stale.files[0].targets.map((target) => [target.path, target.state]),
+    [
+      [first, "ok"],
+      [second, "stale"],
+    ],
+  );
+  assert.equal(stale.files[0].state, "stale", "file state aggregates the worst target");
+
+  const missing = demoManifest();
+  missing.deployment.demo = { targets: [first, join(homeDir, "targets", "absent")], files: { "agent.cordis.yml": sha256(DEPLOYED_TEXT) } };
+  assert.equal(checkDeployment(missing, { repoRoot, homeDir }).status, "absent");
+});
+
+test("清单 deployment 形状：targets 非空字符串数组、repoPath 为字符串、path/targets 至少一个", (t) => {
+  const { root } = workspace(t);
+  const path = join(root, "manifest.json");
+  const noAnchor = demoManifest();
+  delete noAnchor.deployment.demo.path;
+  writeFileSync(path, JSON.stringify(noAnchor));
+  assert.equal(readManifest(path).status, "invalid");
+
+  const emptyTargets = demoManifest();
+  emptyTargets.deployment.demo = { targets: [], files: { "agent.cordis.yml": sha256(DEPLOYED_TEXT) } };
+  writeFileSync(path, JSON.stringify(emptyTargets));
+  assert.equal(readManifest(path).status, "invalid");
+
+  const nonStringTarget = demoManifest();
+  nonStringTarget.deployment.demo = { targets: [7], files: { "agent.cordis.yml": sha256(DEPLOYED_TEXT) } };
+  writeFileSync(path, JSON.stringify(nonStringTarget));
+  assert.equal(readManifest(path).status, "invalid");
+
+  const badRepoPath = demoManifest();
+  badRepoPath.deployment.demo.repoPath = 7;
+  writeFileSync(path, JSON.stringify(badRepoPath));
+  assert.equal(readManifest(path).status, "invalid");
+
+  const okTargets = demoManifest();
+  okTargets.deployment.demo = { targets: ["~/a", "~/b"], files: { "agent.cordis.yml": sha256(DEPLOYED_TEXT) } };
+  writeFileSync(path, JSON.stringify(okTargets));
+  assert.equal(readManifest(path).status, "ok");
+});
+
 
 test("宿主钉版：相符 → ok，任一字段不符 → mismatch", () => {
   const manifest = demoManifest();

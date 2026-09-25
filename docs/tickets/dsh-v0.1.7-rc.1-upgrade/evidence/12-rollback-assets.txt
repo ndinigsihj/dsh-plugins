@@ -1,0 +1,46 @@
+== cold backup roots
+total 0
+drwxr-xr-x   6 vito  staff  192  9月 25 17:04 .
+drwx------  23 vito  staff  736  9月 25 11:35 ..
+drwxr-xr-x   6 vito  staff  192  9月 10 14:19 dsh-0.1.5-rc.1-20260910-141953
+drwxr-xr-x   7 vito  staff  224  9月 25 17:06 dsh-0.1.7-rc.1-pre-first-start-20260925-170449
+drwxr-xr-x   7 vito  staff  224  9月 25 11:30 dsh-0.1.7-rc.1-pre-migration-20260925-113044
+drwxr-xr-x   4 vito  staff  128  9月 22 19:03 preset-retire-20260922-190307
+== pre-first-start backup meta
+agent-presets.dst.tsv
+agent-presets.src.after.tsv
+agent-presets.src.before.tsv
+attachments.dst.tsv
+attachments.src.after.filtered.tsv
+attachments.src.after.tsv
+attachments.src.before.tsv
+cold-backup.log
+descriptor-v2-ids.txt
+drill
+drill.log
+excluded-surfaces.txt
+manifest.mjs
+open-session-files-during-backup.txt
+probe-read-many.mjs
+probe-read.mjs
+profiles.dst.tsv
+profiles.src.after.filtered.tsv
+profiles.src.after.tsv
+profiles.src.before.tsv
+sessions.dst.tsv
+sessions.src.after.tsv
+sessions.src.before.tsv
+settings.dst.tsv
+settings.src.after.tsv
+settings.src.before.tsv
+snapshot-end.txt
+snapshot-start.txt
+writers-during-backup.txt
+zstd-test.log
+== local old-host package copy
+total 0
+drwxr-xr-x  4 vito  staff  128  9月 25 11:35 .
+drwxr-xr-x  7 vito  staff  224  9月 25 11:30 ..
+drwxr-xr-x  5 vito  staff  160  9月 25 12:08 drill-runner
+drwxr-xr-x  9 vito  staff  288  9月 22 19:45 dsh-0.1.5-rc.2
+/Users/vito/.dsh/upgrade-backups/dsh-0.1.7-rc.1-pre-migration-20260925-113044/host-package/dsh-0.1.5-rc.2/lib/bin.js

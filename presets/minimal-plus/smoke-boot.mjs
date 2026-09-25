@@ -6,8 +6,10 @@
  * 可覆盖：
  *   SMOKE_PRESET=minimal-plus      要挂载的 preset id
  *   SMOKE_PRESET_ROOT=<dir>        真源扫描根：给出时从 `<dir>/<preset>/` 现场生成 bundle
- *                                  （degrade 冒烟传改坏副本的根；闸门 real 模式传真源副本根）；
+ *                                  （degrade 冒烟传改坏副本的根）；
  *                                  不给则直接装入库产物 `generated/minimal-plus-preset/`
+ *   SMOKE_PRESET_BUNDLE=<dir>      已生成的 bundle 产物目录：给出时直接装载该份
+ *                                  （闸门 real 模式传部署位 bundle，验的就是部署位那一份）
  *   SMOKE_SESSION_ROOT=<dir>       会话根（默认 /tmp/minimal-plus-smoke-sessions）
  *   SMOKE_HOME=<dir>               隔离 home（默认自建临时目录、退出即删；显式给出则调用方负责清理）
  *   SMOKE_KEEP_HOME=1              保留自建临时 home 供排查
@@ -36,6 +38,7 @@ const INSTALL_ANCHOR = installAnchor();
 const SMOKE_DRIVER = fileURLToPath(new URL("./smoke-driver.mjs", import.meta.url));
 const PRESET = process.env.SMOKE_PRESET ?? "minimal-plus";
 const PRESET_ROOT = process.env.SMOKE_PRESET_ROOT;
+const PRESET_BUNDLE = process.env.SMOKE_PRESET_BUNDLE;
 const KEEP_HOME = process.env.SMOKE_KEEP_HOME === "1";
 
 /** 自建隔离 home；SMOKE_HOME 显式给出时沿用且由调用方负责清理，不自动删除。 */
@@ -48,10 +51,14 @@ if (ownedHome && !KEEP_HOME) process.on("exit", () => rmSync(home, { recursive: 
 // 隔离 home 预置：headless 骨架 + 二轮注入 fixture + 0.1.7 载体。
 const profileDir = seedHeadlessProfile(home);
 seedHomeFixtures(home);
-const staged = PRESET_ROOT === undefined
-  ? stageBundleArtifact({ artifactDir: join(ROOT, BUNDLE_OUT_DIR), profileDir })
-  : stagePresetBundle({ sourceDir: join(PRESET_ROOT, PRESET), profileDir });
-console.log(`SMOKE bundle: ${staged.bundleDir}${PRESET_ROOT === undefined ? " (committed artifact)" : ` (generated from ${PRESET_ROOT})`}`);
+const staged =
+  PRESET_BUNDLE !== undefined
+    ? stageBundleArtifact({ artifactDir: resolve(PRESET_BUNDLE), profileDir })
+    : PRESET_ROOT === undefined
+      ? stageBundleArtifact({ artifactDir: join(ROOT, BUNDLE_OUT_DIR), profileDir })
+      : stagePresetBundle({ sourceDir: join(PRESET_ROOT, PRESET), profileDir });
+const bundleSource = PRESET_BUNDLE !== undefined ? `deployed bundle ${PRESET_BUNDLE}` : PRESET_ROOT === undefined ? "committed artifact" : `generated from ${PRESET_ROOT}`;
+console.log(`SMOKE bundle: ${staged.bundleDir} (${bundleSource})`);
 
 const profile = loadProfile("dsh", "headless", INSTALL_ANCHOR, home);
 const bundlePatches = profile.layers.flatMap((layer) => layer.patches);

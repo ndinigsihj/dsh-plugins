@@ -1,0 +1,9 @@
+deploy-preset-carrier: preset minimal-plus (@dsh-plugins/minimal-plus-preset)
+  artifact: /Users/vito/data/dev/dsh-plugins/generated/minimal-plus-preset
+  tui-dev   dir=/Users/vito/.dsh/profiles/tui-dev
+    bundle target=match repo=ok selection=true legacyRow=already-clean (exists)
+    bundles → @deepseek-ai/dsh-base, dsh-antigravity-auth, @dsh-plugins/minimal-plus-preset
+  tui-team  dir=/Users/vito/.dsh/profiles/tui-team
+    bundle target=match repo=ok selection=true legacyRow=- (exists)
+    bundles → @deepseek-ai/dsh-base, dsh-antigravity-auth, @deepseek-ai/dsh-experimental-agent-team-profile, @dsh-plugins/minimal-plus-preset
+deploy-preset-carrier: dry-run — nothing written (rerun with --write to deploy)

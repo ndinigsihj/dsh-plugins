@@ -85,6 +85,11 @@ export function writeReport(path, report) {
   return path;
 }
 
+/** 文本内容 sha256（清单/部署计划共用）。 */
+export function sha256Text(text) {
+  return createHash("sha256").update(text).digest("hex");
+}
+
 /** 文件内容 sha256；不存在返回 undefined。 */
 export function sha256File(path) {
   try {
