@@ -25,7 +25,7 @@
 5. **自研 preset 的假设没有实证（§3.6），但已裁决保留（2026-09-24）**：其立足点"minimal 首轮设定让 V4 Pro 更强"在仓库里没有测量支持（实验测的是锚定行为，n=9，判据是"不被扰动"），且 `v4-pro` 已不存在；真正不可替代的增量是 `phase-swap-bash` 二轮提权。preset 保留、**部署推迟到迁移收口**（§1.1、§7 第 11 步）；淘汰评估改为**事件触发复评**（§3.6），目标载体改为 0.1.7 的 bundle patch 形态（§3.5）。
 6. **2026-09-24 grill 收口的结构**：计划拆为"升级计划 + 功能计划"（A1–A4 第一切片、Team 体验 B2–B4 第二切片，§4.3/§5.3）；`gates/manifest.json` 改**两阶段**口径（§1.1、§7）；V4 迁移接受不可逆、冷备与还原演练前移到**首次启动 0.1.7 之前**（Q15 确认，不再保留"先不迁"分支）；B1.5 升为 `tui-team` 建立前的硬前置。
 
-### 1.1 已裁决（2026-09-23 / 24）
+### 1.1 已裁决（2026-09-23 / 24 / 25）
 
 | 项 | 裁决 | 对计划的影响 |
 | --- | --- | --- |
@@ -35,6 +35,7 @@
 | Agent Team | **本轮开启；启用范围 = C 方案（profile 划分）**（2026-09-23 裁决） | Team 是 **profile 层能力**，不做 preset 变体（§5.2 纠正）。现 profile（tui-dev / headless）保持不带 Team，另建带 Team 的 profile（如 `tui-team`）。开启后该 profile 内 `subagent` / `subagent_fork` 被组合期禁用且无模型选择入口（§5.0 / §5.2）；使用场景与边界见 §5.4 |
 | 自研 preset 去留 | **保留**（2026-09-24 裁决）：含 `phase-swap-bash` 二轮沙箱提权与 delegation 行 | §3.6 的证据缺口与淘汰框架转为**后续瘦身参考**，不作为本轮动作；淘汰评估改为**事件触发复评**（§3.6）；因 delegation 行随 preset 保留，Team profile 的 preset 组合行为必须实测（票 B1.5，升为硬前置） |
 | preset 载体 | **真源留在仓库，目标载体改为 0.1.7 的 bundle patch 形态**（2026-09-24，Q11） | `presets/minimal-plus/` 仍是唯一真源；`@deepseek-ai/dsh-agent-preset` 行 + registry 是目标形态；`scripts/sync-agent-presets.sh` 改造为 profile 侧产物生成器并先补 `--dry-run`（§3.5、§7 第 11 步）。**该项是迁移第一工作项，B1.5 依赖它** |
+| 子代理锚定 | **子代理豁免锚定（方案 A）**（2026-09-25 裁决） | `tool-bootstrap` / `phase-swap-bash` / `instruction-hint` 三处 `includeSubagents` 统一为 `false`：子代理（`delegationDepth > 0`）首轮即全量工具，主会话首轮锚定不变（flag 只分支子会话，见 `compaction-epoch.mjs`）；phase-swap 硬编码改为读配置并复核 swap 一致性（票据 14） |
 | 计划边界 | **拆分**（2026-09-24，Q3/Q12）：升级计划 = 宿主升级 + 兼容迁移 + 部署收口；功能计划 = A1–A4 第一切片、Team 体验 B2–B4 第二切片 | Team 的兼容/部署面（B1.5、`tui-team` 建立、冒烟、per-profile expectations）留在本计划，"一起部署"不变；A/B 票面作为功能计划输入（§4.3、§5.3） |
 | 前置取证 | **C0 已完成**（2026-09-24，Q5；临时前缀 + 独立 cache，真实 `~/.dsh` 只读、零写入） | 六项事实 + 附件/storages 判定已取证并归档（`evidence/02-preflight-*`）；P0 代码迁移与第 10 步解除阻塞，验收口径已按事实改写（§7 第 0 步、§8） |
 | manifest 口径 | **两阶段**（2026-09-24，grill 修正） | `deployment.repo-matches-manifest` 不可豁免（`gates/run.mjs:463-472`）→ preset sha 随仓库更新为 `8cd01c68…`；`hostVersion`/`sessionFormatVersion` 在宿主切换那批改；`--allow-stale-deployment` 只豁免部署位滞后（`gates/run.mjs:474-483`、`README.md:195`），收口消除 |
@@ -144,6 +145,8 @@ rc.1 的 `Full Changelog` 基线是 `dsh-v0.1.5-rc.3`，因此"rc.2 → rc.1"整
 **复评触发（2026-09-24 裁决：不做定时复评，只认事件）**——命中任一条即重启淘汰/瘦身框架：① 上游 minimal/standard 出现能替代 `phase-swap-bash` 二轮提权的路径；② B1.5 证明 delegation 行在 Team profile 下是死行（组合期禁用且 preset 挂不回来）；③ 非 Team profile 的实测/T3 证据显示 `subagent` 的模型选择从未被使用（实践中始终"不选、继承父路由"）。
 
 **已完成的对齐（2026-09-24）**：`presets/minimal-plus/agent.cordis.yml` 的 bash 工具描述已对齐上游 0.1.7 `minimal` 并逐行校验一致。**新 sha `8cd01c685032eda95f68ded9b0796f72d0578e9d22a2274fe50aad8435dcc47b`**，而 `gates/manifest.json` 仍记 `318c4884…` → 需在裁决后一并执行部署位同步（`scripts/sync-agent-presets.sh`，写真实部署位需批准）与 manifest 更新。
+
+**子代理锚定修正（2026-09-25）**：`includeSubagents` 三处统一为 `false`（方案 A，票据 14）——子代理不再走首轮锚定、首轮即全量工具；主会话首轮锚定与上述对齐口径保持不变（flag 只分支 `delegationDepth > 0`，见 `compaction-epoch.mjs`）。
 
 ---
 
@@ -373,6 +376,7 @@ P0 = 不迁移就跑不起来或会丢数据；P1 = 行为变化需适配；P2 =
 | P0 | 会话历史/生命周期/沙箱接口异步化（0.1.7-rc.1）；`snapshotEvents`/`eventAt`/`ownEvents` 弃用（0.1.6-alpha.1） | `lib/index.ts`（14 处调用 + 2 处类型声明）、`plugins/rewind-dsh.ts`、`presets/minimal-plus/{compaction-epoch,trajectory-driver}.mjs`、`experiments/m4/m4-runner.mjs`、`gates/stub/run.mjs`、`presets/minimal-plus/test-helpers.mjs` | **C0 ① 已核实：rc.1 三个同步方法签名与 0.1.5-rc.2 逐字相同**（仅新增 `@deprecated`），存量调用可保留、禁止新增；异步替代面 = `ctx.sessionQuery`（dsh-base 默认挂载，签名见证据）。**不再作为宿主升级阻塞**；**2026-09-24 用户裁决：本轮维持同步读取、不迁移**（票据 05 相应置为 deferred），未来需要时再单独评估 | `npm test` 全绿 + T1/T2 闸门（两个 profile 形态）；无新增同步读取调用 |
 | P0 | Agent 预设改由插件组合包声明与安装；旧目录预设需迁移（0.1.7-alpha.1/rc.1） | `presets/minimal-plus/`、`scripts/sync-agent-presets.sh`、`~/.dsh/.agent-presets/**`、`gates/manifest.json` | **目标载体 = `@deepseek-ai/dsh-agent-preset` bundle patch（profile 侧产物）**；真源留仓库（§3.5）；`sync-agent-presets.sh` 改造为生成器并先补 `--dry-run`；**C0 ④ 已确认旧目录形态不再被加载，无过渡分支**（硬切换）。**迁移第一工作项** | 生成器 dry-run 输出与仓库真源一致；`tui-team`/tui-dev 挂载冒烟（`presets/minimal-plus/smoke-boot.mjs` + 部署位冒烟）通过 |
 | P1 | 自研 preset **保留**（已裁决 2026-09-24）；bash 描述已对齐上游（新 sha `8cd01c68…`），部署推迟（§1.1） | `presets/minimal-plus/*`、`scripts/sync-agent-presets.sh`、`gates/manifest.json`、`docs/minimal-plus-preset-design.md` | 保留 `phase-swap-bash` 与 delegation 行；瘦身框架留作后续参考（§3.6，事件触发复评）；**manifest 两阶段**（§1.1）：preset sha 随仓库改为 `8cd01c68…`、`hostVersion`/`sessionFormatVersion` 随宿主改；部署位写入等收口 | 窗口内 T1 用 `--allow-stale-deployment`（只豁免部署位滞后）；收口后：部署位 sha 一致 + preset 冒烟 + `npm test` 全绿、豁免标志移出调用链 |
+| P1 | 子代理误判缺工具：minimal-plus `includeSubagents: true` 让子会话首轮也只暴露锚定对（本仓库实证，非上游 release note） | `presets/minimal-plus/{tool-bootstrap,phase-swap-bash,instruction-hint}.mjs`、`presets/minimal-plus/agent.cordis.yml`、`gates/expectations.json` | **方案 A（2026-09-25 裁决）**：三处 `includeSubagents` 统一 `false`，子代理首轮即 promoted/全量工具；主会话首轮锚定不变；phase-swap 硬编码改配置并复核 swap/提权一致性（票据 14） | 子代理首轮全量 + 主会话首轮仍 `[bash, str_replace_editor]`；契约测试/冒烟/闸门全绿；expectations 行级 diff + 理由登记 |
 | P0 | 设置改存当前 Profile 的插件配置；旧 `settings.yaml` **仅导入一次**（0.1.7-alpha.1/rc.1） | `~/.dsh/settings.yaml`（`agent-presets.default`、`subagent-model-selection:`）、`~/.dsh/profiles/*/cordis.patch.yml` | 升级前备份并记录 sha；**C0 附带核实**：导入只发生一次——写前先把 `settings.yaml` 改名为 `settings.yaml.imported`，各 section 按自身名字写入同 id entry（例外是 3 条改名映射：`ui-developer-tools`→`ui-settings`、`ui-onboarding`→`ui-settings-general`、`shell`→平台 shell executor），被组合拒绝的 section 只留在改名后的文件里；回滚需从第 1 步备份恢复 `settings.yaml` | `--dump-config` + 设置读回一致 |
 | P0 | 官方 DeepSeek 适配器仅用 Messages API，移除 Chat Completions 与 `protocol`；旧根地址改为 `https://api.deepseek.com/anthropic`（0.1.6-alpha.1 → rc.1） | profile 中的 llm-deepseek 配置行 | 删除 `protocol`，清理旧根地址覆盖 | 真实模型一次工具调用（T3） |
 | P0 | 工具结果文本+图片统一 token 预算；`spill-policy` 的 `maxInlineBytes` → `maxInlineTokens`（0.1.7-alpha.2/rc.1） | `lib/app.ts:356,483`（spill 通知渲染正则） | 配置改名；核对通知文案是否仍匹配 | 超长工具结果渲染冒烟 |

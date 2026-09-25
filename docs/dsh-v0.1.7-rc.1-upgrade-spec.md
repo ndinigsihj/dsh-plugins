@@ -111,6 +111,12 @@ Preset 以仓库为唯一真源，目标载体改为与上游同构的声明形�
 - 同步工具改造为"生成 Profile 侧产物"，并在写真实部署位前支持 dry-run。
 - 该改造是迁移第一工作项；Team Profile 的 Preset 叠加实测依赖它。
 
+**子代理锚定（方案 A，2026-09-25 裁决）**
+
+- 子代理（`delegationDepth > 0`）豁免 minimal-plus 首轮锚定：`tool-bootstrap` / `phase-swap-bash` / `instruction-hint` 三处 `includeSubagents` 统一为 `false`，子代理首轮即全量工具目录。
+- 主会话首轮锚定语义不变（`includeSubagents` 只分支子会话，见 `compaction-epoch.mjs` `status()`）；phase-swap-bash 硬编码 `includeSubagents: true` 改为读配置，复核子代理 swap/提权时机与 `tool:*` section 过滤一致性。
+- 执行落在 0.1.7 的 Preset 生成形态上（票据 14），与「Preset 载体」同批收口。
+
 **Team**
 
 - Team 以单独 Profile 承载；非 Team Profile 不挂 Team 组合，保持普通委派与模型选择的可用性。
