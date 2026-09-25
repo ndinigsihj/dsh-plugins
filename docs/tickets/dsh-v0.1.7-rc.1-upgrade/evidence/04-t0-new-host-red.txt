@@ -1,0 +1,25 @@
+票据 04 — 新宿主上的 T0 红项与归属（旧宿主对照）
+
+[新宿主 0.1.7-rc.1] npx tsc --noEmit
+lib/index.ts(1463,17): error TS2339: Property 'push' does not exist on type 'readonly ContentBlock[]'.
+exit=2
+
+[旧宿主对照 0.1.5-rc.2 依赖树] npx tsc --noEmit → exit=0（无输出）
+
+[新宿主] npm test: tests 157 / pass 147 / fail 10（全部在 presets/minimal-plus/phase-swap-bash.test.mjs）
+✖ compaction 后回到 controlled phase：persistent 重新可见，再 promote 再 swap (7.391541ms)
+✖ failing tests:
+✖ includeSubagents：子代理独立 swap（各自 step 结算后） (3.237583ms)
+✖ per-agent 隔离：agent A swap 后 agent B 仍看 persistent bash (5.613125ms)
+✖ step 中途不 swap，step/end 同步 swap：view 显示沙箱 bash (27.157667ms)
+✖ swap 后可执行：沙箱定义的 execute 不再缺服务（2026-09-23 回归） (22.314792ms)
+✖ swap 幂等：同一 session 二次 step/end 不重复注册 (7.730917ms)
+✖ 多调用 step（批量 bash）：step/end 之前两条调用都不换 schema (16.825208ms)
+✖ 换相点白名单：tool/call + tool/result 本身不触发 swap (7.117416ms)
+✖ 冷启动：step/end 才换相（首轮调用仍按 persistent schema） (4.631417ms)
+✖ 冷启动恢复：resume 已 promoted 会话在首个 turn/start 即 swap (3.347666ms)
+
+[旧宿主对照] npm test: tests 157 / pass 157 / fail 0
+
+归属：bash 换用插件的 0.1.7 行为差异与 ContentBlock 只读类型变更均属票据 06「其余兼容面迁移」
+（其验收含“自研插件启停…闸门复绿”）；本票只登记，不在此修。

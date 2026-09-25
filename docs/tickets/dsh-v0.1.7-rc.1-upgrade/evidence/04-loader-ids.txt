@@ -1,0 +1,5 @@
+票据 04 — 真实 profile 配置导出的 loader id 递归计数
+命令：dsh --profile <name> --dump-config（宿主 0.1.7-rc.1，真实 ~/.dsh）
+
+headless: exit=0 ids=95 groups=0 maxDepth=0 duplicates=0
+tui-dev: exit=0 ids=111 groups=0 maxDepth=0 duplicates=0

@@ -1,0 +1,61 @@
+票据 04 — 稳定侧（dsh-runtime/stable）连带故障与自包含重建留档
+
+## 现象（2026-09-25，用户报）
+`1mdsh`（~/.zshrc:160 alias → /Users/vito/data/dev/dsh-runtime/stable/bin/tui-stable）报：
+SyntaxError: The requested module '@deepseek-ai/dsh-app-boot' does not provide an export named
+'healProfilesModuleFallback'（stable 运行时的 dsh/lib/bin.js）。
+
+## 根因（只读排查）
+- stable 自带 CLI `@deepseek-ai/dsh@0.1.5-rc.2` 是真实目录，但其 240 条
+  `node_modules/@deepseek-ai/*` 依赖是指向 v24 全局依赖树的 symlink（2026-09-22 17:39 创建）——
+  即「本地 CLI + 依赖跟随全局」的混合形态，与文档口径（0.1.5 证据 02 §4：自带隔离运行时）不一致。
+- 它自己的 `package-lock.json` 描述的是自包含树（nested `dsh-app-boot` / `dsh-base` / `dsh-session`
+  @ 0.1.5-rc.3），但磁盘上没有 nested 实体、只有上述链接。
+- 票据 04 按用户裁决把全局换成 0.1.7-rc.1 后，这些链接跟着翻代 → 0.1.5 CLI + 0.1.7 deps 混合代，启动即崩。
+
+## 处置（用户裁决：方案 3「按自身 lock 自包含重建」，干净彻底）
+1. 中间态（已废弃，仅留审计）：先把 240 条链接指回票据 03 的 rc.2 副本（可跑，但依赖备份根）。
+2. /tmp 预演（复制同一 `package.json` + `package-lock.json`）：`npm ci` → 595 包 / 15s；
+   0 条顶层 scoped symlink；nested app-boot 0.1.5-rc.3；drill-base `--dump-config` exit 0 / 332 行。
+3. 真目录重建前的只读清单：`node_modules` 485M / 193 个顶层实体目录 / 240 条 scoped symlink /
+   1 条历史遗留隐藏链接 `.@deepseek-ai-pLlbNyRN`；2026-09-22 20:00 后被修改的文件 = 0；
+   `x-opencode-session` 本地补丁命中 = 0；`*.orig/*.rej/*.bak` = 0 → 无不可复现内容。
+4. `npm ci`（cache=/tmp/dsh-t04-npm-cache；用户批准的工作区外一次性写入）exit 0。
+
+## 终态复验
+- **完全自包含**：0 条链接指向票据 03 副本或 v22/v24 全局；`node_modules` 290M。
+- 版本 = lock 口径：CLI `0.1.5-rc.2`；nested `dsh-app-boot` / `dsh-base` / `dsh-session` = `0.1.5-rc.3`；
+  595 包按 lock 布局（顶层 scoped 实体 115，其余 nested）。
+- `node-pty` prebuilds 的 `spawn-helper` 带 `-rwxr-xr-x`（npm 11 的 install-scripts 审批提示对本树无影响）。
+- stable 运行时 `--version` → `0.1.5-rc.2`；drill-base `--dump-config` exit 0 / 332 行 / stderr 0。
+- `~/.dsh/profiles/node_modules` farm 经 stable 新树解析到 `0.1.5-rc.3`（farm 自愈机制预期行为）。
+- `~/.dsh/profiles/tui/cordis.patch.yml` 引用的 4 个 `dsh-plugins-stable` 路径全部存在。
+
+## 扁平镜像 shim（`1mdsh` 第二层修复，2026-09-25）
+现象：重建后 `1mdsh` 报 `preset "minimal-plus" failed to mount: … Cannot find package
+'@deepseek-ai/dsh-tool-bash' imported from ~/.dsh/.agent-presets/minimal-plus/phase-swap-bash.mjs`。
+
+根因：部署位 preset 的 `node_modules/@deepseek-ai` 是 symlink → stable 运行时 scope 目录
+（sync 脚本契约，要求该目录是**扁平**依赖树，供 preset 里的 bare `@deepseek-ai/*` 导入解析）。
+npm ci 布局把部分 scoped 包放进 `@deepseek-ai/dsh/node_modules/` 等 nested 位置，顶层不再扁平。
+
+只读清点：全树 244 个 scoped 包名（333 个 package.json 命中，含同一包的多处副本）；
+顶层已有 114；需补 130；**版本冲突 0**；`dsh-tool-bash` 两处 nested 副本同为 0.1.5-rc.3。
+
+处置：在 stable 顶层 scope 目录补 130 条**内部 symlink**（优先指向 `@deepseek-ai/dsh/node_modules/`
+里的副本）→ top-level=244 / dangling=0。可复用脚本 `04-stable-flat-mirror.sh`。
+
+复验：
+- 从部署 preset 目录 `import('@deepseek-ai/dsh-tool-bash')` → OK（4 exports）；
+  preset 全部模块的 import 源只有 `./compaction-epoch.mjs`、`@deepseek-ai/dsh-tool-bash`、`node:fs`，均可解析。
+- `tui` profile 只声明 `@deepseek-ai/dsh-base`（经 stable 顶层解析，0.1.5-rc.3）。
+- stable 运行时 drill-base `--dump-config` 仍 exit 0 / 332 行。
+
+维护：扁平镜像不属 npm 管理面；stable 每次 `npm ci` 重建后需重放 `04-stable-flat-mirror.sh`
+（映射由当前树机械重算）。部署位 preset 的 alias 本身未改（仍遵守「本票不动部署位」）。
+
+## 边界
+- stable 与全局/备份**彻底解耦**：后续全局升级不再连带影响 stable。
+- rc.3 是 0.1.5 线的依赖钉版 republish（C0 ⑤：逐文件无代码差异），作为子包版本与 lock 一致。
+- 旧锁副本留在 `/tmp/dsh-stable-lock-pre/`；原 240 条链接目标清单在 `/tmp/dsh-stable-links-before.tsv`
+  （均为临时文件，内容可由本文件与 lock 机械重建）。

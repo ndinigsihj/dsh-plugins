@@ -1,7 +1,7 @@
 {
   "gateVersion": 1,
-  "hostVersion": "0.1.5-rc.2",
-  "sessionFormatVersion": 3,
+  "hostVersion": "0.1.7-rc.1",
+  "sessionFormatVersion": 4,
   "deployment": {
     "minimal-plus": {
       "path": "~/.dsh/.agent-presets/minimal-plus",

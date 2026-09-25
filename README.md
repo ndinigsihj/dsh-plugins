@@ -211,12 +211,14 @@ T3 产物另按 `experiments/regression-gate/t3-<UTC 时间戳>/` 归档，跨�
 `1mdsh` 起不来）。因此 stable 侧现在由 `scripts/preset-mount-smoke.mjs` 在发版收尾时真起一次，改 stable
 profile / stable 工作树同样应手跑它。
 
-**宿主 0.1.5-rc.2 的两个前提**（2026-09-22 实测）：
+**宿主 0.1.7-rc.1 的两个前提**（2026-09-25 实测）：
 
-- **安装**：`npm i -g @deepseek-ai/dsh@0.1.5-rc.1|rc.2` 都会 ETARGET——宿主把 `dsh-web-app` 浮动到
-  `0.1.5-rc.3`，而 rc.3 要求的 `dsh-client-ui-sidebar-documentpreview@^0.1.5-rc.3` 从未发布。可行装法是
-  project 安装 + 把 5 个 UI/sidebar 包 overrides 钉在 `0.1.5-rc.2`（本机运行时树与 CI 同款）。
-- **启动**：自定义 profile 默认 `patchReload: live`，CLI 会挂 `@deepseek-ai/cordis-plugin-hmr`，该插件要求
+- **安装**：`npm i -g @deepseek-ai/dsh@0.1.7-rc.1` 可干净装出；0.1.5 线的 UI/sidebar ETARGET 问题
+  在 0.1.7-rc.1 不再出现，CI 与本地都按 `gates/manifest.json` 的 `hostVersion` 做 project 安装。
+  npm 11 的 install-scripts 审批提示对本宿主无影响（本机实测）：node-pty / koffi 的预编译产物随包提供，
+  node-pty 的 spawn-helper 已带 +x —— `dsh-subprocess-local` 的 postinstall 脚本本身也只是对这两个候选路径
+  做 +x 的幂等修复。
+- **启动**：自定义 profile 默认 `patchReload: live`，CLI 会挂 `@deepseek-ai/dsh-hmr`，该插件要求
   node 带 `--expose-internals`（该标志不允许写进 `NODE_OPTIONS`），否则启动即
   `--expose-internals is required for HMR service`。因此 `~/.dsh/bin/dsh` 与稳定通道启动器都带此标志。
 

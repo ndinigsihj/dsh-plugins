@@ -1,0 +1,23 @@
+票据 04 — 字段级宿主钉版 / 会话格式 / CLI 前置断言实跑
+生成：2026-09-25T13:11:59+0800
+
+口径：直接调用闸门自身的 hostInfo() / readManifest() / checkHostPin() / run() 纯函数
+（gates/host-pin.mjs、gates/manifest.mjs、gates/gate-helpers.mjs）。这三条属 gates/preconditions.mjs
+的环境前置，接口上不接受豁免参数，因此本文件没有“豁免列表”可列；完整闸门编排器在 0.1.7 上暂
+不可启动（见主证据 §4，票据 06）。
+
+farm-pin（informational）：0.1.5 机制里 loadProfile 前由 healProfilesModuleFallback 在
+<home>/profiles/node_modules 生成 @deepseek-ai/dsh 投影；0.1.7 已移除该导出、也不再生成该投影，
+故此处为 fail-informational，对应闸门源码里的 legacy 断言（gates/host-pin.mjs:35-43），
+需票据 06 按 0.1.7 的 per-profile 解析机制重写。它不影响下面两条字段级断言的判定。
+
+--- 实跑输出（scratch home: /tmp/dsh-t04-pin2-0uUly2/home）---
+manifest.status: ok
+manifest.hostVersion: 0.1.7-rc.1 manifest.sessionFormatVersion: 4
+anchor install: ~/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/package.json
+anchor version: 0.1.7-rc.1
+runtime SESSION_FORMAT_VERSION: 4
+host.cli: 0 "0.1.7-rc.1"
+host.pin.hostVersion: ok expected=0.1.7-rc.1 actual=0.1.7-rc.1
+host.pin.sessionFormatVersion: ok expected=4 actual=4
+[informational] legacy farm manifest exists: false version: undefined

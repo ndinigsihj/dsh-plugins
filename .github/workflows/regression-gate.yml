@@ -59,11 +59,9 @@ jobs:
       - name: Install project dependencies
         run: npm ci --no-audit --no-fund
 
-      # 0.1.5-rc.1/rc.2 的 0.1.5 线装不上干净 runner：宿主把
-      # `@deepseek-ai/dsh-web-app` 浮动到 0.1.5-rc.3，而 rc.3 又要求
-      # `@deepseek-ai/dsh-client-ui-sidebar-documentpreview@^0.1.5-rc.3`——该版本从未发布
-      # （2026-09-22 实测：`npm i -g @deepseek-ai/dsh@<rc.1|rc.2>` 都是 ETARGET）。本机
-      # 运行时的解法是 project 安装 + 把 UI/sidebar 家族钉在 rc.2（同款 overrides），CI 照搬。
+      # 宿主版本来自 gates/manifest.json（当前 0.1.7-rc.1）。0.1.7 线可干净 project 安装，
+      # 不再需要 0.1.5 线为 UI/sidebar 家族钉版的 overrides 工作区（2026-09-25 本机复验：
+      # `npm install --prefix` 解析出 278 个 @deepseek-ai 包、exit 0）。
       - name: Install the pinned host from the public registry
         run: |
           HOST_VERSION="$(node -p "require('./gates/manifest.json').hostVersion")"
@@ -73,19 +71,9 @@ jobs:
           node -e '
             const fs = require("node:fs");
             const version = process.argv[1];
-            const pins = {};
-            for (const name of [
-              "@deepseek-ai/dsh-web-app",
-              "@deepseek-ai/dsh-client-ui-sidebar",
-              "@deepseek-ai/dsh-client-ui-sidebar-files",
-              "@deepseek-ai/dsh-client-ui-sidebar-right",
-              "@deepseek-ai/dsh-client-ui-sidebar-documentpreview",
-            ]) {
-              pins[name] = "0.1.5-rc.2";
-            }
             fs.writeFileSync(
               process.argv[2],
-              `${JSON.stringify({ name: "dsh-ci-host", private: true, dependencies: { "@deepseek-ai/dsh": version }, overrides: pins }, null, 2)}\n`,
+              `${JSON.stringify({ name: "dsh-ci-host", private: true, dependencies: { "@deepseek-ai/dsh": version } }, null, 2)}\n`,
             );
           ' "$HOST_VERSION" "$HOST_DIR/package.json"
           npm install --prefix "$HOST_DIR" --no-audit --no-fund

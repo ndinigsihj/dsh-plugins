@@ -1,0 +1,17 @@
+票据 04 — 真实 home 写入归类（窗口：2026-09-25 12:25 → dump-config 之后）
+
+预期写入（宿主规范化）：
+  - tui-dev/node_modules 的 3 条旧 fallback 投影被清理：react / loose-envify / xdg-basedir
+    （0.1.7 改由 per-profile reconcile 机制承担解析；profiles/node_modules farm 493 条链接未变）
+  - profiles 下无新增文件（含 pnpm-workspace.yaml：headless 早已存在、tui-dev 未生成）
+
+未写入（before/after 指纹逐字节一致）：
+  - profiles 下受版本控制的配置文件（cordis.patch.yml / package.json / cordis.yml）共 30 个文件 sha 全同
+  - ~/.dsh/settings.yaml sha 8b0ca437d47e35bfc28a508b1488ca1f8d9747aab70381ee4742e88469a88619（无 settings.yaml.imported：dump-config 不触发一次性导入）
+  - 部署位 ~/.dsh/.agent-presets/** 10 个文件 sha 全同（本票未动部署位）
+
+非本票写入（在场活写者）：
+  - 窗口内被写的 6 个会话文件：5 个在 --Users-vito-data-dev-mumu--（mumu TUI），1 个在 --Users-vito-data-dev-dsh-plugins--（本 TUI 自身）
+  - 本票命令只做 --version / --dump-config / 只读探针，未打开或创建任何会话
+
+原始 before/after：profiles-files.sha vs profiles-files.after1.sha（diff 为空）；deployment-files.sha vs after1（diff 为空）；profiles-symlinks.txt vs after1（comm -3 仅 3 条）

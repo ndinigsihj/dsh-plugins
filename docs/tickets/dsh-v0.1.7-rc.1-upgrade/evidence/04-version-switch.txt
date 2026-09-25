@@ -1,0 +1,14 @@
+票据 04 — 版本输出与混合期 CLI 切换留档
+生成：2026-09-25T13:07:06+0800
+
+[默认入口] ~/.dsh/bin/dsh --version
+0.1.7-rc.1
+[默认入口实体] /Users/vito/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/package.json
+0.1.7-rc.1
+[旧宿主副本 + wrapper 覆盖] DSH_CLI=<票据03副本>/lib/bin.js ~/.dsh/bin/dsh --version
+0.1.5-rc.2
+[旧宿主副本直接入口] node <票据03副本>/lib/bin.js --version
+0.1.5-rc.2
+[v22 全局旧安装点（本票未触碰）] 0.1.5-rc.1（票据 03/计划 §1.1 钉版口径）
+
+结论：默认入口=0.1.7-rc.1；旧宿主经 DSH_CLI 显式覆盖仍可用（0.1.5-rc.2）。
