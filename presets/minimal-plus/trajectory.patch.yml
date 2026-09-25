@@ -1,10 +1,13 @@
 # headless 跑 minimal-plus 轨迹实测（Phase 3）用的 --patch 覆盖层。
 #
-# 用法：TRAJECTORY_TASK=... \
-#   dsh --profile headless --patch presets/minimal-plus/trajectory.patch.yml
+# 用法（0.1.7）：profile 必须先选择 preset bundle 并挂宿主侧模型选择单例；独立跑用
+#   node scripts/profile-home.mjs --home /tmp/trajectory-home --source presets/minimal-plus --settings-singleton
+#   TRAJECTORY_TASK=... DSH_HOME=/tmp/trajectory-home HOME=/tmp/trajectory-home \
+#     dsh --profile headless --patch presets/minimal-plus/trajectory.patch.yml
 #
-# 路径不写死：preset 根由 TRAJECTORY_PRESET_ROOT 覆盖，默认取相对当前工作目录的
-# presets（文档约定的调用方式即在仓库根执行）；driver 由 patch 文件位置锚定。
+# 2026-09-25 票据 11：删除旧 agent-presets 服务插入行（0.1.7 已移除该服务与目录形态，
+# TRAJECTORY_PRESET_ROOT 随之失效），preset 由 profile 的 bundle 选择提供；
+# driver 由 patch 文件位置锚定。
 #
 # 票 05：会话写隔离根（TRAJECTORY_SESSION_ROOT，默认 /tmp/dsh-probe/trajectory-sessions），
 # 不再写真实 ~/.dsh/sessions；报告默认归档到 <repo>/experiments/regression-gate/（TRAJECTORY_OUT 可覆盖）。
@@ -24,14 +27,5 @@
     root: !!js process.env.TRAJECTORY_SESSION_ROOT ?? '/tmp/dsh-probe/trajectory-sessions'
 
 - insert:
-    - id: agent-presets
-      name: "@deepseek-ai/dsh-agent-presets"
-      config:
-        default: minimal-plus
-        roots:
-          - path: !!js process.env.TRAJECTORY_PRESET_ROOT ?? 'presets'
-            trust: system
-        includeUserRoot: true
-
     - id: liangshen-trajectory
       name: ./trajectory-driver.mjs

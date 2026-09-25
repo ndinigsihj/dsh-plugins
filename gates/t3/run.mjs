@@ -8,23 +8,27 @@
  *   2. 子代理模型选择探针（`experiments/subagent-model-selection/probe.mjs`）→ 全部 check；
  *   3. 允许路由探针（`experiments/subagent-model-selection/route-probe.mjs`）→ 逐路由。
  *
- * 隔离（计划 §2.2/Q2）：DSH_HOME 与 HOME 都指向闸门临时 home；真实扫描源（部署位 preset、
- * `~/.dsh/settings.yaml`）只读复制进临时 home；settings 副本 600、报告只记 sha；探针的
+ * 隔离（计划 §2.2/Q2）：DSH_HOME 与 HOME 都指向闸门临时 home；真实扫描源（`~/.dsh/settings.yaml`、
+ * credentials）只读复制进临时 home；settings 副本 600、报告只记 sha；探针的
  * settings/session root 由 env 参数化（patch 内默认值不变，单独运行 run.sh 不受影响）。
+ * 0.1.7 载体（票据 11）：preset 不再读 `~/.dsh/.agent-presets/<id>/` 目录形态，改为从仓库真源
+ * 现场生成 bundle 接进 T3 隔离 profile；部署位落位（票据 12）后再评估切 deployed bundle。
  *
  * 版本闸门（用户决策 Q3）：宿主版本或会话格式与清单不符、基线来源宿主不符、真实 settings
  * 缺失 → 本层拒绝运行。runGate 在分层前用 `t3ProvenanceProblems` 判定并返回 exit 2；
  * 本模块内的同类检查是防御性兜底（避免被直接调用时拿旧数字当结论）。
  */
 import { spawnSync } from "node:child_process";
-import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SESSION_FORMAT_VERSION } from "@deepseek-ai/dsh-session";
 import { createAssertions, sha256File } from "../gate-helpers.mjs";
-import { checkBaselines, checkDeployment, resolveDeploymentRoot } from "../manifest.mjs";
+import { checkBaselines, checkDeployment } from "../manifest.mjs";
+import { prepareHeadlessPresetProfile } from "../../scripts/profile-home.mjs";
 import { summarize } from "../../experiments/m4/summarize.mjs";
+import { SETTINGS_BASELINE } from "../../experiments/subagent-model-selection/allowed-routes.mjs";
 import { m4Outcome, probeOutcome, routeOutcome, t3ProvenanceProblems } from "./analysis.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
@@ -43,7 +47,7 @@ const PROBE_CHECK_IDS = [
   "a5-explicit-route-used",
   "a7-omitted-route-inherits",
   "a10-old-session-stays-off",
-  "a14-model-driven-selection",
+  "a14-whitelist-route-compliance",
 ];
 const DEFAULT_TIMEOUT_MS = 900_000;
 
@@ -95,65 +99,57 @@ function createArchiveDir() {
 }
 
 /**
- * T3 专用隔离 profile：与 `prepareProfile` 的 headless 骨架同构，额外挂宿主作用域的
- * `subagent-model-selection-settings`（插件默认 enabled=false）。
+ * T3 专用隔离 profile（0.1.7 载体）：headless 骨架 + 从仓库真源现场生成的 preset bundle，
+ * 另挂宿主作用域 `subagent-model-selection-settings`（插件默认 enabled=false）。
  *
  * 为什么需要：minimal-plus 的 delegation/tool-subagent 声明了
  * `modelSelectionSettings: true`，宿主缺单例时 preset 直接挂载失败；真实运行态里这行
  * 由 profile patch 提供（tui-dev enabled=true；headless 机器上为 enabled=false）。
- * T3 的两个探针 patch 只做 `- id: … config:` 覆盖，所以单例必须先在 profile 层插入。
- * 用独立 profile 名（而非改 temp headless）是避免与 T1/T2 依赖的 headless 组合互相污染。
+ * 每个资产用独立 profile 名：模型选择探针的 a9 会编辑所在 profile 的用户配置层，共享
+ * profile 会把编辑后的设置污染给后面的路由探针（0.1.7 设置面按 profile 条目存放）；
+ * 且被 `--patch` overlay 覆盖的条目会被 settings 编辑器拒写，所以探针的部署基线
+ * （允许路由集合）放在 profile 层 `settingsConfig`，不放进 overlay。
+ * preset 载体从仓库真源生成：部署位当前仍是旧目录形态（票据 12 落位），不参与本层加载。
  */
-function prepareT3Profile(tempHome) {
-  const dir = join(tempHome, "profiles", T3_PROFILE);
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(
-    join(dir, "package.json"),
-    `${JSON.stringify(
-      {
-        name: `dsh-profile-${T3_PROFILE}`,
-        private: true,
-        dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"], patchReload: "startup" } },
-      },
-      null,
-      2,
-    )}\n`,
-  );
-  writeFileSync(join(dir, "cordis.yml"), "# T3 profile root — an empty entry list.\n[]\n");
-  const patchPath = join(dir, "cordis.patch.yml");
-  writeFileSync(
-    patchPath,
-    [
-      "# T3: host-scope model selection singleton (default disabled; the probe overlays re-enable by id).",
-      "- insert:",
-      "    - id: subagent-model-selection-settings",
-      "      name: '@deepseek-ai/dsh-tool-subagent/model-selection-settings'",
-      "",
-    ].join("\n"),
-  );
-  return { name: T3_PROFILE, dir, patchPath, patchSha256: sha256File(patchPath) };
+function prepareT3Profile(tempHome, name, settingsConfig) {
+  const presetSourceDir = join(REPO_ROOT, "presets", PRESET);
+  const prepared = prepareHeadlessPresetProfile({
+    home: tempHome,
+    name,
+    sourceDir: presetSourceDir,
+    sourceLabel: join("presets", PRESET),
+    settingsSingleton: true,
+    ...(settingsConfig === undefined ? {} : { settingsConfig }),
+  });
+  return {
+    name,
+    patchSha256: sha256File(prepared.patchPath),
+    presetSourceDir,
+    presetBundleDir: prepared.bundleDir,
+    presetBundlePatchSha256: sha256File(join(prepared.bundleDir, "cordis.patch.yml")),
+  };
+}
+
+/** 复制只读源到隔离 home 并收紧权限（settings/credentials 副本统一 600）。 */
+function materializeSecret(source, target) {
+  copyFileSync(source, target);
+  chmodSync(target, 0o600);
 }
 
 /**
- * 真实扫描源物化到临时 home：部署位 preset（优先，真实加载源）或仓库副本 + node_modules
- * 链接、真实 `~/.dsh/settings.yaml` 副本。只读源，绝不写真实 home。
+ * 每次新 profile 首次启动会从默认 `$DSH_HOME/settings.yaml` 导入插件段（llm 适配器等）并把
+ * 文档改名；M4 启动后该文档已不在，探针 profile 看不到 provider。探针进程前重新物化默认文档。
  */
-function stageRealInputs({ tempHome, manifestObj, homeDir }) {
-  const entry = manifestObj.deployment?.[PRESET];
-  const deployedRoot = entry === undefined ? undefined : resolveDeploymentRoot(entry, homeDir);
-  const deployedOk = deployedRoot !== undefined && existsSync(join(deployedRoot, "preset.yml"));
-  const source = deployedOk ? deployedRoot : join(REPO_ROOT, "presets", PRESET);
-  if (!existsSync(join(source, "preset.yml"))) {
-    throw new T3PreconditionError(`preset to stage not found: ${source}`);
-  }
-  const staged = join(tempHome, ".agent-presets", PRESET);
-  mkdirSync(dirname(staged), { recursive: true });
-  cpSync(source, staged, { recursive: true });
-  if (!existsSync(join(staged, "node_modules")) && existsSync(join(REPO_ROOT, "node_modules"))) {
-    // 仓库副本没有自带依赖树；链接到本 checkout 的 node_modules，preset 插件的裸包名
-    // 才能解析（部署位副本自带指向全局运行时的 node_modules，走优先分支无需处理）。
-    symlinkSync(join(REPO_ROOT, "node_modules"), join(staged, "node_modules"), "dir");
-  }
+function restageDefaultSettings(tempHome, settingsSource) {
+  materializeSecret(settingsSource, join(tempHome, "settings.yaml"));
+}
+
+/**
+ * 真实扫描源物化到临时 home：真实 `~/.dsh/settings.yaml` 副本（每资产一份，600）与
+ * provider 凭据副本。只读源，绝不写真实 home。preset 已由 `prepareT3Profile` 从仓库
+ * 真源生成载体，不再走 `.agent-presets` 目录形态。
+ */
+function stageRealInputs({ tempHome, homeDir }) {
   const settingsSource = join(homeDir, ".dsh", "settings.yaml");
   if (!existsSync(settingsSource)) {
     throw new T3PreconditionError(`real settings not found: ${settingsSource}; T3 needs real provider credentials`);
@@ -168,22 +164,17 @@ function stageRealInputs({ tempHome, manifestObj, homeDir }) {
   };
   for (const target of Object.values(settingsTargets)) {
     mkdirSync(dirname(target), { recursive: true });
-    copyFileSync(settingsSource, target);
-    chmodSync(target, 0o600);
+    materializeSecret(settingsSource, target);
   }
   // provider 凭据走 `$DSH_HOME/.credentials.yaml`（dsh-credentials-local）：复制副本让隔离
   // home 内能真实认证；报告只记 sha，绝不记内容。缺失不拒绝（密钥也可能由 env 提供）。
   const credentialsSource = join(homeDir, ".dsh", ".credentials.yaml");
   const credentialsCopied = existsSync(credentialsSource);
   if (credentialsCopied) {
-    copyFileSync(credentialsSource, join(tempHome, ".credentials.yaml"));
-    chmodSync(join(tempHome, ".credentials.yaml"), 0o600);
+    materializeSecret(credentialsSource, join(tempHome, ".credentials.yaml"));
   }
   return {
-    presetSource: deployedOk ? "deployed" : "repo",
-    presetPath: staged,
-    presetSha256: sha256File(join(staged, "agent.cordis.yml")),
-    manifestSha256: entry?.files?.["agent.cordis.yml"],
+    settingsSource,
     settingsSha256: sha256File(settingsTargets.m4),
     settingsPaths: settingsTargets,
     credentialsCopied,
@@ -278,8 +269,11 @@ export function runT3({ tempHome, env, report, manifestObj, host }) {
   const archiveDir = createArchiveDir();
   const childEnv = { ...env, DSH_HOME: tempHome, HOME: tempHome };
 
-  const staged = stageRealInputs({ tempHome, manifestObj, homeDir });
-  const profile = prepareT3Profile(tempHome);
+  const staged = stageRealInputs({ tempHome, homeDir });
+  // M4 测量保持单例默认（enabled=false，与真实 headless 测量口径一致）；两个探针用部署基线。
+  const m4Profile = prepareT3Profile(tempHome, T3_PROFILE);
+  const probeProfile = prepareT3Profile(tempHome, `${T3_PROFILE}-probe`, SETTINGS_BASELINE);
+  const routeProfile = prepareT3Profile(tempHome, `${T3_PROFILE}-route`, SETTINGS_BASELINE);
   const deployment = checkDeployment(manifestObj, { repoRoot: REPO_ROOT, homeDir });
   const baselineFiles = checkBaselines(manifestObj, { repoRoot: REPO_ROOT });
   const baselineState = baselineFiles.baselines.find((entry) => entry.id === baselineId);
@@ -299,7 +293,7 @@ export function runT3({ tempHome, env, report, manifestObj, host }) {
   const m4Out = join(archiveDir, `m4-${M4_GROUP}.jsonl`);
   const m4SessionsRoot = join(tempHome, "t3", "m4-sessions");
   const m4Started = Date.now();
-  const m4Run = runProcess("dsh", ["--profile", profile.name, "--patch", M4_PATCH], {
+  const m4Run = runProcess("dsh", ["--profile", m4Profile.name, "--patch", M4_PATCH], {
     env: {
       ...childEnv,
       M4_GROUPS: M4_GROUP,
@@ -364,6 +358,7 @@ export function runT3({ tempHome, env, report, manifestObj, host }) {
   );
 
   // ── ② 模型选择探针（旧会话取本窗口 M4 批次的隔离副本）────────────────────
+  restageDefaultSettings(tempHome, staged.settingsSource);
   const probeSessionsRoot = join(tempHome, "t3", "probe-sessions");
   const oldSession = findM4Session(m4SessionsRoot);
   if (oldSession !== null) {
@@ -373,7 +368,7 @@ export function runT3({ tempHome, env, report, manifestObj, host }) {
   }
   const probeOut = join(archiveDir, "model-selection-probe.json");
   const probeStarted = Date.now();
-  const probeRun = runProcess("dsh", ["--profile", profile.name, "--patch", MODEL_SELECTION_PATCH], {
+  const probeRun = runProcess("dsh", ["--profile", probeProfile.name, "--patch", MODEL_SELECTION_PATCH], {
     env: {
       ...childEnv,
       PROBE_OUT: probeOut,
@@ -413,10 +408,11 @@ export function runT3({ tempHome, env, report, manifestObj, host }) {
   );
 
   // ── ③ 允许路由探针 ──────────────────────────────────────────────────────
+  restageDefaultSettings(tempHome, staged.settingsSource);
   const routeOut = join(archiveDir, "route-probe.json");
   const routeSessionsRoot = join(tempHome, "t3", "route-sessions");
   const routeStarted = Date.now();
-  const routeRun = runProcess("dsh", ["--profile", profile.name, "--patch", ROUTE_PROBE_PATCH], {
+  const routeRun = runProcess("dsh", ["--profile", routeProfile.name, "--patch", ROUTE_PROBE_PATCH], {
     env: {
       ...childEnv,
       PROBE_OUT: routeOut,
@@ -469,13 +465,21 @@ export function runT3({ tempHome, env, report, manifestObj, host }) {
       state: baselineState?.state,
     },
     composition: {
-      profile: profile.name,
-      profilePatchSha256: profile.patchSha256,
+      profile: m4Profile.name,
+      profilePatchSha256: m4Profile.patchSha256,
+      // 三个资产各用独立 profile：a9 的设置编辑只落在模型选择探针自己的 profile 上。
+      probeProfiles: {
+        modelSelection: { name: probeProfile.name, patchSha256: probeProfile.patchSha256 },
+        route: { name: routeProfile.name, patchSha256: routeProfile.patchSha256 },
+      },
       preset: PRESET,
-      presetSource: staged.presetSource,
-      presetPath: staged.presetPath,
-      presetSha256: staged.presetSha256,
-      manifestSha256: staged.manifestSha256,
+      // 0.1.7 载体：preset 从仓库真源现场生成 bundle（部署位仍为旧目录形态，随票据 12 落位）。
+      presetSource: "repo",
+      presetPath: m4Profile.presetSourceDir,
+      presetSha256: sha256File(join(m4Profile.presetSourceDir, "agent.cordis.yml")),
+      presetBundleDir: m4Profile.presetBundleDir,
+      presetBundlePatchSha256: m4Profile.presetBundlePatchSha256,
+      manifestSha256: manifestObj.deployment?.[PRESET]?.files?.["agent.cordis.yml"],
       deploymentStatus: deployment.status,
       deploymentDrift: deployment.files.filter((file) => file.state !== "ok").map((file) => file.name),
       settingsSha256: staged.settingsSha256,
@@ -505,7 +509,7 @@ export function runT3({ tempHome, env, report, manifestObj, host }) {
     report.t3.archive.files.length >= 3;
   t[provenanceOk ? "pass" : "fail"](
     "t3.report.provenance",
-    `host=${host.version} sessionFormat=${String(SESSION_FORMAT_VERSION)} profile=${report.t3.composition.profile} presetSha=${String(staged.presetSha256).slice(0, 12)} credentials=${staged.credentialsCopied ? String(staged.credentialsSha256).slice(0, 12) : "not-copied"} runs=${String(runs)} capturedAt=${capturedAt} archive=${archiveDir}`,
+    `host=${host.version} sessionFormat=${String(SESSION_FORMAT_VERSION)} profile=${report.t3.composition.profile} presetSha=${String(report.t3.composition.presetSha256).slice(0, 12)} credentials=${staged.credentialsCopied ? String(staged.credentialsSha256).slice(0, 12) : "not-copied"} runs=${String(runs)} capturedAt=${capturedAt} archive=${archiveDir}`,
   );
   return t.assertions;
 }

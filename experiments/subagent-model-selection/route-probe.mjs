@@ -2,12 +2,12 @@
  * 票据 12 允许路由真实验证探针 — 对当前允许集合中的每条路由实跑一次真实 bash 工具调用。
  *
  * 运行：experiments/subagent-model-selection/run-route-probe.sh
- *   （把 ~/.dsh/settings.yaml 复制到 /tmp/dsh-ticket12 作隔离设置，再跑
+ *   （预置 /tmp/dsh-ticket12 隔离 home：设置副本 + 0.1.7 preset bundle 载体，再跑
  *    dsh --profile headless --patch experiments/subagent-model-selection/route-probe.patch.yml）
  *
  * 口径：探针从宿主设置服务读取允许集合本身（probe patch 行 = 部署基线当前值）；
- * 父会话用 opencode-go/deepseek-v4-flash（票据 07/08/10 M4 实测），先由真实模型发一次
- * bash 调用完成 promotion（开启会话的 30 工具形状），再逐条以子代理显式 provider/model
+ * 父会话用 commandcode/deepseek/deepseek-v4.1-flash（与 M4 基线同源），先由真实模型发一次
+ * bash 调用完成 promotion（promotion 后可见全量工具目录），再逐条以子代理显式 provider/model
  * 委派一次「调用 bash 执行 echo <marker>」。断言链：子会话 header 路由 = 指定路由、
  * 子会话存在 bash tool/call、对应 tool/result 成功且回显 marker；首轮未发工具调用时
  * 最多重试一次（更严格提示），两条尝试都记入报告。某条路由失败不影响后续路由。
@@ -110,15 +110,27 @@ function blocksToText(blocks) {
     .join("");
 }
 
-/** 将 tool/result 事件摊平成 {callId,isError,text}（一条事件含一个 tool-result block）。 */
+/**
+ * 将 tool/result 事件摊平成 {callId,isError,text}。
+ * 0.1.7 起 tool 消息是扁平的（`message.toolCallId` + `message.content` 内容块数组）；
+ * 兼容旧宿主裹在 `tool-result` 块里的形状，避免探针只因消息形状换代误报。
+ */
 function toolResultsOf(events) {
-  return events
-    .filter((event) => event.type === "tool/result")
-    .flatMap((event) =>
-      (event.data?.message?.content ?? [])
-        .filter((block) => block?.type === "tool-result")
-        .map((block) => ({ callId: block.toolCallId, isError: block.isError === true, text: blocksToText(block.content) })),
-    );
+  const out = [];
+  for (const event of events) {
+    if (event.type !== "tool/result") continue;
+    const message = event.data?.message;
+    if (message === undefined) continue;
+    if (typeof message.toolCallId === "string") {
+      out.push({ callId: message.toolCallId, isError: message.isError === true, text: blocksToText(message.content) });
+      continue;
+    }
+    for (const block of message.content ?? []) {
+      if (block?.type !== "tool-result") continue;
+      out.push({ callId: block.toolCallId, isError: block.isError === true, text: blocksToText(block.content) });
+    }
+  }
+  return out;
 }
 
 function turnErrorsOf(events) {
@@ -253,7 +265,11 @@ async function run(ctx) {
   const tools = await schemasOf(parent);
   report.facts.promotedTools = tools.map((tool) => tool.name).sort();
   const subagentParams = Object.keys(tools.find((tool) => tool.name === "subagent")?.parameters?.properties ?? {});
-  if (!MODEL_PARAMS.every((key) => subagentParams.includes(key))) throw new Error(`ticket12-route-probe: subagent lacks model params after promotion: ${JSON.stringify(subagentParams)}`);
+  if (!MODEL_PARAMS.every((key) => subagentParams.includes(key))) {
+    throw new Error(
+      `ticket12-route-probe: subagent lacks model params after promotion: ${JSON.stringify(subagentParams)} tools=${JSON.stringify(tools.map((tool) => tool.name))} configured=${JSON.stringify(configured)}`,
+    );
+  }
 
   for (const route of configured.allowedModels) record(report, await probeRoute(feed, parent, route));
 

@@ -5,7 +5,8 @@
  * `experiments/m4/results-liangshen-bash-E-C-A-2026-08-21T17-55-50.jsonl`
  * 的记录结构重建，任务模板逐字沿用。
  *
- * 用法：
+ * 用法（0.1.7 载体）：目标 profile 必须已选择生成的 preset bundle（`@dsh-plugins/minimal-plus-preset`）；
+ * 独立跑先按 `experiments/m4/m4.patch.yml` 头注释预置隔离 home，或直接跑闸门 `--tier 3`：
  *   M4_GROUPS=E M4_RUNS=9 M4_MODEL=commandcode/deepseek/deepseek-v4.1-flash \
  *     dsh --profile headless --patch experiments/m4/m4.patch.yml
  *

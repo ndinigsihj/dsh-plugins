@@ -1,16 +1,20 @@
-# 票据 12 允许路由真实验证 overlay（在 headless profile 之上）：
+# 票据 12 允许路由真实验证 overlay（在 0.1.7 headless profile 之上）：
 #   dsh --profile headless --patch experiments/subagent-model-selection/route-probe.patch.yml
+# profile 必须已选择 preset bundle，并以 **profile 层** config 挂好宿主侧模型选择单例
+# （部署基线 = allowed-routes.mjs）；独立跑用
+#   node scripts/profile-home.mjs --home /tmp/dsh-ticket12/home --source presets/minimal-plus --settings-config '<json>'
+# 预置隔离 home（run-route-probe.sh 已接线），再以 DSH_HOME/HOME 指过去。
 #
 # 与票据 11 probe.patch.yml 同处置：关掉 stock headless runner/startup，禁用 dsh-base 的
 # tool-bash（与 preset 的 persistent-shell bash 撞名）。三段隔离：
 #   1) settings.path 指向临时副本 —— 探针不改 ~/.dsh/settings.yaml；
 #   2) session-persistence-jsonl.root 指向临时目录 —— 探针会话不落真实 ~/.dsh/sessions；
-#   3) 按 id 覆盖 headless 部署基线为 enabled=true + 当前允许路由（与
-#      ~/.dsh/profiles/tui-dev/cordis.patch.yml 部署基线逐字段一致）。
+#   3) 单例的部署基线在 profile patch，overlay 不动它。
 # 路径可用 env 覆盖（闸门 `--tier 3` 用 ROUTE_PROBE_SETTINGS_PATH /
 # ROUTE_PROBE_SESSION_ROOT 指向自己的隔离临时 home；不设时保持 run-route-probe.sh 默认值）。
 #
-# 探针本身从设置服务读取 allowedModels 并逐条探测；集合裁剪时同步改本文件与部署基线。
+# 探针本身从设置服务读取 allowedModels 并逐条探测；集合裁剪时同步改 allowed-routes.mjs
+# 与两个真实 profile。
 - id: headless-runner
   disabled: true
 
@@ -28,26 +32,8 @@
   config:
     root: !!js process.env.ROUTE_PROBE_SESSION_ROOT ?? '/tmp/dsh-ticket12/sessions'
 
-# 与 ~/.dsh/profiles/tui-dev/cordis.patch.yml 的部署基线逐字段一致
-# （2026-09-12 起：opencode-go / commandcode v4-flash / deepseek-v4-flash 全部退役，
-#  集合 = commandcode deepseek-v4.1-flash + deepseek-official deepseek-flash）
-- id: subagent-model-selection-settings
-  config:
-    enabled: true
-    allowedModels:
-      - provider: commandcode
-        model: deepseek/deepseek-v4.1-flash
-      - provider: deepseek-official
-        model: deepseek-flash
-
 - insert:
-    # preset 走 user root（部署位副本，即 tui-dev 的实际加载源）；与 m4.patch.yml 同约定
-    - id: agent-presets
-      name: "@deepseek-ai/dsh-agent-presets"
-      config:
-        default: minimal-plus
-        roots: []
-        includeUserRoot: true
-
+    # 2026-09-25 票据 11：删除旧 agent-presets 服务行（0.1.7 已移除），preset 由 profile
+    # 选择的 bundle 提供；本 overlay 只挂探针自身。
     - id: ticket12-route-probe
       name: ./route-probe.mjs

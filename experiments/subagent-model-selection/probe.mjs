@@ -10,6 +10,11 @@
  * 事后编辑设置不改写已记录策略、旧会话保持关闭、集合外路由无法选定、fork 同路由且
  * 不参与选择、工具名与两种上下文来源语义不变。
  *
+ * 结论口径（2026-09-24 裁决，2026-09-25 与 T3 新基线同批落地）：本探针为**白名单背书**
+ * ——证明「允许集合内的路由能被真实模型按 schema 透传并生效、集合外被硬拒」。a14 给模型的
+ * 指令是逐字段给定路由，它**不**主张模型会自主判断该选哪条路由（机制不提供分流语义，
+ * 见升级计划 §5.5）。
+ *
  * 结果写 $PROBE_OUT（默认 /tmp/dsh-ticket11/probe.json）；全 PASS 退出码 0。
  */
 import { randomUUID } from "node:crypto";
@@ -17,6 +22,7 @@ import { writeFileSync } from "node:fs";
 import { installModelSelection } from "@deepseek-ai/dsh-agent";
 import { SessionId } from "@deepseek-ai/dsh-session";
 import { ToolCallId, createUserMessage } from "@deepseek-ai/dsh-llm";
+import { SETTINGS_BASELINE } from "./allowed-routes.mjs";
 
 export const name = "ticket11-probe";
 export const inject = [];
@@ -37,11 +43,8 @@ function routeFromEnv(prefix, fallback) {
 }
 
 const PARENT = routeFromEnv("PROBE_PARENT", { provider: "commandcode", model: "deepseek/deepseek-v4.1-flash" });
-/** 探针部署基线（与 ~/.dsh/profiles/tui-dev/cordis.patch.yml 逐字段一致）；2026-09-12 起 2 条。 */
-const ALLOWED_X = [
-  { provider: "commandcode", model: "deepseek/deepseek-v4.1-flash" },
-  { provider: "deepseek-official", model: "deepseek-flash" },
-];
+/** 探针部署基线（单一来源见 `allowed-routes.mjs`；与两个真实 profile 逐字段一致）。 */
+const ALLOWED_X = SETTINGS_BASELINE.allowedModels;
 /** 事后编辑到用户层的集合：与 X 不相交，便于区分"已记录"与"当前设置"。 */
 const SETTINGS_Y = { enabled: true, allowedModels: [{ provider: "gjx", model: "gpt-5.6-sol" }] };
 /** 显式委派路由（必须在允许集合 X 内）；env 覆盖同上：PROBE_EXPLICIT_PROVIDER / _MODEL。 */
@@ -54,6 +57,11 @@ const WARMUP_PROMPT = [
   "请调用 bash 工具执行命令 echo ticket11-warmup（command 参数为 \"echo ticket11-warmup\"）。",
   "调用完成后只回复 done。",
 ].join("\n");
+/**
+ * 0.1.7 设置面：编辑的是 **profile 插件条目**的 user 层（ns = 条目 id），不再是
+ * `~/.dsh/settings.yaml` 的 section 名（0.1.7 起旧文档只导入一次，见升级计划 P0 行）。
+ */
+const SETTINGS_NS = "subagent-model-selection-settings";
 const COMPLIANCE_PROMPT = [
   "请调用 subagent 工具做一次委派，参数必须精确如下（不要增加也不要修改）：",
   '- description: "route probe"',
@@ -280,8 +288,8 @@ async function checkFork(report, feed, agent) {
 
 /** 票 8：设置编辑后新会话用新集合；已记录策略的会话不被改写。 */
 async function checkSettingsEdit(report, services, feed, agent) {
-  const before = services.settings.describe().find((descriptor) => descriptor.ns === "subagent-model-selection");
-  await services.settings.update("subagent-model-selection", SETTINGS_Y);
+  const before = services.settings.describe().find((descriptor) => descriptor.ns === SETTINGS_NS);
+  await services.settings.update(SETTINGS_NS, SETTINGS_Y);
   const published = await waitFor(() => routesEqual(services.subagentSettings.current().allowedModels, SETTINGS_Y.allowedModels), 5000);
   const fresh = await createFresh(services, "post-edit");
   const newPolicy = feed.policyOf(fresh.session.id);
@@ -295,6 +303,7 @@ async function checkSettingsEdit(report, services, feed, agent) {
     report,
     "a9-settings-edit-does-not-rewrite",
     published &&
+      before !== undefined &&
       routesEqual(newPolicy, SETTINGS_Y.allowedModels) &&
       routesEqual(oldPolicy, ALLOWED_X) &&
       freshListY.includes("gjx/gpt-5.6-sol") &&
@@ -328,8 +337,12 @@ async function checkOldSession(report, services, oldSessionId) {
   await dispose();
 }
 
-/** 真实模型路径：模型自己按 schema 指定 provider/model/effort 并实际生效。 */
-async function checkModelCompliance(report, feed, agent) {
+/**
+ * 真实模型路径（口径：为白名单背书）：给定的允许路由被真实模型按 schema 透传，子会话实际
+ * 以该 provider/model/effort 发起请求。指令逐字段给定路由，检查的是机制透传与白名单可执行，
+ * 不是模型自主选路。
+ */
+async function checkWhitelistCompliance(report, feed, agent) {
   const before = feed.catalogChildIds(agent.session.id).length;
   agent.followup(createUserMessage({ content: [{ type: "text", text: COMPLIANCE_PROMPT }], source: { kind: "user" } }));
   await agent.whenIdle();
@@ -339,7 +352,7 @@ async function checkModelCompliance(report, feed, agent) {
   const call = feed.eventsOf(agent.session.id).filter((event) => event.type === "tool/call" && event.data?.name === "subagent").at(-1);
   record(
     report,
-    "a14-model-driven-selection",
+    "a14-whitelist-route-compliance",
     childId !== null && route?.provider === EXPLICIT.provider && route?.model === EXPLICIT.model && route?.reasoningEffort === EXPLICIT.reasoning_effort,
     { childId, route, call: call?.data?.arguments ?? call?.data?.args ?? null },
   );
@@ -374,7 +387,7 @@ async function run(ctx) {
   await checkInheritance(report, feed, agent);
   await checkForbidden(report, feed, agent);
   await checkFork(report, feed, agent);
-  await checkModelCompliance(report, feed, agent);
+  await checkWhitelistCompliance(report, feed, agent);
   await checkSettingsEdit(report, services, feed, agent);
   await checkOldSession(report, services, oldSessionId);
 

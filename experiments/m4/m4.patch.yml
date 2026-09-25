@@ -1,10 +1,15 @@
-# M4 对比实验 patch（headless 组合 + agent-presets，与历史 M4 同口径）。
+# M4 对比实验 patch（headless 组合 + 0.1.7 preset 载体，与历史 M4 同口径）。
 #
-# 用法：M4_GROUPS=E M4_RUNS=9 M4_MODEL=commandcode/deepseek/deepseek-v4.1-flash \
-#   dsh --profile headless --patch experiments/m4/m4.patch.yml
+# 用法：profile 必须已选择生成的 preset bundle（`@dsh-plugins/minimal-plus-preset`）——
+#   - 闸门 T3 由 `gates/t3/run.mjs` 现场预置 t3-headless profile；
+#   - 独立跑先用隔离 home 助手预置（含宿主侧模型选择单例，preset 否则挂不起来）：
+#       node scripts/profile-home.mjs --home /tmp/m4-home --source presets/minimal-plus --settings-singleton
+#       M4_GROUPS=E M4_RUNS=9 M4_MODEL=commandcode/deepseek/deepseek-v4.1-flash \
+#         DSH_HOME=/tmp/m4-home HOME=/tmp/m4-home dsh --profile headless --patch experiments/m4/m4.patch.yml
 #
-# 2026-09-10 升级 rc.1 后：preset 走 user root（~/.dsh/.agent-presets 部署位副本），
-# E = minimal-plus；M4_MODEL 按需覆盖默认路由（见 m4-runner.mjs 头注释）。
+# 2026-09-25 票据 11：删除 `@deepseek-ai/dsh-agent-presets` 插入行（0.1.7 宿主已移除旧
+# 服务与目录形态），preset 由 profile 的 bundle 选择提供；E = minimal-plus；
+# M4_MODEL 按需覆盖默认路由（见 m4-runner.mjs 头注释）。
 #
 # 票 05：会话写隔离根（M4_SESSION_ROOT，默认 /tmp/dsh-probe/m4-sessions），
 # 不再写真实 ~/.dsh/sessions；报告默认归档到 <repo>/experiments/regression-gate/（M4_OUT 可覆盖）。
@@ -24,12 +29,5 @@
     root: !!js process.env.M4_SESSION_ROOT ?? '/tmp/dsh-probe/m4-sessions'
 
 - insert:
-    - id: agent-presets
-      name: "@deepseek-ai/dsh-agent-presets"
-      config:
-        default: minimal-plus
-        roots: []
-        includeUserRoot: true
-
     - id: m4-trajectory-runner
       name: ./m4-runner.mjs

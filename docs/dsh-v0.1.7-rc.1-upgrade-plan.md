@@ -30,7 +30,7 @@
 | 项 | 裁决 | 对计划的影响 |
 | --- | --- | --- |
 | 目标版本 | **精确锁定 `0.1.7-rc.1`**，不跟随 `next` 浮动 | 安装命令写死精确版本；`gates/manifest.json` 的 `hostVersion` 同步改为 `0.1.7-rc.1`；不引入跟随浮动 tag 的升级路径（目标漂移规则见 §7 第 0/3 步） |
-| 升级窗口 | **tui-dev 与 headless 同步升级** | 两侧宿主机版本、profile 插件树、部署位 preset 一起到位；`subagent-model-selection-settings` 行分别保持 tui-dev `enabled: true`（30 工具）/ headless `enabled: false`（29 工具）——同步的是**宿主版本**，不是合并两边口径 |
+| 升级窗口 | **tui-dev 与 headless 同步升级** | 两侧宿主机版本、profile 插件树、部署位 preset 一起到位；`subagent-model-selection-settings` 行分别保持 tui-dev `enabled: true` / headless `enabled: false`——同步的是**宿主版本**，不是合并两边口径。（工具数 30/29 是 0.1.5 时代口径；0.1.7 实测 tui-dev 35 / 隔离测量面开启 29、关闭 28，见票据 09/11） |
 | 会话迁移 | **接受"迁移到 V4 后不可降级读"，且不再保留"先不迁"分支**（2026-09-24，Q15） | 迁移仍在本轮路径内；**C0 已回答"怎么迁"：无批量工具、无 dry-run；读开不落盘，只有写开才发布 v4 后继且源文件保留**。**冷备与还原演练前移到首次启动 0.1.7 之前**（§7 第 1 步），第 10 步只执行迁移并抽样验证 |
 | Agent Team | **本轮开启；启用范围 = C 方案（profile 划分）**（2026-09-23 裁决） | Team 是 **profile 层能力**，不做 preset 变体（§5.2 纠正）。现 profile（tui-dev / headless）保持不带 Team，另建带 Team 的 profile（如 `tui-team`）。开启后该 profile 内 `subagent` / `subagent_fork` 被组合期禁用且无模型选择入口（§5.0 / §5.2）；使用场景与边界见 §5.4 |
 | 自研 preset 去留 | **保留**（2026-09-24 裁决）：含 `phase-swap-bash` 二轮沙箱提权与 delegation 行 | §3.6 的证据缺口与淘汰框架转为**后续瘦身参考**，不作为本轮动作；淘汰评估改为**事件触发复评**（§3.6）；因 delegation 行随 preset 保留，Team profile 的 preset 组合行为必须实测（票 B1.5，升为硬前置） |
@@ -362,7 +362,7 @@ release notes 侧的相关条目：
 
 1. 把分流策略写进 preset 的 persona / `instruction-hint`（本仓库已有注入点）。
 2. 让 catalog 的 name / description 自解释——值来自 adapter 的模型元数据（自定义 provider 的 `models` 对象支持回填名称、上下文窗口、最大输出 token；**description 是否可写待核实**，见 §8）。
-3. 把模型选择定位成"人工经 `allowedModels` 调参"，而非模型自主决策；相应地把 T3 探针的结论口径改为**为白名单背书**，而不是为"模型会自己选"背书。（2026-09-24 裁决：该口径调整与 §6 的 T3 新基线同批落地，避免探针、基线、文档三处口径不一致。）
+3. 把模型选择定位成"人工经 `allowedModels` 调参"，而非模型自主决策；相应地把 T3 探针的结论口径改为**为白名单背书**，而不是为"模型会自己选"背书。（2026-09-24 裁决：该口径调整与 §6 的 T3 新基线同批落地，避免探针、基线、文档三处口径不一致。）**已完成（票据 11，2026-09-25）**：探针 a14 改名 `a14-whitelist-route-compliance`，`docs/subagent-model-selection.md` §1/§2 与 ADR-0001 适用边界同口径。
 
 ---
 
@@ -391,7 +391,7 @@ P0 = 不迁移就跑不起来或会丢数据；P1 = 行为变化需适配；P2 =
 | P2 | 插件安装/启动做版本兼容性检查，可按精确版本豁免（0.1.7-rc.1） | 自研插件包与 bundle | 标注兼容版本范围 | 安装/启动路径无兼容性拒绝 |
 | P0 | **C0 取证票 — ✅ 已完成（2026-09-24）** | 临时前缀 `/tmp/dsh-c0-20260924-152002`（独立 npm cache；真实 `~/.dsh` 只读、零写入，核验见证据） | 六项事实全部取证 + 附件/storages 判定，证据归档 `docs/tickets/dsh-v0.1.7-rc.1-upgrade/evidence/02-preflight-*`；复现脚本 `02-preflight-repro.sh`（调用归档探针） | ① 同步签名未变、异步面 = `ctx.sessionQuery`；② 无批量迁移工具；③ 读开不落盘 / 写开发布 v4 后继且源文件保留（v0/v3 均实测）；④ 目录预设不再加载；⑤ rc.3 = 依赖钉版 republish；⑥ rc.2 可重取但是混合树。§8 第 1/2/10/11/12/14 条已替换为事实，P0 迁移与 §7 第 10 步解除阻塞 |
 | P0 | 宿主钉版与会话格式版本断言（`gates/run.mjs:488-503`，两条均不可豁免） | `gates/manifest.json` | 宿主切换那批同步改 `hostVersion` → `0.1.7-rc.1`、`sessionFormatVersion` → 运行时值；preset sha 随仓库批次改为 `8cd01c68…`（待批准落地） | T1 `host.pin` / `session.format-version` 在 0.1.7 宿主上绿 |
-| P1 | T3 基线带 `hostVersion` 戳（`gates/manifest.json.baselines` + `gates/t3/analysis.mjs` provenance） | `gates/manifest.json`、`experiments/m4/*`、`gates/t3/*` | **在 0.1.7-rc.1 上新采一条基线**（同 preset/模型/参数）；旧条目留史不删；窗口内采不了就显式记"新宿主未跑 T3"；"T3 口径改为为白名单背书"与新基线同批（§5.5） | 新基线入库 + provenance 检查绿；探针、基线、文档三处口径一致 |
+| P1 | T3 基线带 `hostVersion` 戳（`gates/manifest.json.baselines` + `gates/t3/analysis.mjs` provenance） | `gates/manifest.json`、`experiments/m4/*`、`gates/t3/*` | **在 0.1.7-rc.1 上新采一条基线**（同 preset/模型/参数）；旧条目留史不删；窗口内采不了就显式记"新宿主未跑 T3"；"T3 口径改为为白名单背书"与新基线同批（§5.5） | **已完成（票据 11，2026-09-25）**：新基线 `m4-commandcode-v41-2026-09-25`（sha `062cd4f7…`，N=9，host `0.1.7-rc.1`）入库并成为 `t3.baseline`，旧 3 条保留；T3 载体切 0.1.7 bundle + 独立 profile，a14 改名 `a14-whitelist-route-compliance`，`--tier 3` 18/18 绿（`evidence/11-t3-green.json`） |
 | P2 | 升级节奏无政策（本轮是"版本链拉长后补课"） | `README.md` 或本计划末尾 | 立轻政策：日常宿主跟 `latest` stable；`next`/rc 只在临时前缀侦察；每个新 stable 按 C0 模板取证并在固定窗口内升级（§7 末尾） | 政策写入文档；下一次 stable 出现时按政策执行 |
 
 ---
@@ -424,7 +424,7 @@ P0 = 不迁移就跑不起来或会丢数据；P1 = 行为变化需适配；P2 =
 3. 先装到**非当前 PATH 优先级**的位置或用 `DSH_CLI` 覆盖，避免直接替换正在使用的 0.1.5-rc.2。目标版本**精确锁定**：`npm i -g @deepseek-ai/dsh@0.1.7-rc.1`（不跟随 `next` 浮动）；混合期统一走 `~/.dsh/bin/dsh` 的 `DSH_CLI` 覆盖。
 
    **已完成（票据 04，2026-09-25，用户裁决）**：采用「替换 v24 全局」而非侧前缀——默认入口即 `0.1.7-rc.1`，旧宿主以票据 03 本地副本 + `DSH_CLI` 显式回切；安装前先做 staging 预验（exit 0 / 278 包）。连带影响（稳定侧 symlink 翻转）见第 6 步脚注。
-4. **tui-dev 与 headless 同步升级**（已裁决）：两个 profile 的宿主机版本、profile 插件树与部署位 preset 一起到位；`subagent-model-selection-settings` 行分别保持 tui-dev `enabled: true`（30 工具）/ headless `enabled: false`（29 工具），同步升级**不合并**两边口径。
+4. **tui-dev 与 headless 同步升级**（已裁决）：两个 profile 的宿主机版本、profile 插件树与部署位 preset 一起到位；`subagent-model-selection-settings` 行分别保持 tui-dev `enabled: true` / headless `enabled: false`，同步升级**不合并**两边口径。（30/29 为 0.1.5 时代口径；0.1.7 实测见票据 09/11：tui-dev 35、隔离测量面 29/28）
 5. **Team 按 C 方案单独建 profile**（已裁决）：新增一个带 `@deepseek-ai/dsh-experimental-agent-team-profile` 的 profile（如 `tui-team`），tui-dev 与 headless **不挂** Team bundle，从而保留 `subagent` + `modelSelectionSettings` 基线（理由与代价见 §5.2 / §5.4）。**建立 `tui-team` 之前必须先过 B1.5（硬前置）**；不可测时按票面回退方案执行并在票面记"未测"。
 
    **已完成（票据 09，2026-09-25，隔离）**：`tui-team` 的派生规则与检查落在 `gates/team-bundle.mjs`（唯一名字/派生来源）与 `gates/team-profile.mjs`（可复跑命令）：从真实 `tui-dev` 派生（源只读 + 追加 Team bundle）、装入 0.1.7 preset 载体，隔离 home 的 `--dump-config` exit 0 / ids=115 / duplicates=0；per-profile 期望（`gates/expectations.json` 的 `profiles` 段）与 PTY 双形态检查同批到位。**真实 `~/.dsh/profiles/tui-team` 的物化与 preset 落位仍随第 11 步（票据 12）**。证据 `docs/tickets/dsh-v0.1.7-rc.1-upgrade/evidence/09-team-profile-and-profile-dimension-baselines.md`。
