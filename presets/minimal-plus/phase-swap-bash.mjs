@@ -40,6 +40,7 @@
 
 import { createEpochPromotion } from './compaction-epoch.mjs'
 import * as sandboxBash from '@deepseek-ai/dsh-tool-bash'
+import { disposeSafely } from './plugin-teardown.mjs'
 
 /** Cordis plugin name used by loader diagnostics. */
 export const name = 'phase-swap-bash'
@@ -122,6 +123,15 @@ export function apply(ctx, config) {
     }
   }
 
+  // 插件卸载对称：per-agent shadow 的注销句柄由本插件持有，必须随本 fiber 释放。
+  // ToolRuntime 的注册挂在它自己的 root ctx 上，不随本插件 fiber 回收，不显式注销
+  // 就会在运行时卸载后把沙箱 bash 残留在 agent scope 里。注销失败只吞掉，不中断其余清理。
+  ctx.effect(() => () => {
+    for (const disposer of swapDisposers.values()) disposeSafely(disposer)
+    swapDisposers.clear()
+    openSteps.clear()
+  })
+
   /**
    * 沙箱 bash 的工具定义：用 root 服务跑一次 `dsh-tool-bash.apply()`，spy 吞掉
    * guidance section 注册并捕获 definition。定义只随 composition 的 shell
@@ -138,6 +148,15 @@ export function apply(ctx, config) {
     // 字面量漏了 shellEnv，promotion 换相后每条 bash 调用都挂（单测只断言 schema 挡不住）。
     const spyCtx = {
       ...Object.fromEntries(sandboxBash.inject.map((service) => [service, ctx.get(service)])),
+      // 0.1.7 起 dsh-tool-bash 用 ctx.inject(["jobs"], cb) 解析后台任务注册表，并在
+      // 回调里注册带 run_in_background schema 的完整定义。spy 同步模拟该注入：
+      // jobs 可用才回调（真实 cordis 在服务缺失时会一直等待，只保留 foreground-only
+      // 定义）；spy 自身同时充当回调里的 jobCtx。
+      jobs: ctx.get('jobs'),
+      inject: (services, callback) => {
+        if ((services ?? []).every((service) => ctx.get(service) !== undefined)) callback(spyCtx)
+      },
+      effect: () => {},
       get: (service) => ctx.get(service),
       // dsh-tool-bash 的 guidance section 经 getSectionOrder 注册；spy 按真实服务应答。
       systemPrompt: { section() {}, tools() {}, getSectionOrder: () => 0 },
@@ -162,7 +181,7 @@ export function apply(ctx, config) {
       // bash，露出全局 persistent bash；下次 promotion 再重新 swap。
       const disposer = swapDisposers.get(session.id)
       if (disposer !== undefined) {
-        disposer()
+        disposeSafely(disposer)
         swapDisposers.delete(session.id)
       }
       return

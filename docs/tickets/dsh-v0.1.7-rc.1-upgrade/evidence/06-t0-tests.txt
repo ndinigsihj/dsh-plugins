@@ -1,0 +1,12 @@
+$ npx tsc --noEmit
+exit=0
+
+$ npm test
+ℹ tests 163
+ℹ suites 3
+ℹ pass 163
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 737.040042

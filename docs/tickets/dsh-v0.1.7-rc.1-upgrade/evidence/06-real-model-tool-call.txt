@@ -1,0 +1,6 @@
+# 真实模型工具调用原文（headless --json 过滤行，见 06-real-model-tool-call.sh）
+
+{"type":"tool_call","callId":"call_00_ET_mDwHm6THD6EkHXE2kYex8514","tool":"bash","input":{"command":"echo t06-adapter-ok","description":"Echo test string"}}
+{"type":"tool_result","callId":"call_00_ET_mDwHm6THD6EkHXE2kYex8514","status":"completed","result":"t06-adapter-ok\n"}
+{"type":"final","text":"```\nt06-adapter-ok\n```"}
+run-lines=      13 stderr-lines=       0

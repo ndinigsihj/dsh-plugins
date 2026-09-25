@@ -63,7 +63,7 @@ function assertSourceProfileUnchanged(t, config) {
 }
 
 /** 跑 T1 并返回断言列表；调用顺序即拆分前 ①–⑫ 的原文顺序。 */
-export function runT1(config, report) {
+export async function runT1(config, report) {
   const t = createAssertions();
   const dump = assertCompositionDump(t, config);
   assertLoaderIdsUnique(t, config, dump);
@@ -72,7 +72,7 @@ export function runT1(config, report) {
   assertDegradeFailOpen(t, config);
   assertSeededPreview(t, config, report);
   assertDeployment(t, config, report);
-  report.host = appendHostPinAssertions(t, config);
+  report.host = await appendHostPinAssertions(t, config);
   assertRealHomeIsolation(t, config, report);
   assertCopyRewriteSha(t, config);
   assertNoDeploymentSync(t);

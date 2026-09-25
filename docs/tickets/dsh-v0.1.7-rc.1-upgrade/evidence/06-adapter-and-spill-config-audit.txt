@@ -1,0 +1,21 @@
+# 票据 06 模型适配器配置面核查（2026-09-25，只读）
+
+## 1. settings.yaml 的 llm-deepseek 段（旧 protocol/根地址覆盖的落点）
+6:llm-deepseek: {}
+
+## 2. protocol 字段：settings.yaml
+0
+## 3. protocol 字段：各 profile patch
+/Users/vito/.dsh/profiles/tui-dev/cordis.patch.yml:106:    #     args: ['-y', '@modelcontextprotocol/server-everything']
+
+## 4. 旧根地址 api.deepseek.com
+(no match)
+
+## 5. 0.1.7 base 的 spill-policy 预算键（宿主 dump，改名后）
+293:- id: spill-policy
+294-  name: '@deepseek-ai/dsh-spill-policy'
+295-  config:
+296-    maxInlineTokens: 12500
+
+## 6. 本仓库/profile 是否覆盖 spill-policy 预算键（maxInlineBytes/maxInlineTokens）
+(no override)

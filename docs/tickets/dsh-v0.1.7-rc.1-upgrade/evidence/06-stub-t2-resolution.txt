@@ -1,0 +1,5 @@
+gate-stub: warning: 1 entry did not activate
+gate-stub-agent-presets (@deepseek-ai/dsh-agent-presets): failed to import
+[T2] scenario=bash-first-call finding=finding 12-2（closeout §7.2）：promotion 时换 bash schema 拒掉首轮调用
+  FAIL stub.bootstrap — gate-stub: missing agents/agentPresets services in the booted composition
+[T2] summary: 0 passed, 1 failed — report /tmp/t06-stub-OfCA/report.json

@@ -7,7 +7,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { composeEntries, healProfilesModuleFallback, loadOverlayPatches, loadProfile, renderConfigDump } from "@deepseek-ai/dsh-app-boot";
+import { composeEntries, loadOverlayPatches, loadProfile, renderConfigDump } from "@deepseek-ai/dsh-app-boot";
 import { parseCompositionDump } from "../dump-parse.mjs";
 import { sha256File, sha256Json, run, tailLines } from "../gate-helpers.mjs";
 import { countEntries, findDuplicateIds } from "../unique-ids.mjs";
@@ -55,7 +55,9 @@ const STUB_TEXT_PATTERNS = [/provider: ['"]?stub['"]?/u, /name: ['"]?.*gates\/st
  */
 export async function composeComposition({ tempHome, host, composition }) {
   const real = composition === "real";
-  await healProfilesModuleFallback({ installAnchor: installAnchor(host), home: tempHome });
+  // 0.1.7 起宿主用 profile 级 runtime resolution（`createRuntimeResolution` +
+  // PluginPackages）解析插件包，不再生成 `profiles/node_modules` farm；组合渲染
+  // 本身只做补丁合成（loadProfile 走安装锚点 + profile 双锚点），无需预置模块链接。
   let profile;
   try {
     profile = loadProfile("dsh", real ? REAL_PROFILE_NAME : "headless", installAnchor(host), tempHome);

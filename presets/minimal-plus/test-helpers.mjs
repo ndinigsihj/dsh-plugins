@@ -17,28 +17,60 @@ export const PERSISTENT_DESC = "persistent probe bash";
 export const PARAM_KEYS = (tool) => Object.keys(tool?.parameters?.properties ?? {});
 export const VIEW = (agentCtx) => agentCtx.tools.view(scopeOf(agentCtx)).visible;
 
+/**
+ * Minimal stand-in for dsh-jobs-local's registry, enough for the foreground path
+ * dsh-tool-bash 0.1.7 takes when a registry is mounted: start → run → wait → remove.
+ * The tests execute foreground commands only; background job semantics are out of scope.
+ */
+function makeJobsStub() {
+  const jobs = new Map();
+  let nextId = 0;
+  return {
+    start(record) {
+      const id = `job-${String(++nextId)}`;
+      const hooks = record.run();
+      jobs.set(id, hooks.done);
+      return id;
+    },
+    async wait(id) {
+      await jobs.get(id);
+      return { status: "completed" };
+    },
+    kill() {},
+    remove(id) {
+      jobs.delete(id);
+    },
+    read() {
+      throw new Error("makeJobsStub: read() is not modelled");
+    },
+  };
+}
+
 /** 构建一个带 host 服务 + ToolRuntime + agents 存根的根 ctx。 */
-export function boot({ withSandboxPolicy = true, sandboxPolicyMode = "workspace-write" } = {}) {
+export function boot({ withSandboxPolicy = true, sandboxPolicyMode = "workspace-write", withPersistentBash = true } = {}) {
   const root = new Context();
   // rc.1 dsh-tool-bash registers its guidance section with an explicit ordering
   // key, so the stub must answer getSectionOrder like the real service.
   root.provide("systemPrompt", { tools() {}, section() {}, getSectionOrder: () => 0 });
   const tools = new ToolRuntime(root, {});
   tools.layers.onChange = () => {};
-  // 沙箱 bash 的 execute 走 ctx.shell.resolve/run；存根返回成功的假执行结果，让
+  // 沙箱 bash 的 execute 走 ctx.shell.execute；存根返回带 result() 的假执行进程，让
   // 「swap 后的定义真的可执行」成为可断言的接缝（2026-09-23 回归：spy ctx 漏 shellEnv
   // 时 execute 在 ctx.shellEnv.collect 处抛 TypeError，只有真跑一次才暴露）。
+  // 0.1.7 起 shell 面从 run/start 改为 execute() → ShellProcess.result()。
   root.provide("shell", {
     sandboxMode: sandboxPolicyMode,
     resolve: (request) => request,
-    run: async (request) => ({
-      exitCode: 0,
-      signal: null,
-      timedOut: false,
-      aborted: false,
-      timeoutMs: request?.timeoutMs ?? 1000,
-      stdout: { text: "probe ok", truncated: false },
-      stderr: { text: "", truncated: false },
+    execute: async (request) => ({
+      result: async () => ({
+        exitCode: 0,
+        signal: null,
+        timedOut: false,
+        aborted: false,
+        timeoutMs: request?.timeoutMs ?? 1000,
+        stdout: { text: "probe ok", truncated: false },
+        stderr: { text: "", truncated: false },
+      }),
     }),
   });
   if (withSandboxPolicy) {
@@ -48,6 +80,10 @@ export function boot({ withSandboxPolicy = true, sandboxPolicyMode = "workspace-
   }
   root.provide("approval", { request: async () => ({}) });
   root.provide("shellEnv", { collect: () => ({}) });
+  // 两个工作 profile（tui-dev / headless）都挂 dsh-jobs-local + tool-jobs；0.1.7 的
+  // dsh-tool-bash 通过 ctx.inject(["jobs"]) 决定是否注册 run_in_background schema，
+  // 因此测试 boot 必须提供 jobs 才能复现真实组合的沙箱 bash 定义。
+  root.provide("jobs", makeJobsStub());
   const warnings = [];
   // cordis 的 ctx.logger 是内建 LoggerService（provide 覆盖不了）；用 exporter 接日志。
   root.logger.exporter({ levels: { default: 3 }, export: (msg) => warnings.push([msg.type, ...(msg.args ?? [])].join(" ")) });
@@ -65,13 +101,16 @@ export function boot({ withSandboxPolicy = true, sandboxPolicyMode = "workspace-
     return origOn(name, listener);
   };
 
-  // 注册全局 persistent bash（模拟 preset 的 persistent-shell 组）
-  persistentBash.apply(root, {
-    backendType: "shell",
-    timeoutMs: 300000,
-    maxOutputChars: 16000,
-    description: PERSISTENT_DESC,
-  });
+  // 注册全局 persistent bash（模拟 preset 的 persistent-shell 组）；同名的
+  // custom-bash 测试用 withPersistentBash:false 起干净目录。
+  if (withPersistentBash) {
+    persistentBash.apply(root, {
+      backendType: "shell",
+      timeoutMs: 300000,
+      maxOutputChars: 16000,
+      description: PERSISTENT_DESC,
+    });
+  }
 
   return { root, tools, warnings, agentStore, listeners };
 }

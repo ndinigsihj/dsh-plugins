@@ -14,6 +14,7 @@
  */
 
 import { readFileSync } from 'node:fs'
+import { disposeSafely } from './plugin-teardown.mjs'
 
 /** Cordis plugin name used by loader diagnostics. */
 export const name = 'custom-bash'
@@ -200,7 +201,9 @@ export async function apply(ctx, config) {
     return
   }
 
-  ctx.tools.register({
+  // 0.1.7 `tools.register()` 的注销句柄挂在 ToolRuntime 自己的 root ctx 上，不随本
+  // 插件 fiber 释放；不显式注销就会在插件卸载后留下残留 bash（运行时卸载支持）。
+  const dispose = ctx.tools.register({
     name: 'bash',
     description: [
       'Run commands in a bash shell (Git Bash on Windows)',
@@ -267,4 +270,5 @@ export async function apply(ctx, config) {
       return { text: tail }
     },
   })
+  ctx.effect(() => () => disposeSafely(dispose))
 }

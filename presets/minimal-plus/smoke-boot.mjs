@@ -18,11 +18,11 @@
  */
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
-// 用 repo 的 dev 依赖树（link-global-dsh.sh → 全局 rc.1），而不是
-// ~/.dsh/profiles/node_modules 共享 farm——该 farm 由最近一次 boot 的宿主代
-// 自愈（2026-09-10 实测：当时代 stable 侧启动后指回 rc.2），冒烟就会挂在
-// 与构建它的宿主代不符的字段上。
-import { boot, loadOverlayPatches, loadProfile } from "@deepseek-ai/dsh-app-boot";
+// 用 repo 的 dev 依赖树（link-global-dsh.sh → 全局 rc.1）。0.1.7 起宿主不再生成
+// ~/.dsh/profiles/node_modules farm，插件包解析改走 profile 启动时的 runtime
+// resolution（安装锚点优先 + profile 次之）；这里与 CLI 同构地在 boot 前用
+// createRuntimeResolution 算好包表、在 prepare 回调里挂 PluginPackages 安装解析。
+import { PluginPackages, boot, createRuntimeResolution, loadOverlayPatches, loadProfile } from "@deepseek-ai/dsh-app-boot";
 import { installAnchor } from "../../scripts/host-runtime.mjs";
 
 // 仓库根由本模块位置推导（presets/minimal-plus/ → repo 根），换 checkout/CI 无需改脚本。
@@ -81,6 +81,9 @@ const extraPatches = (process.env.SMOKE_EXTRA_PATCHES ?? "")
 
 const patches = [...bundlePatches, ...profile.patches, ...smokePatches, ...extraPatches];
 const configPath = join(profile.dir, "cordis.yml");
+const resolution = await createRuntimeResolution({ installAnchor: INSTALL_ANCHOR, profile });
 
-const ctx = await boot("minimal-plus-smoke", configPath, patches);
+const ctx = await boot("minimal-plus-smoke", configPath, patches, async (hostCtx) => {
+  await hostCtx.plugin(PluginPackages, { resolution });
+});
 await ctx.get("loader")?.await();

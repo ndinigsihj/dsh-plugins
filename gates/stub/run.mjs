@@ -28,7 +28,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { boot, healProfilesModuleFallback, loadOverlayPatches, loadProfile } from '@deepseek-ai/dsh-app-boot';
+import { PluginPackages, boot, createRuntimeResolution, loadOverlayPatches, loadProfile } from '@deepseek-ai/dsh-app-boot';
 import { installAnchor } from '../../scripts/host-runtime.mjs';
 import { STUB_MODEL, STUB_PROVIDER, stubState } from './adapter.mjs';
 import { createHarness } from './harness.mjs';
@@ -211,12 +211,17 @@ async function run(options) {
   let sessionDump = {};
 
   try {
-    await healProfilesModuleFallback({ installAnchor: INSTALL_ANCHOR, home: env.home });
-    const profile = loadProfile('dsh', 'headless', INSTALL_ANCHOR);
+    // 0.1.7：宿主不再生成 profiles/node_modules farm；与 CLI 同构地用
+    // createRuntimeResolution 算包表，并在 boot 的 prepare 回调里挂 PluginPackages
+    // 安装运行时解析，插件名才从隔离 home 解析得到。
+    const profile = loadProfile('dsh', 'headless', INSTALL_ANCHOR, env.home);
+    const resolution = await createRuntimeResolution({ installAnchor: INSTALL_ANCHOR, profile });
     const hostSettings = loadOverlayPatches('gate-stub', SUBAGENT_SETTINGS_PATCH);
     const overlay = loadOverlayPatches('gate-stub', STUB_PATCH);
     const patches = [...profile.layers.flatMap((layer) => layer.patches), ...profile.patches, ...hostSettings, ...overlay];
-    const ctx = await boot('gate-stub', join(profile.dir, 'cordis.yml'), patches);
+    const ctx = await boot('gate-stub', join(profile.dir, 'cordis.yml'), patches, async (hostCtx) => {
+      await hostCtx.plugin(PluginPackages, { resolution });
+    });
     await withTimeout(ctx.get('loader')?.await(), 'composition load');
 
     const llm = ctx.get('llm');

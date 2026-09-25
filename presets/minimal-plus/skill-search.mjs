@@ -8,6 +8,8 @@
  * 失败降级：skills 不可用时返回错误文本而非 throw。
  */
 
+import { disposeSafely } from './plugin-teardown.mjs'
+
 /** Cordis plugin name used by loader diagnostics. */
 export const name = 'skill-search'
 
@@ -33,8 +35,18 @@ function toJsonSchema(spec) {
 export function apply(ctx) {
   /** Normalize a query into lowercase tokens for simple substring matching. */
   const tokens = (text) => (text || '').toLowerCase().split(/[^a-z0-9_-]+/).filter(Boolean)
+  /** 0.1.7 `tools.register()` 的注销句柄挂在 ToolRuntime 自己的 root ctx 上，不随
+   * 本插件 fiber 释放；不显式注销就会在插件卸载后留下残留工具（运行时卸载支持）。 */
+  const disposers = []
+  const register = (definition) => {
+    disposers.push(ctx.tools.register(definition))
+  }
+  ctx.effect(() => () => {
+    for (const dispose of disposers) disposeSafely(dispose)
+    disposers.length = 0
+  })
 
-  ctx.tools.register({
+  register({
     name: 'skill_search',
     description: 'Search the available skills by keyword and return matching skill names with short descriptions. This session keeps NO skill catalog in the prompt — if a task looks like it matches a skill (document conversion, image processing, game reviews, markdown, PDF, spreadsheets, …), call skill_search FIRST to find it, then skill_load to activate it. Do NOT assume skill names from memory.',
     parameters: toJsonSchema({
@@ -72,7 +84,7 @@ export function apply(ctx) {
     },
   })
 
-  ctx.tools.register({
+  register({
     name: 'skill_load',
     description: 'Load the full instructions of ONE skill by its exact name (from skill_search results) and inject them for the next request. Call this before acting on a task that matches the skill.',
     parameters: toJsonSchema({

@@ -13,7 +13,8 @@ import { homedir } from "node:os";
 import z from "@deepseek-ai/schemastery";
 import { randomUUID } from "node:crypto";
 import { installModelSelection } from "@deepseek-ai/dsh-agent";
-import { createUserMessage, type StreamChunk } from "@deepseek-ai/dsh-llm";
+import { createUserMessage, type ContentBlock, type StreamChunk } from "@deepseek-ai/dsh-llm";
+import type { ImageAttachmentRef } from "@deepseek-ai/dsh-attachment";
 import { SessionId, SessionLogOffset } from "@deepseek-ai/dsh-session";
 import { z as zod } from "zod";
 import { visibleWidth } from "@earendil-works/pi-tui";
@@ -716,7 +717,7 @@ interface CoreServices {
       data: Uint8Array;
       mediaType: string;
       name?: string;
-    }): Promise<Record<string, unknown>>;
+    }): Promise<ImageAttachmentRef>;
   };
   /** Optional roster over ~/.dsh/.agent-presets (absent in bare boots). */
   agentPresets?: PresetRoster;
@@ -1454,13 +1455,13 @@ async function run(
         const ok = await startNewSession();
         if (!ok) return;
       }
-      const content = [{ type: "text", text }] as unknown as Parameters<
-        typeof createUserMessage
-      >[0]["content"];
+      // 0.1.7 起 createUserMessage 的 content 是 readonly ContentBlock[]：
+      // 先在可变数组里拼装（文本 + 图片），再一次性交给 createUserMessage。
+      const content: ContentBlock[] = [{ type: "text", text }];
       for (const img of images ?? []) {
         // Full ImageAttachmentRef — the pi-ai adapter resolves request
         // versions from it at assembly time.
-        content.push({ type: "image", attachment: img.ref } as never);
+        content.push({ type: "image", attachment: img.ref });
       }
       const msg = createUserMessage({
         content,
@@ -1478,7 +1479,7 @@ async function run(
               name: string;
               mediaType: string;
               attachmentId: string;
-              ref: Record<string, unknown>;
+              ref: ImageAttachmentRef;
             }> = [];
             for (const path of paths) {
               const data = new Uint8Array(await readFile(path));

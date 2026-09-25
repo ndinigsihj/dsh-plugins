@@ -1,0 +1,15 @@
+  settings ef70eab5ce976cb30545a9b7a74e24461b0b4542d926cc276c96e4e102c9d808  /tmp/t06-seeded-6fur/seeded/settings.yaml
+PASS fixture-store-prepared {"source":"experiments/fixtures/session-preview-seeded/store","sessionsRoot":"/tmp/t06-seeded-6fur/seeded/sessions","files":2}
+PASS fixture-copied-byte-identical {"files":["--private-tmp-dsh-ticket06-ws3--/session-4c66af75-ff66-4311-9451-445c8ee3b7f5/session.v3.jsonl.zstd 1bca8b63f846… 43802B","--private-tmp-dsh-ticket06-ws3--/session-6846f8fa-18eb-4ce8-8f85-4b6a36b37aff/session.v3.jsonl.zstd d68f81ed2840… 47594B"]}
+PASS listEvents-has-corpus {"events":68,"listMs":31}
+PASS seeded-readSession-aligned {"events":68,"expectedEvents":68}
+PASS green-reader-module-present {}
+PASS green-log-reconstructed {"elapsedMs":14}
+PASS green-count-and-seq-match {"events":68,"records":68,"firstSeq":0,"lastSeq":67,"expectedFirstSeq":0,"expectedLastSeq":67}
+PASS green-inherited-count-recorded {"inheritedEventCount":34}
+reader chunks=2 elapsedMs=14
+PASS green-warm-call {"warmMs":11}
+PASS baseline-readSession-fastpath {"events":65,"readSessionMs":8}
+session-preview-seeded probe: 10/10 pass report=/tmp/t06-seeded-6fur/seeded/probe.json
+session-preview-seeded probe inputs: repo fixture experiments/fixtures/session-preview-seeded/store -> /tmp/t06-seeded-6fur/seeded/sessions (user sessions not read)
+seeded-preview probe exit=0 report=/tmp/t06-seeded-6fur/seeded/probe.json session=session-6846f8fa-18eb-4ce8-8f85-4b6a36b37aff

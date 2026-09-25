@@ -11,7 +11,7 @@ import { DEGRADE_SMOKE, PRESET, REPO_ROOT, SEEDED_RUN, SMOKE_BOOT } from "../pat
 const SEEDED_PROBE_IDS = [
   "fixture-store-prepared",
   "fixture-copied-byte-identical",
-  "red-readSession-rejects-seeded",
+  "seeded-readSession-aligned",
   "listEvents-has-corpus",
   "green-count-and-seq-match",
   "green-inherited-count-recorded",

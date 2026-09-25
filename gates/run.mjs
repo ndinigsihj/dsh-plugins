@@ -108,7 +108,7 @@ function runTier0(ctx) {
   ctx.tiers.push(recordTier("T0", runT0(ctx.env), started));
 }
 
-function runTier1(ctx) {
+async function runTier1(ctx) {
   const { options, report } = ctx;
   if (!options.tiers.includes(1)) return;
   if (ctx.gate === null) {
@@ -128,7 +128,7 @@ function runTier1(ctx) {
     realHomeBefore: ctx.realHomeBefore,
   };
   const started = Date.now();
-  ctx.tiers.push(recordTier("T1", runT1(config, report), started));
+  ctx.tiers.push(recordTier("T1", await runT1(config, report), started));
   report.compositionDumpSha = ctx.gate.dumpSha256;
   report.compositionEntriesSha = ctx.gate.composedSha256;
   report.compositionArtifact = ctx.gate.dumpPath;
@@ -252,7 +252,7 @@ export async function runGate(options) {
   ctx.real = renderRealInto(ctx);
   ctx.gate = await composeGateInto(ctx);
   runTier0(ctx);
-  runTier1(ctx);
+  await runTier1(ctx);
   runTier2(ctx);
   runTier3(ctx);
   return finalizeGate(ctx, startedAt);

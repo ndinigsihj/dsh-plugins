@@ -1,0 +1,7 @@
+{
+  "inputChars": 20000,
+  "modelFacingChars": 238,
+  "hasSpillNotice": true,
+  "renderedBadge": true,
+  "proseReplaced": true
+}

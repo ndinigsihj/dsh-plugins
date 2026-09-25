@@ -1,0 +1,29 @@
+regression-gate: repo=/Users/vito/data/dev/dsh-plugins tiers=0,1 composition=gate report=/tmp/gate-t06-final3.json
+[PRE] pass
+  PASS host.cli — dsh --version -> 0.1.7-rc.1
+  PASS host.pin.hostVersion — expected=0.1.7-rc.1 actual=0.1.7-rc.1
+  PASS host.pin.sessionFormatVersion — expected=4 actual=4
+[T0] pass
+  PASS tsc.noEmit — exit 0
+  PASS npm.test — exit 0 tests=163 pass=163 fail=0
+  PASS testfile.list-consistency — 16 files present
+[T1] fail
+  PASS composition.dump-config — exit 0 entries=99
+  PASS composition.loader-id-unique — in-process ids=99 cli ids=99 duplicates=0
+  PASS composition.no-stub — no stub provider/module reference
+  FAIL smoke.anchored-first-turn — exit 1 R1=[] missing=["bash","str_replace_editor"] unexpected=[]
+  FAIL smoke.promoted-catalog — exit 1 no ROUND2 catalog
+  FAIL degrade.fail-open — exit 1 warning=false R1 tools=?
+  PASS seeded-preview.probe — exit 0 10/10 pass missing=0
+  PASS deployment.repo-matches-manifest — 9 files match
+  PASS deployment.repo-vs-deployed — exempted (absent) by --skip-deployment-check: agent.cordis.yml:stale, phase-swap-bash.mjs:stale, skill-search.mjs:stale, custom-bash.mjs:stale, plugin-teardown.mjs:absent
+  PASS host.pin — anchor=0.1.7-rc.1 resolution=0.1.7-rc.1 expected=0.1.7-rc.1
+  PASS session.format-version — runtime=4 manifest=4
+  PASS isolation.real-home-untouched — signature identical before/after (strict zones; 0 observed-only changes)
+  PASS isolation.copy-rewrite-sha — cordis.yml sha256=c300dcf2ebc5
+  PASS gate.no-deployment-sync — no sync invocation in 20 gate sources
+
+!!! EXEMPTIONS APPLIED (report stays green but this run is NOT a full verification):
+!!!   deployment-sha: absent — agent.cordis.yml:stale, phase-swap-bash.mjs:stale, skill-search.mjs:stale, custom-bash.mjs:stale, plugin-teardown.mjs:absent
+
+summary: 17 passed, 3 failed, 0 skipped — report /tmp/gate-t06-final3.json

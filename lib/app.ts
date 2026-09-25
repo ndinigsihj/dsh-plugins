@@ -38,6 +38,7 @@ import {
   type TUI,
 } from "@earendil-works/pi-tui";
 import { lineDiff } from "./diff.ts";
+import type { ImageAttachmentRef } from "@deepseek-ai/dsh-attachment";
 import { createPalette, type Palette } from "./palette.ts";
 import { sanitizeDisplay } from "./sanitize.ts";
 import { ClipboardTerminal } from "./terminal.ts";
@@ -358,6 +359,17 @@ const TOOL_LINES_CAP = 40;
  * The locator is rendered as a compact badge instead of prose. */
 const SPILL_NOTICE_RE = /\([^()]*Full formatted result stored at: (.+?)\. /;
 
+/** Restyle spill notices into a compact locator badge: the prose sentence
+ * dsh-spill-policy appends becomes '⤓ full result <locator>' so the path is
+ * scannable instead of buried in boilerplate. Exported so the 0.1.7 notice
+ * spelling is pinned by a test instead of only by the live host. */
+export function styleSpillNotices(text: string, p: Palette): string {
+  return text.replace(SPILL_NOTICE_RE, (_match, locator: string) => {
+    const clean = sanitizeDisplay(locator.trim());
+    return p.dim("(…omitted) ") + p.fg(`⤓ full result ${clean}`, "yellow");
+  });
+}
+
 /** Joined visible text of a tool view's content blocks (empty when none). */
 function joinTextBlocks(content: ReadonlyArray<{ type?: unknown; text?: unknown }>): string {
   return content
@@ -480,15 +492,6 @@ class ToolRow implements RowComponent {
     this.isExpanded = isExpanded;
     this.update(row);
   }
-  /** Restyle spill notices into a compact locator badge: the prose sentence
-   * dsh-spill-policy appends becomes '⤓ full result <locator>' so the path
-   * is scannable instead of buried in boilerplate. */
-  private styleSpillNotices(text: string): string {
-    return text.replace(SPILL_NOTICE_RE, (_match, locator: string) => {
-      const clean = sanitizeDisplay(locator.trim());
-      return this.p.dim("(…omitted) ") + this.p.fg(`⤓ full result ${clean}`, "yellow");
-    });
-  }
   update(row: Extract<TranscriptRow, { kind: "tool" }>): void {
     const title = row.resultView?.card === "diff" && row.resultView.title !== undefined
       ? row.resultView.title
@@ -548,14 +551,14 @@ class ToolRow implements RowComponent {
         // the whole multi-line block once leaves all but the first line
         // unstyled (exactly why the card looked dim under it).
         lines.push(
-          ...this.styleSpillNotices(sanitizeDisplay(callText))
+          ...styleSpillNotices(sanitizeDisplay(callText), this.p)
             .split("\n")
             .map((line) => this.p.fg(line, "brightWhite")),
         );
     }
     if (view !== undefined && view.card === "terminal") {
       if (view.output !== undefined && view.output !== "")
-        lines.push(this.styleSpillNotices(sanitizeDisplay(view.output)));
+        lines.push(styleSpillNotices(sanitizeDisplay(view.output), this.p));
       if (view.exitCode !== undefined) lines.push(this.p.dim(`exit ${view.exitCode}`));
       else if (view.signal !== undefined) lines.push(this.p.dim(`signal ${view.signal}`));
     } else if (view !== undefined && view.card === "generic" && view.content !== undefined) {
@@ -563,7 +566,7 @@ class ToolRow implements RowComponent {
         .filter((b) => b.type === "text")
         .map((b) => String((b as { text?: unknown }).text ?? ""))
         .join("");
-      if (text !== "") lines.push(this.styleSpillNotices(sanitizeDisplay(text)));
+      if (text !== "") lines.push(styleSpillNotices(sanitizeDisplay(text), this.p));
     } else if (view !== undefined && view.card === "search") {
       if (view.shape === "paths") {
         for (const p of view.paths) lines.push(sanitizeDisplay(p));
@@ -1489,7 +1492,7 @@ export interface SavedImage {
   mediaType: string;
   attachmentId: string;
   /** Full ImageAttachmentRef for the message content block. */
-  ref: Record<string, unknown>;
+  ref: ImageAttachmentRef;
 }
 /** The selection state pi-tui keeps private (and stable across 0.84.x) that
  * shift-extend needs: the anchor survives scrolling, so extending it across a

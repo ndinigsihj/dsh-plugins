@@ -3,11 +3,14 @@
  *
  * 运行：experiments/session-preview-seeded/run.sh [sessionId]
  *
- * 红线（修复前，必红）：`sessionQuery.readSession(seeded)` 抛错（seeded prefix 校验），
- *   现行 TUI `sessionPreview` 走 catch 返回 null —— 预览不可用。
+ * 历史红线（0.1.5 修复前，必红）：`sessionQuery.readSession(seeded)` 抛错
+ *   （seeded prefix 校验），现行 TUI `sessionPreview` 走 catch 返回 null —— 预览不可用。
  * 绿线（修复后）：`lib/session-preview-log.ts` 的 `readPreviewLog()` 经
  *   `listEvents` + 分块 `readEvent` 重建全量原始日志，事件数与首尾 seq 与
  *   `listEvents` 完全一致，供同一 `coldSnapshot` + 预览构建使用。
+ * 宿主代际差（0.1.7，票据 06）：`readSession(seeded)` 不再抛错，断言随目标宿主改为
+ *   单一行为——成功且与 listEvents 全量 seq 对齐；抛错即红（旧行为留作历史，不再写
+ *   跨宿主双分支）。
  *
  * 零 LLM，且不读用户环境（票 02）：探针在 apply 时把入库 fixture
  * `experiments/fixtures/session-preview-seeded/store`（原样字节快照，含父会话基线）
@@ -152,22 +155,32 @@ async function run(ctx) {
     throw new Error("session-preview-seeded probe: sessionQuery lacks listEvents/readEvent");
   }
 
-  // 1. 红线前提：seeded fixture 上 readSession 必抛（现行预览因此返回 null）。
-  let readSessionError = null;
-  try {
-    await query.readSession(sessionId);
-  } catch (error) {
-    readSessionError = error;
-  }
-  record(report, "red-readSession-rejects-seeded", readSessionError !== null, {
-    error: readSessionError === null ? "(readSession unexpectedly succeeded)" : failureText(readSessionError),
-  });
-
-  // 2. 全量轻量记录（修复路径的基准）。
+  // 1. 全量轻量记录（两种宿主行为的公共基准）。
   const listStarted = performance.now();
   const records = await query.listEvents(sessionId);
   const listMs = Math.round(performance.now() - listStarted);
   record(report, "listEvents-has-corpus", records.length > 0, { events: records.length, listMs });
+
+  // 2. 0.1.7 起 readSession(seeded) 可成功（0.1.5 会抛，历史见文件头）。按当前目标
+  //    宿主的单一行为断言：成功且与 listEvents 全量 seq 对齐，否则说明宿主读到了
+  //    不完整/不同代的语料。TUI 预览仍优先走 readPreviewLog（下方绿线）。
+  let snapshot;
+  try {
+    snapshot = await query.readSession(sessionId);
+  } catch (error) {
+    record(report, "seeded-readSession-aligned", false, { error: failureText(error) });
+  }
+  if (snapshot !== undefined) {
+    const snapshotEvents = snapshot.events;
+    const aligned =
+      Array.isArray(snapshotEvents) &&
+      snapshotEvents.length === records.length &&
+      snapshotEvents.every((event, index) => event.seq === records[index]?.seq);
+    record(report, "seeded-readSession-aligned", aligned, {
+      events: Array.isArray(snapshotEvents) ? snapshotEvents.length : 0,
+      expectedEvents: records.length,
+    });
+  }
 
   // 3. 读取器模块（修复前不存在 → 红线）。
   let reader;
