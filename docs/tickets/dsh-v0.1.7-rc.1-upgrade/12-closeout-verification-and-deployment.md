@@ -2,7 +2,7 @@
 
 **What to build:** 收口清单全绿后，把 Preset 产物与 Team Profile 一起落到部署位：先 dry-run 核对，再真实写入；部署位与清单指纹一致；临时豁免从调用链移除；两种 Profile 形态的最终闸门留档；回滚入口（本地副本 + 冷备）仍可用。
 
-**Blocked by:** 05 — 会话读取路径异步化迁移；06 — 其余兼容面迁移；07 — Preset 载体迁移与同步工具 dry-run；09 — tui-team Profile 建立与 Profile 维度闸门基线；10 — 会话格式迁移执行与抽样验证；11 — 真实模型基线重采与探针口径收口
+**Blocked by:** 06 — 其余兼容面迁移；07 — Preset 载体迁移与同步工具 dry-run；09 — tui-team Profile 建立与 Profile 维度闸门基线；10 — 会话格式迁移执行与抽样验证；11 — 真实模型基线重采与探针口径收口。（05 会话读取异步化已按 C0 ① 降级为可选、`deferred`，不阻塞本票。）
 
 **Status:** ready-for-agent
 

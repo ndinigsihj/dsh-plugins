@@ -85,9 +85,12 @@ staging 安装与全局安装都从 registry 解析同一版本，回滚入口�
    布局使部署位 preset 的 alias 无法解析 `@deepseek-ai/dsh-tool-bash`（`1mdsh` 挂载 minimal-plus 失败），
    已在 stable 顶层 scope 目录补 130 条内部扁平 symlink（top-level 244 / 0 dangling；脚本
    `04-stable-flat-mirror.sh`），preset 导入与 stable 启动复验 OK。明细见 `04-stable-runtime-repair.txt`。
-4. **冷备新鲜度**：票据 03 快照为 11:32:35；mumu TUI 与本文 TUI 在窗口内仍在写会话（§5）。
-   按计划 §7 第 1 步脚注：**首次真实启动 0.1.7（任一共用全局宿主的 TUI 重启）之前**，需在静默窗口按
-   `03-cold-backup.sh` 重取一次快照（写入新的空根目录），否则丢失窗口从 11:32 继续扩大。
+4. **冷备新鲜度（已处置，2026-09-25 17:04）**：原快照 11:32:35 之后 mumu 与本 TUI 仍有新写入；
+   已按计划 §7 第 1 步脚注在静默窗口（45s 探测 0 写入、窗口内源 manifest 逐字节一致）用
+   `03-cold-backup.sh` 重取到新空根 `~/.dsh/upgrade-backups/dsh-0.1.7-rc.1-pre-first-start-20260925-170449/`
+   （17:04:49→17:05:30，fail=0，sessions 2213 文件 / 662M），并按 `03-drill.sh` 重跑还原演练
+   （8/8 代表会话打开、118/118 附件命中、descriptor-v2 72/72 仍为既存缺口、scratch 与真实非活面未动，
+   fail=0）。丢失窗口更新为新快照时刻之后；11:30 根保留为回滚基准。明细见 `04-cold-backup-retake.md`。
 
 ## 7. 证据文件索引
 
@@ -102,6 +105,7 @@ staging 安装与全局安装都从 registry 解析同一版本，回滚入口�
 | `04-real-home-writes.txt` | 真实 home 写入归类与 before/after 口径 |
 | `04-stable-runtime-repair.txt` | 稳定侧混合代故障与方案③（按 lock `npm ci`）自包含重建记录 |
 | `04-stable-flat-mirror.sh` | 重建后为 preset 解析补回的扁平 scope 镜像（可复用） |
+| `04-cold-backup-retake.md` | 首次启动前的冷备重取与还原演练记录（新根 / 17:04 窗口） |
 
 ## 8. 评审发现与处置（2026-09-25，双轴只读评审）
 

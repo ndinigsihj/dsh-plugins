@@ -417,6 +417,8 @@ P0 = 不迁移就跑不起来或会丢数据；P1 = 行为变化需适配；P2 =
 
    **已完成（票据 03，2026-09-25）**：冷备根 `~/.dsh/upgrade-backups/dsh-0.1.7-rc.1-pre-migration-20260925-113044/`（快照 2026-09-25 11:32:35+0800，静默窗口内零写者落盘；含 sessions/attachments/settings/profiles/.agent-presets 与逐文件指纹清单）；旧宿主包副本 + 本地入口启动核验；scratch 还原演练 8/8 代表会话打开成功（含 v3 子代理链与带 118 个附件引用的会话）。**既存缺口**：72 个 2026-09-10 前的 v0 子代理会话（`subagent/descriptor version 2`）旧宿主一律读不开，冷备已完整保留，处理规则留第 10 步。证据 `docs/tickets/dsh-v0.1.7-rc.1-upgrade/evidence/03-*`。实际启动 0.1.7 之前若距该快照较久，按同一脚本（`03-cold-backup.sh`）在静默窗口重取一次快照（写入新的空根目录；脚本不做 `--delete`），丢失窗口随之更新。
 
+   **已完成（票据 04，2026-09-25 17:04）**：重取到 `~/.dsh/upgrade-backups/dsh-0.1.7-rc.1-pre-first-start-20260925-170449/`（17:04:49→17:05:30，fail=0，sessions 2213 文件 / 662M），重跑还原演练 fail=0（8/8 代表会话、118/118 附件命中、descriptor-v2 72/72 仍为既存缺口）；丢失窗口更新为该时刻之后；11:30 根保留为回滚基准。证据 `docs/tickets/dsh-v0.1.7-rc.1-upgrade/evidence/04-cold-backup-retake.md`。
+
 **升级（分阶段，每阶段可停）**
 
 3. 先装到**非当前 PATH 优先级**的位置或用 `DSH_CLI` 覆盖，避免直接替换正在使用的 0.1.5-rc.2。目标版本**精确锁定**：`npm i -g @deepseek-ai/dsh@0.1.7-rc.1`（不跟随 `next` 浮动）；混合期统一走 `~/.dsh/bin/dsh` 的 `DSH_CLI` 覆盖。
