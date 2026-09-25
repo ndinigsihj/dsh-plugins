@@ -1,0 +1,1536 @@
+{
+ "mode": "read",
+ "total": 218,
+ "opened": 0,
+ "failed": 218,
+ "errorClasses": [
+  "failed to read stored session \"059274cd-c30b-4a72-8a81-0ed88c6e457b\": subagent/d",
+  "failed to read stored session \"06d87d27-bc58-408b-9f42-6af1e5e44516\": subagent/d",
+  "failed to read stored session \"075c590c-1f13-4e88-8436-d0e990a67521\": format v2 ",
+  "failed to read stored session \"0a6e60db-2bc5-47ef-9b64-eedcf7ece225\": subagent/d",
+  "failed to read stored session \"0a6f8333-5554-4320-8f54-6afdf72de0a0\": subagent/d",
+  "failed to read stored session \"0f5df655-5d0e-490c-b22e-08b22c7e63f6\": subagent/d",
+  "failed to read stored session \"12743a7c-fb8f-48c1-9455-5a6b0ada380f\": subagent/d",
+  "failed to read stored session \"14386b3d-fee7-45e0-8714-8a959c9d9b4c\": subagent/d",
+  "failed to read stored session \"16b40e63-5314-4c13-a986-3ebad57b5865\": assistant/",
+  "failed to read stored session \"16d24035-04bb-4351-88f4-0451160174a7\": subagent/d",
+  "failed to read stored session \"177ef6ab-9371-4d74-9ca6-3559dcdc6c5c\": subagent/d",
+  "failed to read stored session \"18355d04-73aa-4929-8f6c-4646f15c0da9\": subagent/d",
+  "failed to read stored session \"18ef8135-a939-451c-aaba-38d9055f03fd\": subagent/d",
+  "failed to read stored session \"19cdef1c-b56b-445f-8a5a-310b7ab59351\": subagent/d",
+  "failed to read stored session \"19e2f33f-25f4-43d0-9210-8d72edc86b66\": subagent/d",
+  "failed to read stored session \"1e2df621-45e3-49ff-bcd5-ff4b12156e1f\": subagent/d",
+  "failed to read stored session \"20181627-c377-406a-b3e9-9a05b380b626\": subagent/d",
+  "failed to read stored session \"2344bcf2-7331-4910-86c0-3f2008032768\": @deepseek-",
+  "failed to read stored session \"2525bcf3-d7d5-4aa4-9e22-0596c9c17e5f\": subagent/d",
+  "failed to read stored session \"27ca25ec-348d-4504-b060-cb669d47e41e\": subagent/d",
+  "failed to read stored session \"2b32657e-c69c-4723-936f-d40c09507e4e\": subagent/d",
+  "failed to read stored session \"2c96bf94-abf2-495a-a4b2-d77aeb2b45f2\": subagent/d",
+  "failed to read stored session \"2edaf61e-9099-49a5-b706-2adf089fb868\": subagent/d",
+  "failed to read stored session \"2fcd30b1-cb32-460a-b2d1-80e0fe2237fa\": @deepseek-",
+  "failed to read stored session \"3080249d-3b0d-4996-9a4b-360e21f094c6\": subagent/d",
+  "failed to read stored session \"32b5e777-c48f-423b-aea7-0e15d64da963\": subagent/d",
+  "failed to read stored session \"35cd980b-01da-400e-822b-282a852063b2\": @deepseek-",
+  "failed to read stored session \"361c6c15-fa49-477e-bd2a-97dd42730fc5\": subagent/d",
+  "failed to read stored session \"370946af-39b0-4ec0-8220-cdb07eaf1c73\": subagent/d",
+  "failed to read stored session \"382b4b68-7ffc-4268-bcc1-5e5e92133bf5\": subagent/d",
+  "failed to read stored session \"3bf1cdd0-716e-463d-a77a-86758dce7f57\": @deepseek-",
+  "failed to read stored session \"3d78bcf2-9a4b-4b08-9dae-c89d80f7166c\": subagent/d",
+  "failed to read stored session \"3f604250-8394-4538-a147-9d86165cb2af\": subagent/d",
+  "failed to read stored session \"407e40ff-c704-462a-a77d-c238708b17d6\": format v2 ",
+  "failed to read stored session \"503558df-f2f0-4467-bc62-d62c73c8e8df\": subagent/d",
+  "failed to read stored session \"51401fb4-84bb-4ec2-8839-3f8794a418e9\": @deepseek-",
+  "failed to read stored session \"53504eac-ad12-433c-b801-1597b22e1dd2\": @deepseek-",
+  "failed to read stored session \"566720af-b28e-4059-a1b6-583b76f7f881\": @deepseek-",
+  "failed to read stored session \"574bbad0-ca7b-4a57-9e13-00021c1cffdd\": subagent/d",
+  "failed to read stored session \"5c423e2f-038a-4fa3-8440-9ebdd7d805f1\": subagent/d",
+  "failed to read stored session \"5ec2e2d7-ce91-43ed-b2b5-2e32e8dae0bf\": subagent/d",
+  "failed to read stored session \"5f4cbdd8-9a20-400a-912a-be7501397e60\": format v2 ",
+  "failed to read stored session \"631eda94-7cf8-4bf5-a995-8a43d48dda68\": subagent/d",
+  "failed to read stored session \"6599da30-a154-4b7f-9983-ebc93c72abdc\": subagent/d",
+  "failed to read stored session \"66463f7b-b8e9-444e-9f84-bebeb24aa06a\": @deepseek-",
+  "failed to read stored session \"674745f5-2736-4bb7-a96d-06cf27e3d4c0\": subagent/d",
+  "failed to read stored session \"6881b07d-f5c5-41d9-88a5-623208fe96e6\": subagent/d",
+  "failed to read stored session \"6a8361ae-06ed-417a-af4f-db905acd52f5\": subagent/d",
+  "failed to read stored session \"6cfe842f-abc2-4226-839d-987106171074\": @deepseek-",
+  "failed to read stored session \"6dec32b3-266f-418c-b736-82ba5c94d130\": subagent/d",
+  "failed to read stored session \"6fc70a7d-d8a2-4da2-8603-ca1d0e1fa861\": subagent/d",
+  "failed to read stored session \"7193945a-b74a-44f9-9b96-fe69dcfc8d21\": subagent/d",
+  "failed to read stored session \"73a8a87b-5a24-4dc7-8841-dfd78e477d2a\": subagent/d",
+  "failed to read stored session \"7a326546-d094-4717-9d80-de6ca5b39d83\": cannot saf",
+  "failed to read stored session \"7adf3162-b45f-4afc-bb77-a0d89e4e7cfa\": @deepseek-",
+  "failed to read stored session \"7fcd498a-4646-4aee-81b0-9a1bd67d547f\": @deepseek-",
+  "failed to read stored session \"80bf1aac-8b1b-4abd-b87b-ab4f80f4ef5d\": subagent/d",
+  "failed to read stored session \"847b116e-e20f-40b1-9335-0062bfa2c88a\": cannot saf",
+  "failed to read stored session \"8658437f-3dc5-4fdc-8476-0da87f704a6e\": cannot saf",
+  "failed to read stored session \"892cf344-89d3-4961-899a-f648912875ee\": subagent/d",
+  "failed to read stored session \"8cca2600-0fc7-4480-9193-67713eff1c51\": subagent/d",
+  "failed to read stored session \"8fea7414-a332-4e80-a5d6-1b17f888ab4d\": @deepseek-",
+  "failed to read stored session \"91a319ae-4f5c-4e52-9388-08efdaef215e\": subagent/d",
+  "failed to read stored session \"928ec3e4-c41e-45e8-ae0f-df710a4379bb\": subagent/d",
+  "failed to read stored session \"995f49ed-ba09-4654-9a03-c02069af9886\": format v2 ",
+  "failed to read stored session \"9cdf92f3-d9bd-4ec8-9874-350a8e778c9b\": subagent/d",
+  "failed to read stored session \"a0927aeb-a760-4980-8f8c-a42a2f547e43\": subagent/d",
+  "failed to read stored session \"a1be8928-7e81-406e-a839-70ef77d5b2c9\": subagent/d",
+  "failed to read stored session \"a3b9e367-00d3-49b6-a9f4-d806ddb5902a\": subagent/d",
+  "failed to read stored session \"a524a1ce-84ae-4044-a5f6-4a3015e1e8ed\": @deepseek-",
+  "failed to read stored session \"aaf35831-32ac-490a-8d83-51c11fce32bf\": subagent/d",
+  "failed to read stored session \"b15352d7-bc25-4082-97f0-6ca2c43f3f46\": subagent/d",
+  "failed to read stored session \"b18c4fa0-ba0e-4dc2-9bdd-562e5ba99b58\": subagent/d",
+  "failed to read stored session \"b4cfcbf7-cd3b-4fdb-97a3-72aa746a4504\": subagent/d",
+  "failed to read stored session \"b8bcee33-561e-4167-8232-61c0848854eb\": @deepseek-",
+  "failed to read stored session \"ba732533-9e8a-4fa7-ac29-d1c83a1505e7\": subagent/d",
+  "failed to read stored session \"bcaa6935-1f6b-4c1f-99e9-8ff59dfd8390\": cannot saf",
+  "failed to read stored session \"c0ae4c73-bd09-4497-849c-ead76ceb768d\": subagent/d",
+  "failed to read stored session \"c116f889-4a04-4b53-961e-c579f1983661\": subagent/d",
+  "failed to read stored session \"c8f32cb3-8c46-404d-817a-43379aca7d2d\": @deepseek-",
+  "failed to read stored session \"cb0a9880-5143-4edf-89dc-6c07e8bffff0\": subagent/d",
+  "failed to read stored session \"cd66b67a-5ae6-443e-9baa-8c21f0426810\": subagent/d",
+  "failed to read stored session \"cdfea255-1255-42c2-adb6-61e9c4d7a80e\": format v2 ",
+  "failed to read stored session \"cef0d4da-e9e9-4122-b15b-dd228ca34563\": subagent/d",
+  "failed to read stored session \"cfd5fae4-35d1-4bee-a948-cd940891310a\": cannot saf",
+  "failed to read stored session \"d2172b0d-3c07-4aed-9f67-e5c40940b20a\": subagent/d",
+  "failed to read stored session \"d5d97ba0-7c4e-4028-ac00-b7026f27cb59\": subagent/d",
+  "failed to read stored session \"d60439b5-6e4b-4777-9fc9-d17cea9b0a6b\": subagent/d",
+  "failed to read stored session \"d873ae1d-b032-4f02-9c8c-a20b7434f09a\": @deepseek-",
+  "failed to read stored session \"d89789fa-0e48-484f-8104-72bc2c19d9a1\": subagent/d",
+  "failed to read stored session \"db89fe43-0e19-45e9-b67d-d9f2e0097157\": @deepseek-",
+  "failed to read stored session \"dfd8940c-0bee-46d9-95c9-880f788292f4\": @deepseek-",
+  "failed to read stored session \"e818c39d-3fdd-4211-afdd-b2f79215cabb\": subagent/d",
+  "failed to read stored session \"e94d41bd-f557-4f8f-92a0-854bb5f27a79\": subagent/d",
+  "failed to read stored session \"e9ddf3dc-f0cb-423d-9bc1-4d8b61bae43d\": subagent/d",
+  "failed to read stored session \"ebc31151-f9fc-4121-b04f-675698cab033\": @deepseek-",
+  "failed to read stored session \"f1c26c91-c517-4634-bd4b-62518218d381\": subagent/d",
+  "failed to read stored session \"f27e72a0-1945-4239-a754-b76615048add\": @deepseek-",
+  "failed to read stored session \"f927e209-7d8e-4063-a578-4bbd762e4308\": subagent/d",
+  "failed to read stored session \"fb698fcf-57eb-45c2-af1c-73e7508b1897\": subagent/d",
+  "failed to read stored session \"fdd07572-72bf-46da-be66-30a8b45d6c65\": subagent/d",
+  "failed to read stored session \"ff4492dc-3904-4931-8eff-02a99ac81d3f\": subagent/d",
+  "failed to read stored session \"ff8dd1cb-8e3f-4d55-95d6-6a508aa0923f\": subagent/d",
+  "failed to read stored session \"session-03af9003-f1e5-45e8-bd18-39cb862ccbba\": fo",
+  "failed to read stored session \"session-04ef390c-2405-4062-aa34-ed4df13bca02\": as",
+  "failed to read stored session \"session-07e4f59c-d6f0-49c8-82d6-97d35e758e08\": as",
+  "failed to read stored session \"session-08acc050-c38d-4d9b-b121-cbc836f1d126\": as",
+  "failed to read stored session \"session-0ce69145-932c-4c30-bf7d-f00687e72636\": fo",
+  "failed to read stored session \"session-0d3987af-7c25-41fa-9370-d8abb870da53\": as",
+  "failed to read stored session \"session-0e51e568-50f3-4327-b2e8-bffdb9ebc923\": as",
+  "failed to read stored session \"session-12d0a263-f91a-4ebc-bd65-ca9bd462219f\": as",
+  "failed to read stored session \"session-13b73345-5da7-4e46-befa-508b5cb3edea\": as",
+  "failed to read stored session \"session-170b6da7-dec4-406a-b02a-06b4a284b138\": as",
+  "failed to read stored session \"session-1992728f-66b0-4da9-b718-d79fd6ae89c6\": Se",
+  "failed to read stored session \"session-1ac157aa-f3b7-4736-9400-d583094c23b9\": fo",
+  "failed to read stored session \"session-1da9b19c-d29e-4fe2-8027-5ade9288f124\": fo",
+  "failed to read stored session \"session-2\": cannot safely transform unclassified ",
+  "failed to read stored session \"session-23535223-b201-4910-bf12-c25ac9ce5eb5\": as",
+  "failed to read stored session \"session-2befe8e4-316e-4e4a-9795-aeb871cd15ae\": as",
+  "failed to read stored session \"session-2cddeed7-2b89-464d-8180-c241a8688e21\": as",
+  "failed to read stored session \"session-2f0c2a2b-7bcf-4fdb-a701-9d769878bb26\": Se",
+  "failed to read stored session \"session-2f8528fb-74c2-4d98-b173-5d1baeca79fb\": as",
+  "failed to read stored session \"session-3\": @deepseek-ai/dsh-session-format-v0-to",
+  "failed to read stored session \"session-31a5dacb-1e1e-4f03-9a5c-59ab7b52c58d\": as",
+  "failed to read stored session \"session-362a23b6-1afe-476c-9c2a-8e08d9331549\": fo",
+  "failed to read stored session \"session-3630c696-0f0d-4e25-992b-6a674f8b52c2\": fo",
+  "failed to read stored session \"session-3690b4e5-160f-4243-a053-ebd8756661f9\": fo",
+  "failed to read stored session \"session-36e3a9c5-1e8d-44ae-9b26-654f24cd425a\": @d",
+  "failed to read stored session \"session-3ac6a6ae-9a19-44d3-8899-c016e216c772\": ca",
+  "failed to read stored session \"session-4\": @deepseek-ai/dsh-session-format-v0-to",
+  "failed to read stored session \"session-4164f421-2134-4a47-84e7-4ae757cfbad2\": as",
+  "failed to read stored session \"session-4778a1b9-b06d-4060-bc4b-2b19b5782bc4\": as",
+  "failed to read stored session \"session-485c46ea-527d-4499-b1ac-faa3350c7660\": as",
+  "failed to read stored session \"session-4ca99180-bff4-4565-b36d-fb9394fa08ff\": as",
+  "failed to read stored session \"session-4e73ead6-aeb9-42d1-8a8e-515b5af11fda\": as",
+  "failed to read stored session \"session-5\": @deepseek-ai/dsh-session-format-v0-to",
+  "failed to read stored session \"session-52abea74-c2e2-4c27-b3ca-bd72ac82406b\": as",
+  "failed to read stored session \"session-56d64e6a-0308-4b36-abd5-ca06b2dce355\": as",
+  "failed to read stored session \"session-570b4fb1-3164-4be1-b896-09b50e90ba19\": as",
+  "failed to read stored session \"session-57bb7a39-8a7a-4582-8a29-9320e529071b\": as",
+  "failed to read stored session \"session-5a12b50d-3310-4070-94e6-55fb0d7add14\": as",
+  "failed to read stored session \"session-5c292ed0-3908-4bf7-862c-75bcaad3f4f5\": as",
+  "failed to read stored session \"session-6\": @deepseek-ai/dsh-session-format-v0-to",
+  "failed to read stored session \"session-60afb87b-3d6c-443a-a0f7-8ec47eac6106\": fo",
+  "failed to read stored session \"session-66c4c76f-c872-4c2d-bdd9-64d68d960f35\": as",
+  "failed to read stored session \"session-69b06611-d609-421e-9f1d-19c650c2c489\": as",
+  "failed to read stored session \"session-6b4fcc3b-404a-4a9a-be27-5cb44dc0bd70\": as",
+  "failed to read stored session \"session-6c127ecf-43f4-47d1-a425-7951befb2113\": as",
+  "failed to read stored session \"session-6e705606-8da4-464c-aae6-bdb00784ba49\": fo",
+  "failed to read stored session \"session-7\": @deepseek-ai/dsh-session-format-v0-to",
+  "failed to read stored session \"session-7110d7b9-2a82-477f-a7bc-b942526d46b0\": as",
+  "failed to read stored session \"session-73401755-1a23-4538-be53-bc3eb55f7436\": as",
+  "failed to read stored session \"session-74a89153-9ef5-4d3b-b8cb-97c38d89e73f\": as",
+  "failed to read stored session \"session-7c806cb2-a34e-4e6b-898f-aef96fd7a7b0\": fo",
+  "failed to read stored session \"session-7f084fab-6f44-4094-9724-6c89b6229f24\": Se",
+  "failed to read stored session \"session-8\": @deepseek-ai/dsh-session-format-v0-to",
+  "failed to read stored session \"session-8075e84b-bad5-4e46-8e89-9f3350fe19ba\": as",
+  "failed to read stored session \"session-8bcccc92-7142-409d-b38d-29b59c38ee96\": @d",
+  "failed to read stored session \"session-8e8e2170-6599-47b6-8883-9ef886f22a37\": as",
+  "failed to read stored session \"session-8fadcf83-19de-4d1d-8413-bef55fb464fe\": as",
+  "failed to read stored session \"session-931c3401-3fb1-44f6-9b6a-43b1e9e4b80c\": as",
+  "failed to read stored session \"session-9c24f8e8-630a-41fa-923c-cc13f90ff28a\": as",
+  "failed to read stored session \"session-9dc0a68b-fc3a-4cd1-88b6-0fe5ae825f44\": as",
+  "failed to read stored session \"session-9e1c2b7c-5f43-4166-b4c2-6bd5e5efd543\": as",
+  "failed to read stored session \"session-a123b843-2045-4d5e-92f6-e9824f50f55e\": as",
+  "failed to read stored session \"session-a3ae096a-a367-4bcd-bcc0-039b1d082a50\": as",
+  "failed to read stored session \"session-a5294243-3635-489f-8be5-9eb2733a1a06\": as",
+  "failed to read stored session \"session-a801c3a1-d25d-4cfd-9396-f2cd0793d974\": fo",
+  "failed to read stored session \"session-a8c0d1fd-cb99-4153-9c72-31d439747518\": @d",
+  "failed to read stored session \"session-aa81b176-7790-450a-ad6d-f49559006b6b\": as",
+  "failed to read stored session \"session-ae714135-01ac-4c13-9bf8-38bb835ea089\": as",
+  "failed to read stored session \"session-afd68297-6e7d-473d-a315-9aa529585b6e\": as",
+  "failed to read stored session \"session-b098a765-47a4-4b6b-a123-1a12524b1e95\": as",
+  "failed to read stored session \"session-b0e64c7b-ab81-4fc2-97a7-a0fd3ce06bb1\": @d",
+  "failed to read stored session \"session-b12c470c-c599-418f-a084-5b294bbe42e7\": as",
+  "failed to read stored session \"session-b20637a2-7d84-4b74-adfa-f1ed8b8a2d6b\": fo",
+  "failed to read stored session \"session-b3f7c3a1-30c3-4910-8b81-5e005f97f2ab\": as",
+  "failed to read stored session \"session-b55402d5-d196-4233-9cfe-6c7058ea0f61\": as",
+  "failed to read stored session \"session-b73e0928-4ef9-4f90-a25d-cf059b84f03d\": Se",
+  "failed to read stored session \"session-b7732800-0764-4f05-9dec-06330e435a82\": fo",
+  "failed to read stored session \"session-b893967f-5686-44da-9579-27d24bbe1fe1\": fo",
+  "failed to read stored session \"session-ba4e4402-7d88-4e2a-802d-0f867ae1c241\": fo",
+  "failed to read stored session \"session-bd86d0ee-efc7-4d8e-871f-85ced3fa8bc9\": as",
+  "failed to read stored session \"session-bf310264-d5a0-419b-8b74-afb12602b7d0\": fo",
+  "failed to read stored session \"session-bfe4c6f9-b598-4d68-bcd9-4b22f1b0ad49\": Se",
+  "failed to read stored session \"session-c1d0df92-43eb-44d7-917e-3ff26028df49\": fo",
+  "failed to read stored session \"session-c33a2e72-34dc-450d-a6ee-c3caa819a85d\": as",
+  "failed to read stored session \"session-c379c9d0-dfd8-40a5-9988-d697dd5ed8c3\": as",
+  "failed to read stored session \"session-c71eab49-7e92-4b97-9e00-a01ab77ef6cf\": fo",
+  "failed to read stored session \"session-cca924a2-c7d8-4a60-9e85-8835119ae394\": Se",
+  "failed to read stored session \"session-ccdf5690-ffe2-408d-8398-fc826108ca94\": as",
+  "failed to read stored session \"session-cf939732-538b-407f-b962-246a6aa7e9a3\": fo",
+  "failed to read stored session \"session-d1fe33ac-4eb9-4807-8866-534982e6da6d\": as",
+  "failed to read stored session \"session-d2ff0ed3-019e-4f14-8ee7-1d9bb1093e9b\": as",
+  "failed to read stored session \"session-d3388763-211b-4f0f-8142-974b6242d156\": as",
+  "failed to read stored session \"session-d428c103-ce95-4dac-80f5-9b3210f7ae40\": as",
+  "failed to read stored session \"session-d6f00935-cff8-4a33-a9fd-93bd91ead4f5\": as",
+  "failed to read stored session \"session-d771b7ad-710c-4176-af6f-71aa20dc563f\": as",
+  "failed to read stored session \"session-dd42e0c5-9d80-424c-b55b-32904e55f3be\": as",
+  "failed to read stored session \"session-dd4af43d-df7f-4f68-b38b-1b661eabb1bd\": as",
+  "failed to read stored session \"session-dec2794b-d0de-42a0-934f-49a856294f9b\": as",
+  "failed to read stored session \"session-df76624e-ba01-4e75-b689-f7c014247232\": as",
+  "failed to read stored session \"session-e328e4cd-758e-415a-aa0a-56a0c7e50698\": as",
+  "failed to read stored session \"session-e6466491-c35b-4d45-aeba-ccc98758bc28\": fo",
+  "failed to read stored session \"session-ec8b7a0e-b97c-4a9a-9518-b77ad513ed21\": fo",
+  "failed to read stored session \"session-ecb9f37d-e78d-4549-a114-a4b68e5c3b89\": as",
+  "failed to read stored session \"session-efa2d12e-5d00-4744-94b1-61f363f7ab54\": as",
+  "failed to read stored session \"session-f01707fb-3173-4e93-b797-a25db7231fb2\": as",
+  "failed to read stored session \"session-f05b968c-ec8f-49eb-bc88-904b1cab0e5d\": as",
+  "failed to read stored session \"session-f71ed82e-daa4-4324-8dcb-929a3960770d\": as",
+  "failed to read stored session \"session-f7f6f48f-b785-4efc-889d-74d78c426bb4\": as",
+  "failed to read stored session \"session-ffe1a9bc-ecd9-4618-b769-b722037a4321\": @d",
+  "failed to read stored session \"session-smoke-016747b3-1654-4a0d-8237-47a86f6b1c5",
+  "failed to read stored session \"session-smoke-46e4375a-fbf1-4782-a5d6-cd09e9d6f31",
+  "failed to read stored session \"session-smoke-b6c3e73a-39a3-4973-9b86-bb46038e96f",
+  "failed to read stored session \"session-smoke-c8ca0d15-929d-41d0-9a6b-ef59c76a14c",
+  "failed to read stored session \"session-smoke-e8b8a07e-1782-4eb7-b2c7-acfd88dfd20",
+  "failed to read stored session \"session-smoke-ee41bb64-22bf-47e9-bc68-671a26e7562"
+ ],
+ "results": [
+  {
+   "id": "059274cd-c30b-4a72-8a81-0ed88c6e457b",
+   "ok": false,
+   "ms": 490,
+   "error": "failed to read stored session \"059274cd-c30b-4a72-8a81-0ed88c6e457b\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/059274cd-c30b-4a72-8a81-0ed88c6e457b/session.jsonl.zstd)"
+  },
+  {
+   "id": "06d87d27-bc58-408b-9f42-6af1e5e44516",
+   "ok": false,
+   "ms": 352,
+   "error": "failed to read stored session \"06d87d27-bc58-408b-9f42-6af1e5e44516\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/06d87d27-bc58-408b-9f42-6af1e5e44516/session.jsonl.zstd"
+  },
+  {
+   "id": "075c590c-1f13-4e88-8436-d0e990a67521",
+   "ok": false,
+   "ms": 356,
+   "error": "failed to read stored session \"075c590c-1f13-4e88-8436-d0e990a67521\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/075c590c-1f13-4e88-8436-d0e"
+  },
+  {
+   "id": "0a6e60db-2bc5-47ef-9b64-eedcf7ece225",
+   "ok": false,
+   "ms": 350,
+   "error": "failed to read stored session \"0a6e60db-2bc5-47ef-9b64-eedcf7ece225\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/0a6e60db-2bc5-47ef-9b64-eedcf7ece225/session.jsonl.zstd"
+  },
+  {
+   "id": "0a6f8333-5554-4320-8f54-6afdf72de0a0",
+   "ok": false,
+   "ms": 520,
+   "error": "failed to read stored session \"0a6f8333-5554-4320-8f54-6afdf72de0a0\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/0a6f8333-5554-4320-8f54-6afdf72de0a0/session.jsonl.zstd"
+  },
+  {
+   "id": "0f5df655-5d0e-490c-b22e-08b22c7e63f6",
+   "ok": false,
+   "ms": 492,
+   "error": "failed to read stored session \"0f5df655-5d0e-490c-b22e-08b22c7e63f6\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/0f5df655-5d0e-490c-b22e-08b22c7e63f6/session.jsonl.zstd"
+  },
+  {
+   "id": "12743a7c-fb8f-48c1-9455-5a6b0ada380f",
+   "ok": false,
+   "ms": 356,
+   "error": "failed to read stored session \"12743a7c-fb8f-48c1-9455-5a6b0ada380f\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/12743a7c-fb8f-48c1-9455-5a6b0ada380f/session.jsonl.zstd"
+  },
+  {
+   "id": "14386b3d-fee7-45e0-8714-8a959c9d9b4c",
+   "ok": false,
+   "ms": 340,
+   "error": "failed to read stored session \"14386b3d-fee7-45e0-8714-8a959c9d9b4c\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/14386b3d-fee7-45e0-8714-8a959c9d9b4c/session.jsonl.zstd"
+  },
+  {
+   "id": "16b40e63-5314-4c13-a986-3ebad57b5865",
+   "ok": false,
+   "ms": 359,
+   "error": "failed to read stored session \"16b40e63-5314-4c13-a986-3ebad57b5865\": assistant/message 125 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/16b40e63-5314-4c13-a986-3ebad57b5865/session.jsonl.zst"
+  },
+  {
+   "id": "16d24035-04bb-4351-88f4-0451160174a7",
+   "ok": false,
+   "ms": 459,
+   "error": "failed to read stored session \"16d24035-04bb-4351-88f4-0451160174a7\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/16d24035-04bb-4351-88f4-0451160174a7/session.jsonl.zstd)"
+  },
+  {
+   "id": "177ef6ab-9371-4d74-9ca6-3559dcdc6c5c",
+   "ok": false,
+   "ms": 367,
+   "error": "failed to read stored session \"177ef6ab-9371-4d74-9ca6-3559dcdc6c5c\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/177ef6ab-9371-4d74-9ca6-3559dcdc6c5c/session.jsonl.zstd"
+  },
+  {
+   "id": "18355d04-73aa-4929-8f6c-4646f15c0da9",
+   "ok": false,
+   "ms": 326,
+   "error": "failed to read stored session \"18355d04-73aa-4929-8f6c-4646f15c0da9\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/18355d04-73aa-4929-8f6c-4646f15c0da9/session.jsonl.zstd"
+  },
+  {
+   "id": "18ef8135-a939-451c-aaba-38d9055f03fd",
+   "ok": false,
+   "ms": 336,
+   "error": "failed to read stored session \"18ef8135-a939-451c-aaba-38d9055f03fd\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/18ef8135-a939-451c-aaba-38d9055f03fd/session.jsonl.zstd"
+  },
+  {
+   "id": "19cdef1c-b56b-445f-8a5a-310b7ab59351",
+   "ok": false,
+   "ms": 357,
+   "error": "failed to read stored session \"19cdef1c-b56b-445f-8a5a-310b7ab59351\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/19cdef1c-b56b-445f-8a5a-310b7ab59351/session.jsonl.zstd)"
+  },
+  {
+   "id": "19e2f33f-25f4-43d0-9210-8d72edc86b66",
+   "ok": false,
+   "ms": 345,
+   "error": "failed to read stored session \"19e2f33f-25f4-43d0-9210-8d72edc86b66\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/19e2f33f-25f4-43d0-9210-8d72edc86b66/session.jsonl.zstd)"
+  },
+  {
+   "id": "1e2df621-45e3-49ff-bcd5-ff4b12156e1f",
+   "ok": false,
+   "ms": 342,
+   "error": "failed to read stored session \"1e2df621-45e3-49ff-bcd5-ff4b12156e1f\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/1e2df621-45e3-49ff-bcd5-ff4b12156e1f/session.jsonl.zstd"
+  },
+  {
+   "id": "20181627-c377-406a-b3e9-9a05b380b626",
+   "ok": false,
+   "ms": 346,
+   "error": "failed to read stored session \"20181627-c377-406a-b3e9-9a05b380b626\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/20181627-c377-406a-b3e9-9a05b380b626/session.jsonl.zstd"
+  },
+  {
+   "id": "2344bcf2-7331-4910-86c0-3f2008032768",
+   "ok": false,
+   "ms": 686,
+   "error": "failed to read stored session \"2344bcf2-7331-4910-86c0-3f2008032768\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data"
+  },
+  {
+   "id": "2525bcf3-d7d5-4aa4-9e22-0596c9c17e5f",
+   "ok": false,
+   "ms": 368,
+   "error": "failed to read stored session \"2525bcf3-d7d5-4aa4-9e22-0596c9c17e5f\": subagent/descriptor 7 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/2525bcf3-d7d5-4aa4-9e22-0596c9c17e5f/session.jsonl.zstd"
+  },
+  {
+   "id": "27ca25ec-348d-4504-b060-cb669d47e41e",
+   "ok": false,
+   "ms": 366,
+   "error": "failed to read stored session \"27ca25ec-348d-4504-b060-cb669d47e41e\": subagent/descriptor 7 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/27ca25ec-348d-4504-b060-cb669d47e41e/session.jsonl.zstd)"
+  },
+  {
+   "id": "2b32657e-c69c-4723-936f-d40c09507e4e",
+   "ok": false,
+   "ms": 456,
+   "error": "failed to read stored session \"2b32657e-c69c-4723-936f-d40c09507e4e\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/2b32657e-c69c-4723-936f-d40c09507e4e/session.jsonl.zstd"
+  },
+  {
+   "id": "2c96bf94-abf2-495a-a4b2-d77aeb2b45f2",
+   "ok": false,
+   "ms": 374,
+   "error": "failed to read stored session \"2c96bf94-abf2-495a-a4b2-d77aeb2b45f2\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/2c96bf94-abf2-495a-a4b2-d77aeb2b45f2/session.jsonl.zstd"
+  },
+  {
+   "id": "2edaf61e-9099-49a5-b706-2adf089fb868",
+   "ok": false,
+   "ms": 350,
+   "error": "failed to read stored session \"2edaf61e-9099-49a5-b706-2adf089fb868\": subagent/descriptor 7 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-relay--/2edaf61e-9099-49a5-b706-2adf089fb868/session.jsonl.zstd)"
+  },
+  {
+   "id": "2fcd30b1-cb32-460a-b2d1-80e0fe2237fa",
+   "ok": false,
+   "ms": 618,
+   "error": "failed to read stored session \"2fcd30b1-cb32-460a-b2d1-80e0fe2237fa\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 496074 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-dat"
+  },
+  {
+   "id": "3080249d-3b0d-4996-9a4b-360e21f094c6",
+   "ok": false,
+   "ms": 328,
+   "error": "failed to read stored session \"3080249d-3b0d-4996-9a4b-360e21f094c6\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/3080249d-3b0d-4996-9a4b-360e21f094c6/session.jsonl.zstd"
+  },
+  {
+   "id": "32b5e777-c48f-423b-aea7-0e15d64da963",
+   "ok": false,
+   "ms": 341,
+   "error": "failed to read stored session \"32b5e777-c48f-423b-aea7-0e15d64da963\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/32b5e777-c48f-423b-aea7-0e15d64da963/session.jsonl.zstd"
+  },
+  {
+   "id": "35cd980b-01da-400e-822b-282a852063b2",
+   "ok": false,
+   "ms": 434,
+   "error": "failed to read stored session \"35cd980b-01da-400e-822b-282a852063b2\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data"
+  },
+  {
+   "id": "361c6c15-fa49-477e-bd2a-97dd42730fc5",
+   "ok": false,
+   "ms": 338,
+   "error": "failed to read stored session \"361c6c15-fa49-477e-bd2a-97dd42730fc5\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/361c6c15-fa49-477e-bd2a-97dd42730fc5/session.jsonl.zstd"
+  },
+  {
+   "id": "370946af-39b0-4ec0-8220-cdb07eaf1c73",
+   "ok": false,
+   "ms": 315,
+   "error": "failed to read stored session \"370946af-39b0-4ec0-8220-cdb07eaf1c73\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/370946af-39b0-4ec0-8220-cdb07eaf1c73/session.jsonl.zstd"
+  },
+  {
+   "id": "382b4b68-7ffc-4268-bcc1-5e5e92133bf5",
+   "ok": false,
+   "ms": 328,
+   "error": "failed to read stored session \"382b4b68-7ffc-4268-bcc1-5e5e92133bf5\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/382b4b68-7ffc-4268-bcc1-5e5e92133bf5/session.jsonl.zstd"
+  },
+  {
+   "id": "3bf1cdd0-716e-463d-a77a-86758dce7f57",
+   "ok": false,
+   "ms": 407,
+   "error": "failed to read stored session \"3bf1cdd0-716e-463d-a77a-86758dce7f57\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data"
+  },
+  {
+   "id": "3d78bcf2-9a4b-4b08-9dae-c89d80f7166c",
+   "ok": false,
+   "ms": 321,
+   "error": "failed to read stored session \"3d78bcf2-9a4b-4b08-9dae-c89d80f7166c\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/3d78bcf2-9a4b-4b08-9dae-c89d80f7166c/session.jsonl.zstd)"
+  },
+  {
+   "id": "3f604250-8394-4538-a147-9d86165cb2af",
+   "ok": false,
+   "ms": 316,
+   "error": "failed to read stored session \"3f604250-8394-4538-a147-9d86165cb2af\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/3f604250-8394-4538-a147-9d86165cb2af/session.jsonl.zstd)"
+  },
+  {
+   "id": "407e40ff-c704-462a-a77d-c238708b17d6",
+   "ok": false,
+   "ms": 347,
+   "error": "failed to read stored session \"407e40ff-c704-462a-a77d-c238708b17d6\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/407e40ff-c704-462a-a77d-c23"
+  },
+  {
+   "id": "503558df-f2f0-4467-bc62-d62c73c8e8df",
+   "ok": false,
+   "ms": 348,
+   "error": "failed to read stored session \"503558df-f2f0-4467-bc62-d62c73c8e8df\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/503558df-f2f0-4467-bc62-d62c73c8e8df/session.jsonl.zstd"
+  },
+  {
+   "id": "51401fb4-84bb-4ec2-8839-3f8794a418e9",
+   "ok": false,
+   "ms": 387,
+   "error": "failed to read stored session \"51401fb4-84bb-4ec2-8839-3f8794a418e9\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data"
+  },
+  {
+   "id": "53504eac-ad12-433c-b801-1597b22e1dd2",
+   "ok": false,
+   "ms": 646,
+   "error": "failed to read stored session \"53504eac-ad12-433c-b801-1597b22e1dd2\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 74847 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data"
+  },
+  {
+   "id": "566720af-b28e-4059-a1b6-583b76f7f881",
+   "ok": false,
+   "ms": 503,
+   "error": "failed to read stored session \"566720af-b28e-4059-a1b6-583b76f7f881\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data"
+  },
+  {
+   "id": "574bbad0-ca7b-4a57-9e13-00021c1cffdd",
+   "ok": false,
+   "ms": 394,
+   "error": "failed to read stored session \"574bbad0-ca7b-4a57-9e13-00021c1cffdd\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/574bbad0-ca7b-4a57-9e13-00021c1cffdd/session.jsonl.zstd"
+  },
+  {
+   "id": "5c423e2f-038a-4fa3-8440-9ebdd7d805f1",
+   "ok": false,
+   "ms": 348,
+   "error": "failed to read stored session \"5c423e2f-038a-4fa3-8440-9ebdd7d805f1\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/5c423e2f-038a-4fa3-8440-9ebdd7d805f1/session.jsonl.zstd"
+  },
+  {
+   "id": "5ec2e2d7-ce91-43ed-b2b5-2e32e8dae0bf",
+   "ok": false,
+   "ms": 331,
+   "error": "failed to read stored session \"5ec2e2d7-ce91-43ed-b2b5-2e32e8dae0bf\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/5ec2e2d7-ce91-43ed-b2b5-2e32e8dae0bf/session.jsonl.zstd)"
+  },
+  {
+   "id": "5f4cbdd8-9a20-400a-912a-be7501397e60",
+   "ok": false,
+   "ms": 389,
+   "error": "failed to read stored session \"5f4cbdd8-9a20-400a-912a-be7501397e60\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/5f4cbdd8-9a20-400a-912a-be7"
+  },
+  {
+   "id": "631eda94-7cf8-4bf5-a995-8a43d48dda68",
+   "ok": false,
+   "ms": 349,
+   "error": "failed to read stored session \"631eda94-7cf8-4bf5-a995-8a43d48dda68\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/631eda94-7cf8-4bf5-a995-8a43d48dda68/session.jsonl.zstd"
+  },
+  {
+   "id": "6599da30-a154-4b7f-9983-ebc93c72abdc",
+   "ok": false,
+   "ms": 338,
+   "error": "failed to read stored session \"6599da30-a154-4b7f-9983-ebc93c72abdc\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/6599da30-a154-4b7f-9983-ebc93c72abdc/session.jsonl.zstd"
+  },
+  {
+   "id": "66463f7b-b8e9-444e-9f84-bebeb24aa06a",
+   "ok": false,
+   "ms": 401,
+   "error": "failed to read stored session \"66463f7b-b8e9-444e-9f84-bebeb24aa06a\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data"
+  },
+  {
+   "id": "674745f5-2736-4bb7-a96d-06cf27e3d4c0",
+   "ok": false,
+   "ms": 356,
+   "error": "failed to read stored session \"674745f5-2736-4bb7-a96d-06cf27e3d4c0\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/674745f5-2736-4bb7-a96d-06cf27e3d4c0/session.jsonl.zstd)"
+  },
+  {
+   "id": "6881b07d-f5c5-41d9-88a5-623208fe96e6",
+   "ok": false,
+   "ms": 441,
+   "error": "failed to read stored session \"6881b07d-f5c5-41d9-88a5-623208fe96e6\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/6881b07d-f5c5-41d9-88a5-623208fe96e6/session.jsonl.zstd"
+  },
+  {
+   "id": "6a8361ae-06ed-417a-af4f-db905acd52f5",
+   "ok": false,
+   "ms": 332,
+   "error": "failed to read stored session \"6a8361ae-06ed-417a-af4f-db905acd52f5\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/6a8361ae-06ed-417a-af4f-db905acd52f5/session.jsonl.zstd"
+  },
+  {
+   "id": "6cfe842f-abc2-4226-839d-987106171074",
+   "ok": false,
+   "ms": 399,
+   "error": "failed to read stored session \"6cfe842f-abc2-4226-839d-987106171074\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data"
+  },
+  {
+   "id": "6dec32b3-266f-418c-b736-82ba5c94d130",
+   "ok": false,
+   "ms": 326,
+   "error": "failed to read stored session \"6dec32b3-266f-418c-b736-82ba5c94d130\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/6dec32b3-266f-418c-b736-82ba5c94d130/session.jsonl.zstd"
+  },
+  {
+   "id": "6fc70a7d-d8a2-4da2-8603-ca1d0e1fa861",
+   "ok": false,
+   "ms": 313,
+   "error": "failed to read stored session \"6fc70a7d-d8a2-4da2-8603-ca1d0e1fa861\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/6fc70a7d-d8a2-4da2-8603-ca1d0e1fa861/session.jsonl.zstd)"
+  },
+  {
+   "id": "7193945a-b74a-44f9-9b96-fe69dcfc8d21",
+   "ok": false,
+   "ms": 335,
+   "error": "failed to read stored session \"7193945a-b74a-44f9-9b96-fe69dcfc8d21\": subagent/descriptor 7 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-relay--/7193945a-b74a-44f9-9b96-fe69dcfc8d21/session.jsonl.zstd)"
+  },
+  {
+   "id": "73a8a87b-5a24-4dc7-8841-dfd78e477d2a",
+   "ok": false,
+   "ms": 339,
+   "error": "failed to read stored session \"73a8a87b-5a24-4dc7-8841-dfd78e477d2a\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/73a8a87b-5a24-4dc7-8841-dfd78e477d2a/session.jsonl.zstd)"
+  },
+  {
+   "id": "7a326546-d094-4717-9d80-de6ca5b39d83",
+   "ok": false,
+   "ms": 427,
+   "error": "failed to read stored session \"7a326546-d094-4717-9d80-de6ca5b39d83\": cannot safely transform unclassified message source; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-device-sim--/7a326546-d094-4717-9d80-de6ca5b39d83/session.jsonl.zstd)"
+  },
+  {
+   "id": "7adf3162-b45f-4afc-bb77-a0d89e4e7cfa",
+   "ok": false,
+   "ms": 448,
+   "error": "failed to read stored session \"7adf3162-b45f-4afc-bb77-a0d89e4e7cfa\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data"
+  },
+  {
+   "id": "7fcd498a-4646-4aee-81b0-9a1bd67d547f",
+   "ok": false,
+   "ms": 377,
+   "error": "failed to read stored session \"7fcd498a-4646-4aee-81b0-9a1bd67d547f\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data"
+  },
+  {
+   "id": "80bf1aac-8b1b-4abd-b87b-ab4f80f4ef5d",
+   "ok": false,
+   "ms": 462,
+   "error": "failed to read stored session \"80bf1aac-8b1b-4abd-b87b-ab4f80f4ef5d\": subagent/descriptor 7 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/80bf1aac-8b1b-4abd-b87b-ab4f80f4ef5d/session.jsonl.zstd"
+  },
+  {
+   "id": "847b116e-e20f-40b1-9335-0062bfa2c88a",
+   "ok": false,
+   "ms": 439,
+   "error": "failed to read stored session \"847b116e-e20f-40b1-9335-0062bfa2c88a\": cannot safely transform unclassified message source; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-device-sim--/847b116e-e20f-40b1-9335-0062bfa2c88a/session.jsonl.zstd)"
+  },
+  {
+   "id": "8658437f-3dc5-4fdc-8476-0da87f704a6e",
+   "ok": false,
+   "ms": 367,
+   "error": "failed to read stored session \"8658437f-3dc5-4fdc-8476-0da87f704a6e\": cannot safely transform unclassified message source; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-device-sim--/8658437f-3dc5-4fdc-8476-0da87f704a6e/session.jsonl.zstd)"
+  },
+  {
+   "id": "892cf344-89d3-4961-899a-f648912875ee",
+   "ok": false,
+   "ms": 358,
+   "error": "failed to read stored session \"892cf344-89d3-4961-899a-f648912875ee\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/892cf344-89d3-4961-899a-f648912875ee/session.jsonl.zstd"
+  },
+  {
+   "id": "8cca2600-0fc7-4480-9193-67713eff1c51",
+   "ok": false,
+   "ms": 336,
+   "error": "failed to read stored session \"8cca2600-0fc7-4480-9193-67713eff1c51\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/8cca2600-0fc7-4480-9193-67713eff1c51/session.jsonl.zstd)"
+  },
+  {
+   "id": "8fea7414-a332-4e80-a5d6-1b17f888ab4d",
+   "ok": false,
+   "ms": 414,
+   "error": "failed to read stored session \"8fea7414-a332-4e80-a5d6-1b17f888ab4d\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data"
+  },
+  {
+   "id": "91a319ae-4f5c-4e52-9388-08efdaef215e",
+   "ok": false,
+   "ms": 380,
+   "error": "failed to read stored session \"91a319ae-4f5c-4e52-9388-08efdaef215e\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/91a319ae-4f5c-4e52-9388-08efdaef215e/session.jsonl.zstd)"
+  },
+  {
+   "id": "928ec3e4-c41e-45e8-ae0f-df710a4379bb",
+   "ok": false,
+   "ms": 337,
+   "error": "failed to read stored session \"928ec3e4-c41e-45e8-ae0f-df710a4379bb\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/928ec3e4-c41e-45e8-ae0f-df710a4379bb/session.jsonl.zstd"
+  },
+  {
+   "id": "995f49ed-ba09-4654-9a03-c02069af9886",
+   "ok": false,
+   "ms": 331,
+   "error": "failed to read stored session \"995f49ed-ba09-4654-9a03-c02069af9886\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/995f49ed-ba09-4654-9a03-c02"
+  },
+  {
+   "id": "9cdf92f3-d9bd-4ec8-9874-350a8e778c9b",
+   "ok": false,
+   "ms": 360,
+   "error": "failed to read stored session \"9cdf92f3-d9bd-4ec8-9874-350a8e778c9b\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/9cdf92f3-d9bd-4ec8-9874-350a8e778c9b/session.jsonl.zstd)"
+  },
+  {
+   "id": "a0927aeb-a760-4980-8f8c-a42a2f547e43",
+   "ok": false,
+   "ms": 327,
+   "error": "failed to read stored session \"a0927aeb-a760-4980-8f8c-a42a2f547e43\": subagent/descriptor 7 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-relay--/a0927aeb-a760-4980-8f8c-a42a2f547e43/session.jsonl.zstd)"
+  },
+  {
+   "id": "a1be8928-7e81-406e-a839-70ef77d5b2c9",
+   "ok": false,
+   "ms": 324,
+   "error": "failed to read stored session \"a1be8928-7e81-406e-a839-70ef77d5b2c9\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/a1be8928-7e81-406e-a839-70ef77d5b2c9/session.jsonl.zstd"
+  },
+  {
+   "id": "a3b9e367-00d3-49b6-a9f4-d806ddb5902a",
+   "ok": false,
+   "ms": 334,
+   "error": "failed to read stored session \"a3b9e367-00d3-49b6-a9f4-d806ddb5902a\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/a3b9e367-00d3-49b6-a9f4-d806ddb5902a/session.jsonl.zstd)"
+  },
+  {
+   "id": "a524a1ce-84ae-4044-a5f6-4a3015e1e8ed",
+   "ok": false,
+   "ms": 371,
+   "error": "failed to read stored session \"a524a1ce-84ae-4044-a5f6-4a3015e1e8ed\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data"
+  },
+  {
+   "id": "aaf35831-32ac-490a-8d83-51c11fce32bf",
+   "ok": false,
+   "ms": 331,
+   "error": "failed to read stored session \"aaf35831-32ac-490a-8d83-51c11fce32bf\": subagent/descriptor 7 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-relay--/aaf35831-32ac-490a-8d83-51c11fce32bf/session.jsonl.zstd)"
+  },
+  {
+   "id": "b15352d7-bc25-4082-97f0-6ca2c43f3f46",
+   "ok": false,
+   "ms": 331,
+   "error": "failed to read stored session \"b15352d7-bc25-4082-97f0-6ca2c43f3f46\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/b15352d7-bc25-4082-97f0-6ca2c43f3f46/session.jsonl.zstd"
+  },
+  {
+   "id": "b18c4fa0-ba0e-4dc2-9bdd-562e5ba99b58",
+   "ok": false,
+   "ms": 337,
+   "error": "failed to read stored session \"b18c4fa0-ba0e-4dc2-9bdd-562e5ba99b58\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/b18c4fa0-ba0e-4dc2-9bdd-562e5ba99b58/session.jsonl.zstd)"
+  },
+  {
+   "id": "b4cfcbf7-cd3b-4fdb-97a3-72aa746a4504",
+   "ok": false,
+   "ms": 337,
+   "error": "failed to read stored session \"b4cfcbf7-cd3b-4fdb-97a3-72aa746a4504\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/b4cfcbf7-cd3b-4fdb-97a3-72aa746a4504/session.jsonl.zstd"
+  },
+  {
+   "id": "b8bcee33-561e-4167-8232-61c0848854eb",
+   "ok": false,
+   "ms": 381,
+   "error": "failed to read stored session \"b8bcee33-561e-4167-8232-61c0848854eb\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data"
+  },
+  {
+   "id": "ba732533-9e8a-4fa7-ac29-d1c83a1505e7",
+   "ok": false,
+   "ms": 327,
+   "error": "failed to read stored session \"ba732533-9e8a-4fa7-ac29-d1c83a1505e7\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/ba732533-9e8a-4fa7-ac29-d1c83a1505e7/session.jsonl.zstd"
+  },
+  {
+   "id": "bcaa6935-1f6b-4c1f-99e9-8ff59dfd8390",
+   "ok": false,
+   "ms": 328,
+   "error": "failed to read stored session \"bcaa6935-1f6b-4c1f-99e9-8ff59dfd8390\": cannot safely transform unclassified message source; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-device-sim--/bcaa6935-1f6b-4c1f-99e9-8ff59dfd8390/session.jsonl.zstd)"
+  },
+  {
+   "id": "c0ae4c73-bd09-4497-849c-ead76ceb768d",
+   "ok": false,
+   "ms": 338,
+   "error": "failed to read stored session \"c0ae4c73-bd09-4497-849c-ead76ceb768d\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/c0ae4c73-bd09-4497-849c-ead76ceb768d/session.jsonl.zstd"
+  },
+  {
+   "id": "c116f889-4a04-4b53-961e-c579f1983661",
+   "ok": false,
+   "ms": 409,
+   "error": "failed to read stored session \"c116f889-4a04-4b53-961e-c579f1983661\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/c116f889-4a04-4b53-961e-c579f1983661/session.jsonl.zstd"
+  },
+  {
+   "id": "c8f32cb3-8c46-404d-817a-43379aca7d2d",
+   "ok": false,
+   "ms": 436,
+   "error": "failed to read stored session \"c8f32cb3-8c46-404d-817a-43379aca7d2d\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data"
+  },
+  {
+   "id": "cb0a9880-5143-4edf-89dc-6c07e8bffff0",
+   "ok": false,
+   "ms": 323,
+   "error": "failed to read stored session \"cb0a9880-5143-4edf-89dc-6c07e8bffff0\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/cb0a9880-5143-4edf-89dc-6c07e8bffff0/session.jsonl.zstd)"
+  },
+  {
+   "id": "cd66b67a-5ae6-443e-9baa-8c21f0426810",
+   "ok": false,
+   "ms": 334,
+   "error": "failed to read stored session \"cd66b67a-5ae6-443e-9baa-8c21f0426810\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/cd66b67a-5ae6-443e-9baa-8c21f0426810/session.jsonl.zstd)"
+  },
+  {
+   "id": "cdfea255-1255-42c2-adb6-61e9c4d7a80e",
+   "ok": false,
+   "ms": 353,
+   "error": "failed to read stored session \"cdfea255-1255-42c2-adb6-61e9c4d7a80e\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/cdfea255-1255-42c2-adb6-61e"
+  },
+  {
+   "id": "cef0d4da-e9e9-4122-b15b-dd228ca34563",
+   "ok": false,
+   "ms": 367,
+   "error": "failed to read stored session \"cef0d4da-e9e9-4122-b15b-dd228ca34563\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/cef0d4da-e9e9-4122-b15b-dd228ca34563/session.jsonl.zstd)"
+  },
+  {
+   "id": "cfd5fae4-35d1-4bee-a948-cd940891310a",
+   "ok": false,
+   "ms": 454,
+   "error": "failed to read stored session \"cfd5fae4-35d1-4bee-a948-cd940891310a\": cannot safely transform unclassified message source; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-device-sim--/cfd5fae4-35d1-4bee-a948-cd940891310a/session.jsonl.zstd)"
+  },
+  {
+   "id": "d2172b0d-3c07-4aed-9f67-e5c40940b20a",
+   "ok": false,
+   "ms": 319,
+   "error": "failed to read stored session \"d2172b0d-3c07-4aed-9f67-e5c40940b20a\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/d2172b0d-3c07-4aed-9f67-e5c40940b20a/session.jsonl.zstd"
+  },
+  {
+   "id": "d5d97ba0-7c4e-4028-ac00-b7026f27cb59",
+   "ok": false,
+   "ms": 327,
+   "error": "failed to read stored session \"d5d97ba0-7c4e-4028-ac00-b7026f27cb59\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/d5d97ba0-7c4e-4028-ac00-b7026f27cb59/session.jsonl.zstd)"
+  },
+  {
+   "id": "d60439b5-6e4b-4777-9fc9-d17cea9b0a6b",
+   "ok": false,
+   "ms": 330,
+   "error": "failed to read stored session \"d60439b5-6e4b-4777-9fc9-d17cea9b0a6b\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/d60439b5-6e4b-4777-9fc9-d17cea9b0a6b/session.jsonl.zstd)"
+  },
+  {
+   "id": "d873ae1d-b032-4f02-9c8c-a20b7434f09a",
+   "ok": false,
+   "ms": 395,
+   "error": "failed to read stored session \"d873ae1d-b032-4f02-9c8c-a20b7434f09a\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data"
+  },
+  {
+   "id": "d89789fa-0e48-484f-8104-72bc2c19d9a1",
+   "ok": false,
+   "ms": 377,
+   "error": "failed to read stored session \"d89789fa-0e48-484f-8104-72bc2c19d9a1\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/d89789fa-0e48-484f-8104-72bc2c19d9a1/session.jsonl.zstd"
+  },
+  {
+   "id": "db89fe43-0e19-45e9-b67d-d9f2e0097157",
+   "ok": false,
+   "ms": 409,
+   "error": "failed to read stored session \"db89fe43-0e19-45e9-b67d-d9f2e0097157\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data"
+  },
+  {
+   "id": "dfd8940c-0bee-46d9-95c9-880f788292f4",
+   "ok": false,
+   "ms": 373,
+   "error": "failed to read stored session \"dfd8940c-0bee-46d9-95c9-880f788292f4\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data"
+  },
+  {
+   "id": "e818c39d-3fdd-4211-afdd-b2f79215cabb",
+   "ok": false,
+   "ms": 327,
+   "error": "failed to read stored session \"e818c39d-3fdd-4211-afdd-b2f79215cabb\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/e818c39d-3fdd-4211-afdd-b2f79215cabb/session.jsonl.zstd"
+  },
+  {
+   "id": "e94d41bd-f557-4f8f-92a0-854bb5f27a79",
+   "ok": false,
+   "ms": 343,
+   "error": "failed to read stored session \"e94d41bd-f557-4f8f-92a0-854bb5f27a79\": subagent/descriptor 7 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/e94d41bd-f557-4f8f-92a0-854bb5f27a79/session.jsonl.zstd"
+  },
+  {
+   "id": "e9ddf3dc-f0cb-423d-9bc1-4d8b61bae43d",
+   "ok": false,
+   "ms": 358,
+   "error": "failed to read stored session \"e9ddf3dc-f0cb-423d-9bc1-4d8b61bae43d\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/e9ddf3dc-f0cb-423d-9bc1-4d8b61bae43d/session.jsonl.zstd"
+  },
+  {
+   "id": "ebc31151-f9fc-4121-b04f-675698cab033",
+   "ok": false,
+   "ms": 397,
+   "error": "failed to read stored session \"ebc31151-f9fc-4121-b04f-675698cab033\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data"
+  },
+  {
+   "id": "f1c26c91-c517-4634-bd4b-62518218d381",
+   "ok": false,
+   "ms": 346,
+   "error": "failed to read stored session \"f1c26c91-c517-4634-bd4b-62518218d381\": subagent/descriptor 7 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-relay--/f1c26c91-c517-4634-bd4b-62518218d381/session.jsonl.zstd)"
+  },
+  {
+   "id": "f27e72a0-1945-4239-a754-b76615048add",
+   "ok": false,
+   "ms": 378,
+   "error": "failed to read stored session \"f27e72a0-1945-4239-a754-b76615048add\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data"
+  },
+  {
+   "id": "f927e209-7d8e-4063-a578-4bbd762e4308",
+   "ok": false,
+   "ms": 342,
+   "error": "failed to read stored session \"f927e209-7d8e-4063-a578-4bbd762e4308\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/f927e209-7d8e-4063-a578-4bbd762e4308/session.jsonl.zstd"
+  },
+  {
+   "id": "fb698fcf-57eb-45c2-af1c-73e7508b1897",
+   "ok": false,
+   "ms": 347,
+   "error": "failed to read stored session \"fb698fcf-57eb-45c2-af1c-73e7508b1897\": subagent/descriptor 7 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/fb698fcf-57eb-45c2-af1c-73e7508b1897/session.jsonl.zstd"
+  },
+  {
+   "id": "fdd07572-72bf-46da-be66-30a8b45d6c65",
+   "ok": false,
+   "ms": 339,
+   "error": "failed to read stored session \"fdd07572-72bf-46da-be66-30a8b45d6c65\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/fdd07572-72bf-46da-be66-30a8b45d6c65/session.jsonl.zstd)"
+  },
+  {
+   "id": "ff4492dc-3904-4931-8eff-02a99ac81d3f",
+   "ok": false,
+   "ms": 334,
+   "error": "failed to read stored session \"ff4492dc-3904-4931-8eff-02a99ac81d3f\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-plugins--/ff4492dc-3904-4931-8eff-02a99ac81d3f/session.jsonl.zstd"
+  },
+  {
+   "id": "ff8dd1cb-8e3f-4d55-95d6-6a508aa0923f",
+   "ok": false,
+   "ms": 446,
+   "error": "failed to read stored session \"ff8dd1cb-8e3f-4d55-95d6-6a508aa0923f\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/ff8dd1cb-8e3f-4d55-95d6-6a508aa0923f/session.jsonl.zstd)"
+  },
+  {
+   "id": "session-03af9003-f1e5-45e8-bd18-39cb862ccbba",
+   "ok": false,
+   "ms": 409,
+   "error": "failed to read stored session \"session-03af9003-f1e5-45e8-bd18-39cb862ccbba\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-03af9003"
+  },
+  {
+   "id": "session-04ef390c-2405-4062-aa34-ed4df13bca02",
+   "ok": false,
+   "ms": 341,
+   "error": "failed to read stored session \"session-04ef390c-2405-4062-aa34-ed4df13bca02\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-04ef390c-2405-4062-aa34-ed4df13bca0"
+  },
+  {
+   "id": "session-07e4f59c-d6f0-49c8-82d6-97d35e758e08",
+   "ok": false,
+   "ms": 328,
+   "error": "failed to read stored session \"session-07e4f59c-d6f0-49c8-82d6-97d35e758e08\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-07e4f59c-d6f0-49c8-82d6-97d35e758e0"
+  },
+  {
+   "id": "session-08acc050-c38d-4d9b-b121-cbc836f1d126",
+   "ok": false,
+   "ms": 339,
+   "error": "failed to read stored session \"session-08acc050-c38d-4d9b-b121-cbc836f1d126\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-08acc050-c38d-4d9b-b121-cbc836f1d12"
+  },
+  {
+   "id": "session-0ce69145-932c-4c30-bf7d-f00687e72636",
+   "ok": false,
+   "ms": 326,
+   "error": "failed to read stored session \"session-0ce69145-932c-4c30-bf7d-f00687e72636\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-0ce69145"
+  },
+  {
+   "id": "session-0d3987af-7c25-41fa-9370-d8abb870da53",
+   "ok": false,
+   "ms": 325,
+   "error": "failed to read stored session \"session-0d3987af-7c25-41fa-9370-d8abb870da53\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-0d3987af-7c25-41fa-9370-d8abb870da5"
+  },
+  {
+   "id": "session-0e51e568-50f3-4327-b2e8-bffdb9ebc923",
+   "ok": false,
+   "ms": 323,
+   "error": "failed to read stored session \"session-0e51e568-50f3-4327-b2e8-bffdb9ebc923\": assistant/message 110 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-0e51e568-50f3-4327-b2e8-bffdb9ebc92"
+  },
+  {
+   "id": "session-12d0a263-f91a-4ebc-bd65-ca9bd462219f",
+   "ok": false,
+   "ms": 404,
+   "error": "failed to read stored session \"session-12d0a263-f91a-4ebc-bd65-ca9bd462219f\": assistant/message 46 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-12d0a263-f91a-4ebc-bd65-ca9bd462219f"
+  },
+  {
+   "id": "session-13b73345-5da7-4e46-befa-508b5cb3edea",
+   "ok": false,
+   "ms": 339,
+   "error": "failed to read stored session \"session-13b73345-5da7-4e46-befa-508b5cb3edea\": assistant/message 110 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-13b73345-5da7-4e46-befa-508b5cb3ede"
+  },
+  {
+   "id": "session-170b6da7-dec4-406a-b02a-06b4a284b138",
+   "ok": false,
+   "ms": 366,
+   "error": "failed to read stored session \"session-170b6da7-dec4-406a-b02a-06b4a284b138\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-170b6da7-dec4-406a-b02a-06b4a284b13"
+  },
+  {
+   "id": "session-1992728f-66b0-4da9-b718-d79fd6ae89c6",
+   "ok": false,
+   "ms": 363,
+   "error": "failed to read stored session \"session-1992728f-66b0-4da9-b718-d79fd6ae89c6\": Session migration from v0 to v3 refuses the transformed artifact: session/title 11 messageSeqs must cite earlier human user/message events; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Us"
+  },
+  {
+   "id": "session-1ac157aa-f3b7-4736-9400-d583094c23b9",
+   "ok": false,
+   "ms": 341,
+   "error": "failed to read stored session \"session-1ac157aa-f3b7-4736-9400-d583094c23b9\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/session-1ac157aa-f3"
+  },
+  {
+   "id": "session-1da9b19c-d29e-4fe2-8027-5ade9288f124",
+   "ok": false,
+   "ms": 339,
+   "error": "failed to read stored session \"session-1da9b19c-d29e-4fe2-8027-5ade9288f124\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-1da9b19c"
+  },
+  {
+   "id": "session-2",
+   "ok": false,
+   "ms": 334,
+   "error": "failed to read stored session \"session-2\": cannot safely transform unclassified message source; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-device-sim--/session-2/session.jsonl.zstd)"
+  },
+  {
+   "id": "session-23535223-b201-4910-bf12-c25ac9ce5eb5",
+   "ok": false,
+   "ms": 334,
+   "error": "failed to read stored session \"session-23535223-b201-4910-bf12-c25ac9ce5eb5\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-23535223-b201-4910-bf12-c25ac9ce5eb"
+  },
+  {
+   "id": "session-2befe8e4-316e-4e4a-9795-aeb871cd15ae",
+   "ok": false,
+   "ms": 342,
+   "error": "failed to read stored session \"session-2befe8e4-316e-4e4a-9795-aeb871cd15ae\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-2befe8e4-316e-4e4a-9795-aeb871cd15a"
+  },
+  {
+   "id": "session-2cddeed7-2b89-464d-8180-c241a8688e21",
+   "ok": false,
+   "ms": 349,
+   "error": "failed to read stored session \"session-2cddeed7-2b89-464d-8180-c241a8688e21\": assistant/message 161 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-2cddeed7-2b89-464d-8180-c241a8688e2"
+  },
+  {
+   "id": "session-2f0c2a2b-7bcf-4fdb-a701-9d769878bb26",
+   "ok": false,
+   "ms": 331,
+   "error": "failed to read stored session \"session-2f0c2a2b-7bcf-4fdb-a701-9d769878bb26\": Session migration from v0 to v3 refuses the transformed artifact: session/title 11 messageSeqs must cite earlier human user/message events; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Us"
+  },
+  {
+   "id": "session-2f8528fb-74c2-4d98-b173-5d1baeca79fb",
+   "ok": false,
+   "ms": 348,
+   "error": "failed to read stored session \"session-2f8528fb-74c2-4d98-b173-5d1baeca79fb\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-2f8528fb-74c2-4d98-b173-5d1baeca79f"
+  },
+  {
+   "id": "session-3",
+   "ok": false,
+   "ms": 383,
+   "error": "failed to read stored session \"session-3\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-device-sim--/session-3"
+  },
+  {
+   "id": "session-31a5dacb-1e1e-4f03-9a5c-59ab7b52c58d",
+   "ok": false,
+   "ms": 361,
+   "error": "failed to read stored session \"session-31a5dacb-1e1e-4f03-9a5c-59ab7b52c58d\": assistant/message 20 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-31a5dacb-1e1e-4f03-9a5c-59ab7b52c58d"
+  },
+  {
+   "id": "session-362a23b6-1afe-476c-9c2a-8e08d9331549",
+   "ok": false,
+   "ms": 441,
+   "error": "failed to read stored session \"session-362a23b6-1afe-476c-9c2a-8e08d9331549\": format v2 changed request prompt outside an open step cannot retain source chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-dsh-relay--/session-362a23b6-1afe-4"
+  },
+  {
+   "id": "session-3630c696-0f0d-4e25-992b-6a674f8b52c2",
+   "ok": false,
+   "ms": 347,
+   "error": "failed to read stored session \"session-3630c696-0f0d-4e25-992b-6a674f8b52c2\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-3630c696"
+  },
+  {
+   "id": "session-3690b4e5-160f-4243-a053-ebd8756661f9",
+   "ok": false,
+   "ms": 322,
+   "error": "failed to read stored session \"session-3690b4e5-160f-4243-a053-ebd8756661f9\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-3690b4e5"
+  },
+  {
+   "id": "session-36e3a9c5-1e8d-44ae-9b26-654f24cd425a",
+   "ok": false,
+   "ms": 604,
+   "error": "failed to read stored session \"session-36e3a9c5-1e8d-44ae-9b26-654f24cd425a\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 620426 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-"
+  },
+  {
+   "id": "session-3ac6a6ae-9a19-44d3-8899-c016e216c772",
+   "ok": false,
+   "ms": 300,
+   "error": "failed to read stored session \"session-3ac6a6ae-9a19-44d3-8899-c016e216c772\": cannot safely transform unclassified message source; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-device-sim--/session-3ac6a6ae-9a19-44d3-8899-c016e216c772/session.jso"
+  },
+  {
+   "id": "session-4",
+   "ok": false,
+   "ms": 347,
+   "error": "failed to read stored session \"session-4\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-device-sim--/session-4"
+  },
+  {
+   "id": "session-4164f421-2134-4a47-84e7-4ae757cfbad2",
+   "ok": false,
+   "ms": 337,
+   "error": "failed to read stored session \"session-4164f421-2134-4a47-84e7-4ae757cfbad2\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-4164f421-2134-4a47-84e7-4ae757cfbad"
+  },
+  {
+   "id": "session-4778a1b9-b06d-4060-bc4b-2b19b5782bc4",
+   "ok": false,
+   "ms": 325,
+   "error": "failed to read stored session \"session-4778a1b9-b06d-4060-bc4b-2b19b5782bc4\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-4778a1b9-b06d-4060-bc4b-2b19b5782bc"
+  },
+  {
+   "id": "session-485c46ea-527d-4499-b1ac-faa3350c7660",
+   "ok": false,
+   "ms": 331,
+   "error": "failed to read stored session \"session-485c46ea-527d-4499-b1ac-faa3350c7660\": assistant/message 999 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-485c46ea-527d-4499-b1ac-faa3350c766"
+  },
+  {
+   "id": "session-4ca99180-bff4-4565-b36d-fb9394fa08ff",
+   "ok": false,
+   "ms": 333,
+   "error": "failed to read stored session \"session-4ca99180-bff4-4565-b36d-fb9394fa08ff\": assistant/message 1870 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-4ca99180-bff4-4565-b36d-fb9394fa08"
+  },
+  {
+   "id": "session-4e73ead6-aeb9-42d1-8a8e-515b5af11fda",
+   "ok": false,
+   "ms": 325,
+   "error": "failed to read stored session \"session-4e73ead6-aeb9-42d1-8a8e-515b5af11fda\": assistant/message 161 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-4e73ead6-aeb9-42d1-8a8e-515b5af11fd"
+  },
+  {
+   "id": "session-5",
+   "ok": false,
+   "ms": 373,
+   "error": "failed to read stored session \"session-5\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-device-sim--/session-5"
+  },
+  {
+   "id": "session-52abea74-c2e2-4c27-b3ca-bd72ac82406b",
+   "ok": false,
+   "ms": 324,
+   "error": "failed to read stored session \"session-52abea74-c2e2-4c27-b3ca-bd72ac82406b\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-52abea74-c2e2-4c27-b3ca-bd72ac82406"
+  },
+  {
+   "id": "session-56d64e6a-0308-4b36-abd5-ca06b2dce355",
+   "ok": false,
+   "ms": 339,
+   "error": "failed to read stored session \"session-56d64e6a-0308-4b36-abd5-ca06b2dce355\": assistant/message 161 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-56d64e6a-0308-4b36-abd5-ca06b2dce35"
+  },
+  {
+   "id": "session-570b4fb1-3164-4be1-b896-09b50e90ba19",
+   "ok": false,
+   "ms": 415,
+   "error": "failed to read stored session \"session-570b4fb1-3164-4be1-b896-09b50e90ba19\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-570b4fb1-3164-4be1-b896-09b50e90ba1"
+  },
+  {
+   "id": "session-57bb7a39-8a7a-4582-8a29-9320e529071b",
+   "ok": false,
+   "ms": 406,
+   "error": "failed to read stored session \"session-57bb7a39-8a7a-4582-8a29-9320e529071b\": assistant/message 86 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-57bb7a39-8a7a-4582-8a29-9320e529071b"
+  },
+  {
+   "id": "session-5a12b50d-3310-4070-94e6-55fb0d7add14",
+   "ok": false,
+   "ms": 373,
+   "error": "failed to read stored session \"session-5a12b50d-3310-4070-94e6-55fb0d7add14\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-5a12b50d-3310-4070-94e6-55fb0d7add1"
+  },
+  {
+   "id": "session-5c292ed0-3908-4bf7-862c-75bcaad3f4f5",
+   "ok": false,
+   "ms": 365,
+   "error": "failed to read stored session \"session-5c292ed0-3908-4bf7-862c-75bcaad3f4f5\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-5c292ed0-3908-4bf7-862c-75bcaad3f4f"
+  },
+  {
+   "id": "session-6",
+   "ok": false,
+   "ms": 381,
+   "error": "failed to read stored session \"session-6\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-device-sim--/session-6"
+  },
+  {
+   "id": "session-60afb87b-3d6c-443a-a0f7-8ec47eac6106",
+   "ok": false,
+   "ms": 368,
+   "error": "failed to read stored session \"session-60afb87b-3d6c-443a-a0f7-8ec47eac6106\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-60afb87b"
+  },
+  {
+   "id": "session-66c4c76f-c872-4c2d-bdd9-64d68d960f35",
+   "ok": false,
+   "ms": 417,
+   "error": "failed to read stored session \"session-66c4c76f-c872-4c2d-bdd9-64d68d960f35\": assistant/message 161 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-66c4c76f-c872-4c2d-bdd9-64d68d960f3"
+  },
+  {
+   "id": "session-69b06611-d609-421e-9f1d-19c650c2c489",
+   "ok": false,
+   "ms": 337,
+   "error": "failed to read stored session \"session-69b06611-d609-421e-9f1d-19c650c2c489\": assistant/message 161 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-69b06611-d609-421e-9f1d-19c650c2c48"
+  },
+  {
+   "id": "session-6b4fcc3b-404a-4a9a-be27-5cb44dc0bd70",
+   "ok": false,
+   "ms": 323,
+   "error": "failed to read stored session \"session-6b4fcc3b-404a-4a9a-be27-5cb44dc0bd70\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-6b4fcc3b-404a-4a9a-be27-5cb44dc0bd7"
+  },
+  {
+   "id": "session-6c127ecf-43f4-47d1-a425-7951befb2113",
+   "ok": false,
+   "ms": 319,
+   "error": "failed to read stored session \"session-6c127ecf-43f4-47d1-a425-7951befb2113\": assistant/message 161 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-6c127ecf-43f4-47d1-a425-7951befb211"
+  },
+  {
+   "id": "session-6e705606-8da4-464c-aae6-bdb00784ba49",
+   "ok": false,
+   "ms": 335,
+   "error": "failed to read stored session \"session-6e705606-8da4-464c-aae6-bdb00784ba49\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-6e705606"
+  },
+  {
+   "id": "session-7",
+   "ok": false,
+   "ms": 386,
+   "error": "failed to read stored session \"session-7\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-device-sim--/session-7"
+  },
+  {
+   "id": "session-7110d7b9-2a82-477f-a7bc-b942526d46b0",
+   "ok": false,
+   "ms": 326,
+   "error": "failed to read stored session \"session-7110d7b9-2a82-477f-a7bc-b942526d46b0\": assistant/message 20 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-7110d7b9-2a82-477f-a7bc-b942526d46b0"
+  },
+  {
+   "id": "session-73401755-1a23-4538-be53-bc3eb55f7436",
+   "ok": false,
+   "ms": 347,
+   "error": "failed to read stored session \"session-73401755-1a23-4538-be53-bc3eb55f7436\": assistant/message 1414 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-73401755-1a23-4538-be53-bc3eb55f74"
+  },
+  {
+   "id": "session-74a89153-9ef5-4d3b-b8cb-97c38d89e73f",
+   "ok": false,
+   "ms": 339,
+   "error": "failed to read stored session \"session-74a89153-9ef5-4d3b-b8cb-97c38d89e73f\": assistant/message 161 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-74a89153-9ef5-4d3b-b8cb-97c38d89e73"
+  },
+  {
+   "id": "session-7c806cb2-a34e-4e6b-898f-aef96fd7a7b0",
+   "ok": false,
+   "ms": 342,
+   "error": "failed to read stored session \"session-7c806cb2-a34e-4e6b-898f-aef96fd7a7b0\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-7c806cb2"
+  },
+  {
+   "id": "session-7f084fab-6f44-4094-9724-6c89b6229f24",
+   "ok": false,
+   "ms": 355,
+   "error": "failed to read stored session \"session-7f084fab-6f44-4094-9724-6c89b6229f24\": Session migration from v0 to v3 refuses the transformed artifact: step/start does not match the open turn and next step; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay"
+  },
+  {
+   "id": "session-8",
+   "ok": false,
+   "ms": 373,
+   "error": "failed to read stored session \"session-8\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-device-sim--/session-8"
+  },
+  {
+   "id": "session-8075e84b-bad5-4e46-8e89-9f3350fe19ba",
+   "ok": false,
+   "ms": 342,
+   "error": "failed to read stored session \"session-8075e84b-bad5-4e46-8e89-9f3350fe19ba\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-8075e84b-bad5-4e46-8e89-9f3350fe19b"
+  },
+  {
+   "id": "session-8bcccc92-7142-409d-b38d-29b59c38ee96",
+   "ok": false,
+   "ms": 368,
+   "error": "failed to read stored session \"session-8bcccc92-7142-409d-b38d-29b59c38ee96\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: compaction/summary 2879 shadowedRange end must identify an earlier event; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessio"
+  },
+  {
+   "id": "session-8e8e2170-6599-47b6-8883-9ef886f22a37",
+   "ok": false,
+   "ms": 334,
+   "error": "failed to read stored session \"session-8e8e2170-6599-47b6-8883-9ef886f22a37\": assistant/message 161 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-8e8e2170-6599-47b6-8883-9ef886f22a3"
+  },
+  {
+   "id": "session-8fadcf83-19de-4d1d-8413-bef55fb464fe",
+   "ok": false,
+   "ms": 421,
+   "error": "failed to read stored session \"session-8fadcf83-19de-4d1d-8413-bef55fb464fe\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-8fadcf83-19de-4d1d-8413-bef55fb464f"
+  },
+  {
+   "id": "session-931c3401-3fb1-44f6-9b6a-43b1e9e4b80c",
+   "ok": false,
+   "ms": 389,
+   "error": "failed to read stored session \"session-931c3401-3fb1-44f6-9b6a-43b1e9e4b80c\": assistant/message 46 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-931c3401-3fb1-44f6-9b6a-43b1e9e4b80c"
+  },
+  {
+   "id": "session-9c24f8e8-630a-41fa-923c-cc13f90ff28a",
+   "ok": false,
+   "ms": 343,
+   "error": "failed to read stored session \"session-9c24f8e8-630a-41fa-923c-cc13f90ff28a\": assistant/message 110 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-9c24f8e8-630a-41fa-923c-cc13f90ff28"
+  },
+  {
+   "id": "session-9dc0a68b-fc3a-4cd1-88b6-0fe5ae825f44",
+   "ok": false,
+   "ms": 333,
+   "error": "failed to read stored session \"session-9dc0a68b-fc3a-4cd1-88b6-0fe5ae825f44\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-9dc0a68b-fc3a-4cd1-88b6-0fe5ae825f4"
+  },
+  {
+   "id": "session-9e1c2b7c-5f43-4166-b4c2-6bd5e5efd543",
+   "ok": false,
+   "ms": 338,
+   "error": "failed to read stored session \"session-9e1c2b7c-5f43-4166-b4c2-6bd5e5efd543\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-9e1c2b7c-5f43-4166-b4c2-6bd5e5efd54"
+  },
+  {
+   "id": "session-a123b843-2045-4d5e-92f6-e9824f50f55e",
+   "ok": false,
+   "ms": 329,
+   "error": "failed to read stored session \"session-a123b843-2045-4d5e-92f6-e9824f50f55e\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-a123b843-2045-4d5e-92f6-e9824f50f55"
+  },
+  {
+   "id": "session-a3ae096a-a367-4bcd-bcc0-039b1d082a50",
+   "ok": false,
+   "ms": 346,
+   "error": "failed to read stored session \"session-a3ae096a-a367-4bcd-bcc0-039b1d082a50\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-a3ae096a-a367-4bcd-bcc0-039b1d082a5"
+  },
+  {
+   "id": "session-a5294243-3635-489f-8be5-9eb2733a1a06",
+   "ok": false,
+   "ms": 369,
+   "error": "failed to read stored session \"session-a5294243-3635-489f-8be5-9eb2733a1a06\": assistant/message 2232 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-a5294243-3635-489f-8be5-9eb2733a1a"
+  },
+  {
+   "id": "session-a801c3a1-d25d-4cfd-9396-f2cd0793d974",
+   "ok": false,
+   "ms": 335,
+   "error": "failed to read stored session \"session-a801c3a1-d25d-4cfd-9396-f2cd0793d974\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-a801c3a1"
+  },
+  {
+   "id": "session-a8c0d1fd-cb99-4153-9c72-31d439747518",
+   "ok": false,
+   "ms": 386,
+   "error": "failed to read stored session \"session-a8c0d1fd-cb99-4153-9c72-31d439747518\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 57071 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-v"
+  },
+  {
+   "id": "session-aa81b176-7790-450a-ad6d-f49559006b6b",
+   "ok": false,
+   "ms": 363,
+   "error": "failed to read stored session \"session-aa81b176-7790-450a-ad6d-f49559006b6b\": assistant/message 1874 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-aa81b176-7790-450a-ad6d-f49559006b"
+  },
+  {
+   "id": "session-ae714135-01ac-4c13-9bf8-38bb835ea089",
+   "ok": false,
+   "ms": 360,
+   "error": "failed to read stored session \"session-ae714135-01ac-4c13-9bf8-38bb835ea089\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-ae714135-01ac-4c13-9bf8-38bb835ea08"
+  },
+  {
+   "id": "session-afd68297-6e7d-473d-a315-9aa529585b6e",
+   "ok": false,
+   "ms": 371,
+   "error": "failed to read stored session \"session-afd68297-6e7d-473d-a315-9aa529585b6e\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-afd68297-6e7d-473d-a315-9aa529585b6"
+  },
+  {
+   "id": "session-b098a765-47a4-4b6b-a123-1a12524b1e95",
+   "ok": false,
+   "ms": 339,
+   "error": "failed to read stored session \"session-b098a765-47a4-4b6b-a123-1a12524b1e95\": assistant/message 90 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-b098a765-47a4-4b6b-a123-1a12524b1e95"
+  },
+  {
+   "id": "session-b0e64c7b-ab81-4fc2-97a7-a0fd3ce06bb1",
+   "ok": false,
+   "ms": 490,
+   "error": "failed to read stored session \"session-b0e64c7b-ab81-4fc2-97a7-a0fd3ce06bb1\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: compaction/summary 2507 shadowedRange end must identify an earlier event; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessio"
+  },
+  {
+   "id": "session-b12c470c-c599-418f-a084-5b294bbe42e7",
+   "ok": false,
+   "ms": 374,
+   "error": "failed to read stored session \"session-b12c470c-c599-418f-a084-5b294bbe42e7\": assistant/message 946 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-b12c470c-c599-418f-a084-5b294bbe42e"
+  },
+  {
+   "id": "session-b20637a2-7d84-4b74-adfa-f1ed8b8a2d6b",
+   "ok": false,
+   "ms": 347,
+   "error": "failed to read stored session \"session-b20637a2-7d84-4b74-adfa-f1ed8b8a2d6b\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/session-b20637a2-7d"
+  },
+  {
+   "id": "session-b3f7c3a1-30c3-4910-8b81-5e005f97f2ab",
+   "ok": false,
+   "ms": 342,
+   "error": "failed to read stored session \"session-b3f7c3a1-30c3-4910-8b81-5e005f97f2ab\": assistant/message 161 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-b3f7c3a1-30c3-4910-8b81-5e005f97f2a"
+  },
+  {
+   "id": "session-b55402d5-d196-4233-9cfe-6c7058ea0f61",
+   "ok": false,
+   "ms": 351,
+   "error": "failed to read stored session \"session-b55402d5-d196-4233-9cfe-6c7058ea0f61\": assistant/message 110 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-b55402d5-d196-4233-9cfe-6c7058ea0f6"
+  },
+  {
+   "id": "session-b73e0928-4ef9-4f90-a25d-cf059b84f03d",
+   "ok": false,
+   "ms": 333,
+   "error": "failed to read stored session \"session-b73e0928-4ef9-4f90-a25d-cf059b84f03d\": Session migration from v0 to v3 refuses the transformed artifact: session/title 11 messageSeqs must cite earlier human user/message events; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Us"
+  },
+  {
+   "id": "session-b7732800-0764-4f05-9dec-06330e435a82",
+   "ok": false,
+   "ms": 338,
+   "error": "failed to read stored session \"session-b7732800-0764-4f05-9dec-06330e435a82\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-b7732800"
+  },
+  {
+   "id": "session-b893967f-5686-44da-9579-27d24bbe1fe1",
+   "ok": false,
+   "ms": 350,
+   "error": "failed to read stored session \"session-b893967f-5686-44da-9579-27d24bbe1fe1\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-b893967f"
+  },
+  {
+   "id": "session-ba4e4402-7d88-4e2a-802d-0f867ae1c241",
+   "ok": false,
+   "ms": 334,
+   "error": "failed to read stored session \"session-ba4e4402-7d88-4e2a-802d-0f867ae1c241\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-ba4e4402"
+  },
+  {
+   "id": "session-bd86d0ee-efc7-4d8e-871f-85ced3fa8bc9",
+   "ok": false,
+   "ms": 336,
+   "error": "failed to read stored session \"session-bd86d0ee-efc7-4d8e-871f-85ced3fa8bc9\": assistant/message 110 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-bd86d0ee-efc7-4d8e-871f-85ced3fa8bc"
+  },
+  {
+   "id": "session-bf310264-d5a0-419b-8b74-afb12602b7d0",
+   "ok": false,
+   "ms": 339,
+   "error": "failed to read stored session \"session-bf310264-d5a0-419b-8b74-afb12602b7d0\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-bf310264"
+  },
+  {
+   "id": "session-bfe4c6f9-b598-4d68-bcd9-4b22f1b0ad49",
+   "ok": false,
+   "ms": 388,
+   "error": "failed to read stored session \"session-bfe4c6f9-b598-4d68-bcd9-4b22f1b0ad49\": Session migration from v0 to v3 refuses the transformed artifact: session/title 11 messageSeqs must cite earlier human user/message events; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Us"
+  },
+  {
+   "id": "session-c1d0df92-43eb-44d7-917e-3ff26028df49",
+   "ok": false,
+   "ms": 427,
+   "error": "failed to read stored session \"session-c1d0df92-43eb-44d7-917e-3ff26028df49\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-c1d0df92"
+  },
+  {
+   "id": "session-c33a2e72-34dc-450d-a6ee-c3caa819a85d",
+   "ok": false,
+   "ms": 373,
+   "error": "failed to read stored session \"session-c33a2e72-34dc-450d-a6ee-c3caa819a85d\": assistant/message 161 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-c33a2e72-34dc-450d-a6ee-c3caa819a85"
+  },
+  {
+   "id": "session-c379c9d0-dfd8-40a5-9988-d697dd5ed8c3",
+   "ok": false,
+   "ms": 320,
+   "error": "failed to read stored session \"session-c379c9d0-dfd8-40a5-9988-d697dd5ed8c3\": assistant/message 90 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-c379c9d0-dfd8-40a5-9988-d697dd5ed8c3"
+  },
+  {
+   "id": "session-c71eab49-7e92-4b97-9e00-a01ab77ef6cf",
+   "ok": false,
+   "ms": 353,
+   "error": "failed to read stored session \"session-c71eab49-7e92-4b97-9e00-a01ab77ef6cf\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-c71eab49"
+  },
+  {
+   "id": "session-cca924a2-c7d8-4a60-9e85-8835119ae394",
+   "ok": false,
+   "ms": 326,
+   "error": "failed to read stored session \"session-cca924a2-c7d8-4a60-9e85-8835119ae394\": Session migration from v0 to v3 refuses the transformed artifact: command/run repeats commandId cmd-6b233ed4-2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors-"
+  },
+  {
+   "id": "session-ccdf5690-ffe2-408d-8398-fc826108ca94",
+   "ok": false,
+   "ms": 329,
+   "error": "failed to read stored session \"session-ccdf5690-ffe2-408d-8398-fc826108ca94\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-ccdf5690-ffe2-408d-8398-fc826108ca9"
+  },
+  {
+   "id": "session-cf939732-538b-407f-b962-246a6aa7e9a3",
+   "ok": false,
+   "ms": 325,
+   "error": "failed to read stored session \"session-cf939732-538b-407f-b962-246a6aa7e9a3\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-dev-others--/session-cf939732-53"
+  },
+  {
+   "id": "session-d1fe33ac-4eb9-4807-8866-534982e6da6d",
+   "ok": false,
+   "ms": 332,
+   "error": "failed to read stored session \"session-d1fe33ac-4eb9-4807-8866-534982e6da6d\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-d1fe33ac-4eb9-4807-8866-534982e6da6"
+  },
+  {
+   "id": "session-d2ff0ed3-019e-4f14-8ee7-1d9bb1093e9b",
+   "ok": false,
+   "ms": 326,
+   "error": "failed to read stored session \"session-d2ff0ed3-019e-4f14-8ee7-1d9bb1093e9b\": assistant/message 161 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-d2ff0ed3-019e-4f14-8ee7-1d9bb1093e9"
+  },
+  {
+   "id": "session-d3388763-211b-4f0f-8142-974b6242d156",
+   "ok": false,
+   "ms": 367,
+   "error": "failed to read stored session \"session-d3388763-211b-4f0f-8142-974b6242d156\": assistant/message 20 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-d3388763-211b-4f0f-8142-974b6242d156"
+  },
+  {
+   "id": "session-d428c103-ce95-4dac-80f5-9b3210f7ae40",
+   "ok": false,
+   "ms": 326,
+   "error": "failed to read stored session \"session-d428c103-ce95-4dac-80f5-9b3210f7ae40\": assistant/message 392 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-d428c103-ce95-4dac-80f5-9b3210f7ae4"
+  },
+  {
+   "id": "session-d6f00935-cff8-4a33-a9fd-93bd91ead4f5",
+   "ok": false,
+   "ms": 329,
+   "error": "failed to read stored session \"session-d6f00935-cff8-4a33-a9fd-93bd91ead4f5\": assistant/message 110 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-d6f00935-cff8-4a33-a9fd-93bd91ead4f"
+  },
+  {
+   "id": "session-d771b7ad-710c-4176-af6f-71aa20dc563f",
+   "ok": false,
+   "ms": 314,
+   "error": "failed to read stored session \"session-d771b7ad-710c-4176-af6f-71aa20dc563f\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-d771b7ad-710c-4176-af6f-71aa20dc563"
+  },
+  {
+   "id": "session-dd42e0c5-9d80-424c-b55b-32904e55f3be",
+   "ok": false,
+   "ms": 329,
+   "error": "failed to read stored session \"session-dd42e0c5-9d80-424c-b55b-32904e55f3be\": assistant/message 20 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-dd42e0c5-9d80-424c-b55b-32904e55f3be"
+  },
+  {
+   "id": "session-dd4af43d-df7f-4f68-b38b-1b661eabb1bd",
+   "ok": false,
+   "ms": 329,
+   "error": "failed to read stored session \"session-dd4af43d-df7f-4f68-b38b-1b661eabb1bd\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-dd4af43d-df7f-4f68-b38b-1b661eabb1b"
+  },
+  {
+   "id": "session-dec2794b-d0de-42a0-934f-49a856294f9b",
+   "ok": false,
+   "ms": 344,
+   "error": "failed to read stored session \"session-dec2794b-d0de-42a0-934f-49a856294f9b\": assistant/message 161 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-dec2794b-d0de-42a0-934f-49a856294f9"
+  },
+  {
+   "id": "session-df76624e-ba01-4e75-b689-f7c014247232",
+   "ok": false,
+   "ms": 336,
+   "error": "failed to read stored session \"session-df76624e-ba01-4e75-b689-f7c014247232\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-df76624e-ba01-4e75-b689-f7c01424723"
+  },
+  {
+   "id": "session-e328e4cd-758e-415a-aa0a-56a0c7e50698",
+   "ok": false,
+   "ms": 358,
+   "error": "failed to read stored session \"session-e328e4cd-758e-415a-aa0a-56a0c7e50698\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-e328e4cd-758e-415a-aa0a-56a0c7e5069"
+  },
+  {
+   "id": "session-e6466491-c35b-4d45-aeba-ccc98758bc28",
+   "ok": false,
+   "ms": 433,
+   "error": "failed to read stored session \"session-e6466491-c35b-4d45-aeba-ccc98758bc28\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-e6466491"
+  },
+  {
+   "id": "session-ec8b7a0e-b97c-4a9a-9518-b77ad513ed21",
+   "ok": false,
+   "ms": 354,
+   "error": "failed to read stored session \"session-ec8b7a0e-b97c-4a9a-9518-b77ad513ed21\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-ec8b7a0e"
+  },
+  {
+   "id": "session-ecb9f37d-e78d-4549-a114-a4b68e5c3b89",
+   "ok": false,
+   "ms": 371,
+   "error": "failed to read stored session \"session-ecb9f37d-e78d-4549-a114-a4b68e5c3b89\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-ecb9f37d-e78d-4549-a114-a4b68e5c3b8"
+  },
+  {
+   "id": "session-efa2d12e-5d00-4744-94b1-61f363f7ab54",
+   "ok": false,
+   "ms": 341,
+   "error": "failed to read stored session \"session-efa2d12e-5d00-4744-94b1-61f363f7ab54\": assistant/message 44 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-efa2d12e-5d00-4744-94b1-61f363f7ab54"
+  },
+  {
+   "id": "session-f01707fb-3173-4e93-b797-a25db7231fb2",
+   "ok": false,
+   "ms": 316,
+   "error": "failed to read stored session \"session-f01707fb-3173-4e93-b797-a25db7231fb2\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-f01707fb-3173-4e93-b797-a25db7231fb"
+  },
+  {
+   "id": "session-f05b968c-ec8f-49eb-bc88-904b1cab0e5d",
+   "ok": false,
+   "ms": 400,
+   "error": "failed to read stored session \"session-f05b968c-ec8f-49eb-bc88-904b1cab0e5d\": assistant/message 110 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-f05b968c-ec8f-49eb-bc88-904b1cab0e5"
+  },
+  {
+   "id": "session-f71ed82e-daa4-4324-8dcb-929a3960770d",
+   "ok": false,
+   "ms": 381,
+   "error": "failed to read stored session \"session-f71ed82e-daa4-4324-8dcb-929a3960770d\": assistant/message 160 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-f71ed82e-daa4-4324-8dcb-929a3960770"
+  },
+  {
+   "id": "session-f7f6f48f-b785-4efc-889d-74d78c426bb4",
+   "ok": false,
+   "ms": 320,
+   "error": "failed to read stored session \"session-f7f6f48f-b785-4efc-889d-74d78c426bb4\": assistant/message 90 does not cite its complete v1 chunk attempt; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-.dsh-relay-mirrors--/session-f7f6f48f-b785-4efc-889d-74d78c426bb4"
+  },
+  {
+   "id": "session-ffe1a9bc-ecd9-4618-b769-b722037a4321",
+   "ok": false,
+   "ms": 362,
+   "error": "failed to read stored session \"session-ffe1a9bc-ecd9-4618-b769-b722037a4321\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: compaction/summary 2507 shadowedRange end must identify an earlier event; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessio"
+  },
+  {
+   "id": "session-smoke-016747b3-1654-4a0d-8237-47a86f6b1c52",
+   "ok": false,
+   "ms": 320,
+   "error": "failed to read stored session \"session-smoke-016747b3-1654-4a0d-8237-47a86f6b1c52\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: tool/call 3 data lacks required member \"turn\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-"
+  },
+  {
+   "id": "session-smoke-46e4375a-fbf1-4782-a5d6-cd09e9d6f31f",
+   "ok": false,
+   "ms": 320,
+   "error": "failed to read stored session \"session-smoke-46e4375a-fbf1-4782-a5d6-cd09e9d6f31f\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: tool/call 3 data lacks required member \"turn\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-"
+  },
+  {
+   "id": "session-smoke-b6c3e73a-39a3-4973-9b86-bb46038e96f3",
+   "ok": false,
+   "ms": 329,
+   "error": "failed to read stored session \"session-smoke-b6c3e73a-39a3-4973-9b86-bb46038e96f3\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: tool/call 3 data lacks required member \"turn\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-"
+  },
+  {
+   "id": "session-smoke-c8ca0d15-929d-41d0-9a6b-ef59c76a14c3",
+   "ok": false,
+   "ms": 320,
+   "error": "failed to read stored session \"session-smoke-c8ca0d15-929d-41d0-9a6b-ef59c76a14c3\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: tool/call 3 data lacks required member \"turn\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-"
+  },
+  {
+   "id": "session-smoke-e8b8a07e-1782-4eb7-b2c7-acfd88dfd204",
+   "ok": false,
+   "ms": 321,
+   "error": "failed to read stored session \"session-smoke-e8b8a07e-1782-4eb7-b2c7-acfd88dfd204\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: tool/call 3 data lacks required member \"turn\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-"
+  },
+  {
+   "id": "session-smoke-ee41bb64-22bf-47e9-bc68-671a26e75629",
+   "ok": false,
+   "ms": 325,
+   "error": "failed to read stored session \"session-smoke-ee41bb64-22bf-47e9-bc68-671a26e75629\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: tool/call 3 data lacks required member \"turn\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-run/home/sessions/--Users-vito-data-"
+  }
+ ]
+}

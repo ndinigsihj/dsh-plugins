@@ -1,0 +1,34 @@
+{
+ "mode": "read",
+ "total": 3,
+ "opened": 1,
+ "failed": 2,
+ "errorClasses": [
+  "failed to read stored session \"407e40ff-c704-462a-a77d-c238708b17d6\": format v2 ",
+  "failed to read stored session \"53504eac-ad12-433c-b801-1597b22e1dd2\": @deepseek-"
+ ],
+ "results": [
+  {
+   "id": "407e40ff-c704-462a-a77d-c238708b17d6",
+   "ok": false,
+   "ms": 15,
+   "error": "failed to read stored session \"407e40ff-c704-462a-a77d-c238708b17d6\": format v2 surface before first step cannot acquire a system head without changing chronology; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-variants/probe/home/sessions/--Users-vito-data-dev-others--/407e40ff-c704-46"
+  },
+  {
+   "id": "53504eac-ad12-433c-b801-1597b22e1dd2",
+   "ok": false,
+   "ms": 296,
+   "error": "failed to read stored session \"53504eac-ad12-433c-b801-1597b22e1dd2\": @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Session: session/title 74847 data lacks required member \"messageSeqs\"; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-variants/probe/home/sessions/--User"
+  },
+  {
+   "id": "ae655a75-98e9-40db-8ad9-617f854433cb",
+   "ok": true,
+   "ms": 653,
+   "version": 4,
+   "events": 2810,
+   "cwd": "/Users/vito/data/dev/dsh-tui",
+   "agentPreset": "standard",
+   "parentSession": "356a040e-2f93-4089-9ec0-9ef6e124a17d"
+  }
+ ]
+}

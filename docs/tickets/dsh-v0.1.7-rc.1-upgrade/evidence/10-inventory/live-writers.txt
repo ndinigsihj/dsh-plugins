@@ -1,0 +1,9 @@
+# lsof snapshot: processes holding session.lock under /Users/vito/.dsh/sessions
+# captured: 2026-09-25T20:23:21+0800
+node	20964	/Users/vito/.dsh/sessions/--Users-vito-data-dev-dsh-plugins--/session-4eecf98c-ccc1-42dd-822a-3a96199aa62c/session.lock
+node	20964	/Users/vito/.dsh/sessions/--Users-vito-data-dev-dsh-plugins--/session-ac1c578f-73fa-4c50-b323-d12808fe22f2/session.lock
+node	20964	/Users/vito/.dsh/sessions/--Users-vito-data-dev-dsh-plugins--/session-b6275d64-102e-40ca-921d-1243a228d51f/session.lock
+node	20964	/Users/vito/.dsh/sessions/--Users-vito-data-dev-dsh-plugins--/session-f1fde978-d8ad-4ab7-9d3e-9c8a855f0f59/session.lock
+node	20964	/Users/vito/.dsh/sessions/--Users-vito-data-dev-dsh-plugins--/session-ad44082b-05b4-47c6-9480-0f9daef9e523/session.lock
+node	20964	/Users/vito/.dsh/sessions/--Users-vito-data-dev-dsh-plugins--/session-b6555d93-fffa-4b4b-89aa-ae277d5adda3/session.lock
+node	27538	/Users/vito/.dsh/sessions/--Users-vito-data-dev-mumu--/session-00f68804-ef05-47e4-ab2f-73b2b66e1bf1/session.lock

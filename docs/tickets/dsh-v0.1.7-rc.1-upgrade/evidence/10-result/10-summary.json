@@ -1,0 +1,19 @@
+{
+ "generatedAt": "2026-09-25T12:48:47.485Z",
+ "totals": {
+  "canonicalFiles": 1583,
+  "sessionIds": 1579,
+  "migrated": 8,
+  "stillOld": 1571,
+  "readableStillOld": 1353,
+  "unreadable": 218,
+  "liveAtInventory": 7,
+  "skipEntries": 232
+ },
+ "bySelectedGeneration": {
+  "v0": 902,
+  "v3": 669,
+  "v4": 8
+ },
+ "samples": 8
+}

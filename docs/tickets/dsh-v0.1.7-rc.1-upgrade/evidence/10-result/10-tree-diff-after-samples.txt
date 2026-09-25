@@ -1,0 +1,28 @@
+ADDED:
+--Users-vito-data-dev-dsh-plugins--/06bb5ecf-cf7b-4718-b2c1-08990d7a5a84/session.v4.jsonl.zstd	56392
+--Users-vito-data-dev-dsh-plugins--/c36a2dad-45fc-4215-9151-cea5f61c19d3/session.v4.jsonl.zstd	41909
+--Users-vito-data-dev-dsh-plugins--/session-296c9f42-846e-452e-a043-c779555b3fde/session.lock	0
+--Users-vito-data-dev-dsh-plugins--/session-296c9f42-846e-452e-a043-c779555b3fde/session.v4.jsonl.zstd	7229088
+--Users-vito-data-dev-dsh-plugins--/session-32c61738-46e0-4f35-ba92-9e0a624fb8c8/session.lock	0
+--Users-vito-data-dev-dsh-plugins--/session-32c61738-46e0-4f35-ba92-9e0a624fb8c8/session.v4.jsonl.zstd	2306742
+--Users-vito-data-dev-dsh-plugins--/session-66e1fe6c-e993-4cb3-bc0e-2c5c6aef2ba4/session.v4.jsonl.zstd	725113
+--Users-vito-data-dev-dsh-plugins--/session-ba1aed88-b181-46de-8a8e-4e1be083a539/session.v4.jsonl.zstd	1034106
+--Users-vito-data-dev-dsh-plugins--/session-f9c1b3b6-5817-43ac-b009-7b03f6f43f33/session.v4.jsonl.zstd	511205
+--Users-vito-data-dev-mumu--/6d4bc58f-8665-4572-a12d-be3d09db0410/session.v4.jsonl.zstd	776351
+--Users-vito-data-dev-mumu--/9fe72df2-588b-4fb6-86c6-ac799075dc52/session.lock	0
+--Users-vito-data-dev-mumu--/9fe72df2-588b-4fb6-86c6-ac799075dc52/session.v3.jsonl.zstd	430154
+--Users-vito-data-dev-mumu--/c5df8829-c475-46c3-9bbd-c625b1ba9bb3/session.lock	0
+--Users-vito-data-dev-mumu--/c5df8829-c475-46c3-9bbd-c625b1ba9bb3/session.v3.jsonl.zstd	496355
+--Users-vito-data-dev-mumu--/c7672dd9-1522-48a9-9654-9092d2f9a2d1/session.lock	0
+--Users-vito-data-dev-mumu--/c7672dd9-1522-48a9-9654-9092d2f9a2d1/session.v3.jsonl.zstd	401343
+REMOVED:
+
+CHANGED:
+--Users-vito-data-dev-dsh-plugins--/06bb5ecf-cf7b-4718-b2c1-08990d7a5a84/session.lock	size 0->0 mtime 1790171654->1790340478
+--Users-vito-data-dev-dsh-plugins--/c36a2dad-45fc-4215-9151-cea5f61c19d3/session.lock	size 0->0 mtime 1790171874->1790340479
+--Users-vito-data-dev-dsh-plugins--/session-66e1fe6c-e993-4cb3-bc0e-2c5c6aef2ba4/session.lock	size 0->0 mtime 1790265492->1790340485
+--Users-vito-data-dev-dsh-plugins--/session-ad44082b-05b4-47c6-9480-0f9daef9e523/session.v3.jsonl.zstd	size 462972->708214 mtime 1790338930->1790340622
+--Users-vito-data-dev-dsh-plugins--/session-ba1aed88-b181-46de-8a8e-4e1be083a539/session.lock	size 0->0 mtime 1790173572->1790340484
+--Users-vito-data-dev-dsh-plugins--/session-f9c1b3b6-5817-43ac-b009-7b03f6f43f33/session.lock	size 0->0 mtime 1790171252->1790340477
+--Users-vito-data-dev-mumu--/6d4bc58f-8665-4572-a12d-be3d09db0410/session.lock	size 0->0 mtime 1789914192->1790340486
+--Users-vito-data-dev-mumu--/session-00f68804-ef05-47e4-ab2f-73b2b66e1bf1/session.v3.jsonl.zstd	size 912354->1094564 mtime 1790338898->1790340631

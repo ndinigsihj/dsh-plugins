@@ -1,0 +1,24 @@
+{
+ "mode": "write",
+ "total": 2,
+ "opened": 0,
+ "failed": 2,
+ "errorClasses": [
+  "session \"session-aebc6e9c-577b-4a47-b08d-2f3c154888cf\" uses log format v4, but t",
+  "session \"06bb5ecf-cf7b-4718-b2c1-08990d7a5a84\" uses log format v4, but this harn"
+ ],
+ "results": [
+  {
+   "id": "session-aebc6e9c-577b-4a47-b08d-2f3c154888cf",
+   "ok": false,
+   "ms": 7,
+   "error": "session \"session-aebc6e9c-577b-4a47-b08d-2f3c154888cf\" uses log format v4, but this harness reads only v3: the log was written by a newer harness — upgrade the harness to open it (raw log: /tmp/dsh-t10-harness/home/sessions/--Users-vito--/session-aebc6e9c-577b-4a47-b08d-2f3c154888cf/session.v4.jsonl"
+  },
+  {
+   "id": "06bb5ecf-cf7b-4718-b2c1-08990d7a5a84",
+   "ok": false,
+   "ms": 3,
+   "error": "session \"06bb5ecf-cf7b-4718-b2c1-08990d7a5a84\" uses log format v4, but this harness reads only v3: the log was written by a newer harness — upgrade the harness to open it (raw log: /tmp/dsh-t10-harness/home/sessions/--Users-vito-data-dev-dsh-plugins--/06bb5ecf-cf7b-4718-b2c1-08990d7a5a84/session.v4."
+  }
+ ]
+}

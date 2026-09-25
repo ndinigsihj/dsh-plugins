@@ -1,0 +1,18 @@
+# 票据 10 — app 级 runner 恢复尝试（未成功，留档）
+
+日期：2026-09-25；宿主：0.1.7-rc.1（v24 全局）；均在隔离 home（/tmp）中对**副本**执行，真实 ~/.dsh 未参与。
+结论：stock headless one-shot runner 对带 preset 的会话一律拒绝（先于持久化写开），因此 app 级恢复不是本票可达的证据面；
+写开接缝（ctx.sessionPersistence.open(id,'write')）是 headless/TUI 恢复所用的同一接缝（C0 ③、上游 README）。
+
+## 尝试 1/2 — minimal-plus 会话（副本 06bb5ecf…）
+- home：base+headless 临时 profile；尝试 2 另用仓库 07 生成载体 stageBundleArtifact 装入。
+- 两次均 exit 1，stderr：
+    dsh: session "06bb5ecf-cf7b-4718-b2c1-08990d7a5a84" runs under agent preset "minimal-plus", which the one-shot runner does not compose
+    dsh: session "06bb5ecf-cf7b-4718-b2c1-08990d7a5a84" runs under agent preset "minimal-plus", which the one-shot runner does not compose
+- 会话目录：只存在源 session.v3.jsonl.zstd（79608 B），无 v4 后继；源 sha 前后一致：
+    before=8baf246e9d024cbb5d1368356a44fda6ee8e10e1fe32ce4c1d2b91a134bd3790 after=8baf246e9d024cbb5d1368356a44fda6ee8e10e1fe32ce4c1d2b91a134bd3790
+
+## 尝试 3 — 历史 liangshen-bash preset 的会话（副本 session-910fe7af…）
+- exit 1，stderr：
+    dsh: session "session-910fe7af-82f2-4498-9996-8a06f0bad841" runs under agent preset "liangshen-bash", which the one-shot runner does not compose
+- 无 v4 后继；源 sha 前后一致：before=2aee87d75dc7b534be25ff1ff4ac87ef05cce7ef87f71135b8ee5ace02b8a2e3 after=2aee87d75dc7b534be25ff1ff4ac87ef05cce7ef87f71135b8ee5ace02b8a2e3

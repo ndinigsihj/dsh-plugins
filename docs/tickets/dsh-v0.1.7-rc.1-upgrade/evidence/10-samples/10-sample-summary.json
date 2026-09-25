@@ -1,0 +1,157 @@
+{
+ "generatedAt": "2026-09-25T12:48:14.788Z",
+ "samples": [
+  {
+   "id": "session-f9c1b3b6-5817-43ac-b009-7b03f6f43f33",
+   "source": "--Users-vito-data-dev-dsh-plugins--/session-f9c1b3b6-5817-43ac-b009-7b03f6f43f33/session.v3.jsonl.zstd",
+   "sourceFormat": "v3",
+   "preRead": {
+    "version": 4,
+    "events": 641,
+    "parentSession": null
+   },
+   "writeOpen": "ok",
+   "sourceUnchanged": true,
+   "v4Size": "511205",
+   "postRead": {
+    "version": 4,
+    "events": 641,
+    "parentSession": null
+   },
+   "eventsPreserved": true
+  },
+  {
+   "id": "06bb5ecf-cf7b-4718-b2c1-08990d7a5a84",
+   "source": "--Users-vito-data-dev-dsh-plugins--/06bb5ecf-cf7b-4718-b2c1-08990d7a5a84/session.v3.jsonl.zstd",
+   "sourceFormat": "v3",
+   "preRead": {
+    "version": 4,
+    "events": 63,
+    "parentSession": "session-f9c1b3b6-5817-43ac-b009-7b03f6f43f33"
+   },
+   "writeOpen": "ok",
+   "sourceUnchanged": true,
+   "v4Size": "56392",
+   "postRead": {
+    "version": 4,
+    "events": 63,
+    "parentSession": "session-f9c1b3b6-5817-43ac-b009-7b03f6f43f33"
+   },
+   "eventsPreserved": true
+  },
+  {
+   "id": "c36a2dad-45fc-4215-9151-cea5f61c19d3",
+   "source": "--Users-vito-data-dev-dsh-plugins--/c36a2dad-45fc-4215-9151-cea5f61c19d3/session.v3.jsonl.zstd",
+   "sourceFormat": "v3",
+   "preRead": {
+    "version": 4,
+    "events": 27,
+    "parentSession": "b424f25c-369b-47ef-b33b-cb319fcb3dd4"
+   },
+   "writeOpen": "ok",
+   "sourceUnchanged": true,
+   "v4Size": "41909",
+   "postRead": {
+    "version": 4,
+    "events": 27,
+    "parentSession": "b424f25c-369b-47ef-b33b-cb319fcb3dd4"
+   },
+   "eventsPreserved": true
+  },
+  {
+   "id": "session-32c61738-46e0-4f35-ba92-9e0a624fb8c8",
+   "source": "--Users-vito-data-dev-dsh-plugins--/session-32c61738-46e0-4f35-ba92-9e0a624fb8c8/session.jsonl.zstd",
+   "sourceFormat": "v0",
+   "preRead": {
+    "version": 4,
+    "events": 3365,
+    "parentSession": null
+   },
+   "writeOpen": "ok",
+   "sourceUnchanged": true,
+   "v4Size": "2306742",
+   "postRead": {
+    "version": 4,
+    "events": 3365,
+    "parentSession": null
+   },
+   "eventsPreserved": true
+  },
+  {
+   "id": "session-296c9f42-846e-452e-a043-c779555b3fde",
+   "source": "--Users-vito-data-dev-dsh-plugins--/session-296c9f42-846e-452e-a043-c779555b3fde/session.jsonl.zstd",
+   "sourceFormat": "v0",
+   "preRead": {
+    "version": 4,
+    "events": 13870,
+    "parentSession": "session-73dfaa4b-b6c2-40ec-a804-81ca1470202d"
+   },
+   "writeOpen": "ok",
+   "sourceUnchanged": true,
+   "v4Size": "7229088",
+   "postRead": {
+    "version": 4,
+    "events": 13870,
+    "parentSession": "session-73dfaa4b-b6c2-40ec-a804-81ca1470202d"
+   },
+   "eventsPreserved": true
+  },
+  {
+   "id": "session-ba1aed88-b181-46de-8a8e-4e1be083a539",
+   "source": "--Users-vito-data-dev-dsh-plugins--/session-ba1aed88-b181-46de-8a8e-4e1be083a539/session.v3.jsonl.zstd",
+   "sourceFormat": "v3",
+   "preRead": {
+    "version": 4,
+    "events": 1143,
+    "parentSession": null
+   },
+   "writeOpen": "ok",
+   "sourceUnchanged": true,
+   "v4Size": "1034106",
+   "postRead": {
+    "version": 4,
+    "events": 1143,
+    "parentSession": null
+   },
+   "eventsPreserved": true
+  },
+  {
+   "id": "session-66e1fe6c-e993-4cb3-bc0e-2c5c6aef2ba4",
+   "source": "--Users-vito-data-dev-dsh-plugins--/session-66e1fe6c-e993-4cb3-bc0e-2c5c6aef2ba4/session.v3.jsonl.zstd",
+   "sourceFormat": "v3",
+   "preRead": {
+    "version": 4,
+    "events": 712,
+    "parentSession": null
+   },
+   "writeOpen": "ok",
+   "sourceUnchanged": true,
+   "v4Size": "725113",
+   "postRead": {
+    "version": 4,
+    "events": 712,
+    "parentSession": null
+   },
+   "eventsPreserved": true
+  },
+  {
+   "id": "6d4bc58f-8665-4572-a12d-be3d09db0410",
+   "source": "--Users-vito-data-dev-mumu--/6d4bc58f-8665-4572-a12d-be3d09db0410/session.v3.jsonl.zstd",
+   "sourceFormat": "v3",
+   "preRead": {
+    "version": 4,
+    "events": 929,
+    "parentSession": "session-15fb0ea9-d45b-40dc-8ad0-f95a7948be3c"
+   },
+   "writeOpen": "ok",
+   "sourceUnchanged": true,
+   "v4Size": "776351",
+   "postRead": {
+    "version": 4,
+    "events": 929,
+    "parentSession": "session-15fb0ea9-d45b-40dc-8ad0-f95a7948be3c"
+   },
+   "eventsPreserved": true
+  }
+ ]
+}

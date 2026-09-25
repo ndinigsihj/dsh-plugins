@@ -1,0 +1,17 @@
+{
+ "mode": "write",
+ "total": 1,
+ "opened": 0,
+ "failed": 1,
+ "errorClasses": [
+  "session \"session-aebc6e9c-577b-4a47-b08d-2f3c154888cf\" is already owned by an ac"
+ ],
+ "results": [
+  {
+   "id": "session-aebc6e9c-577b-4a47-b08d-2f3c154888cf",
+   "ok": false,
+   "ms": 5,
+   "error": "session \"session-aebc6e9c-577b-4a47-b08d-2f3c154888cf\" is already owned by an active write handle"
+  }
+ ]
+}

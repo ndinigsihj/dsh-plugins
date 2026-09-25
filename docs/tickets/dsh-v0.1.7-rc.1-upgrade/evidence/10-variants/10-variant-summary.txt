@@ -1,0 +1,12 @@
+read: 3 ok=1 failed=2
+write: 3 ok=1 failed=2
+ read  407e40ff-c70 failed to read stored session "407e40ff-c704-462a-a77d-c238708b17d6": 
+ read  53504eac-ad1 failed to read stored session "53504eac-ad12-433c-b801-1597b22e1dd2": 
+ read  ae655a75-98e v4 events=2810
+ write 407e40ff-c70 format v2 surface before first step cannot acquire a system head witho
+ write 53504eac-ad1 @deepseek-ai/dsh-session-format-v0-to-v1 refuses this format v0 Sessio
+ write ae655a75-98e ok
+ADDED: /tmp/dsh-t10-variants/sessions/--Users-vito-data-dev-dsh-tui--/53504eac-ad12-433c-b801-1597b22e1dd2/session.lock
+ADDED: /tmp/dsh-t10-variants/sessions/--Users-vito-data-dev-dsh-tui--/ae655a75-98e9-40db-8ad9-617f854433cb/session.lock
+ADDED: /tmp/dsh-t10-variants/sessions/--Users-vito-data-dev-dsh-tui--/ae655a75-98e9-40db-8ad9-617f854433cb/session.v4.jsonl.zstd
+ADDED: /tmp/dsh-t10-variants/sessions/--Users-vito-data-dev-others--/407e40ff-c704-462a-a77d-c238708b17d6/session.lock

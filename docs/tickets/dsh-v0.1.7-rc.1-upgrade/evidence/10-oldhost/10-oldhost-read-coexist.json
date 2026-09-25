@@ -1,0 +1,45 @@
+{
+ "mode": "read",
+ "total": 5,
+ "opened": 0,
+ "failed": 5,
+ "errorClasses": [
+  "session \"session-aebc6e9c-577b-4a47-b08d-2f3c154888cf\" not found",
+  "session \"06bb5ecf-cf7b-4718-b2c1-08990d7a5a84\" not found",
+  "session \"session-25054cd5-ca70-4936-9202-55adeabc427a\" not found",
+  "failed to read stored session \"06d87d27-bc58-408b-9f42-6af1e5e44516\": subagent/d",
+  "stored session \"ae655a75-98e9-40db-8ad9-617f854433cb\" is corrupt: session \"ae655"
+ ],
+ "results": [
+  {
+   "id": "session-aebc6e9c-577b-4a47-b08d-2f3c154888cf",
+   "ok": false,
+   "ms": 8,
+   "error": "session \"session-aebc6e9c-577b-4a47-b08d-2f3c154888cf\" not found"
+  },
+  {
+   "id": "06bb5ecf-cf7b-4718-b2c1-08990d7a5a84",
+   "ok": false,
+   "ms": 3,
+   "error": "session \"06bb5ecf-cf7b-4718-b2c1-08990d7a5a84\" not found"
+  },
+  {
+   "id": "session-25054cd5-ca70-4936-9202-55adeabc427a",
+   "ok": false,
+   "ms": 3,
+   "error": "session \"session-25054cd5-ca70-4936-9202-55adeabc427a\" not found"
+  },
+  {
+   "id": "06d87d27-bc58-408b-9f42-6af1e5e44516",
+   "ok": false,
+   "ms": 6,
+   "error": "failed to read stored session \"06d87d27-bc58-408b-9f42-6af1e5e44516\": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t10-harness/home/sessions/--Users-vito-data-dev-dsh-plugins--/06d87d27-bc58-408b-9f42-6af1e5e44516/session.jsonl."
+  },
+  {
+   "id": "ae655a75-98e9-40db-8ad9-617f854433cb",
+   "ok": false,
+   "ms": 124,
+   "error": "stored session \"ae655a75-98e9-40db-8ad9-617f854433cb\" is corrupt: session \"ae655a75-98e9-40db-8ad9-617f854433cb\": stored log is corrupt: SessionFormatError: released Session row 5085 has seq gap (expected 252976, got 252973) (raw log: /tmp/dsh-t10-harness/home/sessions/--Users-vito-data-dev-dsh-tui-"
+  }
+ ]
+}
