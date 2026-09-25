@@ -1,0 +1,8 @@
+{
+ "total": 72,
+ "opened": 0,
+ "failed": 72,
+ "errorClasses": [
+  "unsupported descriptor version 2"
+ ]
+}

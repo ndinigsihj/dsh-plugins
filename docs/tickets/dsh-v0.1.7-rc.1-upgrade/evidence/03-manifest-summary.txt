@@ -1,0 +1,20 @@
+backup root: /Users/vito/.dsh/upgrade-backups/dsh-0.1.7-rc.1-pre-migration-20260925-113044
+snapshot window: 2026-09-25T11:32:35+0800 -> 2026-09-25T11:33:12+0800
+
+manifests (sha256  file)
+8d46badf6e18b29df26eed688575e29eeb9d07d60a7c4c2fcca67af6050045bc  sessions.dst.tsv
+caf59eebe2790c94310c8ab682155bcca4c0674a84e058e561fe58c14b5ba886  attachments.dst.tsv
+645be99425e6fedecab6aab3afe0757239549755b1b6487e27aa31f9bd7216b6  settings.dst.tsv
+a39d60fe57aa63e9d2344a422e72da7a95969ac1c1c8498ceb01a4d00533a2b9  agent-presets.dst.tsv
+65095366735988b54bf12613e059bd6c26b56d267d33afb63c04fcde7db5c17b  profiles.dst.tsv
+
+sessions                     files=2171  dirs=1561  symlinks=0  bytes=678425195
+attachments                  files=3302  dirs=259   symlinks=0  bytes=1305205875
+settings.yaml                files=1     dirs=0     symlinks=0  bytes=4220
+agent-presets                files=10    dirs=4     symlinks=1  bytes=67364
+profiles(minus node_modules) files=33    dirs=13    symlinks=0  bytes=70287
+
+sessions content: logs=v0=908 v3=628 locks=628 other=7
+excluded/derived: attachments/v1/request-images: files=99 bytes=26113746;attachments/v1/tmp: files=0;profiles/node_modules (excluded): dirs=100;storages (not part of restore face):  14M;
+host package: files=25381 size=279M diff-rq=identical version=0.1.5-rc.2 dump-config exit=0 lines=332
+writer snapshot during backup: 23667 /Users/vito/data/dev/dsh-plugins

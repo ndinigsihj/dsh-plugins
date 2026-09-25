@@ -1,0 +1,24 @@
+[2026-09-25 11:32:35 +0800] == snapshot start ==
+23667 /Users/vito/data/dev/dsh-plugins
+[2026-09-25 11:32:36 +0800] == source manifests before ==
+[2026-09-25 11:32:41 +0800] == copy ==
+[2026-09-25 11:32:55 +0800] == source manifests after + dest manifests ==
+[2026-09-25 11:33:04 +0800] == checks: no writer wrote during the window; copy == source ==
+[2026-09-25 11:33:04 +0800] PASS  sessions source byte-stable across backup window
+[2026-09-25 11:33:04 +0800] PASS  sessions backup == source
+[2026-09-25 11:33:04 +0800] PASS  settings.yaml byte-stable
+[2026-09-25 11:33:04 +0800] PASS  settings.yaml backup == source
+[2026-09-25 11:33:04 +0800] PASS  agent-presets byte-stable
+[2026-09-25 11:33:04 +0800] PASS  agent-presets backup == source
+[2026-09-25 11:33:04 +0800] PASS  attachments source byte-stable
+[2026-09-25 11:33:04 +0800] PASS  attachments backup == source (excl. request-images/ tmp/)
+[2026-09-25 11:33:04 +0800] PASS  profiles source byte-stable
+[2026-09-25 11:33:04 +0800] PASS  profiles backup == source (excl. node_modules)
+[2026-09-25 11:33:04 +0800] == zstd integrity of every backed-up session log ==
+[2026-09-25 11:33:11 +0800] PASS  all session logs pass zstd -t
+[2026-09-25 11:33:11 +0800] == excluded / derived surfaces ==
+attachments/v1/request-images: files=99 bytes=26113746
+attachments/v1/tmp: files=0
+profiles/node_modules (excluded): dirs=100
+storages (not part of restore face):  14M
+[2026-09-25 11:33:12 +0800] == snapshot end; fail=0 ==

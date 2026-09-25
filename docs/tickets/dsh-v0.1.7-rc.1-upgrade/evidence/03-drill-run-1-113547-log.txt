@@ -1,0 +1,19 @@
+[2026-09-25 11:35:47 +0800] == drill root: /tmp/dsh-t03-drill-20260925-113547 ==
+[2026-09-25 11:35:47 +0800] == restore backup into scratch ==
+[2026-09-25 11:36:07 +0800] PASS  restored sessions byte-identical to backup
+[2026-09-25 11:36:07 +0800] PASS  restored attachments byte-identical to backup
+[2026-09-25 11:36:07 +0800] == old-host scratch profile (dsh-base only) + drill runner ==
+[2026-09-25 11:36:07 +0800] == open representative sessions ==
+[2026-09-25 11:36:14 +0800] FAIL  probe exit=1 for b4cfcbf7-cd3b-4fdb-97a3-72aa746a4504
+file:///Users/vito/.dsh/upgrade-backups/dsh-0.1.7-rc.1-pre-migration-20260925-113044/host-package/dsh-0.1.5-rc.2/node_modules/@deepseek-ai/dsh-session-query/lib/index.js:296
+		throw new SessionQueryError(`failed to read stored session "${sessionId}": ${errorMessage$1(error)}`, "SESSION_QUERY_PERSISTENCE_FAILED", { cause: error });
+		      ^
+
+SessionQueryError: failed to read stored session "b4cfcbf7-cd3b-4fdb-97a3-72aa746a4504": subagent/descriptor 0 uses unsupported descriptor version 2; source v0 artifact remains unchanged (raw log: /tmp/dsh-t03-drill-20260925-113547/home/sessions/--Users-vito-data-dev-dsh-plugins--/b4cfcbf7-cd3b-4fdb-97a3-72aa746a4504/session.jsonl.zstd)
+[2026-09-25 11:36:20 +0800] == attachment references of opened sessions resolve in restored objects/ ==
+[2026-09-25 11:36:20 +0800] == scratch sessions unchanged by the read drill ==
+[2026-09-25 11:36:22 +0800] PASS  read opens did not modify scratch sessions
+[2026-09-25 11:36:22 +0800] == real source tree untouched by the drill (only the live conversation session may change) ==
+[2026-09-25 11:36:27 +0800] PASS  real attachments dir unchanged
+[2026-09-25 11:36:27 +0800] PASS  real profiles dir unchanged
+[2026-09-25 11:36:27 +0800] == drill done; fail=1; scratch=/tmp/dsh-t03-drill-20260925-113547 ==

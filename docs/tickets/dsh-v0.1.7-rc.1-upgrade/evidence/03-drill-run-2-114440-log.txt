@@ -1,0 +1,32 @@
+[2026-09-25 11:42:58 +0800] == drill root: /tmp/dsh-t03-drill-20260925-114258 ==
+[2026-09-25 11:42:58 +0800] == restore backup into scratch ==
+[2026-09-25 11:43:19 +0800] PASS  restored sessions byte-identical to backup
+[2026-09-25 11:43:19 +0800] PASS  restored attachments byte-identical to backup
+[2026-09-25 11:43:19 +0800] == old-host scratch profile (dsh-base only) + drill runner ==
+[2026-09-25 11:43:19 +0800] == open representative sessions (old host 0.1.5-rc.2, read path) ==
+[2026-09-25 11:43:34 +0800] == attachment references of opened sessions resolve in restored objects/ ==
+[2026-09-25 11:43:34 +0800] == pre-existing old-host blind spot: descriptor-v2 v0 subagent sessions ==
+RECORD  descriptor-v2 set: total=72 opened=0 failed=72 classes=["unsupported descriptor version 2"]
+[2026-09-25 11:44:02 +0800] == scratch sessions unchanged by the read drill ==
+[2026-09-25 11:44:04 +0800] PASS  read opens did not modify scratch sessions
+[2026-09-25 11:44:04 +0800] == real source tree untouched by the drill (only the live conversation session may change) ==
+[2026-09-25 11:44:11 +0800] PASS  real attachments dir unchanged
+[2026-09-25 11:44:11 +0800] PASS  real profiles dir unchanged
+[2026-09-25 11:44:11 +0800] == drill done; fail=1; scratch=/tmp/dsh-t03-drill-20260925-114258 ==
+[2026-09-25 11:44:40 +0800] == drill root: /tmp/dsh-t03-drill-20260925-114258 ==
+[2026-09-25 11:44:40 +0800] == restore backup into scratch ==
+[2026-09-25 11:44:45 +0800] PASS  restored sessions byte-identical to backup
+[2026-09-25 11:44:45 +0800] PASS  restored attachments byte-identical to backup
+[2026-09-25 11:44:45 +0800] == old-host scratch profile (dsh-base only) + drill runner ==
+[2026-09-25 11:44:45 +0800] == open representative sessions (old host 0.1.5-rc.2, read path) ==
+[2026-09-25 11:44:57 +0800] == v0 subagent child linkage (child log in backup; header points at the opened root) ==
+[2026-09-25 11:44:57 +0800] PASS  v0 subagent child b4cfcbf7 present in backup, header parent=session-32c61738 (child log is in the descriptor-v2 blind spot)
+[2026-09-25 11:44:57 +0800] == attachment references of opened sessions resolve in restored objects/ ==
+[2026-09-25 11:44:57 +0800] == pre-existing old-host blind spot: descriptor-v2 v0 subagent sessions ==
+RECORD  descriptor-v2 set: total=72 opened=0 failed=72 classes=["unsupported descriptor version 2"]
+[2026-09-25 11:45:20 +0800] == scratch sessions unchanged by the read drill ==
+[2026-09-25 11:45:21 +0800] PASS  read opens did not modify scratch sessions
+[2026-09-25 11:45:21 +0800] == real source tree untouched by the drill (only the live conversation session may change) ==
+[2026-09-25 11:45:27 +0800] PASS  real attachments dir unchanged
+[2026-09-25 11:45:27 +0800] PASS  real profiles dir unchanged
+[2026-09-25 11:45:27 +0800] == drill done; fail=0; scratch=/tmp/dsh-t03-drill-20260925-114258 ==

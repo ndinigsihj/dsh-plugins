@@ -1,0 +1,5 @@
+23667 /Users/vito/.dsh/sessions/--Users-vito-data-dev-dsh-plugins--/session-66e1fe6c-e993-4cb3-bc0e-2c5c6aef2ba4/session.lock
+23667 /Users/vito/.dsh/sessions/--Users-vito-data-dev-dsh-plugins--/session-6cc0d773-153e-459a-8b5c-0f3c002603da/session.lock
+23667 /Users/vito/.dsh/sessions/--Users-vito-data-dev-dsh-plugins--/session-6e75a36e-8819-4d9c-9861-c3815edf3b33/session.lock
+23667 /Users/vito/.dsh/sessions/--Users-vito-data-dev-dsh-plugins--/session-b9a6719e-a859-4dd1-8c20-c9d5044990ea/session.lock
+23667 /Users/vito/.dsh/sessions/--Users-vito-data-dev-dsh-plugins--/session-ba1aed88-b181-46de-8a8e-4e1be083a539/session.lock
