@@ -9,6 +9,7 @@
 import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { mutateProfileBundles } from "./agent-preset-bundle.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
 
@@ -29,6 +30,18 @@ export function seedHeadlessProfile(home, { name = "headless", bundles = HEADLES
   const cordisPath = join(profileDir, "cordis.yml");
   if (!existsSync(cordisPath)) writeFileSync(cordisPath, "# dsh profile root — an empty entry list.\n[]\n");
   mkdirSync(join(home, "sessions"), { recursive: true });
+  return profileDir;
+}
+
+/**
+ * 精确设置隔离 profile 的 `dsh.profile.bundles`（保留清单其它字段；缺清单则建骨架）。
+ *
+ * 闸门的 T2 场景共享同一个临时 home：每个场景进程按自己的组合面重设 bundles，
+ * 才不会被上一个场景的选择残留影响（预设 bundle 由 stagePresetBundle 随后追加）。
+ */
+export function setProfileBundles(home, bundles, name = "headless") {
+  const profileDir = join(home, "profiles", name);
+  mutateProfileBundles(profileDir, () => bundles);
   return profileDir;
 }
 

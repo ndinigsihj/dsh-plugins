@@ -15,7 +15,17 @@
  *   scripts/tui-pty-smoke.sh --negative-control route           # 红路径：跳过 /model 切换
  *   scripts/tui-pty-smoke.sh --negative-control drop-assertion  # 红路径：模拟断言被删
  *   scripts/tui-pty-smoke.sh --keep-temp                        # 保留临时 home 排查
+ *   scripts/tui-pty-smoke.sh --profile tui-team \
+ *     --extra-bundle @deepseek-ai/dsh-experimental-agent-team-profile \
+ *     --probe-tools                                             # 票据 08：Team 叠加实测
  *   node scripts/tui-pty-smoke.mjs                              # 直跑（自带临时 home 与锁）
+ *
+ * 参数化（票据 08）：`--profile <名>`（默认 tui-dev）、`--source-profile <名>`（默认 tui-dev，
+ * 派生 profile 的只读源）、`--preset <id>`（默认 minimal-plus，透传给覆盖层钉选）、
+ * `--extra-bundle <包名>`（可重复；追加到派生 profile 的 bundles）、
+ * `--probe-tools`（追加 gates/stub/tool-probe.patch.yml，把每个 Agent 的实际工具面写进
+ * 临时 home 的 tool-surface.json 并放进报告）。非默认 profile 从 `--source-profile`
+ * 的真实 profile 渲染派生，真实源只读。
  *
  * 退出码：0 全过 / 1 任一断言失败 / 2 环境前置不满足（PTY 或宿主内嵌依赖不可用、
  * 真实组合渲染失败）。报告 JSON 默认落
@@ -53,6 +63,7 @@ import { SESSION_FORMAT_VERSION } from "@deepseek-ai/dsh-session";
 import { EXIT, createAssertions, run, writeReport } from "../gates/gate-helpers.mjs";
 import { RenderRealError, renderRealComposition } from "../gates/composition/render-real.mjs";
 import { MANIFEST_PATH, readManifest, resolveDeploymentRoot } from "../gates/manifest.mjs";
+import { TEAM_BUNDLE } from "../gates/team-bundle.mjs";
 import { installAnchor } from "./host-runtime.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/u, "");
@@ -60,8 +71,12 @@ const HOST_ANCHOR = installAnchor();
 /** 宿主 CLI 入口：`--expose-internals` 必须挂在它前面（见 PtyDriver 注释）。 */
 const HOST_BIN = join(dirname(HOST_ANCHOR), "lib", "bin.js");
 const OVERLAY = join(REPO_ROOT, "gates", "stub", "pty-smoke.patch.yml");
-const PRESET = "minimal-plus";
-const PROFILE = "tui-dev";
+/** 工具面探针覆盖层（票据 08）：只在 --probe-tools 时追加。 */
+const PROBE_OVERLAY = join(REPO_ROOT, "gates", "stub", "tool-probe.patch.yml");
+const DEFAULT_PROFILE = "tui-dev";
+const DEFAULT_PRESET = "minimal-plus";
+/** 派生 profile 的默认只读源（票据 08 的 tui-team 实测从真实 tui-dev 派生）。 */
+const DEFAULT_SOURCE_PROFILE = "tui-dev";
 const COLS = 120;
 const ROWS = 30;
 const TERM = "xterm-256color";
@@ -105,29 +120,71 @@ class SmokeError extends Error {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function parseCli(argv) {
-  const options = {
+function defaultOptions() {
+  return {
     reportPath: process.env.PTY_SMOKE_REPORT,
     negativeControl: process.env.PTY_SMOKE_NEGATIVE_CONTROL || undefined,
     keepTemp: process.env.PTY_SMOKE_KEEP === "1",
     tempRoot: process.env.PTY_SMOKE_TEMP,
+    profile: process.env.PTY_SMOKE_PROFILE || DEFAULT_PROFILE,
+    sourceProfile: process.env.PTY_SMOKE_SOURCE_PROFILE || DEFAULT_SOURCE_PROFILE,
+    preset: process.env.PTY_SMOKE_PRESET || DEFAULT_PRESET,
+    extraBundles: (process.env.PTY_SMOKE_EXTRA_BUNDLES ?? "")
+      .split(",")
+      .map((name) => name.trim())
+      .filter((name) => name.length > 0),
+    probeTools: process.env.PTY_SMOKE_PROBE_TOOLS === "1",
   };
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index];
-    if (arg === "--json" || arg === "--report") {
-      options.reportPath = argv[index + 1];
-      index += 1;
-    } else if (arg === "--negative-control") {
-      options.negativeControl = argv[index + 1];
-      index += 1;
-    } else if (arg === "--keep-temp") {
+}
+
+/** 消费一个参数，返回下一个待读下标；未知 flag 抛 SmokeError，--help 直接退出。 */
+function consumeArg(options, argv, index) {
+  const arg = argv[index];
+  const takeValue = (key) => {
+    options[key] = argv[index + 1];
+    return index + 1;
+  };
+  switch (arg) {
+    case "--json":
+    case "--report":
+      return takeValue("reportPath");
+    case "--negative-control":
+      return takeValue("negativeControl");
+    case "--keep-temp":
       options.keepTemp = true;
-    } else if (arg === "-h" || arg === "--help") {
+      return index;
+    case "--profile":
+      return takeValue("profile");
+    case "--source-profile":
+      return takeValue("sourceProfile");
+    case "--preset":
+      return takeValue("preset");
+    case "--extra-bundle":
+      options.extraBundles.push(argv[index + 1]);
+      return index + 1;
+    case "--probe-tools":
+      options.probeTools = true;
+      return index;
+    case "-h":
+    case "--help":
       process.stdout.write(`${readHelp()}\n`);
       process.exit(EXIT.pass);
-    } else {
+      break;
+    default:
       throw new SmokeError(`unknown flag: ${arg}`);
-    }
+  }
+}
+
+function validateOptions(options) {
+  for (const [label, value] of [
+    ["--profile", options.profile],
+    ["--source-profile", options.sourceProfile],
+    ["--preset", options.preset],
+  ]) {
+    if (typeof value !== "string" || value.length === 0) throw new SmokeError(`${label} expects a non-empty name`);
+  }
+  if (options.extraBundles.some((name) => typeof name !== "string" || name.length === 0)) {
+    throw new SmokeError("--extra-bundle expects a package name");
   }
   if (options.reportPath === undefined || options.reportPath === "") {
     options.reportPath = join(
@@ -140,6 +197,14 @@ function parseCli(argv) {
   if (options.negativeControl !== undefined && !NEGATIVE_CONTROLS.has(options.negativeControl)) {
     throw new SmokeError(`--negative-control expects route|drop-assertion (got '${options.negativeControl}')`);
   }
+}
+
+function parseCli(argv) {
+  const options = defaultOptions();
+  for (let index = 0; index < argv.length; index += 1) {
+    index = consumeArg(options, argv, index);
+  }
+  validateOptions(options);
   return options;
 }
 
@@ -214,6 +279,15 @@ function readSessionLog(file) {
   return { header, events: records.filter((record) => record.type !== "session"), tornStart, corrupt };
 }
 
+/** 会话目录里最新一版 `session.v<N>.jsonl.zstd`（按数字版本序，v10 不排在 v9 前）。 */
+function latestSessionLogName(dir) {
+  const candidates = readdirSync(dir)
+    .map((name) => ({ name, version: Number(/^session\.v(\d+)\.jsonl\.zstd$/u.exec(name)?.[1] ?? Number.NaN) }))
+    .filter((entry) => Number.isSafeInteger(entry.version));
+  if (candidates.length === 0) return undefined;
+  return candidates.reduce((best, entry) => (entry.version > best.version ? entry : best)).name;
+}
+
 /** 临时 home 下所有 `session-*` 会话日志（含 header 与事件）。 */
 function listSessionLogs(home) {
   const root = join(home, "sessions");
@@ -224,9 +298,14 @@ function listSessionLogs(home) {
     if (!statSync(slugDir).isDirectory()) continue;
     for (const entry of readdirSync(slugDir)) {
       if (!entry.startsWith("session-")) continue;
-      const file = join(slugDir, entry, "session.v3.jsonl.zstd");
-      if (!existsSync(file)) continue;
-      out.push({ id: entry, dir: join(slugDir, entry), file, ...readSessionLog(file) });
+      const sessionDir = join(slugDir, entry);
+      if (!statSync(sessionDir).isDirectory()) continue;
+      // 0.1.7 宿主写 `session.v4.jsonl.zstd`（0.1.5 是 v3）；按版本后缀就地发现，
+      // 不把物理文件名写死（票据 10 的格式迁移）。
+      const name = latestSessionLogName(sessionDir);
+      if (name === undefined) continue;
+      const file = join(sessionDir, name);
+      out.push({ id: entry, dir: sessionDir, file, ...readSessionLog(file) });
     }
   }
   return out;
@@ -238,6 +317,23 @@ const requestHeaderRoutes = (log) =>
     .map((event) => event.data?.header?.config)
     .map((config) => (config === undefined ? undefined : `${config.provider}/${config.model}`));
 
+/** 会话日志里最后一个 `request/header` 的模型可见工具名（promotion 后的真实请求面）。 */
+function lastRequestHeaderTools(log) {
+  if (log === undefined) return [];
+  const header = log.events.filter((event) => event.type === "request/header").at(-1);
+  return (header?.data?.header?.tools ?? []).map((tool) => tool.name).sort();
+}
+
+/** 读取工具面探针写出的 JSON；缺失/损坏返回 undefined（断言阶段据此判红）。 */
+function readToolProbe(path) {
+  if (!existsSync(path)) return undefined;
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    return undefined;
+  }
+}
+
 function quantile(values, q) {
   if (values.length === 0) return null;
   const sorted = [...values].sort((a, b) => a - b);
@@ -248,7 +344,7 @@ function quantile(values, q) {
 /* ── PTY 驱动 ───────────────────────────────────────────────────────────── */
 
 class PtyDriver {
-  constructor({ pty, TerminalCtor, home, ws, scenarioPath, label }) {
+  constructor({ pty, TerminalCtor, home, ws, scenarioPath, label, profile, preset, probeOut }) {
     this.label = label;
     this.term = new TerminalCtor({ cols: COLS, rows: ROWS, allowProposedApi: true, scrollback: 2000 });
     this.started = Date.now();
@@ -262,26 +358,28 @@ class PtyDriver {
     // `patchReload: live`，CLI 会挂 cordis-plugin-hmr，该插件要求 node 带
     // `--expose-internals`，否则启动即 `--expose-internals is required for HMR service`
     // （2026-09-22 实测）。真实启动器（tui-stable / 1mdsh-dev）同样带这个标志。
-    this.child = pty.spawn(
-      process.execPath,
-      ["--expose-internals", HOST_BIN, "--profile", PROFILE, "--patch", OVERLAY],
-      {
-        name: TERM,
-        cols: COLS,
-        rows: ROWS,
-        cwd: ws,
-        env: {
-          ...env,
-          HOME: home,
-          DSH_HOME: home,
-          TERM,
-          COLORTERM: "truecolor",
-          CC_TUI_PRESET: PRESET,
-          STUB_SCENARIO_FILE: scenarioPath,
-          STUB_MODELS: `${STUB_MODEL},${STUB_MODEL_ALT}`,
-        },
+    // `--patch` 可重复：probe 覆盖层只在 --probe-tools 时追加。
+    const args = ["--expose-internals", HOST_BIN, "--profile", profile, "--patch", OVERLAY];
+    if (probeOut !== undefined) args.push("--patch", PROBE_OVERLAY);
+    this.child = pty.spawn(process.execPath, args, {
+      name: TERM,
+      cols: COLS,
+      rows: ROWS,
+      cwd: ws,
+      env: {
+        ...env,
+        HOME: home,
+        DSH_HOME: home,
+        TERM,
+        COLORTERM: "truecolor",
+        CC_TUI_PRESET: preset,
+        // pty-smoke.patch.yml 的 tui-runner.preset 读这个变量（默认 minimal-plus）。
+        PTY_SMOKE_PRESET: preset,
+        STUB_SCENARIO_FILE: scenarioPath,
+        STUB_MODELS: `${STUB_MODEL},${STUB_MODEL_ALT}`,
+        ...(probeOut === undefined ? {} : { PTY_SMOKE_PROBE_OUT: probeOut }),
       },
-    );
+    });
     this.exitedPromise = new Promise((resolve) => {
       this.child.onExit((event) => {
         this.exited = event;
@@ -433,13 +531,17 @@ function loadHostDeps() {
   return { anchor, pty, Terminal };
 }
 
-function renderComposition({ tempHome, anchor }) {
+function renderComposition({ tempHome, anchor, options }) {
   const manifest = existsSync(MANIFEST_PATH) ? readManifest(MANIFEST_PATH) : { status: "missing" };
-  const deploymentEntry = manifest.manifest?.deployment?.[PRESET];
+  const deploymentEntry = manifest.manifest?.deployment?.[options.preset];
   return renderRealComposition({
     repoRoot: REPO_ROOT,
     tempHome,
-    presetName: PRESET,
+    presetName: options.preset,
+    // 目标名与只读源可分开：票 08 用真实 tui-dev 派生 tui-team（源 profile 只读）。
+    profileName: options.profile,
+    sourceProfileName: options.sourceProfile,
+    extraBundles: options.extraBundles,
     deploymentRoot: deploymentEntry === undefined ? undefined : resolveDeploymentRoot(deploymentEntry, homedir()),
     installAnchor: anchor,
     env: process.env,
@@ -459,16 +561,26 @@ async function runBoot1(ctx) {
     ws: ctx.wsReal,
     scenarioPath: ctx.scenario1,
     label: "boot1",
+    profile: ctx.options.profile,
+    preset: ctx.options.preset,
+    probeOut: ctx.probeOut,
   });
   ctx.drivers.push(driver);
 
   const banner = await driver.waitScreen("banner", (screen) =>
-    screen.includes("dsh-tui v") && screen.includes(`${STUB_PROVIDER}/${STUB_MODEL}`) && screen.includes(`preset ${PRESET}`),
+    screen.includes("dsh-tui v") && screen.includes(`${STUB_PROVIDER}/${STUB_MODEL}`) && screen.includes(`preset ${ctx.options.preset}`),
   );
   ctx.snapshots.push({ label: "boot1.banner", text: driver.screen() });
   if (!banner.ok) throw new SmokeError("boot1: banner not reached", banner);
   ctx.metrics.boot1.bannerMs = banner.atMs;
   ctx.metrics.boot1.firstDataMs = driver.chunks[0]?.at ?? null;
+
+  // 工具面探针（票据 08）：等子进程写盘；失败不中断既有流程，断言阶段判红。
+  if (ctx.probeOut !== undefined) {
+    const probeDeadline = Date.now() + 15000;
+    while (!existsSync(ctx.probeOut) && driver.exited === undefined && Date.now() < probeDeadline) await sleep(POLL_MS);
+    ctx.toolProbe = readToolProbe(ctx.probeOut);
+  }
 
   // 消息 1 → 回复 1（同时确认假模型真的在跑）。
   driver.type("first message\r");
@@ -535,6 +647,9 @@ async function runBoot2(ctx) {
     ws: ctx.wsReal,
     scenarioPath: ctx.scenario2,
     label: "boot2",
+    profile: ctx.options.profile,
+    preset: ctx.options.preset,
+    probeOut: ctx.probeOut,
   });
   ctx.drivers.push(driver);
 
@@ -617,7 +732,7 @@ async function runBoot2(ctx) {
 /* ── 断言组装 ───────────────────────────────────────────────────────────── */
 
 function pushAssertions(ctx, boot1, boot2) {
-  const { t, metrics, snapshots } = ctx;
+  const { t, metrics, snapshots, options } = ctx;
   const stubRoute = `${STUB_PROVIDER}/${STUB_MODEL}`;
   const altRoute = `${STUB_PROVIDER}/${STUB_MODEL_ALT}`;
 
@@ -626,7 +741,7 @@ function pushAssertions(ctx, boot1, boot2) {
   t[boot2BannerOk ? "pass" : "fail"](
     "boot.banner",
     `boot1 banner=${String(metrics.boot1.bannerMs)}ms firstData=${String(metrics.boot1.firstDataMs)}ms; boot2 banner=${String(metrics.boot2?.bannerMs)}ms; workspace=${ctx.wsReal}`,
-    { profile: PROFILE, preset: PRESET, stubRoute },
+    { profile: options.profile, preset: options.preset, stubRoute },
   );
 
   // screen.normalized：归一化后无 ESC/控制字符残留、无超列宽行。
@@ -704,6 +819,39 @@ function pushAssertions(ctx, boot1, boot2) {
     "quant.clear-bound",
     `clears boot1=${String(metrics.boot1.clears)} boot2=${String(metrics.boot2.clears)} total=${String(clears)} (bound ${String(MAX_CLEARS_PER_START)}/start, ${String(starts)} starts)`,
   );
+
+  // 工具面探针（票据 08，仅 --probe-tools）。
+  if (options.probeTools) assertToolProbe(t, ctx, options);
+}
+
+/** 根会话的探针快照：depth 0 且无父会话（rewind fork 的子会话有 parentSession，不算根）。 */
+function rootProbeSnapshot(ctx) {
+  const snapshots = (ctx.toolProbe?.snapshots ?? []).filter(
+    (entry) => (entry.delegationDepth ?? 0) === 0 && entry.parentSession === null,
+  );
+  return snapshots.reduce((best, entry) => (best === undefined || entry.toolCount > best.toolCount ? entry : best), undefined);
+}
+
+/**
+ * 工具面探针断言（票据 08，仅 --probe-tools）：真实 preset 选择路径下
+ *   - preset 生效：哨兵 `skill_search`（preset 的 skill-search 行独有）；
+ *   - Team 模式：`subagent`/`list_subagent_models` 与 `spawn_teammate` 并存（B1.5 实测冻结）。
+ */
+function assertToolProbe(t, ctx, options) {
+  const root = rootProbeSnapshot(ctx);
+  const rootTools = root?.tools ?? [];
+  const modelVisible = ctx.modelVisibleTools ?? [];
+  const sentinel = rootTools.includes("skill_search") || modelVisible.includes("skill_search");
+  const teamExpected = options.extraBundles.includes(TEAM_BUNDLE);
+  const coexists = ["subagent", "list_subagent_models", "spawn_teammate"].every(
+    (name) => rootTools.includes(name) && modelVisible.includes(name),
+  );
+  const ok = sentinel && rootTools.length > 0 && (!teamExpected || coexists);
+  t[ok ? "pass" : "fail"](
+    "tool-probe.captured",
+    `root tools=${String(root?.toolCount ?? 0)} sentinel=${String(sentinel)} team-expected=${String(teamExpected)} coexist=${String(coexists)} modelVisible=${String(modelVisible.length)}`,
+    { probePath: ctx.probeOut, profile: options.profile, sourceProfile: options.sourceProfile, extraBundles: options.extraBundles, root, modelVisible },
+  );
 }
 
 /* ── 主流程 ─────────────────────────────────────────────────────────────── */
@@ -734,6 +882,8 @@ async function main() {
       negativeControl: options.negativeControl ?? null,
       pty: { cols: COLS, rows: ROWS, term: TERM },
       composition: extra.composition,
+      ...(extra.toolProbe === undefined ? {} : { toolProbe: extra.toolProbe }),
+      ...(extra.modelVisibleTools === undefined ? {} : { modelVisibleTools: extra.modelVisibleTools }),
       metrics,
       assertions: t.assertions,
       summary: { passed: t.assertions.length - failed, failed },
@@ -781,7 +931,7 @@ async function main() {
 
   let composition;
   try {
-    composition = renderComposition({ tempHome: home, anchor: deps.anchor });
+    composition = renderComposition({ tempHome: home, anchor: deps.anchor, options });
   } catch (error) {
     const message = error instanceof RenderRealError ? error.message : `real composition render failed: ${String(error.message ?? error)}`;
     precondition(message, error.detail);
@@ -814,7 +964,21 @@ async function main() {
     }),
   );
 
-  const ctx = { t, options, pty: deps.pty, Terminal: deps.Terminal, home, wsReal, target, drivers, metrics, snapshots, scenario1, scenario2 };
+  const ctx = {
+    t,
+    options,
+    pty: deps.pty,
+    Terminal: deps.Terminal,
+    home,
+    wsReal,
+    target,
+    drivers,
+    metrics,
+    snapshots,
+    scenario1,
+    scenario2,
+    probeOut: options.probeTools ? join(tempRoot, "tool-surface.json") : undefined,
+  };
 
   let boot1;
   let boot2;
@@ -823,6 +987,12 @@ async function main() {
     ctx.sessionA = listSessionLogs(home).filter((log) => log.header?.cwd === wsReal)[0];
     if (ctx.sessionA === undefined) throw new SmokeError("boot1: no persisted session log found", { home });
     boot2 = await runBoot2(ctx);
+    // 重启前的快照由探针跨进程续读，这里重读得到累计证据。
+    if (ctx.probeOut !== undefined) ctx.toolProbe = readToolProbe(ctx.probeOut);
+    // 模型可见目录：boot2 的工具轮触发 promotion 后的请求头（票据 08 的「实际工具面」）。
+    // sessionB 是 /rm 之后取的快照日志（不含之后的工具轮），必须按文件重读。
+    const sessionBLog = existsSync(boot2.rewind.sessionB.file) ? readSessionLog(boot2.rewind.sessionB.file) : undefined;
+    ctx.modelVisibleTools = lastRequestHeaderTools(sessionBLog);
   } catch (error) {
     t.fail("runner.aborted", error instanceof SmokeError ? error.message : String(error?.message ?? error), error?.detail);
   } finally {
@@ -859,14 +1029,21 @@ async function main() {
   const failed = finishReport({
     hostVersion,
     composition: {
-      profile: PROFILE,
+      profile: options.profile,
+      sourceProfile: options.sourceProfile,
+      extraBundles: options.extraBundles,
+      preset: options.preset,
       sourcePath: composition.sourcePath,
       sourceSha: composition.sourceSha,
       renderedPath: composition.renderedPath,
       renderedSha: composition.renderedSha,
-      preset: composition.preset,
+      presetSource: composition.preset,
       settings: composition.settings,
     },
+    toolProbe: options.probeTools
+      ? { path: ctx.probeOut, snapshots: ctx.toolProbe?.snapshots ?? [] }
+      : undefined,
+    modelVisibleTools: ctx.modelVisibleTools ?? undefined,
   });
   process.exit(failed === 0 ? EXIT.pass : EXIT.fail);
 }

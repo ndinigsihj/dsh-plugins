@@ -1,0 +1,11 @@
+# T4b 工具面探针覆盖层（票据 08）——只在 `scripts/tui-pty-smoke.mjs --probe-tools`
+# 时由冒烟追加的 `--patch`，叠在 pty-smoke.patch.yml 之后。
+#
+# 与 pty-smoke.patch.yml 同目录：`./tool-probe.mjs` 由加载器锚定到本补丁所在目录
+# （anchorInsertedPluginNames）。输出路径由 PTY_SMOKE_PROBE_OUT 环境变量给出。
+#
+# 遏制规则（Q13）：本文件与同目录模块只承载假模型侧的冒烟探针，不进 T1/T2 组合。
+
+- insert:
+    - id: gate-stub-tool-probe
+      name: ./tool-probe.mjs

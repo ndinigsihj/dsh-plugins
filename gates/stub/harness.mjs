@@ -71,7 +71,8 @@ export function createHarness({ ctx, agents, agentPresets, preset, wait, scenari
       const id = sessionId ?? SessionId(`session-stub-${scenarioId}-${randomUUID()}`);
       const handle = await agents.create({
         sessionId: id,
-        meta: { cwd: process.cwd() },
+        // 与 TUI runner 同形：preset 既进 header 记录、也在 setup 里挂载（票 08 的对照面）。
+        meta: { cwd: process.cwd(), ...(preset === undefined ? {} : { agentPreset: preset }) },
         agentOptions: { ...selection },
         setup,
       });

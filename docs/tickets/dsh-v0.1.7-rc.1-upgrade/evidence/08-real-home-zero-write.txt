@@ -1,0 +1,16 @@
+票据 08 — 真实用户目录零写入核对（窗口：本票全部实测命令，before 在首轮前、after 在最后一轮后）
+
+方法：对真实 ~/.dsh 配置面取 sha256 快照——settings.yaml、profiles/*/{package.json,cordis.patch.yml,cordis.yml}（不含 node_modules）、部署位 ~/.dsh/.agent-presets/minimal-plus 顶层文件；PTY Team 实测 + 默认 PTY 实测 + T2 对照实测前后各取一次，diff 为空。
+所有会话/缓存/profile 副本都落在 $TMPDIR/dsh-pty-smoke-*/home（PTY 臂）与 run.mjs 自建临时 home（T2 臂）；真实 home 只读。
+
+- before: evidence/08-real-home-before.sha256（32 行）
+- after:  evidence/08-real-home-after.sha256（32 行）
+- sha256：两份均 6f0d7ea3943e1840b21be10bbb1889597230933deb7a584571f250964c1e0405
+- diff：空（ZERO-WRITE: identical）
+
+快照生成（可复现）：
+  for f in "$HOME/.dsh/settings.yaml"; do [ -f "$f" ] && shasum -a 256 "$f"; done
+  find "$HOME/.dsh/profiles" -maxdepth 2 -type f \( -name package.json -o -name cordis.patch.yml -o -name cordis.yml \) ! -path '*/node_modules/*' | sort | while read -r f; do shasum -a 256 "$f"; done
+  find "$HOME/.dsh/.agent-presets/minimal-plus" -maxdepth 1 -type f | sort | while read -r f; do shasum -a 256 "$f"; done
+
+注：部署位 .agent-presets/minimal-plus 仍缺 plugin-teardown.mjs（票据 12 才同步），因此 08 的 PTY 实测按部署位不完整回落仓库真源（composition.presetSource.source=repo，agent.cordis.yml sha 8cd01c68…）；部署位字节在窗口内未动。

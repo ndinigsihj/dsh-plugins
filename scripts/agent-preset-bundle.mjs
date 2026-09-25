@@ -230,17 +230,27 @@ function materializeNodeModules(nodeModules) {
   for (const entry of entries) symlinkSync(join(target, entry), join(nodeModules, entry));
 }
 
-/** profile 包清单里确保选择 bundle（幂等；保留其它字段）。 */
-function ensureBundleSelected(profileDir, packageName) {
+/**
+ * profile 清单的 bundle 选择唯一写入点（`ensureBundleSelected` / `setProfileBundles` /
+ * render-real 的附加 bundle 共享）：缺清单建骨架、保留其它字段；`mutate` 收到当前选择
+ * 并返回下一份。返回落盘后的选择。
+ */
+export function mutateProfileBundles(profileDir, mutate) {
+  mkdirSync(profileDir, { recursive: true });
   const manifestPath = join(profileDir, "package.json");
-  const manifest = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, "utf8")) : { name: `dsh-profile-${basename(profileDir)}`, private: true };
+  const manifest = existsSync(manifestPath)
+    ? JSON.parse(readFileSync(manifestPath, "utf8"))
+    : { name: `dsh-profile-${basename(profileDir)}`, private: true };
   manifest.dsh ??= {};
   manifest.dsh.profile ??= {};
-  const bundles = manifest.dsh.profile.bundles ?? [];
-  if (!bundles.includes(packageName)) bundles.push(packageName);
-  manifest.dsh.profile.bundles = bundles;
-  mkdirSync(profileDir, { recursive: true });
+  manifest.dsh.profile.bundles = [...mutate([...(manifest.dsh.profile.bundles ?? [])])];
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  return manifest.dsh.profile.bundles;
+}
+
+/** profile 包清单里确保选择 bundle（幂等；保留其它字段）。 */
+function ensureBundleSelected(profileDir, packageName) {
+  mutateProfileBundles(profileDir, (bundles) => (bundles.includes(packageName) ? bundles : [...bundles, packageName]));
 }
 
 /**

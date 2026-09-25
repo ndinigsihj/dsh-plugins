@@ -7,9 +7,9 @@
  * 的实跑举证；这里钉住换 checkout / 换机器时最容易改坏的判定。
  */
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import test from "node:test";
 import {
   LEGACY_PRESET_PACKAGE,
@@ -20,24 +20,8 @@ import {
   rewriteRepoRoots,
   stripLegacyPresetRow,
 } from "./render-real.mjs";
-import { BUNDLE_PACKAGE_NAME, BUNDLE_PLUGIN_FILES, PRESET_SOURCE_REQUIREMENTS } from "../../scripts/agent-preset-bundle.mjs";
-
-function writeTree(root, files) {
-  for (const [file, content] of Object.entries(files)) {
-    mkdirSync(join(root, dirname(file)), { recursive: true });
-    writeFileSync(join(root, file), content);
-  }
-}
-
-/** 最小可用 preset 真源（生成器只需要 preset.yml + agent.cordis.yml + 被引用的插件文件）。 */
-function writePresetSource(dir, { name = "Fixture" } = {}) {
-  const files = {
-    "preset.yml": `name: ${name}\ndescription: ${name} fixture.\norder: 1\n`,
-    "agent.cordis.yml": "- id: tool-bootstrap\n  name: './tool-bootstrap.mjs'\n  config:\n    bootstrapTools: [bash, str_replace_editor]\n",
-  };
-  for (const plugin of BUNDLE_PLUGIN_FILES) files[plugin] = `// ${plugin} fixture\n`;
-  writeTree(dir, files);
-}
+import { writePresetSource, writeTree } from "./render-real.fixtures.mjs";
+import { BUNDLE_PACKAGE_NAME, PRESET_SOURCE_REQUIREMENTS } from "../../scripts/agent-preset-bundle.mjs";
 
 const REAL_PATCH = [
   "- insert:",

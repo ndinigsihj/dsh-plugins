@@ -12,7 +12,9 @@
  * 场景契约（票据 06 起）：导出 `{ id, finding, invariant, assert(events, context) }` +
  *   - 默认流程：`turns`（轮次→分块序列）+ `userMessage`，runner 建一个 agent 跑完；
  *   - 多 agent 流程：`run(harness)`（harness 见 gates/stub/harness.mjs），自己决定
- *     建/恢复 agent、压缩时点与工具调用；断言仍只读会话事件。
+ *     建/恢复 agent、压缩时点与工具调用；断言仍只读会话事件；
+ *   - 可选 `bundles`：隔离 profile 要在 base+headless 之外追加选择的组合包（票 08 的
+ *     Team 对照场景用）。
  *
  * 环境（缺省即自建隔离 home；闸门会显式注入，见 gates/run.mjs 的 runT2）：
  *   STUB_HOME            隔离 home（闸门注入；缺省 mktemp 后删除）。刻意不读 ambient
@@ -31,7 +33,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { PluginPackages, boot, createRuntimeResolution, loadOverlayPatches, loadProfile } from '@deepseek-ai/dsh-app-boot';
 import { installAnchor } from '../../scripts/host-runtime.mjs';
 import { stagePresetBundle } from '../../scripts/agent-preset-bundle.mjs';
-import { seedHeadlessProfile as seedProfileHome } from '../../scripts/profile-home.mjs';
+import { seedHeadlessProfile as seedProfileHome, setProfileBundles, HEADLESS_BUNDLES } from '../../scripts/profile-home.mjs';
 import { STUB_MODEL, STUB_PROVIDER, stubState } from './adapter.mjs';
 import { createHarness } from './harness.mjs';
 
@@ -81,9 +83,12 @@ function defaultReportPath(scenarioId) {
 
 // ── 隔离 home ──────────────────────────────────────────────────────────────
 
-/** headless profile 骨架（共享 seed）+ 从真源现场生成 0.1.7 preset bundle 并选择它。 */
-function seedHeadlessProfile(home) {
+/** headless profile 骨架（共享 seed）+ 场景声明的附加 bundle + 从真源现场生成 0.1.7 preset bundle 并选择它。 */
+function seedHeadlessProfile(home, extraBundles = []) {
   const profileDir = seedProfileHome(home);
+  // 共享 home 下每个场景按自己的组合面重设 bundles（票 08：Team 对照场景）；
+  // 预设 bundle 由 stagePresetBundle 随后追加，不在这里重复。
+  setProfileBundles(home, [...HEADLESS_BUNDLES, ...extraBundles]);
   stagePresetBundle({
     sourceDir: join(process.env.STUB_PRESET_ROOT ?? join(REPO_ROOT, 'presets'), PRESET),
     profileDir,
@@ -115,7 +120,7 @@ function prepareEnv(scenario) {
     process.env.STUB_PRESET_ROOT = join(REPO_ROOT, 'presets');
   }
   mkdirSync(process.env.STUB_SESSION_ROOT, { recursive: true });
-  seedHeadlessProfile(home);
+  seedHeadlessProfile(home, scenario.bundles ?? []);
   return { home, owned };
 }
 
@@ -128,6 +133,12 @@ function assertScenarioShape(scenario, path) {
     throw new Error(`gate-stub: ${path} must export a non-empty invariant (what the scenario locks)`);
   }
   if (typeof scenario.assert !== 'function') throw new Error(`gate-stub: ${path} must export assert(events, context)`);
+  if (
+    scenario.bundles !== undefined &&
+    (!Array.isArray(scenario.bundles) || scenario.bundles.some((name) => typeof name !== 'string' || name.length === 0))
+  ) {
+    throw new Error(`gate-stub: ${path} bundles must be an array of non-empty package names`);
+  }
   if (typeof scenario.run === 'function') return;
   if (!Array.isArray(scenario.turns) || scenario.turns.length === 0) {
     throw new Error(`gate-stub: ${path} must export a non-empty turns array (or a run(harness) hook)`);

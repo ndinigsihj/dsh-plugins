@@ -17,11 +17,12 @@
 # 新会话路由钉到假模型（TUI run() 把 patch config 的 provider/model 作为
 # agentOptions；resume 会话走自身记录，不受影响）。preset 同时钉住，避免
 # 依赖用户 settings 的 agent-presets.default（finding 03-4）。
+# 票据 08：preset 可由 PTY_SMOKE_PRESET 覆盖（PTY 冒烟的 --preset 透传）。
 - id: tui-runner
   config:
     provider: stub
     model: stub-model
-    preset: minimal-plus
+    preset: !!js process.env.PTY_SMOKE_PRESET ?? 'minimal-plus'
 
 - insert:
     # `./adapter.mjs` 由加载器锚定到本补丁所在目录（anchorInsertedPluginNames）。

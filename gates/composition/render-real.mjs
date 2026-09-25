@@ -20,7 +20,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, symlinkSyn
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
-import { BUNDLE_PACKAGE_NAME, PRESET_SOURCE_REQUIREMENTS, stagePresetBundle } from "../../scripts/agent-preset-bundle.mjs";
+import { BUNDLE_PACKAGE_NAME, PRESET_SOURCE_REQUIREMENTS, mutateProfileBundles, stagePresetBundle } from "../../scripts/agent-preset-bundle.mjs";
 import { parseCompositionDump } from "../dump-parse.mjs";
 
 /** 真实开发 profile 名（计划 §2.1 的运行态定义）。 */
@@ -166,11 +166,18 @@ function checkDependencies(renderedText, { profileDir, installAnchor }) {
  * @param options.deploymentRoot 部署位 preset 目录（缺省/不完整时回落仓库副本并在结果里标注）。
  * @param options.installAnchor 宿主包 `package.json` 绝对路径（裸包名解析基准）。
  * @param options.homeDir 真实 home（`~` 展开基准；测试可注入假 home）。
+ * @param options.sourceProfileName 只读源 profile 名（默认 `tui-dev`）。
+ * @param options.profileName 目标 profile 名（默认同源名）；不同时派生到临时 home 的该名下。
+ * @param options.extraBundles 追加到目标 profile `dsh.profile.bundles` 的包名（默认空）；
+ *   只写临时副本，源 profile 清单保持只读。
  * @returns 源/渲染后 sha、路径、三类仓库根、preset 来源与副本、settings 副本信息。
  */
 export function renderRealComposition(options) {
   const { repoRoot, tempHome, deploymentRoot, installAnchor } = options;
   const presetName = options.presetName ?? "minimal-plus";
+  const sourceProfileName = options.sourceProfileName ?? REAL_PROFILE_NAME;
+  const profileName = options.profileName ?? sourceProfileName;
+  const extraBundles = options.extraBundles ?? [];
   const env = options.env ?? process.env;
   const homeDir = options.homeDir ?? homedir();
   const roots = resolveRepoRoots(repoRoot, env);
@@ -182,7 +189,7 @@ export function renderRealComposition(options) {
     });
   }
 
-  const sourcePath = join(homeDir, ".dsh", "profiles", REAL_PROFILE_NAME, "cordis.patch.yml");
+  const sourcePath = join(homeDir, ".dsh", "profiles", sourceProfileName, "cordis.patch.yml");
   if (!existsSync(sourcePath)) {
     throw new RenderRealError(`real composition source profile not found: ${sourcePath}`, { sourcePath });
   }
@@ -193,7 +200,7 @@ export function renderRealComposition(options) {
   const renderedText = stripLegacyPresetRow(rewrittenText);
   const legacyRowStripped = renderedText !== rewrittenText;
 
-  const profileDir = join(tempHome, "profiles", REAL_PROFILE_NAME);
+  const profileDir = join(tempHome, "profiles", profileName);
   checkDependencies(renderedText, { profileDir, installAnchor });
 
   const sourceProfileDir = dirname(sourcePath);
@@ -204,6 +211,13 @@ export function renderRealComposition(options) {
   mkdirSync(profileDir, { recursive: true });
   writeFileSync(join(profileDir, "cordis.patch.yml"), renderedText);
   copyFileSync(sourceManifest, join(profileDir, "package.json"));
+  if (extraBundles.length > 0) {
+    try {
+      mutateProfileBundles(profileDir, (bundles) => [...bundles, ...extraBundles.filter((bundle) => !bundles.includes(bundle))]);
+    } catch (error) {
+      throw new RenderRealError(`rendered profile manifest is not valid JSON: ${join(profileDir, "package.json")}`, { error: String(error) });
+    }
+  }
   const sourceCordis = join(sourceProfileDir, "cordis.yml");
   if (existsSync(sourceCordis)) copyFileSync(sourceCordis, join(profileDir, "cordis.yml"));
   else writeFileSync(join(profileDir, "cordis.yml"), "# rendered by the regression gate\n[]\n");
@@ -238,6 +252,9 @@ export function renderRealComposition(options) {
     renderedPath: join(profileDir, "cordis.patch.yml"),
     renderedSha: sha256Text(renderedText),
     profileDir,
+    profileName,
+    sourceProfileName,
+    extraBundles: [...extraBundles],
     roots: roots.map((root) => ({ id: root.id, env: root.env, path: root.path })),
     preset,
     settings: settingsCopied ? { copied: true, sourcePath: settingsSource, sha: sha256Text(readFileSync(settingsSource, "utf8")) } : { copied: false },
