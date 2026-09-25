@@ -4,14 +4,14 @@
 
 **Blocked by:** 02 — 前置取证；04 — 宿主升级与两个工作 Profile 到位
 
-**Status:** partial / blocked-on-07 — 2026-09-25：六项兼容面均已修/验；T0 全绿、T1 17/20、T2 全层待 07（闸门复绿不在本票 blocked-by 内，但需要 07 的 preset 载体；详见验收回填）。**改动未提交**，待用户确认后 commit；证据见 `evidence/06-remaining-compat-surfaces.md`。
+**Status:** done — 2026-09-25：六项兼容面均已修/验；07 载体落地后复跑闸门全绿（T0 178/178 + tsc 0、gate T1 18/18、real T1 20/20、T2 51/51，部署位窗口豁免保留至票 12）。本次回填未提交，待用户确认后 commit；证据见 `evidence/06-remaining-compat-surfaces.md`。
 
 **施工图:** `docs/dsh-v0.1.7-rc.1-upgrade-spec.md`（Implementation Decisions：接口异步化迁移之外的全部兼容项）；升级计划 §6 P0/P1/P2 行
 
 - [x] 配置导出逐 loader id 计数为 1（改名后的包名/服务名无重复）— 闸门 `composition.loader-id-unique` 99/99、duplicates=0；PTC 服务探针 `06-ptc-activation.txt`
 - [x] 超长工具结果渲染冒烟通过（预算配置改名后通知仍匹配）— `06-spill-render.txt`：20000 字符结果经真实 `maxInlineTokens` spill 后渲染成 `⤓ full result` 徽标
 - [x] 自研插件启停各一次：无残留注册、无影子泄漏 — `plugin-lifecycle.test.mjs` 4/4 + `phase-swap-bash.test.mjs` 15/15
-- [ ] 闸门复绿（被票据 07 载体前置卡住）：T1 的 `smoke.*` ×2 与 `degrade.fail-open`、T2 全部场景都因 0.1.7 移除 `@deepseek-ai/dsh-agent-presets` 而缺 agent-presets 服务；07 落地后复跑
+- [x] 闸门复绿（07 载体落地后复跑，2026-09-25）：T0 178/178 + tsc 0、gate T1 18/18（`smoke.*` ×2、`degrade.fail-open` 全过）、real T1 20/20、T2 51/51；报告 `experiments/regression-gate/results-2026-09-25{,-real}.json`
 - [x] 模型适配器配置在真实模型上一次工具调用通过（T3 或等价证据）— `06-real-model-tool-call.txt`；T3 基线重采仍归 11
 - [x] 逐项证据归档到本票
 
@@ -38,3 +38,29 @@
 
 - Standards：`lib/app.test.ts` 曾到 300 行 → 两条 spill 单测拆到 `lib/spill-notice.test.ts`；`SavedImage.ref` 的 `Record<string, unknown>` 是双 cast 根因 → 收窄为 `ImageAttachmentRef`（`lib/app.ts` / `lib/index.ts`），调用点 cast 删除；三处注销代码的失败姿态不一致 → 抽 `plugin-teardown.mjs` 的 `disposeSafely()` 统一（新文件已入 manifest）；既有超长 `apply()` 属历史结构，不在本票重构范围，新 helper 均 <50 行。
 - Spec：Status 由 `done` 改 `partial / blocked-on-07`，清单第三项不再夹带「闸门复绿」；seeded 探针去掉跨宿主双分支，改为 0.1.7 单一行为断言（`seeded-readSession-aligned`）；host-pin 的 resolution 断言补目录身份核对 + `home: tempHome` 保持 hermetic，并在注释里写明它证明/不证明什么（宿主代独立证据面仍是 PRE `host.cli`）。`styleSpillNotices` 导出用于单测属有意取舍：真宿主 spill 冒烟（`06-spill-render-probe.mjs`）为主证据，单测只钉通知拼写回归。
+
+---
+
+## 07 载体落地后复跑（2026-09-25）
+
+07 提交 `f75a7ad` 后，在同一提交的工作树上复跑：
+
+```bash
+scripts/regression-gate.sh --tier 0,1,2 --composition gate --skip-deployment-check
+# → T0：tsc 0 + npm test 178/178；T1 18/18（smoke.preset-roster / smoke.anchored-first-turn /
+#   smoke.promoted-catalog / degrade.fail-open 全过）；T2 51/51；summary 69/69
+# 报告 experiments/regression-gate/results-2026-09-25.json
+
+scripts/regression-gate.sh --tier 1 --composition real --skip-deployment-check \
+  --json experiments/regression-gate/results-2026-09-25-real.json
+# → 20/20：真实 tui-dev 组合 112 条、逐 loader id 唯一、冒烟/降级/seeded 全过、
+#   源 profile 只读、真实 home 零写入
+```
+
+- 原三条红（`smoke.anchored-first-turn`、`smoke.promoted-catalog`、`degrade.fail-open`）与 T2 全层
+  均由 07 的载体落地解除。复跑还带出三处 0.1.7 门禁口径修正（`ralph` 在新 base 默认 disabled、
+  T2 tool/result 读 V4 first-class message、v3-resume 格式前置改当前格式 4），已随 07 提交；
+  行级差异与理由见 `evidence/07-preset-carrier-and-sync-dry-run.md` §5。
+- 部署位仍是 0.1.5 目录形态：`deployment.repo-vs-deployed` 继续按窗口 `--skip-deployment-check`
+  豁免（`deployment.repo-matches-manifest` 9 文件仍全绿），票 12 部署后零豁免复跑。
+- 本票 Status 由 `partial / blocked-on-07` 改 `done`；六项 checklist 全部勾选。

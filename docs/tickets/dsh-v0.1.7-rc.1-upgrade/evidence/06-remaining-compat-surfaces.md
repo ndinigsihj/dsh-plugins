@@ -98,3 +98,37 @@ node docs/tickets/dsh-v0.1.7-rc.1-upgrade/evidence/06-spill-render-probe.mjs
 bash docs/tickets/dsh-v0.1.7-rc.1-upgrade/evidence/06-real-model-tool-call.sh
 bash scripts/regression-gate.sh --tier 0,1 --skip-deployment-check
 ```
+
+## 7. 07 落地后复跑（2026-09-25，票 06 收口）
+
+**背景**：本票唯一未闭环项「闸门复绿」压在票 07 的 preset 载体上（0.1.7 移除
+`@deepseek-ai/dsh-agent-presets`，隔离 home 缺 agent-presets 服务）。07 提交 `f75a7ad`
+后，在同一提交的工作树上复跑：
+
+```bash
+scripts/regression-gate.sh --tier 0,1,2 --composition gate --skip-deployment-check
+# → [T0] tsc 0 + npm test 178/178；[T1] 18/18；[T2] 51/51；summary 69 passed / 0 failed
+# 报告 experiments/regression-gate/results-2026-09-25.json
+
+scripts/regression-gate.sh --tier 1 --composition real --skip-deployment-check \
+  --json experiments/regression-gate/results-2026-09-25-real.json
+# → [T1] 20/20（真实 tui-dev 渲染副本组合 112 条；源 profile 只读；真实 home 零写入）
+```
+
+**原红项逐条对账**
+
+| 原红项 | 复跑结果 |
+| --- | --- |
+| `smoke.anchored-first-turn` | PASS（R1 `[bash, str_replace_editor]`） |
+| `smoke.promoted-catalog` | PASS（28 工具，R2 沙箱 bash + 自研技能行） |
+| `degrade.fail-open` | PASS（R1 全量 28 工具 + fail-open warn） |
+| T2 全层（6 场景） | 51/51 PASS |
+| `deployment.repo-vs-deployed` | 仍按窗口豁免 `--skip-deployment-check`（部署位为 0.1.5 目录形态，票 12 消除）；`deployment.repo-matches-manifest` 9 文件全绿未漂移 |
+
+**复跑带出的 0.1.7 门禁口径修正**（不属本票六项功能面，随 07 提交，行级理由见
+`07-preset-carrier-and-sync-dry-run.md` §5）：`ralph` 在 0.1.7 base 默认 disabled（期望面行级
+移除）；T2 场景 tool/result 读取改 V4 first-class message（`data.message.toolCallId`/`isError`）；
+`v3-resume-route` 格式前置断言改当前格式 4（0.1.7 新会话直接落 v4，v3 迁移执行归票 10）。
+
+**结论**：本票六项兼容面 + 闸门复绿全部闭环，Status 改 `done`。部署位写入与零豁免复跑归票 12。
+
