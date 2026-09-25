@@ -147,22 +147,28 @@ hub 侧的 `fleet-client` / `memory-sink`、worker 侧的 `remote-server` 挂载
 
 ## Agent preset (minimal-plus)
 
-`presets/minimal-plus/` 是当前唯一自研 preset，stable（`tui`）与 dev（`tui-dev`）共用同一份组合。
-2026-09-22 宿主统一到 0.1.5-rc.2 后，原 `minimal-plus` 收敛回 `minimal-plus`：
-ADR-0002 的「dev/stable 宿主不同代、必须分叉」前提已消失。
+`presets/minimal-plus/` 是当前唯一自研 preset，也是唯一真源。2026-09-25（票据 07）按 dsh 0.1.7
+迁移载体：**宿主不再读取 `~/.dsh/.agent-presets/<id>/` 目录形态**，预设定居为插件组合包里的
+`@deepseek-ai/dsh-agent-preset` 声明行。仓库里的 0.1.7 产物由真源生成并入库：
 
-- persona 使用 0.1.5 宿主（rc.1/rc.2）的 `prefix` 正文键（旧 `text` 键会被 schema 拒）。
-- 按 ADR-0003 只声明与 rc.1 `dsh-base` 的差异：不重复 base 已有的挂载行，保留恒禁的
-  `tool-bash` 与承载官方子代理模型选择的 `tool-subagent`（`modelSelectionSettings: true`）。
-- 两个行为：`phase-swap-bash.mjs` 二轮 bash 提权（`sandbox_permissions`）；二轮
-  `agent-instructions` 注入由宿主 base 行提供。
+- `generated/minimal-plus-preset/`：自包含 bundle —— `package.json`（`dsh.bundle.patch`）、
+  `cordis.patch.yml`（registry 行 + `preset-minimal-plus` 声明行 + 自研插件列表）、逐字节复制的
+  `*.mjs` 与 `source-manifest.json`（真源 sha256）。profile 通过 `dsh.profile.bundles` 选择它。
+- 生成/对账：`node scripts/agent-preset-bundle-cli.mjs` 重生成；`--check` 逐文件核对；`npm test` 里有一条
+  「仓库产物 = 真源再生」断言，漂移即红。
+- 同步工具：`scripts/sync-agent-presets.sh`（默认 dry-run，逐文件比对真源 ↔ 仓库产物 ↔ 目标位，不写任何
+  真实路径）；`--write` 才落目标位，`--profile <name>` 直接接进 profile（bundle + node_modules 链接 +
+  `dsh.profile.bundles` 选择）。真实部署位写入在收口票 12（当前部署位仍是 0.1.5 目录形态，闸门窗口
+  用 `--skip-deployment-check` 记账）。
+- 行为不变：persona（`prefix` 正文键 + `complete` + `includeRuntimeContext: false`）、恒禁 `tool-bash`、
+  `phase-swap-bash` 二轮提权、`tool-subagent` 的 `modelSelectionSettings: true`、`instruction-hint` /
+  `skill-search` 等行都逐行进了生成产物（断言见 `scripts/agent-preset-bundle.test.mjs` 与 T1 冒烟）。
+- 按 ADR-0003 只声明与 `dsh-base` 的差异：不重复 base 已有的挂载行。
 - `modelSelectionSettings` 需要宿主作用域挂载 `subagent-model-selection-settings`：**凡是
   可能挂载本 preset 的 profile 都必须有这一行**，否则挂载即失败（`tool-subagent:
   modelSelectionSettings requires … in the Host scope`）。当前部署：`tui` / `tui-dev`
   enabled + 2 条允许路由，`worker` / `headless` 已挂但 `enabled: false`（保持固定路由口径）。
   维护与探针见 `docs/subagent-model-selection.md`。
-- 部署：`scripts/sync-agent-presets.sh`（无参即同步 `minimal-plus`）；冷启动加载的是
-  `~/.dsh/.agent-presets/minimal-plus/` 副本，preset 改完必须重新同步并核 sha。
 - Use: `CC_TUI_PRESET=minimal-plus dsh --profile tui` then `/new`.
 
 ## Regression gate（回归闸门）
@@ -200,10 +206,12 @@ node scripts/preset-mount-smoke.mjs                                # stable 通�
 **报告**：默认 `experiments/regression-gate/results-<UTC 日期>.json`（`--json` 可改）；
 T3 产物另按 `experiments/regression-gate/t3-<UTC 时间戳>/` 归档，跨轮次不覆盖。
 
-**仓库绿灯 ≠ 部署位生效**：`gate` 组合把仓库资产渲染进隔离临时 home 验证，而运行中的 TUI 加载的是
-`~/.dsh/.agent-presets/<preset>` 副本。交付前必须显式执行 `scripts/sync-agent-presets.sh <preset>` 同步部署位，
-再用 `--composition real` 跑真实 `tui-dev` 组合；序列：同步 → `--tier 0,1,2 --composition real` 全绿 → T3 按需 →
-`node scripts/preset-mount-smoke.mjs`（真 PTY 起 **stable profile** + 部署位 preset，`release.sh` 收尾自动执行）→ 人工签收。
+**仓库绿灯 ≠ 部署位生效**：`gate` 组合把仓库资产渲染进隔离临时 home 验证；0.1.7 的真实 TUI 加载
+的是 profile 选择的 preset bundle（部署位落点与 profile 安装归收口票 12，当前部署位仍是 0.1.5 目录形态）。
+交付前序列：`scripts/sync-agent-presets.sh --dry-run` 逐文件核对 →（12 批准后）`--write` 落位并安装到
+profile → `--tier 0,1,2 --composition real` 全绿 → T3 按需 → `node scripts/preset-mount-smoke.mjs`
+（真 PTY 起 **stable profile** + 部署位 preset，`release.sh` 收尾自动执行；stable 通道迁到 0.1.7 前仍是
+旧目录形态）→ 人工签收。
 
 **边界**：闸门面向 `tui-dev` / `minimal-plus` / dev 侧脚本；stable `tui` 组合**不在**闸门内——
 `--composition real` 验的是 `tui-dev` 渲染副本。stable profile 的宿主层差异（例如缺

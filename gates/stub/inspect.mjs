@@ -4,7 +4,9 @@
  * `tool/call.arguments` 是生产适配器下发的原始 JSON 字符串；`request/header` 是
  * 模型实际看到的工具目录与路由，两个面都在会话日志里，断言只从这里取事实。
  *
- * 票 06 的 `bash-first-call` 保留自己的局部同名助手（其红绿证据与报告已归档，不做无谓改动）。
+ * 0.1.7 会话格式 V4：tool/result 的调用身份与错误位在 first-class message 上
+ * （`data.message.toolCallId` / `data.message.isError`），内容块不再有
+ * `tool-result` 包装（V4 明确拒收）；`data.error` 只在错误结果上出现。
  */
 
 export function safeJson(text) {
@@ -33,23 +35,21 @@ export function bashParamKeys(headerEvent) {
   return Object.keys(bash?.parameters?.properties ?? {});
 }
 
+/** V4：调用身份在 first-class tool-role message 上（内容块不再有 tool-result 包装）。 */
 export function toolCallIdOf(resultEvent) {
-  const block = resultEvent?.data?.message?.content?.find((entry) => entry.type === 'tool-result');
-  return block?.toolCallId;
+  return resultEvent?.data?.message?.toolCallId;
 }
 
 export function resultIsError(resultEvent) {
-  const block = resultEvent?.data?.message?.content?.find((entry) => entry.type === 'tool-result');
-  return block?.isError === true;
+  return resultEvent?.data?.message?.isError === true;
 }
 
 export function resultError(resultEvent) {
-  const block = resultEvent?.data?.message?.content?.find((entry) => entry.type === 'tool-result');
-  if (block?.isError !== true) return undefined;
-  return block.content
-    ?.map((entry) => (typeof entry?.text === 'string' ? entry.text : undefined))
-    .filter((text) => text !== undefined)
-    .join(' | ');
+  if (!resultIsError(resultEvent)) return undefined;
+  const blocks = resultEvent?.data?.message?.content ?? [];
+  const texts = blocks.map((entry) => (typeof entry?.text === 'string' ? entry.text : undefined)).filter((text) => text !== undefined);
+  if (texts.length > 0) return texts.join(' | ');
+  return resultEvent?.data?.error === undefined ? undefined : JSON.stringify(resultEvent.data.error);
 }
 
 /** 路由标签，证据里统一写法：`provider/model`。 */

@@ -1,0 +1,12 @@
+{
+  "name": "@dsh-plugins/minimal-plus-preset",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Generated 0.1.7 agent-preset bundle for minimal-plus. Source of truth: presets/minimal-plus/.",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

@@ -35,16 +35,8 @@
         model: stub-model
 
 - insert:
-    # preset 根只扫 repo presets/（跨 checkout 可跑）；不读用户部署位副本，
-    # 部署位一致性由 T1 的独立 sha 断言表达。
-    - id: gate-stub-agent-presets
-      name: '@deepseek-ai/dsh-agent-presets'
-      config:
-        default: minimal-plus
-        roots:
-          - path: !!js process.env.STUB_PRESET_ROOT ?? 'presets'
-            trust: system
-        includeUserRoot: false
-
+    # 票据 07：preset 载体改为 0.1.7 bundle（registry + 声明行），由 runner 的临时
+    # headless profile 通过 `dsh.profile.bundles` 选择；本 overlay 不再挂旧
+    # `@deepseek-ai/dsh-agent-presets`（0.1.7 已移除该包）。
     - id: gate-stub-adapter
       name: ./adapter.mjs

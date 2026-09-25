@@ -20,13 +20,9 @@ rm -rf "$ROOT"
 mkdir -p "$ROOT"
 cp -R "$SOURCE_ROOT/$PRESET" "$ROOT/"
 
-# preset 的自研 .mjs 用裸包名导入宿主依赖；副本一旦落在仓库外（闸门用临时 home），
-# Node 解析就找不到 repo node_modules。这里在副本根补一个 fallback 链接（解析顺序
-# 会先看 <preset>/node_modules，再看 <ROOT>/node_modules）——真实部署位副本靠
-# ~/.dsh/profiles/node_modules farm 提供同一层，属正常机制。
-if [[ ! -e "$ROOT/node_modules" ]]; then
-  ln -s "$(cd "$(dirname "$0")/.." && pwd)/node_modules" "$ROOT/node_modules"
-fi
+# 0.1.7 载体（票据 07）：这份副本只是 smoke-boot 生成 bundle 的真源；自研 .mjs 从
+# smoke 隔离 profile 内的 bundle 执行，裸包名走 profile 运行时解析，不再需要副本侧
+# node_modules fallback 链接。
 
 # 注入一个不存在的 bootstrap 工具 → keepTools 缺工具分支 → fail-open
 perl -0pi -e 's/bootstrapTools: \[bash, str_replace_editor\]/bootstrapTools: [bash, str_replace_editor, __missing__]/' "$ROOT/$PRESET/agent.cordis.yml"

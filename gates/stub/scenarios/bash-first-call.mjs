@@ -28,7 +28,7 @@
  *   git apply experiments/regression-gate/evidence/12-2-fix.patch
  */
 import { toolCallTurn, textTurn } from '../adapter.mjs';
-import { routeGuard, turnCompleted } from '../inspect.mjs';
+import { resultError, resultIsError, routeGuard, safeJson, toolCallIdOf, turnCompleted } from '../inspect.mjs';
 
 export const id = 'bash-first-call';
 export const finding = 'finding 12-2（closeout §7.2）：promotion 时换 bash schema 拒掉首轮调用';
@@ -42,16 +42,7 @@ export const turns = [
   textTurn('两轮调用都完成了。'),
 ];
 
-// ── 事件读取助手（只读会话事件，不引用模型自述）────────────────────────────
-
-function safeJson(text) {
-  if (typeof text !== 'string') return undefined;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
-}
+// ── 事件读取助手（只读会话事件，不引用模型自述；V4 first-class message 形状见 inspect.mjs）──
 
 function headers(events) {
   return events.filter((event) => event.type === 'request/header');
@@ -61,25 +52,6 @@ function bashParamKeys(headerEvent) {
   const tools = headerEvent?.data?.header?.tools ?? [];
   const bash = tools.find((tool) => tool.name === 'bash');
   return Object.keys(bash?.parameters?.properties ?? {});
-}
-
-function toolCallIdOf(resultEvent) {
-  const block = resultEvent?.data?.message?.content?.find((entry) => entry.type === 'tool-result');
-  return block?.toolCallId;
-}
-
-function resultIsError(resultEvent) {
-  const block = resultEvent?.data?.message?.content?.find((entry) => entry.type === 'tool-result');
-  return block?.isError === true;
-}
-
-function resultError(resultEvent) {
-  const block = resultEvent?.data?.message?.content?.find((entry) => entry.type === 'tool-result');
-  if (block?.isError !== true) return undefined;
-  return block.content
-    ?.map((entry) => (typeof entry?.text === 'string' ? entry.text : undefined))
-    .filter((text) => text !== undefined)
-    .join(' | ');
 }
 
 /** 场景断言：返回 { id, ok, evidence, detail? } 列表；失败信息直接指向被违反的不变量。 */

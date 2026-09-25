@@ -10,7 +10,8 @@
  *   R2. system-prompt/assemble → 二轮目录（bash 应带 sandbox_permissions）
  *   R2. agent/pre-step → 二轮注入（应含 agent-instructions）
  *
- * 挂载方式：由 boot 脚本通过 patch insert 本插件 + agent-presets 行。
+ * 挂载方式：boot 脚本把真源生成 0.1.7 bundle，隔离 profile 选择该 bundle（registry +
+ * 声明行），本插件再由补丁插入并挂载 preset。
  * 运行：node presets/minimal-plus/smoke-boot.mjs
  */
 import assert from "node:assert/strict";
@@ -49,6 +50,15 @@ async function run(ctx) {
   }
   const selection = defaultModel.currentSelection();
   const presetName = process.env.SMOKE_PRESET ?? "minimal-plus";
+  // 载体断言（票据 07）：0.1.7 声明行真的进了 roster，且展示名来自 preset.yml。
+  const roster = await agentPresets.list();
+  const rosterEntry = roster.find((entry) => entry.id === presetName);
+  if (rosterEntry === undefined) {
+    throw new Error(`smoke: preset ${presetName} not declared (roster: ${roster.map((entry) => entry.id).join(", ") || "<empty>"})`);
+  }
+  if (rosterEntry.broken !== undefined) throw new Error(`smoke: preset ${presetName} failed to activate: ${rosterEntry.broken}`);
+  if (typeof rosterEntry.name !== "string" || rosterEntry.name.length === 0) throw new Error(`smoke: preset ${presetName} has no display name`);
+  console.log("ROSTER preset:", JSON.stringify(rosterEntry));
   console.log(`SMOKE preset: ${presetName}`);
   const { agent } = await agents.create({
     sessionId: SessionId(`session-smoke-${randomUUID()}`),
@@ -89,8 +99,24 @@ async function run(ctx) {
   // 首个 durable tool/call（promotion）→ step 结算（step/end）时同步 swap（finding 12-2
   // 多调用残留：一个 step 可携带多条调用，只有 step/end 之后才是安全的换 schema 点，
   // 且必须同步注册才能赶在下一次请求装配前生效）。
-  // 这里照 loop 形状先 append step/start：openSteps 守卫据此挡住 step 中途的装配。
+  // 0.1.7 会话格式 V4：事件序列必须满足 turn/step/tool 生命周期（tool/result 还要求
+  // first-class message：id + role=tool + source.kind=tool + callId 对齐），否则后台
+  // 持久化直接拒写。
+  agent.session.append("turn/start", { turn: 1 });
   agent.session.append("step/start", { turn: 1, step: 1 });
+  agent.session.append(
+    "assistant/message",
+    {
+      stream: [],
+      message: {
+        id: "smoke-assistant-1",
+        role: "assistant",
+        source: { kind: "model" },
+        content: [{ type: "tool-call", id: "smoke-1", name: "bash", arguments: "{}" }],
+      },
+    },
+    { surfaceOp: "append" },
+  );
   const callSeq = agent.session.append("tool/call", { callId: "smoke-1", name: "bash", arguments: "{}" }).seq;
   await new Promise((resolve) => setTimeout(resolve, 200));
   // step 未结束（tool/call 落盘、调用未结算）：此刻的装配不得 swap，参数仍按 persistent schema 校验
@@ -99,7 +125,16 @@ async function run(ctx) {
   assert.ok(!pending.bashParams.includes("sandbox_permissions"), "tool/call 未结算时不得 swap");
   agent.session.append(
     "tool/result",
-    { message: { content: [{ type: "tool-result", toolCallId: "smoke-1", content: [], isError: false }] } },
+    {
+      message: {
+        id: "smoke-result-1",
+        role: "tool",
+        toolCallId: "smoke-1",
+        source: { kind: "tool", callId: "smoke-1" },
+        content: [],
+        isError: false,
+      },
+    },
     { surfaceOp: "append", sourceEventSeqs: [callSeq] },
   );
   await new Promise((resolve) => setTimeout(resolve, 200));

@@ -1,5 +1,13 @@
 {
   "comment": "闸门 T1 零 LLM 冒烟的期望面（票据 03）。宿主换代时清单（gates/manifest.json）先变红 exit 2，重采基线时同步更新本文件。",
+  "changes": [
+    {
+      "tool": "ralph",
+      "direction": "removed",
+      "scope": "round2",
+      "reason": "dsh-base@0.1.7-rc.1 sets `tool-ralph disabled: true` by default (its cordis.patch.yml:444-447; upstream rationale: completion is a worker self-report, not an independent evaluation). The old expectation captured the 0.1.5 base, which left it enabled. No preset row re-enables it."
+    }
+  ],
   "presets": {
     "minimal-plus": {
       "round1": {
@@ -21,7 +29,6 @@
           "job_list",
           "job_output",
           "list_agents",
-          "ralph",
           "read",
           "read_image",
           "send_message",

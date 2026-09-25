@@ -1,16 +1,26 @@
 /**
- * 真实组合运行期渲染的单测（票据 04）：路径替换、插件名收集、根解析，
- * 以及一次隔离的端到端渲染（假 home / 假 checkout，不碰真实 `~/.dsh`）。
+ * 真实组合运行期渲染的单测（票据 04；票据 07 补载体迁移面）：路径替换、插件名收集、
+ * 根解析、旧目录 preset 行摘除，以及一次隔离的端到端渲染（假 home / 假 checkout，
+ * 不碰真实 `~/.dsh`）。
  *
  * 真实 tui-dev profile 的端到端行为由 `scripts/regression-gate.sh --composition real`
  * 的实跑举证；这里钉住换 checkout / 换机器时最容易改坏的判定。
  */
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
-import { RenderRealError, collectModuleNames, renderRealComposition, resolveRepoRoots, rewriteRepoRoots } from "./render-real.mjs";
+import {
+  LEGACY_PRESET_PACKAGE,
+  RenderRealError,
+  collectModuleNames,
+  renderRealComposition,
+  resolveRepoRoots,
+  rewriteRepoRoots,
+  stripLegacyPresetRow,
+} from "./render-real.mjs";
+import { BUNDLE_PACKAGE_NAME, BUNDLE_PLUGIN_FILES, PRESET_SOURCE_REQUIREMENTS } from "../../scripts/agent-preset-bundle.mjs";
 
 function writeTree(root, files) {
   for (const [file, content] of Object.entries(files)) {
@@ -18,6 +28,31 @@ function writeTree(root, files) {
     writeFileSync(join(root, file), content);
   }
 }
+
+/** 最小可用 preset 真源（生成器只需要 preset.yml + agent.cordis.yml + 被引用的插件文件）。 */
+function writePresetSource(dir, { name = "Fixture" } = {}) {
+  const files = {
+    "preset.yml": `name: ${name}\ndescription: ${name} fixture.\norder: 1\n`,
+    "agent.cordis.yml": "- id: tool-bootstrap\n  name: './tool-bootstrap.mjs'\n  config:\n    bootstrapTools: [bash, str_replace_editor]\n",
+  };
+  for (const plugin of BUNDLE_PLUGIN_FILES) files[plugin] = `// ${plugin} fixture\n`;
+  writeTree(dir, files);
+}
+
+const REAL_PATCH = [
+  "- insert:",
+  "    - id: tui-startup",
+  "      name: '/src/checkout/dsh-plugins/lib/startup.ts'",
+  "    - id: relay-client",
+  "      name: '/src/checkout/dsh-relay/src/client.ts'",
+  "    - id: endless-tools",
+  "      name: '/src/checkout/dsh-endless/src/tools.ts'",
+  "    - id: agent-presets",
+  `      name: '${LEGACY_PRESET_PACKAGE}'`,
+  "      config:",
+  "        default: standard",
+  "",
+].join("\n");
 
 test("rewriteRepoRoots: 三类仓库根按 marker 替换，裸包名与无关绝对路径不动", () => {
   const roots = [
@@ -47,6 +82,15 @@ test("rewriteRepoRoots: 三类仓库根按 marker 替换，裸包名与无关绝
   assert.ok(!rendered.includes("/old/src/"));
 });
 
+test("stripLegacyPresetRow: 摘掉旧目录 preset 行并保留后续条目", () => {
+  const stripped = stripLegacyPresetRow(REAL_PATCH);
+  assert.ok(!stripped.includes(LEGACY_PRESET_PACKAGE));
+  assert.ok(!/id:\s*agent-presets/u.test(stripped));
+  assert.ok(stripped.includes("id: tui-startup"));
+  assert.ok(stripped.includes("id: endless-tools"));
+  assert.equal(stripLegacyPresetRow("- insert:\n    - id: a\n      name: '@x'\n"), "- insert:\n    - id: a\n      name: '@x'\n");
+});
+
 test("collectModuleNames: 只收带 id 的条目名，config 里的同名键不算", () => {
   const names = collectModuleNames([
     { insert: [{ id: "a", name: "./a.mjs" }, { id: "b", name: "@scope/pkg" }] },
@@ -61,23 +105,13 @@ test("resolveRepoRoots: 默认本 checkout + 相邻 checkout，env 覆盖优先"
   assert.deepEqual(byId, { plugins: "/dev/work/dsh-plugins", relay: "/opt/relay", endless: "/dev/work/dsh-endless" });
 });
 
-test("renderRealComposition: 渲染到临时 home、源只读、preset 取自部署位副本", () => {
+test("renderRealComposition: 渲染到临时 home、源只读、preset 取自部署位真源并生成 bundle", () => {
   const root = mkdtempSync(join(tmpdir(), "render-real-"));
   try {
     const fakeHome = join(root, "home");
     const sourceDir = join(fakeHome, ".dsh", "profiles", "tui-dev");
-    const sourceText = [
-      "- insert:",
-      "    - id: tui-startup",
-      "      name: '/src/checkout/dsh-plugins/lib/startup.ts'",
-      "    - id: relay-client",
-      "      name: '/src/checkout/dsh-relay/src/client.ts'",
-      "    - id: endless-tools",
-      "      name: '/src/checkout/dsh-endless/src/tools.ts'",
-      "",
-    ].join("\n");
     writeTree(fakeHome, {
-      ".dsh/profiles/tui-dev/cordis.patch.yml": sourceText,
+      ".dsh/profiles/tui-dev/cordis.patch.yml": REAL_PATCH,
       ".dsh/profiles/tui-dev/package.json": '{"name":"dsh-profile-tui-dev","private":true}\n',
       ".dsh/profiles/tui-dev/cordis.yml": "[]\n",
       ".dsh/settings.yaml": "agent-presets:\n  default: minimal-plus\n",
@@ -91,7 +125,7 @@ test("renderRealComposition: 渲染到临时 home、源只读、preset 取自部
     writeTree(checkouts.relay, { "src/client.ts": "// relay\n" });
     writeTree(checkouts.endless, { "src/tools.ts": "// endless\n" });
     const deploymentRoot = join(root, "deployed/minimal-plus");
-    writeTree(deploymentRoot, { "preset.yml": "name: fixture\n", "agent.cordis.yml": "[]\n" });
+    writePresetSource(deploymentRoot, { name: "Fixture" });
     const repoRoot = join(root, "repo");
     writeTree(repoRoot, { "presets/unused/preset.yml": "name: unused\n" });
 
@@ -112,11 +146,21 @@ test("renderRealComposition: 渲染到临时 home、源只读、preset 取自部
     assert.ok(rendered.includes(`${checkouts.relay}/src/client.ts`));
     assert.ok(rendered.includes(`${checkouts.endless}/src/tools.ts`));
     assert.ok(!rendered.includes("/src/checkout/"));
-    assert.equal(readFileSync(join(sourceDir, "cordis.patch.yml"), "utf8"), sourceText);
+    assert.ok(!rendered.includes(LEGACY_PRESET_PACKAGE), "legacy preset service must be stripped from the rendered copy");
+    assert.equal(readFileSync(join(sourceDir, "cordis.patch.yml"), "utf8"), REAL_PATCH, "source profile must stay read-only");
     assert.notEqual(result.sourceSha, result.renderedSha);
     assert.equal(result.renderedPath, join(tempHome, "profiles/tui-dev/cordis.patch.yml"));
     assert.equal(result.preset.source, "deployed");
-    assert.ok(readFileSync(join(result.preset.stagedPath, "preset.yml"), "utf8").includes("fixture"));
+    assert.equal(result.preset.root, join(root, "deployed"));
+    assert.equal(result.preset.legacyRowStripped, true);
+    assert.equal(result.preset.deployedFallback, undefined);
+
+    // 生成 bundle 装进渲染 profile：声明行 + package 子路径 + bundles 选择 + node_modules 链接。
+    const generated = readFileSync(join(result.preset.bundleDir, "cordis.patch.yml"), "utf8");
+    assert.ok(generated.includes(`${BUNDLE_PACKAGE_NAME}/tool-bootstrap.mjs`));
+    const profileManifest = JSON.parse(readFileSync(join(result.profileDir, "package.json"), "utf8"));
+    assert.ok(profileManifest.dsh.profile.bundles.includes(BUNDLE_PACKAGE_NAME));
+    assert.ok(existsSync(join(result.profileDir, "node_modules", BUNDLE_PACKAGE_NAME, "cordis.patch.yml")));
     assert.equal(result.settings.copied, true);
     assert.deepEqual(Object.fromEntries(result.roots.map((entry) => [entry.id, entry.path])), checkouts);
     assert.ok(readFileSync(join(result.profileDir, "cordis.yml"), "utf8").includes("[]"));
@@ -125,7 +169,7 @@ test("renderRealComposition: 渲染到临时 home、源只读、preset 取自部
   }
 });
 
-test("renderRealComposition: 部署位缺席时回落仓库 preset 副本并标注 source=repo", () => {
+test("renderRealComposition: 部署位缺席时回落仓库 preset 真源并标注 source=repo", () => {
   const root = mkdtempSync(join(tmpdir(), "render-real-repo-"));
   try {
     const fakeHome = join(root, "home");
@@ -136,7 +180,7 @@ test("renderRealComposition: 部署位缺席时回落仓库 preset 副本并标�
     const checkout = join(root, "checkout/dsh-endless");
     writeTree(checkout, { "src/tools.ts": "// endless\n" });
     const repoRoot = join(root, "repo");
-    writeTree(repoRoot, { "presets/minimal-plus/preset.yml": "name: fixture\n" });
+    writePresetSource(join(repoRoot, "presets", "minimal-plus"), { name: "Fixture" });
     const tempHome = join(root, "temp-home");
     mkdirSync(tempHome, { recursive: true });
 
@@ -150,8 +194,46 @@ test("renderRealComposition: 部署位缺席时回落仓库 preset 副本并标�
       homeDir: fakeHome,
     });
     assert.equal(result.preset.source, "repo");
-    assert.ok(readFileSync(join(result.preset.stagedPath, "preset.yml"), "utf8").includes("fixture"));
+    assert.equal(result.preset.root, join(repoRoot, "presets"));
+    assert.ok(existsSync(join(result.preset.bundleDir, "cordis.patch.yml")));
+    assert.equal(result.preset.legacyRowStripped, false);
+    assert.deepEqual(result.preset.deployedFallback, { path: join(root, "no-such-deployment"), missing: PRESET_SOURCE_REQUIREMENTS });
     assert.equal(result.settings.copied, false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("renderRealComposition: 部署位副本不完整时回落仓库真源并记录缺件", () => {
+  const root = mkdtempSync(join(tmpdir(), "render-real-partial-"));
+  try {
+    const fakeHome = join(root, "home");
+    writeTree(fakeHome, {
+      ".dsh/profiles/tui-dev/cordis.patch.yml": "- insert:\n    - id: endless-tools\n      name: '/src/checkout/dsh-endless/src/tools.ts'\n",
+      ".dsh/profiles/tui-dev/package.json": "{}\n",
+    });
+    const checkout = join(root, "checkout/dsh-endless");
+    writeTree(checkout, { "src/tools.ts": "// endless\n" });
+    const repoRoot = join(root, "repo");
+    writePresetSource(join(repoRoot, "presets", "minimal-plus"), { name: "Fixture" });
+    const deploymentRoot = join(root, "deployed/minimal-plus");
+    writeTree(deploymentRoot, { "preset.yml": "name: stale\n" });
+    const tempHome = join(root, "temp-home");
+    mkdirSync(tempHome, { recursive: true });
+
+    const result = renderRealComposition({
+      repoRoot,
+      tempHome,
+      presetName: "minimal-plus",
+      deploymentRoot,
+      installAnchor: import.meta.url,
+      env: { DSH_PLUGINS_ROOT: checkout, DSH_RELAY_ROOT: checkout, DSH_ENDLESS_ROOT: checkout },
+      homeDir: fakeHome,
+    });
+    assert.equal(result.preset.source, "repo");
+    assert.equal(result.preset.deployedFallback.path, deploymentRoot);
+    assert.ok(result.preset.deployedFallback.missing.includes("plugin-teardown.mjs"));
+    assert.ok(result.preset.deployedFallback.missing.includes("agent.cordis.yml"));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

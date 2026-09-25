@@ -30,6 +30,8 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { PluginPackages, boot, createRuntimeResolution, loadOverlayPatches, loadProfile } from '@deepseek-ai/dsh-app-boot';
 import { installAnchor } from '../../scripts/host-runtime.mjs';
+import { stagePresetBundle } from '../../scripts/agent-preset-bundle.mjs';
+import { seedHeadlessProfile as seedProfileHome } from '../../scripts/profile-home.mjs';
 import { STUB_MODEL, STUB_PROVIDER, stubState } from './adapter.mjs';
 import { createHarness } from './harness.mjs';
 
@@ -79,23 +81,15 @@ function defaultReportPath(scenarioId) {
 
 // ── 隔离 home ──────────────────────────────────────────────────────────────
 
-/** headless profile 骨架（与 CLI prepareProfile 同构；只为 standalone 运行兜底）。 */
+/** headless profile 骨架（共享 seed）+ 从真源现场生成 0.1.7 preset bundle 并选择它。 */
 function seedHeadlessProfile(home) {
-  const profileDir = join(home, 'profiles', 'headless');
-  mkdirSync(profileDir, { recursive: true });
-  const manifestPath = join(profileDir, 'package.json');
-  if (!existsSync(manifestPath)) {
-    writeFileSync(
-      manifestPath,
-      `${JSON.stringify({
-        name: 'dsh-profile-headless',
-        private: true,
-        dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-headless'], patchReload: 'startup' } },
-      }, null, 2)}\n`,
-    );
-  }
-  const cordisPath = join(profileDir, 'cordis.yml');
-  if (!existsSync(cordisPath)) writeFileSync(cordisPath, '# dsh profile root — an empty entry list.\n[]\n');
+  const profileDir = seedProfileHome(home);
+  stagePresetBundle({
+    sourceDir: join(process.env.STUB_PRESET_ROOT ?? join(REPO_ROOT, 'presets'), PRESET),
+    profileDir,
+    sourceLabel: `presets/${PRESET}`,
+  });
+  return profileDir;
 }
 
 /**

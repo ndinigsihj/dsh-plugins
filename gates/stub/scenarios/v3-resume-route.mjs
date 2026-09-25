@@ -1,8 +1,11 @@
 /**
  * 场景 v3-resume-route —— 锁定「按用途选择模型」能力面的恢复路径（票据 07 / 票据 11）：
  *
- * 不变量：已 promote 的 V3 会话（含 durable `tool/call`）恢复后，恢复路径必须从会话里
- *   已记录的 `subagent/model-selection-policy` 重建该会话的工具面，因此恢复后
+ * id 为历史命名；0.1.7 起新会话直接落 v4（v3 日志的迁移执行归票据 10），本场景验的是
+ * 「resume 后按已记录策略重建工具面」，与日志代际无关。
+ *
+ * 不变量：已 promote 的会话（含 durable `tool/call`；0.1.7 宿主落 v4）恢复后，恢复路径
+ *   必须从会话里已记录的 `subagent/model-selection-policy` 重建该会话的工具面，因此恢复后
  *   **首个 request/header** 仍含路由发现工具 `list_subagent_models`，且路由仍是假模型。
  *   若恢复只按「新会话 + 当前设置」处理（不回读 durable 策略），发现工具会消失，
  *   子代理模型选择在 resume 后静默失效。
@@ -21,8 +24,8 @@ import { textTurn, toolCallTurn } from '../adapter.mjs';
 import { headerToolNames, requestHeaders, routeGuard, routeLabel, turnCompleted } from '../inspect.mjs';
 
 export const id = 'v3-resume-route';
-export const finding = 'V3 会话 resume 后按已记录策略重挂路由发现工具（票据 11）';
-export const invariant = '已 promote 的 V3 会话恢复后首个 request/header 含 list_subagent_models，路由仍为 stub/stub-model';
+export const finding = '会话 resume 后按已记录策略重挂路由发现工具（票据 11）';
+export const invariant = '已 promote 的持久会话恢复后首个 request/header 含 list_subagent_models，路由仍为 stub/stub-model';
 
 /** turn0 产生 promotion 信号；turn1 收尾第一段生命；turn2 收尾恢复后的首个请求。 */
 export const turns = [
@@ -85,11 +88,12 @@ export function assert(events, { harness } = {}) {
     `policy events=${String(policies.length)} routes=${routes.join(',') || '<none>'}`,
   );
 
-  // ⑤ V3 口径：被恢复的持久会话确实是会话格式 3（宿主 manifest 同钉）。
+  // ⑤ 会话格式口径：0.1.7 宿主起新会话直接落 v4（被恢复的持久会话即当前宿主格式；
+  //    0.1.5 写下的 v3 日志的迁移执行归票据 10，不在本场景内）。
   push(
-    'resume.format-v3',
-    facts.sessionFormatVersion === 3,
-    `persisted session format version=${String(facts.sessionFormatVersion)}`,
+    'resume.format-current',
+    facts.sessionFormatVersion === 4,
+    `persisted session format version=${String(facts.sessionFormatVersion)} (current host format=4)`,
   );
 
   // ⑥ 恢复窗口正常收尾。

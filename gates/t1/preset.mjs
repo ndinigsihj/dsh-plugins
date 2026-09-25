@@ -48,6 +48,16 @@ export function assertPresetSmoke(t, config, report) {
   const r1 = jsonField(smoke.stdout, "ROUND1 catalog:");
   const r2 = jsonField(smoke.stdout, "ROUND2 catalog:");
   const preStep2 = jsonField(smoke.stdout, "ROUND2 pre-step sources:");
+  const roster = jsonField(smoke.stdout, "ROSTER preset:");
+
+  // 载体断言（票据 07）：0.1.7 声明行真的进了 registry roster，且展示名来自 preset.yml。
+  const rosterOk = roster?.id === PRESET && typeof roster?.name === "string" && roster.name.length > 0 && roster.broken === undefined;
+  t[rosterOk ? "pass" : "fail"](
+    "smoke.preset-roster",
+    rosterOk ? `id=${PRESET} name=${roster.name}` : `roster=${JSON.stringify(roster ?? null)} exit=${String(smoke.status)}`,
+    { stderr: tailLines(smoke.stderr, 4) },
+  );
+
   const r1Tools = r1?.tools ?? [];
   const r1Diff = expected === undefined ? { missing: ["<expectations.json>"], unexpected: [] } : setDiff(expected.round1.tools, r1Tools);
   const r1BashBad = (r1?.bashParams ?? []).filter((param) => (expected?.round1?.bashParamsExcludes ?? []).includes(param));
@@ -72,7 +82,7 @@ export function assertPresetSmoke(t, config, report) {
       : `tools=${String(r2Tools.length)} missing=${JSON.stringify(r2Diff.missing)} unexpected=${JSON.stringify(r2Diff.unexpected)} bashParamsMissing=${JSON.stringify(r2BashMissing)} preStepMissing=${JSON.stringify(r2SourcesMissing)}`,
     { preset: PRESET },
   );
-  report.smoke = { r1Tools, toolCount: r2Tools.length, tools: r2Tools, preStepSources: r2Sources };
+  report.smoke = { preset: roster, r1Tools, toolCount: r2Tools.length, tools: r2Tools, preStepSources: r2Sources };
 }
 
 /** ⑤ 降级路径冒烟（缺 bootstrap 工具 → fail-open 全量目录）。preset 来源跟随组合模式。 */

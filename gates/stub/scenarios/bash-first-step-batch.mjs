@@ -29,7 +29,7 @@
  *   git apply experiments/regression-gate/evidence/12-3-fix.patch
  */
 import { textTurn, toolCallsTurn } from '../adapter.mjs';
-import { bashParamKeys, requestHeaders, resultOfCall, routeGuard, turnCompleted } from '../inspect.mjs';
+import { bashParamKeys, requestHeaders, resultIsError, resultOfCall, routeGuard, turnCompleted } from '../inspect.mjs';
 
 export const id = 'bash-first-step-batch';
 export const finding = 'finding 12-2 多调用残留：批量 bash 的 step 内 swap 提前到首个 tool/result';
@@ -128,7 +128,7 @@ export function assert(events, { stub } = {}) {
     'bash.second-call-accepted',
     secondCall !== undefined && secondArgs?.description !== undefined && !secondRejected,
     `tool/call after step/end arguments=${String(secondCall?.data?.arguments ?? '<none>')} `
-      + `result=${secondResult === undefined ? '<missing>' : `isError=${String(secondResult.data?.isError)} error=${String(secondResult.data?.error?.code ?? '<none>')}`}`,
+      + `result=${secondResult === undefined ? '<missing>' : `isError=${String(resultIsError(secondResult))} error=${String(secondResult.data?.error?.code ?? '<none>')}`}`,
   );
 
   // ⑦ 回放脚本消费：3 个会话轮次 + 无辅助调用（overlay 关掉了 session-title-llm）

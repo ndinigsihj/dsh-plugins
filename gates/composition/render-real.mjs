@@ -16,14 +16,18 @@
  * 回落到闸门自持组合——那会让「交付前验的是真实组合」变成假绿。
  */
 import { createHash } from "node:crypto";
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
+import { BUNDLE_PACKAGE_NAME, PRESET_SOURCE_REQUIREMENTS, stagePresetBundle } from "../../scripts/agent-preset-bundle.mjs";
 import { parseCompositionDump } from "../dump-parse.mjs";
 
 /** 真实开发 profile 名（计划 §2.1 的运行态定义）。 */
 export const REAL_PROFILE_NAME = "tui-dev";
+
+/** 0.1.7 已移除的旧目录 preset 服务名；渲染时按 id 摘掉（票据 07 硬切换）。 */
+export const LEGACY_PRESET_PACKAGE = "@deepseek-ai/dsh-agent-presets";
 
 /**
  * 三类仓库根：profile 文本里的路径标记 / env 覆盖键 / 默认位置。
@@ -73,6 +77,35 @@ export function rewriteRepoRoots(text, roots) {
     rendered = rendered.replace(pattern, () => root.path);
   }
   return rendered;
+}
+
+/**
+ * 摘掉真实 profile 里的旧目录 preset 服务行（0.1.7 已移除该包，留着渲染后无法 import）。
+ *
+ * 只按 `- id: agent-presets` 起行、按 YAML 缩进收块：整块（含 config 与注释）从渲染副本
+ * 中移除；真实源 profile 保持只读。票据 12 更新真实 profile 后本函数自然不再命中。
+ */
+export function stripLegacyPresetRow(text) {
+  const kept = [];
+  let skipping = false;
+  let baseIndent = 0;
+  for (const line of text.split("\n")) {
+    if (!skipping) {
+      const match = /^(\s*)- id:\s*agent-presets\s*$/u.exec(line);
+      if (match === null) {
+        kept.push(line);
+        continue;
+      }
+      skipping = true;
+      baseIndent = match[1].length;
+      continue;
+    }
+    const indent = line.length - line.trimStart().length;
+    if (line.trim().length === 0 || indent > baseIndent) continue;
+    skipping = false;
+    kept.push(line);
+  }
+  return kept.join("\n");
 }
 
 /** 收集 patch 条目里的插件名（`id` + `name` 是条目身份；config 里的同名键不算）。 */
@@ -154,7 +187,11 @@ export function renderRealComposition(options) {
     throw new RenderRealError(`real composition source profile not found: ${sourcePath}`, { sourcePath });
   }
   const sourceText = readFileSync(sourcePath, "utf8");
-  const renderedText = rewriteRepoRoots(sourceText, roots);
+  // 载体迁移（票据 07）：真实 profile 仍带着旧目录 preset 行时，渲染副本里摘掉它；
+  // 新的 0.1.7 bundle 由下面的 stagePresetBundle 装进渲染 profile 并进入 bundles 选择。
+  const rewrittenText = rewriteRepoRoots(sourceText, roots);
+  const renderedText = stripLegacyPresetRow(rewrittenText);
+  const legacyRowStripped = renderedText !== rewrittenText;
 
   const profileDir = join(tempHome, "profiles", REAL_PROFILE_NAME);
   checkDependencies(renderedText, { profileDir, installAnchor });
@@ -174,6 +211,7 @@ export function renderRealComposition(options) {
   // 真实 profile 的 node_modules（pnpm 安装的私有 bundle，如 dsh-antigravity-auth）：
   // 只读符号链接进临时 profile，使 loadProfile 能解析 profile 声明的 bundles。
   // 源目录在真实 home，闸门只读它、零写入（隔离指纹仍按 lstat 记录链接本身）。
+  // stagePresetBundle 若发现它是符号链接会就地物化成真目录（只写临时 home）。
   const sourceNodeModules = join(sourceProfileDir, "node_modules");
   const profileNodeModules = join(profileDir, "node_modules");
   if (existsSync(sourceNodeModules) && !existsSync(profileNodeModules)) {
@@ -187,15 +225,12 @@ export function renderRealComposition(options) {
   const settingsCopied = existsSync(settingsSource);
   if (settingsCopied) copyFileSync(settingsSource, join(tempHome, "settings.yaml"));
 
-  // preset 副本：部署位可用则用部署位（真实加载源），否则回落仓库副本并显式标注。
-  const presetStaging = join(tempHome, ".agent-presets");
-  const deployedPreset = deploymentRoot !== undefined && existsSync(join(deploymentRoot, "preset.yml"));
-  const presetSourcePath = deployedPreset ? deploymentRoot : join(repoRoot, "presets", presetName);
-  if (!existsSync(join(presetSourcePath, "preset.yml"))) {
-    throw new RenderRealError(`preset to stage not found: ${presetSourcePath}`, { presetSourcePath });
-  }
-  mkdirSync(presetStaging, { recursive: true });
-  cpSync(presetSourcePath, join(presetStaging, presetName), { recursive: true });
+  // preset 真源与 0.1.7 载体：完整部署位副本优先（真实加载源），否则回落仓库真源；
+  // 从真源生成 bundle 装进渲染 profile。
+  const preset = {
+    ...stagePresetIntoProfile({ repoRoot, deploymentRoot, presetName, profileDir }),
+    legacyRowStripped,
+  };
 
   return {
     sourcePath,
@@ -204,13 +239,37 @@ export function renderRealComposition(options) {
     renderedSha: sha256Text(renderedText),
     profileDir,
     roots: roots.map((root) => ({ id: root.id, env: root.env, path: root.path })),
-    preset: {
-      name: presetName,
-      source: deployedPreset ? "deployed" : "repo",
-      sourcePath: presetSourcePath,
-      stagedPath: join(presetStaging, presetName),
-      root: presetStaging,
-    },
+    preset,
     settings: settingsCopied ? { copied: true, sourcePath: settingsSource, sha: sha256Text(readFileSync(settingsSource, "utf8")) } : { copied: false },
+  };
+}
+
+/**
+ * preset 真源解析 + 0.1.7 bundle 落位（renderRealComposition 的 preset 面）：
+ * 部署位副本完整则用部署位，否则回落仓库真源并把「部署位缺哪些文件」写进结果
+ * （部署位一致性另有 T1 的 sha 断言，这里不静默）。
+ */
+function stagePresetIntoProfile({ repoRoot, deploymentRoot, presetName, profileDir }) {
+  const deployedMissing = deploymentRoot === undefined ? ["<no deployment root>"] : PRESET_SOURCE_REQUIREMENTS.filter((name) => !existsSync(join(deploymentRoot, name)));
+  const deployedUsable = deploymentRoot !== undefined && deployedMissing.length === 0;
+  const presetSourcePath = deployedUsable ? deploymentRoot : join(repoRoot, "presets", presetName);
+  const repoMissing = PRESET_SOURCE_REQUIREMENTS.filter((name) => !existsSync(join(presetSourcePath, name)));
+  if (repoMissing.length > 0) {
+    throw new RenderRealError(`preset to stage is incomplete: ${presetSourcePath} missing ${repoMissing.join(", ")}`, { presetSourcePath, missing: repoMissing });
+  }
+  const staged = stagePresetBundle({
+    sourceDir: presetSourcePath,
+    profileDir,
+    packageName: BUNDLE_PACKAGE_NAME,
+    sourceLabel: deployedUsable ? presetSourcePath : relative(repoRoot, presetSourcePath),
+  });
+  return {
+    name: presetName,
+    source: deployedUsable ? "deployed" : "repo",
+    sourcePath: presetSourcePath,
+    root: dirname(presetSourcePath),
+    bundleDir: staged.bundleDir,
+    packageName: BUNDLE_PACKAGE_NAME,
+    deployedFallback: deployedUsable || deploymentRoot === undefined ? undefined : { path: deploymentRoot, missing: deployedMissing },
   };
 }
