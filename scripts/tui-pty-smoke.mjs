@@ -15,17 +15,17 @@
  *   scripts/tui-pty-smoke.sh --negative-control route           # 红路径：跳过 /model 切换
  *   scripts/tui-pty-smoke.sh --negative-control drop-assertion  # 红路径：模拟断言被删
  *   scripts/tui-pty-smoke.sh --keep-temp                        # 保留临时 home 排查
- *   scripts/tui-pty-smoke.sh --profile tui-team \
- *     --extra-bundle @deepseek-ai/dsh-experimental-agent-team-profile \
- *     --probe-tools                                             # 票据 08：Team 叠加实测
+ *   scripts/tui-pty-smoke.sh --profile tui-team --probe-tools   # 票据 09：Team 形态的 profile 维度期望
  *   node scripts/tui-pty-smoke.mjs                              # 直跑（自带临时 home 与锁）
  *
- * 参数化（票据 08）：`--profile <名>`（默认 tui-dev）、`--source-profile <名>`（默认 tui-dev，
- * 派生 profile 的只读源）、`--preset <id>`（默认 minimal-plus，透传给覆盖层钉选）、
- * `--extra-bundle <包名>`（可重复；追加到派生 profile 的 bundles）、
- * `--probe-tools`（追加 gates/stub/tool-probe.patch.yml，把每个 Agent 的实际工具面写进
- * 临时 home 的 tool-surface.json 并放进报告）。非默认 profile 从 `--source-profile`
- * 的真实 profile 渲染派生，真实源只读。
+ * 参数化（票据 08/09）：`--profile <名>`（默认 tui-dev；`tui-team` 自动追加 Team bundle）、
+ * `--source-profile <名>`（默认 tui-dev，派生 profile 的只读源）、`--preset <id>`
+ * （默认 minimal-plus，透传给覆盖层钉选）、`--extra-bundle <包名>`（可重复；追加到派生
+ * profile 的 bundles）、`--probe-tools`（追加 gates/stub/tool-probe.patch.yml，把每个
+ * Agent 的实际工具面写进临时 home 的 tool-surface.json 并放进报告；带 expectations.json
+ * 的 profile 会按 `profiles.<名>` 逐行核对注册面与模型可见目录；preset 哨兵缺席一律判红，
+ * 回退口径只在期望声明里核对）。非默认 profile 从 `--source-profile` 的真实 profile 渲染派生，
+ * 真实源只读。
  *
  * 退出码：0 全过 / 1 任一断言失败 / 2 环境前置不满足（PTY 或宿主内嵌依赖不可用、
  * 真实组合渲染失败）。报告 JSON 默认落
@@ -63,7 +63,8 @@ import { SESSION_FORMAT_VERSION } from "@deepseek-ai/dsh-session";
 import { EXIT, createAssertions, run, writeReport } from "../gates/gate-helpers.mjs";
 import { RenderRealError, renderRealComposition } from "../gates/composition/render-real.mjs";
 import { MANIFEST_PATH, readManifest, resolveDeploymentRoot } from "../gates/manifest.mjs";
-import { TEAM_BUNDLE } from "../gates/team-bundle.mjs";
+import { bundlesForProfile, TEAM_BUNDLE, TEAM_PROFILE_SOURCE } from "../gates/team-bundle.mjs";
+import { diffToolSets, fallbackProblems, formatToolDiff, readExpectations, resolveProfileExpectation } from "../gates/profile-expectations.mjs";
 import { installAnchor } from "./host-runtime.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/u, "");
@@ -75,8 +76,8 @@ const OVERLAY = join(REPO_ROOT, "gates", "stub", "pty-smoke.patch.yml");
 const PROBE_OVERLAY = join(REPO_ROOT, "gates", "stub", "tool-probe.patch.yml");
 const DEFAULT_PROFILE = "tui-dev";
 const DEFAULT_PRESET = "minimal-plus";
-/** 派生 profile 的默认只读源（票据 08 的 tui-team 实测从真实 tui-dev 派生）。 */
-const DEFAULT_SOURCE_PROFILE = "tui-dev";
+/** 派生 profile 的默认只读源（tui-team 从真实 tui-dev 派生）。 */
+const DEFAULT_SOURCE_PROFILE = TEAM_PROFILE_SOURCE;
 const COLS = 120;
 const ROWS = 30;
 const TERM = "xterm-256color";
@@ -833,9 +834,11 @@ function rootProbeSnapshot(ctx) {
 }
 
 /**
- * 工具面探针断言（票据 08，仅 --probe-tools）：真实 preset 选择路径下
+ * 工具面探针断言（票据 08/09，仅 --probe-tools）：真实 preset 选择路径下
  *   - preset 生效：哨兵 `skill_search`（preset 的 skill-search 行独有）；
- *   - Team 模式：`subagent`/`list_subagent_models` 与 `spawn_teammate` 并存（B1.5 实测冻结）。
+ *   - Team 模式：`subagent`/`list_subagent_models` 与 `spawn_teammate` 并存（B1.5 实测冻结）；
+ *   - profile 维度期望：`gates/expectations.json` 的 `profiles.<名>` 逐行核对注册面与
+ *     模型可见目录（票据 09）；preset 哨兵缺席判红（回退口径只在期望声明里核对）。
  */
 function assertToolProbe(t, ctx, options) {
   const root = rootProbeSnapshot(ctx);
@@ -843,6 +846,23 @@ function assertToolProbe(t, ctx, options) {
   const modelVisible = ctx.modelVisibleTools ?? [];
   const sentinel = rootTools.includes("skill_search") || modelVisible.includes("skill_search");
   const teamExpected = options.extraBundles.includes(TEAM_BUNDLE);
+  const expectation = profileExpectationOf(t, options.profile);
+  if (!sentinel) {
+    // preset 未挂载：measured 面不成立，一律判红——不自动降级为「未测」，否则 preset
+    // 挂载回归会被伪装成回退口径。期望声明了回退口径时，把核对结果写进判词。
+    const problems =
+      expectation?.fallback === undefined
+        ? ["no fallback convention declared"]
+        : fallbackProblems(expectation, [...rootTools, ...modelVisible]);
+    t.fail(
+      "tool-probe.captured",
+      `preset sentinel missing (preset not mounted); measured surface not claimed; fallback convention ${
+        problems.length === 0 ? "holds (record 未测 only when the fallback carrier is intended)" : `violated: ${problems.join("; ")}`
+      }`,
+      { probePath: ctx.probeOut, profile: options.profile, root, modelVisible },
+    );
+    return;
+  }
   const coexists = ["subagent", "list_subagent_models", "spawn_teammate"].every(
     (name) => rootTools.includes(name) && modelVisible.includes(name),
   );
@@ -852,12 +872,38 @@ function assertToolProbe(t, ctx, options) {
     `root tools=${String(root?.toolCount ?? 0)} sentinel=${String(sentinel)} team-expected=${String(teamExpected)} coexist=${String(coexists)} modelVisible=${String(modelVisible.length)}`,
     { probePath: ctx.probeOut, profile: options.profile, sourceProfile: options.sourceProfile, extraBundles: options.extraBundles, root, modelVisible },
   );
+  if (expectation !== undefined) assertProfileSurface(t, options, expectation, { rootTools, modelVisible });
+}
+
+/** 读 `gates/expectations.json` 的 profile 期望；读不了记一条显式失败，不静默跳过。 */
+function profileExpectationOf(t, profileName) {
+  try {
+    return resolveProfileExpectation(readExpectations(), profileName);
+  } catch (error) {
+    t.fail("tool-probe.expectations", `gates/expectations.json unreadable: ${String(error?.message ?? error)}`);
+    return undefined;
+  }
+}
+
+/** 注册面与模型可见目录都必须逐行等于 profile 期望（票据 09）。 */
+function assertProfileSurface(t, options, expectation, { rootTools, modelVisible }) {
+  const registryDiff = diffToolSets(expectation.tools, rootTools);
+  const visibleDiff = diffToolSets(expectation.tools, modelVisible);
+  const diff = [...new Set([...formatToolDiff(registryDiff), ...formatToolDiff(visibleDiff)])];
+  const ok = registryDiff.ok && visibleDiff.ok;
+  t[ok ? "pass" : "fail"](
+    "tool-probe.profile-surface",
+    `profile=${options.profile} expected=${String(expectation.tools.length)} registry=${String(rootTools.length)} modelVisible=${String(modelVisible.length)}${ok ? "" : ` diff=${diff.join(" ")}`}`,
+    { expectation: expectation.name, evidence: expectation.evidence, registryDiff, visibleDiff },
+  );
 }
 
 /* ── 主流程 ─────────────────────────────────────────────────────────────── */
 
 async function main() {
   const options = parseCli(process.argv.slice(2));
+  // tui-team 的 Team bundle 由 profile 名派生（票据 09）；显式 --extra-bundle 仍去重保留。
+  options.extraBundles = [...new Set([...bundlesForProfile(options.profile), ...options.extraBundles])];
   const t = createAssertions();
   const startedAt = new Date().toISOString();
   const metrics = { boot1: {}, boot2: undefined, streaming: undefined };

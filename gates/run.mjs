@@ -34,6 +34,8 @@ import { runT1 } from "./t1/run.mjs";
 import { runT2 } from "./t2.mjs";
 import { runT3 } from "./t3/run.mjs";
 import { REAL_PROFILE_NAME, RenderRealError, renderRealComposition } from "./composition/render-real.mjs";
+import { renderTeamInto } from "./composition/render-team.mjs";
+import { TEAM_PROFILE } from "./team-bundle.mjs";
 
 /**
  * real 组合（票据 04）：读真实 tui-dev profile、按 env 渲染三类仓库根、物化到临时 home。
@@ -121,6 +123,7 @@ async function runTier1(ctx) {
     gate: ctx.gate,
     composition: options.composition,
     real: ctx.real,
+    realTeam: ctx.realTeam,
     manifestObj: ctx.manifest.manifest,
     host: ctx.host,
     exemptions: ctx.exemptions,
@@ -140,6 +143,7 @@ async function runTier1(ctx) {
   report.copies = {
     profileCordisSha: sha256File(join(ctx.tempHome, "profiles", "headless", "cordis.yml")),
     ...(ctx.real === null ? {} : { realProfileCordisSha: sha256File(join(ctx.tempHome, "profiles", REAL_PROFILE_NAME, "cordis.yml")) }),
+    ...(ctx.realTeam === null ? {} : { teamProfileCordisSha: sha256File(join(ctx.tempHome, "profiles", TEAM_PROFILE, "cordis.yml")) }),
   };
 }
 
@@ -246,10 +250,12 @@ export async function runGate(options) {
     gate: null,
     gateError: null,
     real: null,
+    realTeam: null,
   };
   report.exemptions = ctx.exemptionsApplied;
 
   ctx.real = renderRealInto(ctx);
+  ctx.realTeam = renderTeamInto(ctx);
   ctx.gate = await composeGateInto(ctx);
   runTier0(ctx);
   await runTier1(ctx);

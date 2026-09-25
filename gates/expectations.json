@@ -1,5 +1,5 @@
 {
-  "comment": "闸门 T1 零 LLM 冒烟的期望面（票据 03）。宿主换代时清单（gates/manifest.json）先变红 exit 2，重采基线时同步更新本文件。",
+  "comment": "闸门工具面期望（票据 03；票据 09 增 profiles 维度）。宿主换代时清单（gates/manifest.json）先变红 exit 2，重采基线时同步更新本文件。禁止整文件再生成：profiles.* 用 basedOn + changes 行级差异表达，每条 changes 必须带 direction 与 reason；测试会与 08 实测归档逐项对账。",
   "changes": [
     {
       "tool": "ralph",
@@ -48,6 +48,165 @@
         "bashParamsIncludes": ["sandbox_permissions", "justification"],
         "preStepSources": ["agent-instructions", "instruction-hint", "skill-catalog"]
       }
+    }
+  },
+  "profiles": {
+    "tui-dev": {
+      "kind": "non-team",
+      "carrier": "pty",
+      "preset": "minimal-plus",
+      "description": "日常开发 Profile（不带 Team bundle）：headless 冒烟基线 + tui-dev profile 自身的 7 个增量。非 Team 形态的可见工具集合以此为基线，Team 引入不得改变它。",
+      "basedOn": "presets.minimal-plus.round2.tools",
+      "changes": [
+        {
+          "tool": "list_subagent_models",
+          "direction": "added",
+          "reason": "tui-dev 的 subagent-model-selection-settings 行 enabled=true（preset 的 tool-subagent 开了 modelSelectionSettings）：路由发现工具只在 enabled 时注册；headless 冒烟基线为 enabled=false。"
+        },
+        {
+          "tool": "project_bind",
+          "direction": "added",
+          "reason": "tui-dev profile 的 endless-tools 行（endless 记忆层端到端工具）；headless 冒烟组合不挂 endless。"
+        },
+        {
+          "tool": "project_unbind",
+          "direction": "added",
+          "reason": "同 endless-tools 行。"
+        },
+        {
+          "tool": "recall",
+          "direction": "added",
+          "reason": "同 endless-tools 行。"
+        },
+        {
+          "tool": "remember",
+          "direction": "added",
+          "reason": "同 endless-tools 行。"
+        },
+        {
+          "tool": "state_get",
+          "direction": "added",
+          "reason": "同 endless-tools 行。"
+        },
+        {
+          "tool": "state_update",
+          "direction": "added",
+          "reason": "同 endless-tools 行。"
+        }
+      ],
+      "evidence": "docs/tickets/dsh-v0.1.7-rc.1-upgrade/evidence/08-pty-tui-dev.json（modelVisibleTools，35）"
+    },
+    "headless-team": {
+      "kind": "team",
+      "carrier": "stub",
+      "preset": "minimal-plus",
+      "bundles": ["@deepseek-ai/dsh-experimental-agent-team-profile"],
+      "description": "T2 进程内对照臂（票据 08，CI 可跑）：headless + Team bundle + preset；Lead 核对注册面与 promotion 后的模型可见目录，teammate 按在线瞬时注册面（08 测量纪律 2）。",
+      "basedOn": "presets.minimal-plus.round2.tools",
+      "changes": [
+        {
+          "tool": "subagent_fork",
+          "direction": "removed",
+          "reason": "Team bundle 组合期禁用 tool-subagent-fork（bundle patch disabled: true）；preset 无 fork 行。"
+        },
+        {
+          "tool": "list_subagent_models",
+          "direction": "added",
+          "reason": "preset 的 tool-subagent 行未被顶层组合包替换（agent 作用域挂回）；stub overlay 的模型选择设置单例 enabled=true。"
+        },
+        {
+          "tool": "spawn_teammate",
+          "direction": "added",
+          "reason": "Team bundle 的 tool-agent-team 注册（Lead 创建 teammate）。"
+        },
+        {
+          "tool": "wait_agent",
+          "direction": "added",
+          "reason": "Team bundle 的 tool-agent-team 注册（等待成员/任务变化）。"
+        },
+        {
+          "tool": "team_task_create",
+          "direction": "added",
+          "reason": "Team bundle 的 tool-agent-team 注册（任务板写路径）。"
+        },
+        {
+          "tool": "team_task_get",
+          "direction": "added",
+          "reason": "Team bundle 的 tool-agent-team 注册（任务板读路径）。"
+        },
+        {
+          "tool": "team_task_list",
+          "direction": "added",
+          "reason": "Team bundle 的 tool-agent-team 注册（任务板读路径）。"
+        },
+        {
+          "tool": "team_task_update",
+          "direction": "added",
+          "reason": "Team bundle 的 tool-agent-team 注册（任务板写路径，revision CAS）。"
+        }
+      ],
+      "evidence": "docs/tickets/dsh-v0.1.7-rc.1-upgrade/evidence/08-control-team-overlay.json（lead.registryTools，34）"
+    },
+    "tui-team": {
+      "kind": "team",
+      "carrier": "pty",
+      "sourceProfile": "tui-dev",
+      "preset": "minimal-plus",
+      "bundles": ["@deepseek-ai/dsh-experimental-agent-team-profile"],
+      "description": "Team 工作 Profile（C 方案）：从 tui-dev 派生、只追加 Team bundle。08 实测自研 preset 真正生效且与 Team 创建工具并存（+6/−1，subagent_fork 被组合期禁用）。",
+      "basedOn": "profiles.tui-dev",
+      "changes": [
+        {
+          "tool": "subagent_fork",
+          "direction": "removed",
+          "reason": "Team bundle 组合期禁用；preset 只带回 subagent，无 fork 行，组合后不回归（08 实测）。"
+        },
+        {
+          "tool": "spawn_teammate",
+          "direction": "added",
+          "reason": "Team bundle 的 tool-agent-team 注册（Lead 创建 teammate；Lead 与 teammate 工具面相同，权限按 role 拒绝）。"
+        },
+        {
+          "tool": "wait_agent",
+          "direction": "added",
+          "reason": "Team bundle 的 tool-agent-team 注册（等待成员/任务变化）。"
+        },
+        {
+          "tool": "team_task_create",
+          "direction": "added",
+          "reason": "Team bundle 的 tool-agent-team 注册（任务板写路径）。"
+        },
+        {
+          "tool": "team_task_get",
+          "direction": "added",
+          "reason": "Team bundle 的 tool-agent-team 注册（任务板读路径）。"
+        },
+        {
+          "tool": "team_task_list",
+          "direction": "added",
+          "reason": "Team bundle 的 tool-agent-team 注册（任务板读路径）。"
+        },
+        {
+          "tool": "team_task_update",
+          "direction": "added",
+          "reason": "Team bundle 的 tool-agent-team 注册（任务板写路径，revision CAS）。"
+        }
+      ],
+      "fallback": {
+        "preset": null,
+        "status": "unmeasured",
+        "reason": "spec 不可测回退：tui-team 不让自研 preset 下沉。此时不对 measured（40）做声称，票面记「未测」；只核对 Team 组合面与 preset 独有行的缺席。",
+        "requiredPresent": [
+          "spawn_teammate",
+          "wait_agent",
+          "team_task_create",
+          "team_task_get",
+          "team_task_list",
+          "team_task_update"
+        ],
+        "requiredAbsent": ["subagent", "list_subagent_models", "subagent_fork", "skill_search"]
+      },
+      "evidence": "docs/tickets/dsh-v0.1.7-rc.1-upgrade/evidence/08-pty-team.json（modelVisibleTools，40）"
     }
   }
 }

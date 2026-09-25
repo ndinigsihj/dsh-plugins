@@ -426,10 +426,14 @@ P0 = 不迁移就跑不起来或会丢数据；P1 = 行为变化需适配；P2 =
    **已完成（票据 04，2026-09-25，用户裁决）**：采用「替换 v24 全局」而非侧前缀——默认入口即 `0.1.7-rc.1`，旧宿主以票据 03 本地副本 + `DSH_CLI` 显式回切；安装前先做 staging 预验（exit 0 / 278 包）。连带影响（稳定侧 symlink 翻转）见第 6 步脚注。
 4. **tui-dev 与 headless 同步升级**（已裁决）：两个 profile 的宿主机版本、profile 插件树与部署位 preset 一起到位；`subagent-model-selection-settings` 行分别保持 tui-dev `enabled: true`（30 工具）/ headless `enabled: false`（29 工具），同步升级**不合并**两边口径。
 5. **Team 按 C 方案单独建 profile**（已裁决）：新增一个带 `@deepseek-ai/dsh-experimental-agent-team-profile` 的 profile（如 `tui-team`），tui-dev 与 headless **不挂** Team bundle，从而保留 `subagent` + `modelSelectionSettings` 基线（理由与代价见 §5.2 / §5.4）。**建立 `tui-team` 之前必须先过 B1.5（硬前置）**；不可测时按票面回退方案执行并在票面记"未测"。
+
+   **已完成（票据 09，2026-09-25，隔离）**：`tui-team` 的派生规则与检查落在 `gates/team-bundle.mjs`（唯一名字/派生来源）与 `gates/team-profile.mjs`（可复跑命令）：从真实 `tui-dev` 派生（源只读 + 追加 Team bundle）、装入 0.1.7 preset 载体，隔离 home 的 `--dump-config` exit 0 / ids=115 / duplicates=0；per-profile 期望（`gates/expectations.json` 的 `profiles` 段）与 PTY 双形态检查同批到位。**真实 `~/.dsh/profiles/tui-team` 的物化与 preset 落位仍随第 11 步（票据 12）**。证据 `docs/tickets/dsh-v0.1.7-rc.1-upgrade/evidence/09-team-profile-and-profile-dimension-baselines.md`。
 6. **manifest 宿主要求同批更新**：`gates/manifest.json` 的 `hostVersion` → `0.1.7-rc.1`、`sessionFormatVersion` → 运行时值（两条断言不可豁免，`gates/run.mjs:488-503`）。preset sha 按 §1.1 的 manifest 口径随仓库批次改为 `8cd01c68…`（待批准落地）。
 
    **已完成（票据 04，2026-09-25）**：v24 全局已切到 `0.1.7-rc.1`（旧宿主副本 + `DSH_CLI` 可回退）；tui-dev/headless 的 `--dump-config` exit 0、逐 loader id 计数为 1（95 / 111）；manifest 两条字段已更新（`sessionFormatVersion` 运行时值 = 4）；CI 宿主安装与 README 宿主前提段同步。真实模块级 boot 的 tui-dev 仍差 07 的载体行；T0 红项（tsc 1 处 + bash 换用 10 例）与闸门编排器的 app-boot 适配归票据 06。**连带发现**：`dsh-runtime/stable` 的 `@deepseek-ai/*` 依赖原是指向全局树的 240 条 symlink，已随本次切换翻到 0.1.7（其自带 CLI 仍 0.1.5-rc.2 → 启动失败），已于 2026-09-25 按用户裁决的方案③处置（在 stable 目录按自身 lock 做 `npm ci` 自包含重建；/tmp 预演 + 真目录复验绿，0 条链接指向全局/备份，后续全局升级不再连带）；证据 `docs/tickets/dsh-v0.1.7-rc.1-upgrade/evidence/04-host-upgrade-and-working-profiles.md`。在票据 06 的闸门源码适配落地前，`scripts/regression-gate.sh` 与 CI 在 0.1.7 上不可运行（预期红）。
 7. `--dump-config` 干跑：exit 0，逐 loader id 递归计数均为 1（注意 `--dump-config` 会回写 profile 目录下的 `cordis.yml`，属宿主规范化行为）；**两个形态各跑一次**（不带 Team 的 tui-dev / headless、带 Team 的 `tui-team`）。
+
+   **已完成（票据 09，隔离）**：派生副本上 tui-dev entries=112、tui-team ids=115，均 exit 0 / duplicates=0；tui-team 工具面基线（40 = tui-dev +6/−1）与回退口径见 `gates/expectations.json` 的 `profiles` 段与 09 证据。
 8. 只读冒烟：`presets/minimal-plus/smoke-boot.mjs`（仓库根预设）+ 部署位冒烟各一次；Team profile 另跑一次工具面快照。
 9. 逐票迁移 + 闸门：`npm test` → T0/T1/T2（`--composition real`）→ T3（真实模型，需 `~/.dsh/settings.yaml`；**新基线须在 0.1.7-rc.1 上采**，旧基线留史，采不了显式记"新宿主未跑 T3"）。expectations 变更必须附行级 diff + 理由，禁止整文件再生成。
 10. **会话迁移（只执行，不决策）**：C0 ②③ 已定——没有批量工具、没有 dry-run；迁移按会话在**首次写开**时惰性发生（发布 `session.v4.jsonl.zstd` 后继，`session.jsonl.zstd` / `session.v3.jsonl.zstd` 等源文件保留且逐字节不变）。执行步 = 逐会话写开（resume/继续）或接受按需惰性迁移，之后抽样打开验证，并留"仍为旧格式的会话清单"。这一步不与前面步骤混批。

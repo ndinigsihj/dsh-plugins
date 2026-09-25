@@ -12,6 +12,7 @@ import { REAL_PROFILE_NAME } from "../composition/render-real.mjs";
 import { assertCompositionDump, assertLoaderIdsUnique, assertNoDeploymentSync, assertNoStub } from "./composition.mjs";
 import { assertDeployment } from "./deployment.mjs";
 import { assertDegradeFailOpen, assertPresetSmoke, assertSeededPreview } from "./preset.mjs";
+import { assertTeamProfile } from "./team-profile.mjs";
 
 /**
  * ⑨ 真实 home 零写入（前快照在闸门启动时、后快照在本层子进程全部跑完后取；
@@ -77,5 +78,6 @@ export async function runT1(config, report) {
   assertCopyRewriteSha(t, config);
   assertNoDeploymentSync(t);
   assertSourceProfileUnchanged(t, config);
+  assertTeamProfile(t, config, report);
   return t.assertions;
 }

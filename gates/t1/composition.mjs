@@ -38,6 +38,12 @@ const GATE_SOURCES = [
   join(REPO_ROOT, "gates", "t1", "composition.mjs"),
   join(REPO_ROOT, "gates", "t1", "deployment.mjs"),
   join(REPO_ROOT, "gates", "t1", "preset.mjs"),
+  // 票据 09：Team profile 检查与 per-profile 期望同属闸门源码面。
+  join(REPO_ROOT, "gates", "t1", "team-profile.mjs"),
+  join(REPO_ROOT, "gates", "composition", "render-team.mjs"),
+  join(REPO_ROOT, "gates", "team-bundle.mjs"),
+  join(REPO_ROOT, "gates", "team-profile.mjs"),
+  join(REPO_ROOT, "gates", "profile-expectations.mjs"),
   join(REPO_ROOT, "gates", "t2.mjs"),
 ];
 /** 反劫持禁用面（Q13）：假模型的 provider 名与模块路径。 */

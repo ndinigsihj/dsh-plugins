@@ -26,6 +26,7 @@
  *     --json docs/tickets/dsh-v0.1.7-rc.1-upgrade/evidence/08-control-team-overlay.json
  */
 import { TEAM_BUNDLE } from '../../team-bundle.mjs';
+import { diffToolSets, formatToolDiff, readExpectations, resolveProfileExpectation } from '../../profile-expectations.mjs';
 import { PRESET, SENTINEL, TEAM_SAMPLE, hasTool, measureTeamOverlay, teamOverlayTurns } from '../team-overlay-probe.mjs';
 
 export const id = 'team-preset-overlay';
@@ -78,6 +79,25 @@ export function assert(events, { harness } = {}) {
     'permission.member-cannot-interrupt',
     facts?.memberInterruptDenial?.ok === false && facts?.memberInterruptDenial?.code === 'TEAM_LEAD_REQUIRED',
     `interrupt from teammate (live role=${String(facts?.teammate?.liveRoleAtProbe)}): ${String(facts?.memberInterruptDenial?.message ?? '<none>')}`,
+  );
+
+  // 票据 09：工具面按 profile 维度对账（期望数据 = gates/expectations.json 的
+  // `profiles.headless-team`，T2 是 CI 可跑的 Team 形态载体）。Lead 同时核对注册面与
+  // promotion 后的模型可见目录；teammate 按在线瞬时注册面（08 测量纪律 2，模型可见目录
+  // 在 teammate 处置后不可复采）。
+  const expectation = resolveProfileExpectation(readExpectations(), 'headless-team');
+  const leadRegistry = diffToolSets(expectation.tools, facts?.lead?.registryTools ?? []);
+  const leadVisible = diffToolSets(expectation.tools, facts?.lead?.promotedVisibleTools ?? []);
+  push(
+    'overlay.lead-tool-surface',
+    leadRegistry.ok && leadVisible.ok,
+    `lead registry=${String(facts?.lead?.registryCount)} promoted=${String(facts?.lead?.promotedVisibleTools?.length)} expected=${String(expectation.tools.length)}${leadRegistry.ok && leadVisible.ok ? '' : ` ${[...new Set([...formatToolDiff(leadRegistry), ...formatToolDiff(leadVisible)])].join(' ')}`}`,
+  );
+  const teammateDiff = diffToolSets(expectation.tools, facts?.teammate?.registryTools ?? []);
+  push(
+    'overlay.teammate-tool-surface',
+    teammateDiff.ok,
+    `teammate registry=${String(facts?.teammate?.registryCount)} expected=${String(expectation.tools.length)}${teammateDiff.ok ? '' : ` ${formatToolDiff(teammateDiff).join(' ')}`}`,
   );
 
   return out;

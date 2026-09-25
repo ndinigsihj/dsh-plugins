@@ -181,9 +181,21 @@ scripts/regression-gate.sh --tier 0,1                              # 日常：�
 scripts/regression-gate.sh --tier 0,1,2 --skip-deployment-check    # 部署位缺席（CI 口径）
 scripts/regression-gate.sh --tier 0,1,2 --composition real         # 交付前：真实 tui-dev 组合
 scripts/regression-gate.sh --tier 3                                # 按需：真实模型层（需凭据，永不进 release/CI）
+node gates/team-profile.mjs --json <path>                          # tui-team 派生 + 配置导出检查（只写临时 home）
 scripts/tui-pty-smoke.sh                                           # 按需：独立 PTY 冒烟（T4b，不进 release）
+scripts/tui-pty-smoke.sh --profile tui-team --probe-tools          # 按需：Team 形态工具面期望（自动追加 Team bundle）
 node scripts/preset-mount-smoke.mjs                                # stable 通道挂载冒烟（release.sh 收尾必跑）
 ```
+
+**Profile 维度的工具面期望**（票据 09）：唯一数据源是 `gates/expectations.json` 的 `profiles` 段——
+`tui-dev`（非 Team，35）/ `headless-team`（T2 进程内对照，34）/ `tui-team`（Team，40，`basedOn: tui-dev`）。
+每个 profile 用 `basedOn` + `changes` 行级差异表达，每条变更带 direction 与 reason（禁止整文件再生成）；
+单测会与 08 的实测归档逐项对账。两个载体共用这份期望：T2 的 `team-preset-overlay` 场景核对 Lead 的
+注册面 + promotion 后模型可见目录与 teammate 的在线瞬时注册面；`scripts/tui-pty-smoke.mjs --probe-tools`
+按 `--profile` 名核对注册面与模型可见目录（preset 哨兵缺席一律判红，回退口径只在期望声明里核对，
+不冒充「未测」）。`--composition real` 另会从真实 tui-dev 派生 `tui-team`
+（只追加 Team bundle，源只读）并断言 `composition.team-profile`：`--dump-config` exit 0、逐 loader id
+计数为 1。真实 `~/.dsh/profiles/tui-team` 的物化与 preset 落位归收口票 12；本仓库只维护派生与检查。
 
 退出码：全过 `0`；任一断言失败 `1`；环境前置不满足 `2`（宿主或会话格式与 `gates/manifest.json` 不符、
 组合渲染缺依赖、`real` 缺相邻 `../dsh-relay`/`../dsh-endless`、T3 版本/基线来源不符或真实 settings 缺失）。
@@ -191,8 +203,8 @@ node scripts/preset-mount-smoke.mjs                                # stable 通�
 | 层 | 内容 | 说明 |
 |---|---|---|
 | T0 | `tsc --noEmit` + `npm test` | 静态层；工作流触发路径存在性断言与进程内 app 层（T4a，`lib/app.test.ts`，注入假 Terminal）随 `npm test` 执行 |
-| T1 | 零 LLM 组合层 | 组合导出、逐 loader id 唯一、反 stub 劫持、首轮锚定/二轮提升冒烟、降级 fail-open、seeded 预览探针、部署位 sha、宿主钉版、真实 home 零写入 |
-| T2 | 假模型行为层 | `gates/stub/**` 脚本化 provider：首请求路由、12-2 沙箱 bash 红绿、compaction 回退、V3 恢复路由、委派策略 |
+| T1 | 零 LLM 组合层 | 组合导出（real 含派生的 `tui-team`）、逐 loader id 唯一、反 stub 劫持、首轮锚定/二轮提升冒烟、降级 fail-open、seeded 预览探针、部署位 sha、宿主钉版、真实 home 零写入 |
+| T2 | 假模型行为层 | `gates/stub/**` 脚本化 provider：首请求路由、12-2 沙箱 bash 红绿、compaction 回退、V3 恢复路由、委派策略、Team 叠加对照（工具面按 profile 维度对账） |
 | T3 | 真实模型层（按需） | M4 行为基线 + 模型选择/允许路由探针；需真实 `~/.dsh/settings.yaml`，永不进 release/CI |
 | T4b | PTY 冒烟（按需） | `scripts/tui-pty-smoke.sh`，真 PTY + stub provider；独立入口，不进 release（D8） |
 

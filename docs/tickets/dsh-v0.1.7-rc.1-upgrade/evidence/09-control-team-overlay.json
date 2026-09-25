@@ -1,0 +1,259 @@
+{
+  "schema": "dsh-gate-stub/1",
+  "scenario": {
+    "id": "team-preset-overlay",
+    "finding": "B1.5（票据 08）：Team Profile 下自研 preset 的真实叠加面（subagent 与 spawn_teammate 的关系、路由发现工具、成员权限）",
+    "invariant": "Team 组合下 preset 仍真正生效（哨兵可见、R1 仍锚定）；Team 创建工具存在；teammate 继承 Lead preset；成员创建/中断被 TEAM_LEAD_REQUIRED 拒绝",
+    "path": "/Users/vito/data/dev/dsh-plugins/gates/stub/scenarios/team-preset-overlay.mjs"
+  },
+  "hostVersion": "0.1.7-rc.1",
+  "startedAt": "2026-09-25T12:07:35.695Z",
+  "finishedAt": "2026-09-25T12:07:36.790Z",
+  "durationMs": 1095,
+  "route": {
+    "provider": "stub",
+    "model": "stub-model"
+  },
+  "sessionId": "session-stub-team-preset-overlay-f575dcab-cb7c-44bc-95f3-2267f8c14dc9",
+  "sessions": [
+    {
+      "id": "session-stub-team-preset-overlay-f575dcab-cb7c-44bc-95f3-2267f8c14dc9",
+      "label": "lead",
+      "role": "created"
+    }
+  ],
+  "facts": {
+    "teamOverlay": {
+      "presetRequested": "minimal-plus",
+      "spawnedMember": {
+        "id": "02a35db9-ffe2-4563-ae64-8d55b150f38a",
+        "name": "overlay-probe",
+        "role": "teammate",
+        "status": "running",
+        "description": "票据 08 工具面探针（不产生真实模型调用，回合由 stub 回放）",
+        "provider": "spawn",
+        "context": "fresh",
+        "model": "stub-model",
+        "diagnostics": []
+      },
+      "lead": {
+        "sessionId": "session-stub-team-preset-overlay-f575dcab-cb7c-44bc-95f3-2267f8c14dc9",
+        "role": "lead",
+        "agentPreset": "minimal-plus",
+        "headerPreset": "minimal-plus",
+        "registryTools": [
+          "ask_user_question",
+          "bash",
+          "create_goal",
+          "edit",
+          "exit_plan_mode",
+          "get_goal",
+          "glob",
+          "grep",
+          "interrupt_agent",
+          "job_kill",
+          "job_list",
+          "job_output",
+          "list_agents",
+          "list_subagent_models",
+          "read",
+          "read_image",
+          "send_message",
+          "skill",
+          "skill_load",
+          "skill_search",
+          "spawn_teammate",
+          "str_replace_editor",
+          "subagent",
+          "team_task_create",
+          "team_task_get",
+          "team_task_list",
+          "team_task_update",
+          "todo_write",
+          "update_goal",
+          "wait_agent",
+          "web_fetch",
+          "web_search",
+          "workflow",
+          "write"
+        ],
+        "registryCount": 34,
+        "r1VisibleTools": [
+          "bash",
+          "str_replace_editor"
+        ],
+        "promotedVisibleTools": [
+          "ask_user_question",
+          "bash",
+          "create_goal",
+          "edit",
+          "exit_plan_mode",
+          "get_goal",
+          "glob",
+          "grep",
+          "interrupt_agent",
+          "job_kill",
+          "job_list",
+          "job_output",
+          "list_agents",
+          "list_subagent_models",
+          "read",
+          "read_image",
+          "send_message",
+          "skill",
+          "skill_load",
+          "skill_search",
+          "spawn_teammate",
+          "str_replace_editor",
+          "subagent",
+          "team_task_create",
+          "team_task_get",
+          "team_task_list",
+          "team_task_update",
+          "todo_write",
+          "update_goal",
+          "wait_agent",
+          "web_fetch",
+          "web_search",
+          "workflow",
+          "write"
+        ],
+        "hasDelegation": true,
+        "hasDelegationFork": false,
+        "hasRouteDiscovery": true,
+        "hasTeamCreation": true
+      },
+      "teammate": {
+        "sessionId": "02a35db9-ffe2-4563-ae64-8d55b150f38a",
+        "role": "teammate",
+        "liveRoleAtProbe": "teammate",
+        "agentPreset": "minimal-plus",
+        "headerPreset": "minimal-plus",
+        "delegationDepth": 1,
+        "origin": "subagent",
+        "registryTools": [
+          "ask_user_question",
+          "bash",
+          "create_goal",
+          "edit",
+          "exit_plan_mode",
+          "get_goal",
+          "glob",
+          "grep",
+          "interrupt_agent",
+          "job_kill",
+          "job_list",
+          "job_output",
+          "list_agents",
+          "list_subagent_models",
+          "read",
+          "read_image",
+          "send_message",
+          "skill",
+          "skill_load",
+          "skill_search",
+          "spawn_teammate",
+          "str_replace_editor",
+          "subagent",
+          "team_task_create",
+          "team_task_get",
+          "team_task_list",
+          "team_task_update",
+          "todo_write",
+          "update_goal",
+          "wait_agent",
+          "web_fetch",
+          "web_search",
+          "workflow",
+          "write"
+        ],
+        "registryCount": 34,
+        "hasRouteDiscovery": true,
+        "hasTeamCreation": true
+      },
+      "memberSpawnDenial": {
+        "ok": false,
+        "code": "TEAM_LEAD_REQUIRED",
+        "message": "only the Team Lead can create teammates"
+      },
+      "memberInterruptDenial": {
+        "ok": false,
+        "code": "TEAM_LEAD_REQUIRED",
+        "message": "only the Team Lead can interrupt teammates"
+      },
+      "relation": {
+        "delegation": "present",
+        "routeDiscovery": "present"
+      }
+    }
+  },
+  "calls": [
+    {
+      "provider": "stub",
+      "model": "stub-model",
+      "purpose": null,
+      "sessionId": "02a35db9-ffe2-4563-ae64-8d55b150f38a",
+      "toolNames": [
+        "bash",
+        "str_replace_editor"
+      ],
+      "turnIndex": 0
+    }
+  ],
+  "assertions": [
+    {
+      "id": "preset.bound",
+      "status": "pass",
+      "evidence": "lead composed=minimal-plus header=minimal-plus"
+    },
+    {
+      "id": "preset.sentinel-visible",
+      "status": "pass",
+      "evidence": "lead tools=34 sentinel=true"
+    },
+    {
+      "id": "preset.anchored-first-turn",
+      "status": "pass",
+      "evidence": "R1 visible=[\"bash\",\"str_replace_editor\"]"
+    },
+    {
+      "id": "team.creation-tools-visible",
+      "status": "pass",
+      "evidence": "promoted missing=[]"
+    },
+    {
+      "id": "overlay.delegation-relation",
+      "status": "pass",
+      "evidence": "registry subagent=true spawn_teammate=true list_subagent_models=true promoted subagent=true subagent_fork=false"
+    },
+    {
+      "id": "overlay.teammate-inherits-preset",
+      "status": "pass",
+      "evidence": "teammate composed=minimal-plus header=minimal-plus role=teammate depth=1"
+    },
+    {
+      "id": "permission.member-cannot-create",
+      "status": "pass",
+      "evidence": "spawn from teammate (live role=teammate): only the Team Lead can create teammates"
+    },
+    {
+      "id": "permission.member-cannot-interrupt",
+      "status": "pass",
+      "evidence": "interrupt from teammate (live role=teammate): only the Team Lead can interrupt teammates"
+    },
+    {
+      "id": "overlay.lead-tool-surface",
+      "status": "pass",
+      "evidence": "lead registry=34 promoted=34 expected=34"
+    },
+    {
+      "id": "overlay.teammate-tool-surface",
+      "status": "pass",
+      "evidence": "teammate registry=34 expected=34"
+    }
+  ],
+  "summary": {
+    "passed": 10,
+    "failed": 0
+  }
+}
