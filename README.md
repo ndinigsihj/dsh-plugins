@@ -260,6 +260,19 @@ profile / stable 工作树同样应手跑它。
 `paths` / `paths-ignore` 的每条模式——目录 glob 断言其 base 目录存在、精确路径断言文件存在，
 防止再次出现「触发路径指向已删除目录 → 工作流永不触发」的静默失效。
 
+## 宿主升级节奏
+
+政策（2026-09-24 Q14 裁决，随 0.1.7-rc.1 收口写入维护文档）：
+
+- 日常宿主跟 `latest` stable；`next`/rc 只在临时前缀做侦察，不上日常入口。
+- 每出现一个新 stable，在临时前缀 + 独立 cache 安装做一次只读取证（真实 `~/.dsh` 只读），
+  并在固定窗口内完成升级，避免再次出现跨代补课。
+- 升级按收口清单执行：零豁免闸门（`--tier 0,1,2 --composition real`）全绿、两种 Profile 形态的
+  PTY 冒烟、部署位 `--check` current、版本与回滚入口留档；任一步失败停在原地、退回上一已验收状态。
+
+本次（0.1.5-rc.2 → 0.1.7-rc.1）的执行记录、遗留未验证项与证据索引见
+`docs/dsh-v0.1.7-rc.1-upgrade-closeout.md`；发布/部署侧入口见 `docs/deployment.md` §4。
+
 ## Tested
 
 Boot, fullscreen takeover, prompt submit, streaming assistant rendering, reasoning (dim), injected-context dimming, error cards, status line, `/help` `/clear` `/exit`, clean exit (code 0). Approval dialogs, question panels, and tool cards are wired to the documented service APIs but need a tool-capable model route to exercise end to end.

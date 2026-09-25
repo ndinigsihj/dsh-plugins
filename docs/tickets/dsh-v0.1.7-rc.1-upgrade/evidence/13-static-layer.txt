@@ -1,0 +1,23 @@
+票据 13 — 静态层复跑（文档收口窗口）
+生成: 2026-09-26T00:49:13+0800
+命令: npx tsc --noEmit && npm test
+
+== npx tsc --noEmit ==
+tsc exit=0
+
+== npm test (tail) ==
+✔ dry-run 是默认行为：逐文件与仓库产物对上，且完全不写目标位 (75.315084ms)
+✔ --write 把生成产物逐文件写到目标位；再次运行报告已一致 (139.761667ms)
+✔ 目标位漂移时 dry-run 报 STALE 并退出 1，且不覆写 (107.019792ms)
+✔ --profile：dry-run 报告 profile 未选择 bundle 并退出 1；--write 落 profile 侧产物 (159.158291ms)
+✔ --profile 指向不存在的 profile 是环境错误（exit 2），不创建目录 (47.981292ms)
+✔ 源目录缺失是环境错误（exit 2） (48.450875ms)
+ℹ tests 205
+ℹ suites 3
+ℹ pass 205
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1214.167208
+npm-test exit=0

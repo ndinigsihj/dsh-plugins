@@ -2,6 +2,9 @@
 
 自研 TUI 前端与 agent preset 的组合层：把宿主能力组装成可交互终端，并规定每个 session 的模型可见工具面。
 
+> 本轮状态（2026-09-26，随 0.1.7-rc.1 升级收口回填）：Team 相关术语与下文的「Preset carrier」
+> 「Team profile」为本轮定稿；宿主升级节奏属维护政策，不进本词汇表（见 `README.md`）。
+
 ## Language
 
 ### 组合层
@@ -18,6 +21,10 @@ _Avoid_: preset scope
 一次 session 的模型可见组合，涵盖工具、prompt 段与 persona；以可发布的单位声明，并可按标识覆盖。
 _Avoid_: agent profile、bundle、模板
 
+**Preset carrier（预设载体）**:
+Preset 的发布形态：从仓库真源生成、由 Profile 选择安装的自包含 bundle；0.1.7 起目录形态退役。
+_Avoid_: 部署目录、`.agent-presets/<id>/`（旧形态）
+
 **Shadowing（遮蔽）**:
 agent 层以同名 id 覆盖宿主层的行为。preset 只应在确需不同时才遮蔽。
 _Avoid_: override、replace、覆盖（当指非同名时）
@@ -27,6 +34,10 @@ _Avoid_: override、replace、覆盖（当指非同名时）
 **Profile**:
 dsh 的启动配置，决定宿主 patch 与默认 preset。
 _Avoid_: environment、mode、环境
+
+**Team profile（Team Profile）**:
+挂载 Agent Team 组合包的 Profile（当前 `tui-team`）；普通委派与 Team 委派按 Profile 划分。
+_Avoid_: team preset、Team 模式（当指 profile 时）
 
 **Stable tree（稳定树）**:
 钉在旧宿主版本、供 `tui` 使用的部署位。

@@ -82,6 +82,10 @@ tag 版本，开发窗口显示工作树版本。
    （`~/.dsh/.agent-presets/minimal-plus` 只服务 stable）。
 6. 打印结果行：`stable = ~/dev/dsh-plugins-stable @ v<version>`；提示运行中的 TUI 需退出重启（或 /resume 重进）才吃到新代码。
 
+宿主升级节奏（政策入口）：政策正文以 `README.md`「宿主升级节奏」为准；本次 0.1.7-rc.1 升级的执行
+记录、遗留项与证据索引见 `docs/dsh-v0.1.7-rc.1-upgrade-closeout.md`。上面第 5 步的部署位 `--check`
+是该政策在发布路径上的落点。
+
 边界约定：
 
 - 脚本不 push（仓库无 remote）；不触碰 profile 文件（路径一次性配好后不变）。
