@@ -17,10 +17,13 @@
   - 子代理**首轮 bash 仍 persistent**：真实 loop 的 `turn/start` 排在首次请求装配之前，豁免锚定
     不得让它提前换相；首步 `step/end` 后才换沙箱。冷恢复且日志已有结算 step 的子代理在
     `turn/start` 换相；compaction 后回 persistent，下一次 step 结算再换相。
-- **产物与闸门**：`generated/minimal-plus-preset/` 重生成，`--check` 10/10 一致；
-  `gates/manifest.json` 同步 4 个变更文件 sha；`npm test` **214/214**、`tsc --noEmit` exit 0；
-  闸门 `--tier 0,1,2 --composition gate` **81 passed / 0 failed / 0 skipped**，唯一豁免为
-  **部署位滞后**（本票不写部署位，§5；报告 `exemptions[]` 显式登记，非静默变绿）。
+- **产物与闸门（部署位已刷新）**：`generated/minimal-plus-preset/` 重生成，`--check` 10/10 一致；
+  `gates/manifest.json` 同步 4 个变更文件 sha；用户批准后按 `sync-agent-presets.mjs --profile
+  {tui-dev,tui-team} --write` 刷新两个部署位（各 4 个文件从 STALE → match）。复验：
+  `npm test` **214/214**、`tsc --noEmit` exit 0；
+  `--tier 0,1,2 --composition gate` **81 passed / 0 failed / 0 skipped（零豁免）**；
+  `--composition real` **85 passed / 0 failed / 0 skipped（零豁免，preset=deployed）**；
+  PTY 冒烟 `tui-dev` / `tui-team` 各 **16/16**（均含 `tool-probe.profile-surface`）。
 - **expectations 登记**：新增 `presets.minimal-plus.subagentRound1`（`basedOn:
   presets.minimal-plus.round2.tools` + `reason` + `bashParamsExcludes`），行级引用不复制工具名；
   `round1` / `round2` 未变（无工具面增删）。
@@ -78,8 +81,12 @@ WARNINGS: []
 | --- | --- | --- |
 | `npm test` | **214 passed / 0 failed**（23 个测试文件） | 闸门 T0 `npm.test` / `testfile.list-consistency` |
 | `npx tsc -p tsconfig.json` | exit 0 | 闸门 T0 `tsc.noEmit` |
-| `scripts/regression-gate.sh --tier 0,1,2 --composition gate --allow-stale-deployment` | **81 passed / 0 failed / 0 skipped**，exit 0；豁免 1 条 = 部署位滞后（4 文件 stale） | `14-gate-all.json` |
+| `scripts/regression-gate.sh --tier 0,1,2 --composition gate`（部署刷新后，零豁免） | **81 passed / 0 failed / 0 skipped**，exit 0；`deployment.repo-vs-deployed — 10 files ok` | `14-gate-gate-postdeploy.json` |
+| `scripts/regression-gate.sh --tier 0,1,2 --composition real`（零豁免，preset=deployed） | **85 passed / 0 failed / 0 skipped**，exit 0 | `14-gate-real.json` |
+| `scripts/tui-pty-smoke.sh --profile tui-dev --probe-tools` | **16/16**（部署位 bundle） | `14-pty-tui-dev.json` |
+| `scripts/tui-pty-smoke.sh --profile tui-team --probe-tools` | **16/16**（部署位 bundle） | `14-pty-tui-team.json` |
 | `node scripts/agent-preset-bundle-cli.mjs --check` | 10/10 一致，exit 0 | `14-bundle-check.txt` |
+| `node scripts/deploy-preset-carrier-cli.mjs --check`（刷新后） | exit 0，`deployment is current`（两目标 `bundle target=match`） | `14-deploy-write.txt` |
 
 闸门新增断言：`smoke.subagent-exempt-first-turn — exit 0 tools=28 missing=[] unexpected=[] bashStillAnchored=true preStepMissing=[]`；
 `degrade.fail-open — exit 0 warning=true R1 tools=28`（降级路径未被收紧破坏）；主会话既有断言
@@ -99,23 +106,25 @@ WARNINGS: []
 `basedOn` + reason 是行级登记：既表达「子代理 R1 = 主会话 R2 全量面」，又不整文件复制；
 `round1`/`round2` 与 `profiles.*` 本轮零改动。
 
-## 5. 部署位状态（本票范围外）
+## 5. 部署位刷新（2026-09-26，用户批准后执行）
 
-- 仓库产物已重生成并与清单一致；两个部署位（`~/.dsh/profiles/{tui-dev,tui-team}/preset-bundles/
-  minimal-plus-preset`）仍是旧 `includeSubagents: true` 形态，逐文件差 4 个：
-  `compaction-epoch.mjs` / `cordis.patch.yml` / `phase-swap-bash.mjs` / `source-manifest.json`
-  （其余 6 个 match）。闸门的部署位断言因此走显式豁免（`--allow-stale-deployment`），报告
-  `exemptions[]` 可见。
-- 增量路径实测（只读 dry-run，均未写）：`node scripts/sync-agent-presets.mjs --profile
-  tui-dev|tui-team` → 各 4 个 `target:STALE`，exit 1，全文 `14-sync-dry-run.txt`。
-- 一个发现的工具口径问题：`node scripts/deploy-preset-carrier-cli.mjs --dry-run` 现在报
-  `plan not ok — tui-team exists but its preset bundle is drift`（`14-deploy-plan.{txt,json}`）。
-  该命令是票据 12 的一次性迁移工具，`applyPresetCarrier` 明确「tui-team 已存在即拒绝覆盖」，
-  不能用于本次增量刷新；后续部署刷新应走 `scripts/sync-agent-presets.mjs --profile <name> --write`
-  （逐 profile，写前仍需用户批准）。
-- 未跑（依赖部署位写入）：`--composition real` 闸门与 `scripts/tui-pty-smoke.sh --profile
-  tui-dev|tui-team --probe-tools`。real 模式按项目口径装载部署位那一份，部署位未刷新前跑它只会
-  验旧产物，不能作为本票证据。
+- 刷新前两个部署位仍是旧 `includeSubagents: true` 形态，逐文件差 4 个
+  （`compaction-epoch.mjs` / `cordis.patch.yml` / `phase-swap-bash.mjs` / `source-manifest.json`）。
+- 工具路径发现：票据 12 的 `deploy-preset-carrier-cli.mjs --write` 是一次性迁移工具
+  （`applyPresetCarrier` 明确「tui-team 已存在即拒绝覆盖」），不能用于增量刷新；本次改用
+  `node scripts/sync-agent-presets.mjs --profile tui-dev --write` 与 `--profile tui-team --write`
+  （逐 profile 重建 `preset-bundles/minimal-plus-preset`，条目选择幂等、不动 cordis.patch.yml）。
+  全过程输出见 `14-deploy-write.txt`。
+- 刷新后复核：
+  - 两 profile dry-run `target already matches (10 files)`，exit 0；
+  - `deploy-preset-carrier-cli.mjs --check` exit 0（两目标 `bundle target=match`、`selection=true`）；
+  - 部署位 `cordis.patch.yml` 三处 `includeSubagents: false`；`phase-swap-bash.mjs` sha
+    `b0bf21084487…` 与仓库产物逐字节一致；
+  - `--composition gate` 81/0/0 **零豁免**、`--composition real` 85/0/0 **零豁免**
+    （real 装载的即部署位那一份）、PTY 双形态各 16/16（§3）。
+- 旧目录 `~/.dsh/.agent-presets/minimal-plus` 未动（stable 0.1.5 通道载体，票据 12 口径）。
+- 首轮 PTY 冒烟在默认沙箱下报 `posix_openpt: Operation not permitted`（环境限制，非回归），
+  经一次性提权复跑后 16/16；归档的 `14-pty-*.json` 为复跑结果。
 
 ## 6. code-review 双轴处置（2026-09-26）
 
@@ -125,16 +134,20 @@ WARNINGS: []
   README/CONTEXT 行为说明补齐。函数长度（`apply()` 等超 <50 行）与 gates/t1 断言块重复按
   「既有超限、不在本票重构」记录，未扩大改动面。
 - **Spec**：三处统一、主会话锚定不变、首步换相语义、产物/manifest/闸门核对均逐条对上；
-  「修复未上线」（部署位仍是旧形态）与 real/PTY 未跑已在 §5 与票据 Status 显式声明，不以
-  `--allow-stale-deployment` 豁免冒充全绿。
+  「修复未上线」的评审意见已按用户批准关闭——部署位已刷新，gate/real 零豁免全绿、PTY 双形态
+  16/16（§3、§5）。
 - 评审前修正的额外口径：closeout 里「票据 13 文档未提交」更新为已提交 `aa48955`；
   H5 冷启动措辞改为「豁免子代理没有 tool/call 信号，不沿用 H5 promotion 口径」。
 
 ## 7. 命令与文件索引
 
-- 冒烟：`14-smoke-source.txt`；产物核对：`14-bundle-check.txt`；闸门：`14-gate-all.json`；
-  部署位只读计划：`14-deploy-plan.{txt,json}`、`14-sync-dry-run.txt`。
+- 冒烟：`14-smoke-source.txt`；产物核对：`14-bundle-check.txt`；部署前闸门（带豁免）：
+  `14-gate-all.json`；部署刷新与复核：`14-deploy-write.txt`；刷新后零豁免闸门：
+  `14-gate-gate-postdeploy.json`（gate）/ `14-gate-real.json`（real）；PTY：`14-pty-tui-dev.json` /
+  `14-pty-tui-team.json`；部署前只读计划与 dry-run：`14-deploy-plan.{txt,json}`、
+  `14-sync-dry-run.txt`。
 - 复现：`SMOKE_PRESET_ROOT=presets node presets/minimal-plus/smoke-boot.mjs`；
   `node --test presets/minimal-plus/{tool-bootstrap,phase-swap-bash,phase-swap-bash-subagent,instruction-hint}.test.mjs`；
   `node scripts/agent-preset-bundle-cli.mjs --check`；
-  `scripts/regression-gate.sh --tier 0,1,2 --composition gate --allow-stale-deployment`（豁免见 §5）。
+  `scripts/regression-gate.sh --tier 0,1,2 --composition gate|real`（零豁免）；
+  `scripts/tui-pty-smoke.sh --profile tui-dev|tui-team --probe-tools`（需 PTY 权限）。

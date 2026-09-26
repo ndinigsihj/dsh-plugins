@@ -161,7 +161,9 @@ hub 侧的 `fleet-client` / `memory-sink`、worker 侧的 `remote-server` 挂载
 - 同步/部署工具：单 profile 产物写入用 `scripts/sync-agent-presets.sh`（默认 dry-run，`--write` 才落）；
   多 profile 收口入口是 `node scripts/deploy-preset-carrier-cli.mjs`（默认 dry-run 出计划，`--check`
   在部署位缺席/滞后时退出 1，`--write` 经批准后执行：tui-dev 摘旧目录 preset 行 + 装 bundle，
-  tui-team 从 tui-dev 派生）。0.1.7 的部署位是 `~/.dsh/profiles/{tui-dev,tui-team}/preset-bundles/minimal-plus-preset`；
+  tui-team 从 tui-dev 派生）。**该命令是一次性迁移工具（tui-team 已存在即拒绝覆盖）**；日常/增量
+  刷新用 `scripts/sync-agent-presets.sh --profile <name> --write`（逐 profile 重建 `preset-bundles/`，
+  如票据 14 的部署刷新）。0.1.7 的部署位是 `~/.dsh/profiles/{tui-dev,tui-team}/preset-bundles/minimal-plus-preset`；
   旧目录 `~/.dsh/.agent-presets/minimal-plus` 只服务 stable 0.1.5 通道，不再被 0.1.7 读取。
 - 行为不变：persona（`prefix` 正文键 + `complete` + `includeRuntimeContext: false`）、恒禁 `tool-bash`、
   `phase-swap-bash` 二轮提权、`tool-subagent` 的 `modelSelectionSettings: true`、`instruction-hint` /

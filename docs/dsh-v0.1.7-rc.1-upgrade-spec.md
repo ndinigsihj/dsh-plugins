@@ -1,8 +1,8 @@
 # dsh-plugins 升级至 dsh 0.1.7-rc.1：宿主、会话格式 V4、preset 载体与 Team profile
 
 > 状态：**已批准（2026-09-24）并执行收口（2026-09-25–26）**。as-built、遗留未验证项与证据索引见
-> `docs/dsh-v0.1.7-rc.1-upgrade-closeout.md`（票据 13）。子代理锚定（方案 A）由票据 14 落地
-> （2026-09-26：仓库 + 产物 + `gate` 组合闸门绿；部署位刷新与 real/PTY 闸门待用户批准）。
+> `docs/dsh-v0.1.7-rc.1-upgrade-closeout.md`（票据 13）。子代理锚定（方案 A）由票据 14 落地并部署
+> （2026-09-26：仓库 + 产物 + 部署位刷新；gate/real 零豁免、PTY 双形态 16/16）。
 
 ## Problem Statement
 

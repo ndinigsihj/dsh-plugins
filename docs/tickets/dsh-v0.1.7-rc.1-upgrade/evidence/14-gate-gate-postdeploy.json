@@ -1,0 +1,900 @@
+{
+  "gateVersion": 1,
+  "startedAt": "2026-09-26T04:37:00.381Z",
+  "finishedAt": "2026-09-26T04:37:15.895Z",
+  "gitHead": "b9a893b",
+  "gitDirty": true,
+  "hostVersion": "0.1.7-rc.1",
+  "sessionFormatVersion": 4,
+  "composition": "gate",
+  "compositionVerified": "repo-patch",
+  "compositionSourcePath": "/Users/vito/data/dev/dsh-plugins/gates/composition/gate.patch.yml",
+  "compositionSourceSha": "afc6c8b46d6801c92c546d9200705e138febd50a7af47f3bf43061be626fe9db",
+  "compositionRenderedPath": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-cWAtoi/home/gate-composition.yml",
+  "compositionRenderedSha": "31e685b292c352c35045ea5ce4598128d79e87331e291874401a43d483f87779",
+  "compositionDumpSha": "31e685b292c352c35045ea5ce4598128d79e87331e291874401a43d483f87779",
+  "compositionReal": null,
+  "deployment": {
+    "status": "ok",
+    "manifestMatchesRepo": true,
+    "files": {
+      "compaction-epoch.mjs": {
+        "repo": "35b1b7342a17d6d9617e416a8c1695575547855c6dbbe5a5f747fc3adbaddbbb",
+        "deployed": "35b1b7342a17d6d9617e416a8c1695575547855c6dbbe5a5f747fc3adbaddbbb",
+        "expected": "35b1b7342a17d6d9617e416a8c1695575547855c6dbbe5a5f747fc3adbaddbbb",
+        "state": "ok",
+        "targets": [
+          {
+            "path": "/Users/vito/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset",
+            "state": "ok"
+          },
+          {
+            "path": "/Users/vito/.dsh/profiles/tui-team/preset-bundles/minimal-plus-preset",
+            "state": "ok"
+          }
+        ]
+      },
+      "cordis.patch.yml": {
+        "repo": "30b1b622bd141ff96bec1301bc86c58ee93fd4abc52035e468d4f4ce3ee4e66a",
+        "deployed": "30b1b622bd141ff96bec1301bc86c58ee93fd4abc52035e468d4f4ce3ee4e66a",
+        "expected": "30b1b622bd141ff96bec1301bc86c58ee93fd4abc52035e468d4f4ce3ee4e66a",
+        "state": "ok",
+        "targets": [
+          {
+            "path": "/Users/vito/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset",
+            "state": "ok"
+          },
+          {
+            "path": "/Users/vito/.dsh/profiles/tui-team/preset-bundles/minimal-plus-preset",
+            "state": "ok"
+          }
+        ]
+      },
+      "custom-bash.mjs": {
+        "repo": "8422b4acd6f8f256491b09c3dfed7b03909a7724d99d48e03eed7e55dcf55044",
+        "deployed": "8422b4acd6f8f256491b09c3dfed7b03909a7724d99d48e03eed7e55dcf55044",
+        "expected": "8422b4acd6f8f256491b09c3dfed7b03909a7724d99d48e03eed7e55dcf55044",
+        "state": "ok",
+        "targets": [
+          {
+            "path": "/Users/vito/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset",
+            "state": "ok"
+          },
+          {
+            "path": "/Users/vito/.dsh/profiles/tui-team/preset-bundles/minimal-plus-preset",
+            "state": "ok"
+          }
+        ]
+      },
+      "instruction-hint.mjs": {
+        "repo": "4a2a26cb74ee8307d17df72ea4cebbebf806a4f5c95b29b5e442b6c41fad0667",
+        "deployed": "4a2a26cb74ee8307d17df72ea4cebbebf806a4f5c95b29b5e442b6c41fad0667",
+        "expected": "4a2a26cb74ee8307d17df72ea4cebbebf806a4f5c95b29b5e442b6c41fad0667",
+        "state": "ok",
+        "targets": [
+          {
+            "path": "/Users/vito/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset",
+            "state": "ok"
+          },
+          {
+            "path": "/Users/vito/.dsh/profiles/tui-team/preset-bundles/minimal-plus-preset",
+            "state": "ok"
+          }
+        ]
+      },
+      "package.json": {
+        "repo": "e478937e5eb6ca3d6bac1dbd579226fa4618afb77d75dd4243db550d31c5c4b2",
+        "deployed": "e478937e5eb6ca3d6bac1dbd579226fa4618afb77d75dd4243db550d31c5c4b2",
+        "expected": "e478937e5eb6ca3d6bac1dbd579226fa4618afb77d75dd4243db550d31c5c4b2",
+        "state": "ok",
+        "targets": [
+          {
+            "path": "/Users/vito/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset",
+            "state": "ok"
+          },
+          {
+            "path": "/Users/vito/.dsh/profiles/tui-team/preset-bundles/minimal-plus-preset",
+            "state": "ok"
+          }
+        ]
+      },
+      "phase-swap-bash.mjs": {
+        "repo": "b0bf210844871c3f3e1914bb01194871d24176e9fa270c66e64197217cdd8282",
+        "deployed": "b0bf210844871c3f3e1914bb01194871d24176e9fa270c66e64197217cdd8282",
+        "expected": "b0bf210844871c3f3e1914bb01194871d24176e9fa270c66e64197217cdd8282",
+        "state": "ok",
+        "targets": [
+          {
+            "path": "/Users/vito/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset",
+            "state": "ok"
+          },
+          {
+            "path": "/Users/vito/.dsh/profiles/tui-team/preset-bundles/minimal-plus-preset",
+            "state": "ok"
+          }
+        ]
+      },
+      "plugin-teardown.mjs": {
+        "repo": "f3f49a4933eb939336b4a23ee6a13f22659e65f86142eced933dc807674a5daa",
+        "deployed": "f3f49a4933eb939336b4a23ee6a13f22659e65f86142eced933dc807674a5daa",
+        "expected": "f3f49a4933eb939336b4a23ee6a13f22659e65f86142eced933dc807674a5daa",
+        "state": "ok",
+        "targets": [
+          {
+            "path": "/Users/vito/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset",
+            "state": "ok"
+          },
+          {
+            "path": "/Users/vito/.dsh/profiles/tui-team/preset-bundles/minimal-plus-preset",
+            "state": "ok"
+          }
+        ]
+      },
+      "skill-search.mjs": {
+        "repo": "25eb10fa9d2bdbc3ffbdd5bb35736e10628b74e9c97a36bdc9b06a682de4909a",
+        "deployed": "25eb10fa9d2bdbc3ffbdd5bb35736e10628b74e9c97a36bdc9b06a682de4909a",
+        "expected": "25eb10fa9d2bdbc3ffbdd5bb35736e10628b74e9c97a36bdc9b06a682de4909a",
+        "state": "ok",
+        "targets": [
+          {
+            "path": "/Users/vito/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset",
+            "state": "ok"
+          },
+          {
+            "path": "/Users/vito/.dsh/profiles/tui-team/preset-bundles/minimal-plus-preset",
+            "state": "ok"
+          }
+        ]
+      },
+      "source-manifest.json": {
+        "repo": "8267a29be348af76f62f37452101eaee1c28924dbd0220e064847905181d4e96",
+        "deployed": "8267a29be348af76f62f37452101eaee1c28924dbd0220e064847905181d4e96",
+        "expected": "8267a29be348af76f62f37452101eaee1c28924dbd0220e064847905181d4e96",
+        "state": "ok",
+        "targets": [
+          {
+            "path": "/Users/vito/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset",
+            "state": "ok"
+          },
+          {
+            "path": "/Users/vito/.dsh/profiles/tui-team/preset-bundles/minimal-plus-preset",
+            "state": "ok"
+          }
+        ]
+      },
+      "tool-bootstrap.mjs": {
+        "repo": "e3e05e677289d84f5b24e291061e92dc309e75768a5aad355b5ade28f2d2a6ed",
+        "deployed": "e3e05e677289d84f5b24e291061e92dc309e75768a5aad355b5ade28f2d2a6ed",
+        "expected": "e3e05e677289d84f5b24e291061e92dc309e75768a5aad355b5ade28f2d2a6ed",
+        "state": "ok",
+        "targets": [
+          {
+            "path": "/Users/vito/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset",
+            "state": "ok"
+          },
+          {
+            "path": "/Users/vito/.dsh/profiles/tui-team/preset-bundles/minimal-plus-preset",
+            "state": "ok"
+          }
+        ]
+      }
+    }
+  },
+  "tiers": [
+    {
+      "id": "PRE",
+      "status": "pass",
+      "startedAt": "2026-09-26T04:37:00.381Z",
+      "durationMs": 0,
+      "assertions": [
+        {
+          "id": "host.cli",
+          "status": "pass",
+          "evidence": "dsh --version -> 0.1.7-rc.1"
+        },
+        {
+          "id": "host.pin.hostVersion",
+          "status": "pass",
+          "evidence": "expected=0.1.7-rc.1 actual=0.1.7-rc.1"
+        },
+        {
+          "id": "host.pin.sessionFormatVersion",
+          "status": "pass",
+          "evidence": "expected=4 actual=4"
+        }
+      ]
+    },
+    {
+      "id": "T0",
+      "status": "pass",
+      "startedAt": "2026-09-26T04:37:04.756Z",
+      "durationMs": 3742,
+      "assertions": [
+        {
+          "id": "tsc.noEmit",
+          "status": "pass",
+          "evidence": "exit 0",
+          "detail": {
+            "stderr": [
+              ""
+            ]
+          }
+        },
+        {
+          "id": "npm.test",
+          "status": "pass",
+          "evidence": "exit 0 tests=214 pass=214 fail=0",
+          "detail": {
+            "skipped": 0
+          }
+        },
+        {
+          "id": "testfile.list-consistency",
+          "status": "pass",
+          "evidence": "23 files present",
+          "detail": {
+            "declared": 23
+          }
+        }
+      ]
+    },
+    {
+      "id": "T1",
+      "status": "pass",
+      "startedAt": "2026-09-26T04:37:10.044Z",
+      "durationMs": 5288,
+      "assertions": [
+        {
+          "id": "composition.dump-config",
+          "status": "pass",
+          "evidence": "exit 0 entries=100",
+          "detail": {
+            "source": "/Users/vito/data/dev/dsh-plugins/gates/composition/gate.patch.yml",
+            "inProcessEntries": 100,
+            "stderr": [
+              ""
+            ]
+          }
+        },
+        {
+          "id": "composition.loader-id-unique",
+          "status": "pass",
+          "evidence": "in-process ids=100 cli ids=100 duplicates=0",
+          "detail": {
+            "inProcess": {
+              "groups": 0,
+              "ids": 100,
+              "maxDepth": 0
+            },
+            "cli": {
+              "groups": 0,
+              "ids": 100,
+              "maxDepth": 0
+            },
+            "duplicates": []
+          }
+        },
+        {
+          "id": "composition.no-stub",
+          "status": "pass",
+          "evidence": "no stub provider/module reference"
+        },
+        {
+          "id": "smoke.preset-roster",
+          "status": "pass",
+          "evidence": "id=minimal-plus name=Minimal+提权+注入",
+          "detail": {
+            "stderr": [
+              ""
+            ]
+          }
+        },
+        {
+          "id": "smoke.anchored-first-turn",
+          "status": "pass",
+          "evidence": "exit 0 R1=[\"bash\",\"str_replace_editor\"]",
+          "detail": {
+            "stderr": [
+              ""
+            ]
+          }
+        },
+        {
+          "id": "smoke.promoted-catalog",
+          "status": "pass",
+          "evidence": "tools=28 missing=[] unexpected=[] bashParamsMissing=[] preStepMissing=[]",
+          "detail": {
+            "preset": "minimal-plus"
+          }
+        },
+        {
+          "id": "smoke.subagent-exempt-first-turn",
+          "status": "pass",
+          "evidence": "exit 0 tools=28 missing=[] unexpected=[] bashStillAnchored=true preStepMissing=[]",
+          "detail": {
+            "stderr": [
+              ""
+            ]
+          }
+        },
+        {
+          "id": "degrade.fail-open",
+          "status": "pass",
+          "evidence": "exit 0 warning=true R1 tools=28",
+          "detail": {
+            "stderr": [
+              ""
+            ]
+          }
+        },
+        {
+          "id": "seeded-preview.probe",
+          "status": "pass",
+          "evidence": "exit 0 10/10 pass missing=0",
+          "detail": {
+            "summary": "10/10 pass",
+            "missing": [],
+            "stderr": [
+              ""
+            ]
+          }
+        },
+        {
+          "id": "deployment.repo-matches-manifest",
+          "status": "pass",
+          "evidence": "10 files match",
+          "detail": {
+            "manifest": "/Users/vito/data/dev/dsh-plugins/gates/manifest.json"
+          }
+        },
+        {
+          "id": "deployment.repo-vs-deployed",
+          "status": "pass",
+          "evidence": "10 files ok"
+        },
+        {
+          "id": "host.pin",
+          "status": "pass",
+          "evidence": "anchor=0.1.7-rc.1 resolution=0.1.7-rc.1 expected=0.1.7-rc.1",
+          "detail": {
+            "resolvedDir": "/Users/vito/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh",
+            "anchorDir": "/Users/vito/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh"
+          }
+        },
+        {
+          "id": "session.format-version",
+          "status": "pass",
+          "evidence": "runtime=4 manifest=4"
+        },
+        {
+          "id": "isolation.real-home-untouched",
+          "status": "pass",
+          "evidence": "signature identical before/after (strict zones; 0 observed-only changes)",
+          "detail": {
+            "strictZones": [
+              "profiles",
+              "root:settings.yaml",
+              "root:.credentials.yaml",
+              "deployment:minimal-plus",
+              "sessions"
+            ],
+            "observedChanges": []
+          }
+        },
+        {
+          "id": "isolation.copy-rewrite-sha",
+          "status": "pass",
+          "evidence": "cordis.yml sha256=c300dcf2ebc5",
+          "detail": {
+            "paths": [
+              "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-cWAtoi/home/profiles/headless/cordis.yml"
+            ]
+          }
+        },
+        {
+          "id": "gate.no-deployment-sync",
+          "status": "pass",
+          "evidence": "no sync invocation in 25 gate sources"
+        }
+      ]
+    },
+    {
+      "id": "T2",
+      "status": "pass",
+      "startedAt": "2026-09-26T04:37:15.895Z",
+      "durationMs": 5851,
+      "assertions": [
+        {
+          "id": "stub.overlay-only",
+          "status": "pass",
+          "evidence": "no stub provider/module/model reference outside gates/stub/**"
+        },
+        {
+          "id": "stub.bash-first-call.route.first-request",
+          "status": "pass",
+          "evidence": "request/header#1 config=stub/stub-model"
+        },
+        {
+          "id": "stub.bash-first-call.bash.first-call-persistent-args",
+          "status": "pass",
+          "evidence": "tool/call#1 name=bash arguments={\"command\":\"pwd\"}"
+        },
+        {
+          "id": "stub.bash-first-call.bash.first-call-not-rejected",
+          "status": "pass",
+          "evidence": "no argument rejection; tool/result isError=true content=Error: posix_openpt failed: Operation not permitted"
+        },
+        {
+          "id": "stub.bash-first-call.bash.promoted-sandbox-visible",
+          "status": "pass",
+          "evidence": "request/header seq=21 bash params=command,description,timeoutMs,workdir,run_in_background,sandbox_permissions,justification"
+        },
+        {
+          "id": "stub.bash-first-call.bash.second-call-accepted",
+          "status": "pass",
+          "evidence": "tool/call#2 arguments={\"command\":\"pwd\",\"description\":\"二轮沙箱调用：确认当前目录\"} result=isError=false error=<none>"
+        },
+        {
+          "id": "stub.bash-first-call.stub.no-aux-calls",
+          "status": "pass",
+          "evidence": "conversation calls=3/3 aux=[]"
+        },
+        {
+          "id": "stub.bash-first-call.session.turn-completed",
+          "status": "pass",
+          "evidence": "turn/end reason={\"kind\":\"completed\"}"
+        },
+        {
+          "id": "stub.bash-first-call.process-exit",
+          "status": "pass",
+          "evidence": "exit 0 report=7/7 pass"
+        },
+        {
+          "id": "stub.bash-first-step-batch.route.first-request",
+          "status": "pass",
+          "evidence": "request/header#1 config=stub/stub-model"
+        },
+        {
+          "id": "stub.bash-first-step-batch.bash.step1-request-persistent",
+          "status": "pass",
+          "evidence": "request/header#1 bash params=command"
+        },
+        {
+          "id": "stub.bash-first-step-batch.bash.step1-batch-two-calls",
+          "status": "pass",
+          "evidence": "step1 bash calls=2 args={\"command\":\"pwd\"} || {\"command\":\"echo batch-2\"}"
+        },
+        {
+          "id": "stub.bash-first-step-batch.bash.step1-no-arg-rejection",
+          "status": "pass",
+          "evidence": "all 2 step1 calls dispatched without argument rejection"
+        },
+        {
+          "id": "stub.bash-first-step-batch.bash.swap-only-after-step-end",
+          "status": "pass",
+          "evidence": "step/end seq=18 sandbox header seq=23 headers before step/end with sandbox=0"
+        },
+        {
+          "id": "stub.bash-first-step-batch.bash.second-call-accepted",
+          "status": "pass",
+          "evidence": "tool/call after step/end arguments={\"command\":\"pwd\",\"description\":\"二轮沙箱调用：确认当前目录\"} result=isError=false error=<none>"
+        },
+        {
+          "id": "stub.bash-first-step-batch.stub.no-aux-calls",
+          "status": "pass",
+          "evidence": "conversation calls=3/3 aux=[]"
+        },
+        {
+          "id": "stub.bash-first-step-batch.session.turn-completed",
+          "status": "pass",
+          "evidence": "turn/end reason={\"kind\":\"completed\"}"
+        },
+        {
+          "id": "stub.bash-first-step-batch.process-exit",
+          "status": "pass",
+          "evidence": "exit 0 report=8/8 pass"
+        },
+        {
+          "id": "stub.bash-promotion-visible.route.first-request",
+          "status": "pass",
+          "evidence": "request/header#1 config=stub/stub-model"
+        },
+        {
+          "id": "stub.bash-promotion-visible.bash.promoted-sandbox-visible",
+          "status": "pass",
+          "evidence": "request/header seq=21 bash params=command,description,timeoutMs,workdir,run_in_background,sandbox_permissions,justification"
+        },
+        {
+          "id": "stub.bash-promotion-visible.compaction.completed",
+          "status": "pass",
+          "evidence": "compaction/end seq=28 error=<none>"
+        },
+        {
+          "id": "stub.bash-promotion-visible.bash.compaction-fallback-persistent",
+          "status": "pass",
+          "evidence": "request/header seq=34 bash params=command"
+        },
+        {
+          "id": "stub.bash-promotion-visible.stub.script-consumed",
+          "status": "pass",
+          "evidence": "conversation calls=3/3 compaction calls=1"
+        },
+        {
+          "id": "stub.bash-promotion-visible.session.turn-completed",
+          "status": "pass",
+          "evidence": "turn/end reason={\"kind\":\"completed\"}"
+        },
+        {
+          "id": "stub.bash-promotion-visible.process-exit",
+          "status": "pass",
+          "evidence": "exit 0 report=6/6 pass"
+        },
+        {
+          "id": "stub.delegation-inherit-route.route.first-request",
+          "status": "pass",
+          "evidence": "request/header#1 config=stub/stub-model"
+        },
+        {
+          "id": "stub.delegation-inherit-route.delegation.omitted-route",
+          "status": "pass",
+          "evidence": "tool/call name=subagent arguments={\"description\":\"route probe\",\"prompt\":\"Reply with exactly: OK\",\"run_in_background\":false}"
+        },
+        {
+          "id": "stub.delegation-inherit-route.delegation.child-created",
+          "status": "pass",
+          "evidence": "childIds=[\"650b5847-8327-44fe-82e4-3e6618494ecc\"] child events=17"
+        },
+        {
+          "id": "stub.delegation-inherit-route.delegation.child-inherits-route",
+          "status": "pass",
+          "evidence": "parent=stub/stub-model child=stub/stub-model"
+        },
+        {
+          "id": "stub.delegation-inherit-route.delegation.foreground-result",
+          "status": "pass",
+          "evidence": "tool/result=isError=false turn/end={\"kind\":\"completed\"}"
+        },
+        {
+          "id": "stub.delegation-inherit-route.stub.child-route-call",
+          "status": "pass",
+          "evidence": "stub call session=650b5847-8327-44fe-82e4-3e6618494ecc route=stub/stub-model"
+        },
+        {
+          "id": "stub.delegation-inherit-route.stub.script-consumed",
+          "status": "pass",
+          "evidence": "conversation calls=3/3"
+        },
+        {
+          "id": "stub.delegation-inherit-route.process-exit",
+          "status": "pass",
+          "evidence": "exit 0 report=7/7 pass"
+        },
+        {
+          "id": "stub.delegation-reject-route.route.first-request",
+          "status": "pass",
+          "evidence": "request/header#1 config=stub/stub-model"
+        },
+        {
+          "id": "stub.delegation-reject-route.delegation.forbidden-args",
+          "status": "pass",
+          "evidence": "tool/call arguments={\"description\":\"forbidden route probe\",\"prompt\":\"Reply with exactly: OK\",\"provider\":\"stub\",\"model\":\"stub-model-forbidden\",\"run_in_background\":false}"
+        },
+        {
+          "id": "stub.delegation-reject-route.delegation.forbidden-rejected",
+          "status": "pass",
+          "evidence": "tool/result isError=true error=Error: child LLM route \"stub/stub-model-forbidden\" is not allowed for this Session"
+        },
+        {
+          "id": "stub.delegation-reject-route.delegation.no-child-session",
+          "status": "pass",
+          "evidence": "catalog childIds=[] sessions=[\"session-stub-delegation-reject-route-99f4f1f7-881e-4ea9-8da4-6044dc4e67d5\"]"
+        },
+        {
+          "id": "stub.delegation-reject-route.delegation.no-forbidden-request",
+          "status": "pass",
+          "evidence": "forbidden request/header=[] adapter calls=0"
+        },
+        {
+          "id": "stub.delegation-reject-route.session.turn-completed",
+          "status": "pass",
+          "evidence": "turn/end reason={\"kind\":\"completed\"}"
+        },
+        {
+          "id": "stub.delegation-reject-route.process-exit",
+          "status": "pass",
+          "evidence": "exit 0 report=6/6 pass"
+        },
+        {
+          "id": "stub.team-preset-overlay.preset.bound",
+          "status": "pass",
+          "evidence": "lead composed=minimal-plus header=minimal-plus"
+        },
+        {
+          "id": "stub.team-preset-overlay.preset.sentinel-visible",
+          "status": "pass",
+          "evidence": "lead tools=34 sentinel=true"
+        },
+        {
+          "id": "stub.team-preset-overlay.preset.anchored-first-turn",
+          "status": "pass",
+          "evidence": "R1 visible=[\"bash\",\"str_replace_editor\"]"
+        },
+        {
+          "id": "stub.team-preset-overlay.team.creation-tools-visible",
+          "status": "pass",
+          "evidence": "promoted missing=[]"
+        },
+        {
+          "id": "stub.team-preset-overlay.overlay.delegation-relation",
+          "status": "pass",
+          "evidence": "registry subagent=true spawn_teammate=true list_subagent_models=true promoted subagent=true subagent_fork=false"
+        },
+        {
+          "id": "stub.team-preset-overlay.overlay.teammate-inherits-preset",
+          "status": "pass",
+          "evidence": "teammate composed=minimal-plus header=minimal-plus role=teammate depth=1"
+        },
+        {
+          "id": "stub.team-preset-overlay.permission.member-cannot-create",
+          "status": "pass",
+          "evidence": "spawn from teammate (live role=teammate): only the Team Lead can create teammates"
+        },
+        {
+          "id": "stub.team-preset-overlay.permission.member-cannot-interrupt",
+          "status": "pass",
+          "evidence": "interrupt from teammate (live role=teammate): only the Team Lead can interrupt teammates"
+        },
+        {
+          "id": "stub.team-preset-overlay.overlay.lead-tool-surface",
+          "status": "pass",
+          "evidence": "lead registry=34 promoted=34 expected=34"
+        },
+        {
+          "id": "stub.team-preset-overlay.overlay.teammate-tool-surface",
+          "status": "pass",
+          "evidence": "teammate registry=34 expected=34"
+        },
+        {
+          "id": "stub.team-preset-overlay.process-exit",
+          "status": "pass",
+          "evidence": "exit 0 report=10/10 pass"
+        },
+        {
+          "id": "stub.v3-resume-route.route.first-request",
+          "status": "pass",
+          "evidence": "resumed request/header#1 config=stub/stub-model"
+        },
+        {
+          "id": "stub.v3-resume-route.resume.discovery-tool-visible",
+          "status": "pass",
+          "evidence": "resumed request/header tools=ask_user_question,bash,create_goal,edit,exit_plan_mode,get_goal,glob,grep,interrupt_agent,job_kill,job_list,job_output,list_agents,list_subagent_models,read,read_image,send_message,skill,skill_load,skill_search,str_replace_editor,subagent,subagent_fork,todo_write,update_goal,web_fetch,web_search,workflow,write"
+        },
+        {
+          "id": "stub.v3-resume-route.resume.promoted-catalog",
+          "status": "pass",
+          "evidence": "resumed request/header tool count=29 (bootstrap=2)"
+        },
+        {
+          "id": "stub.v3-resume-route.resume.policy-recorded",
+          "status": "pass",
+          "evidence": "policy events=1 routes=stub/stub-model"
+        },
+        {
+          "id": "stub.v3-resume-route.resume.format-current",
+          "status": "pass",
+          "evidence": "persisted session format version=4 (current host format=4)"
+        },
+        {
+          "id": "stub.v3-resume-route.session.turn-completed",
+          "status": "pass",
+          "evidence": "resumed window turn/end reason={\"kind\":\"completed\"}"
+        },
+        {
+          "id": "stub.v3-resume-route.process-exit",
+          "status": "pass",
+          "evidence": "exit 0 report=6/6 pass"
+        },
+        {
+          "id": "t2.isolation.real-home-untouched",
+          "status": "pass",
+          "evidence": "signature identical before/after (strict zones; 1 observed-only changes)",
+          "detail": {
+            "observedChanges": [
+              {
+                "zone": "storages",
+                "change": "changed",
+                "before": 883,
+                "after": 883
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "exemptions": [],
+  "summary": {
+    "passed": 81,
+    "failed": 0,
+    "skipped": 0
+  },
+  "smoke": {
+    "preset": {
+      "id": "minimal-plus",
+      "name": "Minimal+提权+注入",
+      "description": "Minimal 全量基底（persona 用 0.1.5 前缀键 + instruction-hint + skill-search）+ 二轮沙箱 bash 提权 + 二轮 AGENTS.md 注入（宿主 base 提供）。",
+      "order": 6
+    },
+    "bundle": "SMOKE bundle: /var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/minimal-plus-smoke-R6FwMB/profiles/headless/preset-bundles/minimal-plus-preset (generated from /Users/vito/data/dev/dsh-plugins/presets)",
+    "r1Tools": [
+      "bash",
+      "str_replace_editor"
+    ],
+    "toolCount": 28,
+    "tools": [
+      "ask_user_question",
+      "bash",
+      "create_goal",
+      "edit",
+      "exit_plan_mode",
+      "get_goal",
+      "glob",
+      "grep",
+      "interrupt_agent",
+      "job_kill",
+      "job_list",
+      "job_output",
+      "list_agents",
+      "read",
+      "read_image",
+      "send_message",
+      "skill",
+      "skill_load",
+      "skill_search",
+      "str_replace_editor",
+      "subagent",
+      "subagent_fork",
+      "todo_write",
+      "update_goal",
+      "web_fetch",
+      "web_search",
+      "workflow",
+      "write"
+    ],
+    "preStepSources": [
+      "agent-instructions",
+      "skill-catalog",
+      "instruction-hint"
+    ],
+    "subagentR1Tools": [
+      "ask_user_question",
+      "bash",
+      "create_goal",
+      "edit",
+      "exit_plan_mode",
+      "get_goal",
+      "glob",
+      "grep",
+      "interrupt_agent",
+      "job_kill",
+      "job_list",
+      "job_output",
+      "list_agents",
+      "read",
+      "read_image",
+      "send_message",
+      "skill",
+      "skill_load",
+      "skill_search",
+      "str_replace_editor",
+      "subagent",
+      "subagent_fork",
+      "todo_write",
+      "update_goal",
+      "web_fetch",
+      "web_search",
+      "workflow",
+      "write"
+    ],
+    "subagentR1Sources": [
+      "agent-instructions",
+      "skill-catalog",
+      "instruction-hint"
+    ]
+  },
+  "seededPreview": {
+    "checks": 10,
+    "ids": [
+      "fixture-store-prepared",
+      "fixture-copied-byte-identical",
+      "listEvents-has-corpus",
+      "seeded-readSession-aligned",
+      "green-reader-module-present",
+      "green-log-reconstructed",
+      "green-count-and-seq-match",
+      "green-inherited-count-recorded",
+      "green-warm-call",
+      "baseline-readSession-fastpath"
+    ]
+  },
+  "host": {
+    "expected": "0.1.7-rc.1",
+    "installAnchor": {
+      "path": "/Users/vito/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/package.json",
+      "version": "0.1.7-rc.1"
+    },
+    "resolution": {
+      "packageDir": "/Users/vito/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh",
+      "version": "0.1.7-rc.1"
+    }
+  },
+  "isolation": {
+    "strictZones": [
+      "profiles",
+      "root:settings.yaml",
+      "root:.credentials.yaml",
+      "deployment:minimal-plus",
+      "sessions"
+    ],
+    "observedChanges": [],
+    "strictChanges": []
+  },
+  "compositionEntriesSha": "5294c8c83c9cde32aedf0dcaebc26d7069ec625b5e30a6a2816be9eccd146197",
+  "compositionArtifact": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-cWAtoi/home/gate-composition.yml",
+  "copies": {
+    "profileCordisSha": "c300dcf2ebc5f02062d6591268d29d3db6fe45e0cb138f5467276fe2ba06076e"
+  },
+  "stub": {
+    "scenarios": [
+      {
+        "scenario": "bash-first-call",
+        "passed": 7,
+        "failed": 0,
+        "exit": 0,
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-cWAtoi/home/stub/bash-first-call.json"
+      },
+      {
+        "scenario": "bash-first-step-batch",
+        "passed": 8,
+        "failed": 0,
+        "exit": 0,
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-cWAtoi/home/stub/bash-first-step-batch.json"
+      },
+      {
+        "scenario": "bash-promotion-visible",
+        "passed": 6,
+        "failed": 0,
+        "exit": 0,
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-cWAtoi/home/stub/bash-promotion-visible.json"
+      },
+      {
+        "scenario": "delegation-inherit-route",
+        "passed": 7,
+        "failed": 0,
+        "exit": 0,
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-cWAtoi/home/stub/delegation-inherit-route.json"
+      },
+      {
+        "scenario": "delegation-reject-route",
+        "passed": 6,
+        "failed": 0,
+        "exit": 0,
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-cWAtoi/home/stub/delegation-reject-route.json"
+      },
+      {
+        "scenario": "team-preset-overlay",
+        "passed": 10,
+        "failed": 0,
+        "exit": 0,
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-cWAtoi/home/stub/team-preset-overlay.json"
+      },
+      {
+        "scenario": "v3-resume-route",
+        "passed": 6,
+        "failed": 0,
+        "exit": 0,
+        "report": "/var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/dsh-regression-gate-cWAtoi/home/stub/v3-resume-route.json"
+      }
+    ]
+  }
+}

@@ -1,0 +1,140 @@
+=== pre-write dry-run tui-dev ===
+sync-agent-presets: minimal-plus (bundle @dsh-plugins/minimal-plus-preset) → /Users/vito/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset (dry-run)
+  compaction-epoch.mjs     repo:ok   target:STALE  sha256=35b1b7342a17
+  cordis.patch.yml         repo:ok   target:STALE  sha256=30b1b622bd14
+  custom-bash.mjs          repo:ok   target:ok     sha256=8422b4acd6f8
+  instruction-hint.mjs     repo:ok   target:ok     sha256=4a2a26cb74ee
+  package.json             repo:ok   target:ok     sha256=e478937e5eb6
+  phase-swap-bash.mjs      repo:ok   target:STALE  sha256=b0bf21084487
+  plugin-teardown.mjs      repo:ok   target:ok     sha256=f3f49a4933eb
+  skill-search.mjs         repo:ok   target:ok     sha256=25eb10fa9d2b
+  source-manifest.json     repo:ok   target:STALE  sha256=8267a29be348
+  tool-bootstrap.mjs       repo:ok   target:ok     sha256=e3e05e677289
+sync-agent-presets: profile tui-dev bundles selection: selected
+sync-agent-presets: dry-run — target differs; nothing written (rerun with --write to deploy)
+exit=1
+=== pre-write dry-run tui-team ===
+sync-agent-presets: minimal-plus (bundle @dsh-plugins/minimal-plus-preset) → /Users/vito/.dsh/profiles/tui-team/preset-bundles/minimal-plus-preset (dry-run)
+  compaction-epoch.mjs     repo:ok   target:STALE  sha256=35b1b7342a17
+  cordis.patch.yml         repo:ok   target:STALE  sha256=30b1b622bd14
+  custom-bash.mjs          repo:ok   target:ok     sha256=8422b4acd6f8
+  instruction-hint.mjs     repo:ok   target:ok     sha256=4a2a26cb74ee
+  package.json             repo:ok   target:ok     sha256=e478937e5eb6
+  phase-swap-bash.mjs      repo:ok   target:STALE  sha256=b0bf21084487
+  plugin-teardown.mjs      repo:ok   target:ok     sha256=f3f49a4933eb
+  skill-search.mjs         repo:ok   target:ok     sha256=25eb10fa9d2b
+  source-manifest.json     repo:ok   target:STALE  sha256=8267a29be348
+  tool-bootstrap.mjs       repo:ok   target:ok     sha256=e3e05e677289
+sync-agent-presets: profile tui-team bundles selection: selected
+sync-agent-presets: dry-run — target differs; nothing written (rerun with --write to deploy)
+exit=1
+=== write tui-dev ===
+sync-agent-presets: minimal-plus (bundle @dsh-plugins/minimal-plus-preset) → /Users/vito/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset (write)
+  compaction-epoch.mjs     repo:ok   target:STALE  sha256=35b1b7342a17
+  cordis.patch.yml         repo:ok   target:STALE  sha256=30b1b622bd14
+  custom-bash.mjs          repo:ok   target:ok     sha256=8422b4acd6f8
+  instruction-hint.mjs     repo:ok   target:ok     sha256=4a2a26cb74ee
+  package.json             repo:ok   target:ok     sha256=e478937e5eb6
+  phase-swap-bash.mjs      repo:ok   target:STALE  sha256=b0bf21084487
+  plugin-teardown.mjs      repo:ok   target:ok     sha256=f3f49a4933eb
+  skill-search.mjs         repo:ok   target:ok     sha256=25eb10fa9d2b
+  source-manifest.json     repo:ok   target:STALE  sha256=8267a29be348
+  tool-bootstrap.mjs       repo:ok   target:ok     sha256=e3e05e677289
+sync-agent-presets: profile tui-dev bundles selection: selected
+node:fs:1282
+  return binding.rmSync(getValidatedPath(path), opts.maxRetries, opts.recursive, opts.retryDelay);
+                 ^
+
+Error: EPERM, Operation not permitted: /Users/vito/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset '/Users/vito/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset'
+    at rmSync (node:fs:1282:18)
+    at generatePresetBundle (file:///Users/vito/data/dev/dsh-plugins/scripts/agent-preset-bundle.mjs:182:3)
+    at stagePresetBundle (file:///Users/vito/data/dev/dsh-plugins/scripts/agent-preset-bundle.mjs:272:3)
+    at applyPlan (file:///Users/vito/data/dev/dsh-plugins/scripts/sync-agent-presets.mjs:144:5)
+    at runSyncCli (file:///Users/vito/data/dev/dsh-plugins/scripts/sync-agent-presets.mjs:184:38)
+    at file:///Users/vito/data/dev/dsh-plugins/scripts/sync-agent-presets.mjs:194:16
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  errno: 1,
+  code: 'EPERM',
+  path: '/Users/vito/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset',
+  syscall: 'rm'
+}
+
+Node.js v24.21.0
+exit=1
+=== write tui-dev ===
+sync-agent-presets: minimal-plus (bundle @dsh-plugins/minimal-plus-preset) → /Users/vito/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset (write)
+  compaction-epoch.mjs     repo:ok   target:STALE  sha256=35b1b7342a17
+  cordis.patch.yml         repo:ok   target:STALE  sha256=30b1b622bd14
+  custom-bash.mjs          repo:ok   target:ok     sha256=8422b4acd6f8
+  instruction-hint.mjs     repo:ok   target:ok     sha256=4a2a26cb74ee
+  package.json             repo:ok   target:ok     sha256=e478937e5eb6
+  phase-swap-bash.mjs      repo:ok   target:STALE  sha256=b0bf21084487
+  plugin-teardown.mjs      repo:ok   target:ok     sha256=f3f49a4933eb
+  skill-search.mjs         repo:ok   target:ok     sha256=25eb10fa9d2b
+  source-manifest.json     repo:ok   target:STALE  sha256=8267a29be348
+  tool-bootstrap.mjs       repo:ok   target:ok     sha256=e3e05e677289
+sync-agent-presets: profile tui-dev bundles selection: selected
+sync-agent-presets: wired bundle into profile tui-dev (/Users/vito/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset)
+sync-agent-presets: legacy directory /Users/vito/.dsh/.agent-presets/minimal-plus is not read by 0.1.7; it stays as the stable 0.1.5 channel's carrier (ticket 12)
+exit=0
+=== write tui-team ===
+sync-agent-presets: minimal-plus (bundle @dsh-plugins/minimal-plus-preset) → /Users/vito/.dsh/profiles/tui-team/preset-bundles/minimal-plus-preset (write)
+  compaction-epoch.mjs     repo:ok   target:STALE  sha256=35b1b7342a17
+  cordis.patch.yml         repo:ok   target:STALE  sha256=30b1b622bd14
+  custom-bash.mjs          repo:ok   target:ok     sha256=8422b4acd6f8
+  instruction-hint.mjs     repo:ok   target:ok     sha256=4a2a26cb74ee
+  package.json             repo:ok   target:ok     sha256=e478937e5eb6
+  phase-swap-bash.mjs      repo:ok   target:STALE  sha256=b0bf21084487
+  plugin-teardown.mjs      repo:ok   target:ok     sha256=f3f49a4933eb
+  skill-search.mjs         repo:ok   target:ok     sha256=25eb10fa9d2b
+  source-manifest.json     repo:ok   target:STALE  sha256=8267a29be348
+  tool-bootstrap.mjs       repo:ok   target:ok     sha256=e3e05e677289
+sync-agent-presets: profile tui-team bundles selection: selected
+sync-agent-presets: wired bundle into profile tui-team (/Users/vito/.dsh/profiles/tui-team/preset-bundles/minimal-plus-preset)
+sync-agent-presets: legacy directory /Users/vito/.dsh/.agent-presets/minimal-plus is not read by 0.1.7; it stays as the stable 0.1.5 channel's carrier (ticket 12)
+exit=0
+=== post-write dry-run tui-dev ===
+sync-agent-presets: minimal-plus (bundle @dsh-plugins/minimal-plus-preset) → /Users/vito/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset (dry-run)
+  compaction-epoch.mjs     repo:ok   target:ok     sha256=35b1b7342a17
+  cordis.patch.yml         repo:ok   target:ok     sha256=30b1b622bd14
+  custom-bash.mjs          repo:ok   target:ok     sha256=8422b4acd6f8
+  instruction-hint.mjs     repo:ok   target:ok     sha256=4a2a26cb74ee
+  package.json             repo:ok   target:ok     sha256=e478937e5eb6
+  phase-swap-bash.mjs      repo:ok   target:ok     sha256=b0bf21084487
+  plugin-teardown.mjs      repo:ok   target:ok     sha256=f3f49a4933eb
+  skill-search.mjs         repo:ok   target:ok     sha256=25eb10fa9d2b
+  source-manifest.json     repo:ok   target:ok     sha256=8267a29be348
+  tool-bootstrap.mjs       repo:ok   target:ok     sha256=e3e05e677289
+sync-agent-presets: profile tui-dev bundles selection: selected
+sync-agent-presets: dry-run — target already matches (10 files)
+sync-agent-presets: legacy directory /Users/vito/.dsh/.agent-presets/minimal-plus is not read by 0.1.7; it stays as the stable 0.1.5 channel's carrier (ticket 12)
+exit=0
+=== post-write dry-run tui-team ===
+sync-agent-presets: minimal-plus (bundle @dsh-plugins/minimal-plus-preset) → /Users/vito/.dsh/profiles/tui-team/preset-bundles/minimal-plus-preset (dry-run)
+  compaction-epoch.mjs     repo:ok   target:ok     sha256=35b1b7342a17
+  cordis.patch.yml         repo:ok   target:ok     sha256=30b1b622bd14
+  custom-bash.mjs          repo:ok   target:ok     sha256=8422b4acd6f8
+  instruction-hint.mjs     repo:ok   target:ok     sha256=4a2a26cb74ee
+  package.json             repo:ok   target:ok     sha256=e478937e5eb6
+  phase-swap-bash.mjs      repo:ok   target:ok     sha256=b0bf21084487
+  plugin-teardown.mjs      repo:ok   target:ok     sha256=f3f49a4933eb
+  skill-search.mjs         repo:ok   target:ok     sha256=25eb10fa9d2b
+  source-manifest.json     repo:ok   target:ok     sha256=8267a29be348
+  tool-bootstrap.mjs       repo:ok   target:ok     sha256=e3e05e677289
+sync-agent-presets: profile tui-team bundles selection: selected
+sync-agent-presets: dry-run — target already matches (10 files)
+sync-agent-presets: legacy directory /Users/vito/.dsh/.agent-presets/minimal-plus is not read by 0.1.7; it stays as the stable 0.1.5 channel's carrier (ticket 12)
+exit=0
+=== deploy-preset-carrier --check ===
+deploy-preset-carrier: preset minimal-plus (@dsh-plugins/minimal-plus-preset)
+  artifact: /Users/vito/data/dev/dsh-plugins/generated/minimal-plus-preset
+  tui-dev   dir=/Users/vito/.dsh/profiles/tui-dev
+    bundle target=match repo=ok selection=true legacyRow=already-clean (exists)
+    bundles → @deepseek-ai/dsh-base, dsh-antigravity-auth, @dsh-plugins/minimal-plus-preset
+  tui-team  dir=/Users/vito/.dsh/profiles/tui-team
+    bundle target=match repo=ok selection=true legacyRow=- (exists)
+    bundles → @deepseek-ai/dsh-base, dsh-antigravity-auth, @deepseek-ai/dsh-experimental-agent-team-profile, @dsh-plugins/minimal-plus-preset
+deploy-preset-carrier: deployment is current
+exit=0
