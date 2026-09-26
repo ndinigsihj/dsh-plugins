@@ -48,7 +48,7 @@
 | `generated/minimal-plus-preset/` | 重生成：`compaction-epoch.mjs` sha `35b1b7342a17…`、`phase-swap-bash.mjs` `b0bf21084487…`、`source-manifest.json` `8267a29be348…`（`cordis.patch.yml` 因配置值变化为 `30b1b622bd14…`；其余 6 文件不变） |
 | `gates/manifest.json` | `deployment.minimal-plus.files` 同步上述 4 个 sha |
 | `README.md` / `CONTEXT.md` | 行为清单补子代理锚定豁免；术语表 `Anchored first turn` / `Promotion` 增子代理分支（AGENTS.md「改配置须同步 README/索引」） |
-| `docs/dsh-v0.1.7-rc.1-upgrade-{closeout,plan,spec}.md`、票据 14、`.dsh/ask-matt-flow/state.md` | 状态回填（实现落地、部署位刷新待批准） |
+| `docs/dsh-v0.1.7-rc.1-upgrade-{closeout,plan,spec}.md`、票据 14、`.dsh/ask-matt-flow/state.md` | 状态回填（实现落地 `b9a893b`；部署位刷新与证据归档 `c877769`；`.dsh/ask-matt-flow/state.md` 为本地流程态） |
 
 ## 2. 行为证据
 
@@ -113,7 +113,8 @@ WARNINGS: []
 - 工具路径发现：票据 12 的 `deploy-preset-carrier-cli.mjs --write` 是一次性迁移工具
   （`applyPresetCarrier` 明确「tui-team 已存在即拒绝覆盖」），不能用于增量刷新；本次改用
   `node scripts/sync-agent-presets.mjs --profile tui-dev --write` 与 `--profile tui-team --write`
-  （逐 profile 重建 `preset-bundles/minimal-plus-preset`，条目选择幂等、不动 cordis.patch.yml）。
+  （逐 profile 重建 `preset-bundles/minimal-plus-preset`：profile 级 `cordis.patch.yml` 的条目选择幂等不动；
+  bundle 内 `cordis.patch.yml` 属 4 个 STALE → match 文件之一）。
   全过程输出见 `14-deploy-write.txt`。
 - 刷新后复核：
   - 两 profile dry-run `target already matches (10 files)`，exit 0；
@@ -138,6 +139,11 @@ WARNINGS: []
   16/16（§3、§5）。
 - 评审前修正的额外口径：closeout 里「票据 13 文档未提交」更新为已提交 `aa48955`；
   H5 冷启动措辞改为「豁免子代理没有 tool/call 信号，不沿用 H5 promotion 口径」。
+- **收口复核（2026-09-26，范围 `b9a893b..c877769`，双轴只读）**：7 项发现已按用户批准全部处置——
+  硬项 3（closeout §2/§10.2/§11 仍写「未提交/待提交」、领先数 19 → 22、本文件 §1 变更面表与 §5 矛盾）、
+  小项 4（部署归属 hash 补 `c877769`、PTY 报告重复副本登记入 closeout §10.2、终稿 214/214 登记入 closeout §5、
+  §5「不动 cordis.patch.yml」改写为「profile 级不动 / bundle 内属 STALE→match」）。
+  复核纠偏：README「tui-team 已存在即拒绝覆盖」经核对 `applyPresetCarrier` 显式 throw，成立（非 overstatement）。
 
 ## 7. 命令与文件索引
 

@@ -1,6 +1,6 @@
 # dsh-plugins 升级至 0.1.7-rc.1 — 收口记录（as-built）
 
-> 日期：2026-09-26（票据 13 文档收口）。状态：**已提交 `aa48955`**；票据 14 已实现、部署位已刷新并零豁免复验（提交 `b9a893b`，见 §2 与 §7.1）。
+> 日期：2026-09-26（票据 13 文档收口；票据 14 收口后复核）。状态：**已提交 `aa48955`**；票据 14 已实现（`b9a893b`）、部署位已刷新并零豁免复验，部署期证据与状态回填已提交 `c877769`（见 §2 与 §7.1）。
 > 范围：开发侧宿主 `0.1.5-rc.2` → `0.1.7-rc.1`（跨越整个 `0.1.6` 代际）＋ 会话格式 V4 迁移 ＋
 > Preset 载体迁移（目录形态 → bundle 声明行）＋ 新增 Team Profile（`tui-team`）＋ 部署位真实写入。
 > 稳定侧（`dsh-runtime/stable` + `tui` + 旧目录载体）与 v22 旧安装点保持钉版，不在本轮目标内。
@@ -55,11 +55,12 @@
 | 11 | 真实模型基线重采与探针口径收口 | done（提交 `ab03841`） | `evidence/11-*` |
 | 12 | 收口验证与部署（真实写入 tui-dev/tui-team） | done（提交 `fdec617`） | `evidence/12-*` |
 | 13 | 文档收口与升级节奏政策（本文） | done（提交 `aa48955`） | 本文 + `README.md` + `docs/deployment.md` |
-| 14 | 子代理豁免锚定（`includeSubagents` 统一 `false`） | done（提交 `b9a893b`；部署位已刷新，gate/real 零豁免、PTY 16/16） | `evidence/14-*`；见 §7.1 |
+| 14 | 子代理豁免锚定（`includeSubagents` 统一 `false`） | done（实现 `b9a893b`、部署与证据收口 `c877769`；部署位已刷新，gate/real 零豁免、PTY 16/16） | `evidence/14-*`；见 §7.1 |
 
-提交状态：票据 01–12 的改动均已提交到本地 `main`（未 push，领先 `origin/main` 19 个提交）；
-票据 13 的文档改动已提交 `aa48955`；票据 14 实现已提交 `b9a893b`，部署位已按用户批准刷新并复验；
-部署期新增证据文件（`14-deploy-write.txt`、`14-gate-{gate-postdeploy,real}.json`、`14-pty-*`）待提交。
+提交状态：票据 01–12 的改动已提交到本地 `main`（`86da02f..fdec617`，19 个提交）；
+票据 13 文档收口 `aa48955`、票据 14 实现 `b9a893b`、部署期证据与状态回填 `c877769` 亦已提交
+（`14-deploy-write.txt`、`14-gate-{gate-postdeploy,real}.json`、`14-pty-*` 均收口于 `c877769`）。
+当前 HEAD（`c877769`）领先 `origin/main` **22 个提交，未 push**。
 
 ## 3. 裁决落地对照（计划 §1.1）
 
@@ -130,6 +131,9 @@
 `composition.team-profile — ids=115`、`isolation.real-home-untouched — 签名一致`。
 票据 13 窗口复跑静态层：`npx tsc --noEmit` exit 0，`npm test` **205/205**、exit 0
 （`2026-09-26`，as-run 日志 `evidence/13-static-layer.txt`）。
+票据 14 终稿（部署刷新后）静态层的 as-run 记录在部署后闸门报告 T0：
+`tsc.noEmit` exit 0、`npm.test` exit 0 `tests=214 pass=214 fail=0`
+（`evidence/14-gate-gate-postdeploy.json`）。
 
 ## 6. 测量结论
 
@@ -158,7 +162,7 @@
 
 ### 7.1 开环项（有明确下一步）
 
-1. ~~票据 14 — 子代理锚定~~ **已闭环（2026-09-26，提交 `b9a893b`）**：三处 `includeSubagents: false`
+1. ~~票据 14 — 子代理锚定~~ **已闭环（2026-09-26，实现 `b9a893b`、部署与证据收口 `c877769`）**：三处 `includeSubagents: false`
    （`agent.cordis.yml` 的 tool-bootstrap / phase-swap-bash / instruction-hint 三行）+
    `phase-swap-bash.mjs` 改读配置 + 豁免子代理首步结算前的 `turn/start` 换相守卫。
    部署位按用户批准经 `node scripts/sync-agent-presets.mjs --profile {tui-dev,tui-team} --write`
@@ -241,13 +245,16 @@
 | 11 基线重采 | `evidence/11-real-model-baseline-recapture.md` + `evidence/11-{gate-012,t3-green}.json` |
 | 12 收口部署 | `evidence/12-closeout-verification-and-deployment.md` + `evidence/12-*` |
 | 13 本文 | 本文；`README.md`、`docs/deployment.md`、计划/spec/票面/`CONTEXT.md` 回填；`evidence/13-static-layer.txt`（静态层 as-run 日志） |
-| 14 已实现（未提交） | 票面 14（裁决 `f8a6f72`）；实现证据 `evidence/14-*`（含部署位只读 dry-run 与待批准刷新路径） |
+| 14 子代理锚定（已收口） | 票面 14（裁决 `f8a6f72`）；实现 `b9a893b`、部署与证据收口 `c877769`；证据 `evidence/14-*`（部署刷新记录、零豁免 gate/real、PTY 双形态） |
 | 计划/spec | `docs/dsh-v0.1.7-rc.1-upgrade-plan.md`（§6 迁移清单、§7 程序、§8 未验证清单）、`docs/dsh-v0.1.7-rc.1-upgrade-spec.md` |
-| 闸门报告 | `experiments/regression-gate/`（含 0.1.7 窗口的 `results-2026-09-25*.json`、`t3-2026-09-25T*` 归档） |
+| 闸门报告 | `experiments/regression-gate/`（含 0.1.7 窗口的 `results-2026-09-25*.json`、`t3-2026-09-25T*` 归档，以及票据 14 部署刷新后的 PTY 报告 `pty-smoke-2026-09-26.json`，与 `evidence/14-pty-tui-team.json` 同源） |
 
 ## 11. 提交状态
 
-- 票据 01–12 与本轮计划/spec/ADR/preset 对齐改动：已提交到本地 `main`，共 19 个提交领先
-  `origin/main`（`86da02f..fdec617`），**未 push**。
+- 票据 01–12 与本轮计划/spec/ADR/preset 对齐改动：19 个提交（`86da02f..fdec617`）。
 - 票据 13（本文 + README/deployment 节奏政策 + 计划/spec/票面/CONTEXT.md 回填 + `evidence/13-static-layer.txt`）：已提交 `aa48955`。
-- 票据 14（preset 真源三处 `includeSubagents: false` + phase-swap 读配置/换相守卫 + 契约测试/冒烟/闸门/产物 + `evidence/14-*`）：实现已提交 `b9a893b`；部署位已按用户批准刷新（`sync-agent-presets --profile {tui-dev,tui-team} --write`）并零豁免复验，部署期新增的证据/状态文件（`evidence/14-deploy-write.txt`、`evidence/14-gate-{gate-postdeploy,real}.json`、`evidence/14-pty-tui-{dev,team}.json`、本文与票据 14/计划/spec 回填）**未提交**，等待用户审阅确认。
+- 票据 14（preset 真源三处 `includeSubagents: false` + phase-swap 读配置/换相守卫 + 契约测试/冒烟/闸门/产物 +
+  `evidence/14-*`）：实现已提交 `b9a893b`；部署位已按用户批准刷新（`sync-agent-presets --profile {tui-dev,tui-team} --write`）
+  并零豁免复验；部署期证据与状态回填（`evidence/14-deploy-write.txt`、`evidence/14-gate-{gate-postdeploy,real}.json`、
+  `evidence/14-pty-tui-{dev,team}.json`、本文与票据 14/计划/spec 回填）已提交 `c877769`。
+- 当前 HEAD = `c877769`，领先 `origin/main` **22 个提交，未 push**（等用户决定）。
