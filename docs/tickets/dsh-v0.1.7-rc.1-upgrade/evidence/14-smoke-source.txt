@@ -1,0 +1,12 @@
+SMOKE bundle: /var/folders/zh/f_lsgtq11xj15plhbsydjy2r0000gn/T/minimal-plus-smoke-5zf2NJ/profiles/headless/preset-bundles/minimal-plus-preset (generated from presets)
+ROSTER preset: {"id":"minimal-plus","name":"Minimal+提权+注入","description":"Minimal 全量基底（persona 用 0.1.5 前缀键 + instruction-hint + skill-search）+ 二轮沙箱 bash 提权 + 二轮 AGENTS.md 注入（宿主 base 提供）。","order":6}
+SMOKE preset: minimal-plus
+ROUND1 catalog: {"tools":["bash","str_replace_editor"],"bashParams":["command"],"contexts":[],"sections":["deployment:persona-prefix"]}
+ROUND1 pre-step sources: []
+ROUND1 subagent catalog: {"tools":["ask_user_question","bash","create_goal","edit","exit_plan_mode","get_goal","glob","grep","interrupt_agent","job_kill","job_list","job_output","list_agents","read","read_image","send_message","skill","skill_load","skill_search","str_replace_editor","subagent","subagent_fork","todo_write","update_goal","web_fetch","web_search","workflow","write"],"bashParams":["command"],"contexts":[],"sections":["deployment:persona-prefix"]}
+ROUND1 subagent pre-step sources: ["agent-instructions","skill-catalog","instruction-hint"]
+ROUND1.5 catalog (pending call): {"tools":["ask_user_question","bash","create_goal","edit","exit_plan_mode","get_goal","glob","grep","interrupt_agent","job_kill","job_list","job_output","list_agents","read","read_image","send_message","skill","skill_load","skill_search","str_replace_editor","subagent","subagent_fork","todo_write","update_goal","web_fetch","web_search","workflow","write"],"bashParams":["command"],"contexts":[],"sections":["deployment:persona-prefix"]}
+ROUND2 catalog: {"tools":["ask_user_question","bash","create_goal","edit","exit_plan_mode","get_goal","glob","grep","interrupt_agent","job_kill","job_list","job_output","list_agents","read","read_image","send_message","skill","skill_load","skill_search","str_replace_editor","subagent","subagent_fork","todo_write","update_goal","web_fetch","web_search","workflow","write"],"bashParams":["command","description","timeoutMs","workdir","run_in_background","sandbox_permissions","justification"],"contexts":[],"sections":["deployment:persona-prefix"]}
+WARNINGS: []
+ROUND2 pre-step sources: ["agent-instructions","skill-catalog","instruction-hint"]
+WARNINGS: []

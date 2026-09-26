@@ -44,10 +44,18 @@ function catalogs(bootState, config = {}) {
   plugin.apply(bootState.root, {
     bootstrapTools: BOOTSTRAP_TOOLS,
     promoteOn: "tool-call",
-    includeSubagents: true,
+    // 与 preset 真源一致（票据 14 方案 A）：默认豁免子代理锚定。
+    includeSubagents: false,
     ...config,
   });
   return bootState;
+}
+
+/** 造一个 delegationDepth > 0 的子代理（主会话 delegationDepth 缺省 = 0）。 */
+function makeSubagent(bootState, id, events = []) {
+  const sub = makeAgent(bootState, id, events);
+  sub.session.header = { delegationDepth: 1 };
+  return sub;
 }
 
 const toolNames = (assembly) => (assembly.tools ?? []).map((t) => t.name).sort();
@@ -96,6 +104,46 @@ test("resume：冷扫描已 promoted 会话 → 直接放行全量", async () =>
   const agent = makeAgent(bootState, "sess-resume", [{ type: "tool/call", seq: 5, data: {} }]);
   const out = await runAssemble(bootState, agent, baseAssembly());
   assert.deepEqual(toolNames(out), ["bash", "str_replace_editor", "read", "web_search", "goal"].sort());
+});
+
+test("子代理豁免锚定：子代理首轮全量目录，主会话同配置仍锚定", async () => {
+  const bootState = catalogs(boot());
+  const main = makeAgent(bootState, "sess-main");
+  const sub = makeSubagent(bootState, "sess-sub");
+  const mainOut = await runAssemble(bootState, main, baseAssembly());
+  assert.deepEqual(toolNames(mainOut), BOOTSTRAP_TOOLS.slice().sort(), "主会话首轮仍为锚定对");
+  const subOut = await runAssemble(bootState, sub, baseAssembly());
+  assert.deepEqual(
+    toolNames(subOut),
+    ["bash", "str_replace_editor", "read", "web_search", "goal"].sort(),
+    "子代理（delegationDepth > 0）首轮即全量目录",
+  );
+});
+
+test("子代理豁免锚定：pre-step 不剥 suppressed 源（目录/sections/注入三处口径一致）", async () => {
+  const bootState = catalogs(boot());
+  const main = makeAgent(bootState, "sess-main-pre");
+  const sub = makeSubagent(bootState, "sess-sub-pre");
+  const decision = {
+    kind: "enter",
+    messages: [
+      { id: "a", role: "user", content: [], source: { kind: "agent-instructions" } },
+      { id: "b", role: "user", content: [], source: { kind: "skill-catalog" } },
+      { id: "c", role: "user", content: [], source: { kind: "user" } },
+    ],
+  };
+  assert.deepEqual((await runPreStep(bootState, main, decision)).messages.map((m) => m.id), ["c"]);
+  assert.deepEqual((await runPreStep(bootState, sub, decision)).messages.map((m) => m.id), ["a", "b", "c"]);
+});
+
+test("includeSubagents: true：子代理仍跟随主会话锚定周期（配置语义保留）", async () => {
+  const bootState = catalogs(boot(), { includeSubagents: true });
+  const sub = makeSubagent(bootState, "sess-sub-anchored");
+  const fresh = await runAssemble(bootState, sub, baseAssembly());
+  assert.deepEqual(toolNames(fresh), BOOTSTRAP_TOOLS.slice().sort(), "includeSubagents: true 时子代理仍锚定");
+  await fireToolCall(bootState, sub.session);
+  const promoted = await runAssemble(bootState, sub, baseAssembly());
+  assert.deepEqual(toolNames(promoted), ["bash", "str_replace_editor", "read", "web_search", "goal"].sort());
 });
 
 test("缺 bootstrap 工具 → fail-open 暴露全量目录（warn once）", async () => {

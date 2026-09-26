@@ -104,11 +104,12 @@ _Avoid_: whitelist、catalog、白名单
 ### TUI 行为
 
 **Anchored first turn（首轮锚定）**:
-首轮只对模型暴露 bash 与 str_replace_editor，避免以寒暄开场。
+首轮只对模型暴露 bash 与 str_replace_editor，避免以寒暄开场。主会话（`delegationDepth == 0`）专属语义；
+子代理豁免：首轮即全量工具目录，其 bash 换用仍延后到首步结算。
 _Avoid_: bootstrap mode
 
 **Promotion（放行）**:
-首个 tool call 之后放行完整工具目录并恢复常规注入的时点。
+首个 tool call 之后放行完整工具目录并恢复常规注入的时点。豁免锚定的子代理视为首轮即已放行。
 _Avoid_: unlock、escalate、提权
 
 **bash 换用（phase swap）**:

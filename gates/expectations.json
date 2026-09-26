@@ -1,5 +1,5 @@
 {
-  "comment": "闸门工具面期望（票据 03；票据 09 增 profiles 维度）。宿主换代时清单（gates/manifest.json）先变红 exit 2，重采基线时同步更新本文件。禁止整文件再生成：profiles.* 用 basedOn + changes 行级差异表达，每条 changes 必须带 direction 与 reason；测试会与 08 实测归档逐项对账。",
+  "comment": "闸门工具面期望（票据 03；票据 09 增 profiles 维度）。宿主换代时清单（gates/manifest.json）先变红 exit 2，重采基线时同步更新本文件。禁止整文件再生成：profiles.* 用 basedOn + changes 行级差异表达，每条 changes 必须带 direction 与 reason；测试会与 08 实测归档逐项对账。票据 14 的 subagentRound1 同样用 basedOn 引用 round2 全量面（豁免锚定，不复制工具名）。",
   "changes": [
     {
       "tool": "ralph",
@@ -47,6 +47,12 @@
         ],
         "bashParamsIncludes": ["sandbox_permissions", "justification"],
         "preStepSources": ["agent-instructions", "instruction-hint", "skill-catalog"]
+      },
+      "subagentRound1": {
+        "basedOn": "presets.minimal-plus.round2.tools",
+        "changes": [],
+        "reason": "票据 14（方案 A）：delegationDepth > 0 的子代理豁免首轮锚定，首轮即全量目录（与主会话 round2 全量面逐行相同，不复制 28 条工具名）；bash 仍为 persistent（首步结算后才换沙箱），pre-step 注入与 round2 相同。",
+        "bashParamsExcludes": ["sandbox_permissions"]
       }
     }
   },

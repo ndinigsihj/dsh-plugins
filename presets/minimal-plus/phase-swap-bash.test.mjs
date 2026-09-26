@@ -15,6 +15,9 @@
  *  6. per-agent 隔离：agent A swap 后 agent B 仍看 persistent bash
  *  7. 失败降级：swap 抛错（缺 sandboxPolicy）→ warn once + 不 rethrow + persistent 保留
  *
+ * 子代理相位（票据 14：豁免锚定 + 首轮 persistent → 首步结算后沙箱 + section 口径一致）
+ * 的同 seam 断言在 `phase-swap-bash-subagent.test.mjs`（拆文件保持单文件 <300 行）。
+ *
  * boot 桩自 2026-09-11（票据 08 桩统一）起走共享 test-helpers.mjs；session/event
  * 与 system-prompt/assemble 监听器仍是直接捕获后按注册顺序直驱（不经 cordis emit）。
  */
@@ -30,7 +33,7 @@ const plugin = await import("./phase-swap-bash.mjs");
 /** boot + 挂载被测插件（test-helpers 的 boot 只铺 host 存根，不装 preset 插件）。 */
 function bootWithPlugin(options) {
   const bootState = boot(options);
-  plugin.apply(bootState.root, {});
+  plugin.apply(bootState.root, options?.config ?? {});
   return bootState;
 }
 
@@ -151,29 +154,6 @@ test("per-agent 隔离：agent A swap 后 agent B 仍看 persistent bash", async
   assert.equal(bashB.description, PERSISTENT_DESC);
 });
 
-test("includeSubagents：子代理独立 swap（各自 step 结算后）", async () => {
-  const bootState = bootWithPlugin();
-  const parent = makeAgent(bootState, "sess-parent");
-  const sub = makeAgent(bootState, "sess-sub", []);
-  sub.session.header = { delegationDepth: 1 };
-  // 父先完成一个 step → swap 父
-  await fireStepStart(bootState, parent.session);
-  await fireToolCall(bootState, parent.session);
-  await fireToolResult(bootState, parent.session);
-  await fireStepEnd(bootState, parent.session);
-  assert.ok(PARAM_KEYS(VIEW(parent.ctx).get("bash")).includes("sandbox_permissions"));
-  // 子未 tool/call → 仍 persistent（includeSubagents: true 时子也走 bootstrap）
-  const bashSub = VIEW(sub.ctx).get("bash");
-  assert.deepEqual(PARAM_KEYS(bashSub), ["command"]);
-  // 子 step 结算后同样 swap
-  await fireStepStart(bootState, sub.session);
-  await fireToolCall(bootState, sub.session);
-  await fireToolResult(bootState, sub.session);
-  assert.deepEqual(PARAM_KEYS(VIEW(sub.ctx).get("bash")), ["command"]);
-  await fireStepEnd(bootState, sub.session);
-  assert.ok(PARAM_KEYS(VIEW(sub.ctx).get("bash")).includes("sandbox_permissions"));
-});
-
 test("冷启动恢复：resume 已 promoted 会话在首个 turn/start 即 swap", async () => {
   const bootState = bootWithPlugin();
   // 会话日志里已有 promotion tool/call（模拟 resume 一个已 promoted 会话）
@@ -257,10 +237,11 @@ test("失败降级：swap 抛错 → warn once + 不 rethrow + persistent 保留
   assert.equal(bash.description, PERSISTENT_DESC);
 });
 
-test("配置校验：未知 key / 非布尔 enableRunInBackground 在 apply 时抛错", () => {
+test("配置校验：未知 key / 非布尔 enableRunInBackground / 非布尔 includeSubagents 在 apply 时抛错", () => {
   const bootState = bootWithPlugin();
   assert.throws(() => plugin.apply(bootState.root, { bogus: 1 }), /unknown config key/);
   assert.throws(() => plugin.apply(bootState.root, { enableRunInBackground: "yes" }), /must be a boolean/);
+  assert.throws(() => plugin.apply(bootState.root, { includeSubagents: "yes" }), /includeSubagents must be a boolean/);
 });
 
 /* ---------------- 首轮净化：tool:* 指引 sections 过滤 ---------------- */

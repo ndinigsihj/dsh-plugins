@@ -1,6 +1,6 @@
 # dsh-plugins 升级至 0.1.7-rc.1 — 收口记录（as-built）
 
-> 日期：2026-09-26（票据 13 文档收口）。状态：**文档已成文、未提交，等待用户审阅**。
+> 日期：2026-09-26（票据 13 文档收口）。状态：**已提交 `aa48955`**；后续票据 14 实现（未提交）见 §2 与 §7.1。
 > 范围：开发侧宿主 `0.1.5-rc.2` → `0.1.7-rc.1`（跨越整个 `0.1.6` 代际）＋ 会话格式 V4 迁移 ＋
 > Preset 载体迁移（目录形态 → bundle 声明行）＋ 新增 Team Profile（`tui-team`）＋ 部署位真实写入。
 > 稳定侧（`dsh-runtime/stable` + `tui` + 旧目录载体）与 v22 旧安装点保持钉版，不在本轮目标内。
@@ -54,11 +54,12 @@
 | 10 | 会话格式迁移执行与抽样验证（B 口径） | done（提交 `ac19a7a`） | `evidence/10-*` |
 | 11 | 真实模型基线重采与探针口径收口 | done（提交 `ab03841`） | `evidence/11-*` |
 | 12 | 收口验证与部署（真实写入 tui-dev/tui-team） | done（提交 `fdec617`） | `evidence/12-*` |
-| 13 | 文档收口与升级节奏政策（本文） | done（**未提交**） | 本文 + `README.md` + `docs/deployment.md` |
-| 14 | 子代理豁免锚定（`includeSubagents` 统一 `false`） | **已裁决、未实现**（提交 `f8a6f72` 只落裁决与票面） | 票面 14；见 §7.1 |
+| 13 | 文档收口与升级节奏政策（本文） | done（提交 `aa48955`） | 本文 + `README.md` + `docs/deployment.md` |
+| 14 | 子代理豁免锚定（`includeSubagents` 统一 `false`） | implemented（**未提交**；提交 `f8a6f72` 落裁决与票面，本次落实现；部署位刷新待批准） | `evidence/14-*`；见 §7.1 |
 
 提交状态：票据 01–12 的改动均已提交到本地 `main`（未 push，领先 `origin/main` 19 个提交）；
-票据 13 的文档改动未提交，等待用户审阅；票据 14 尚未动工。
+票据 13 的文档改动已提交 `aa48955`；票据 14 实现（仓库真源 + 产物 + 测试 + 闸门）未提交，
+部署位刷新待用户批准。
 
 ## 3. 裁决落地对照（计划 §1.1）
 
@@ -70,7 +71,7 @@
 | Agent Team 本轮开启，C 方案（profile 划分） | ✅ `tui-team` 从 `tui-dev` 派生（Team bundle + preset），非 Team Profile 不挂 Team bundle | 票据 09/12 |
 | 自研 preset 保留（含二轮 bash 换用） | ✅ `minimal-plus` 真源保留并迁到 bundle 声明行；淘汰改为事件触发复评 | 票据 07；计划 §3.6 |
 | Preset 载体 = 0.1.7 bundle patch（真源留仓库） | ✅ `generated/minimal-plus-preset/` 入库；旧目录硬切无过渡分支 | 票据 07/12；C0 ④ |
-| 子代理锚定 = 方案 A（三处 `includeSubagents: false`） | **⏳ 未实现**：裁决与票面已落（票据 14），代码未改 | 票面 14；§7.1 |
+| 子代理锚定 = 方案 A（三处 `includeSubagents: false`） | ✅ 三处统一 `false`（phase-swap 改读配置 + 豁免子代理首轮 `turn/start` 换相守卫）；主会话首轮锚定不变；`gate` 组合闸门 81/0/0（唯一豁免 = 部署位滞后），部署位刷新待批准 | 票据 14；`evidence/14-*` |
 | manifest 两阶段口径 | ✅ preset sha 随仓库、`hostVersion`/`sessionFormatVersion` 随宿主切换；部署位滞后豁免只在过渡窗口 | `gates/manifest.json`；票据 04/12 |
 | expectations 增 profile 维度；T3 在新宿主重采 | ✅ `gates/expectations.json` 增 `profiles` 段（tui-dev 35 / headless-team 34 / tui-team 40）；新基线 N=9 | 票据 09/11 |
 | 升级节奏政策（Q14） | ✅ 写入 `README.md`「宿主升级节奏」并由 `docs/deployment.md` 与计划 §7 引用 | 本文 §9 |
@@ -157,14 +158,17 @@
 
 ### 7.1 开环项（有明确下一步）
 
-1. **票据 14 — 子代理首轮锚定根因（方案 A）尚未实现**。落地改动面：
-   `presets/minimal-plus/agent.cordis.yml` 的 `tool-bootstrap`（:47）与 `instruction-hint`（:82）
-   两行配置改 `includeSubagents: false`；`presets/minimal-plus/phase-swap-bash.mjs`（:86）里硬编码的
-   `true` 改为读同一配置（三处语义统一为 `false`）；主会话首轮锚定语义不变。
-   **落地流程**：改 preset 真源 → 重新生成 `generated/minimal-plus-preset/` →
-   按票据 12 同流程重跑 `deploy-preset-carrier-cli.mjs`（dry-run → 用户批准 → `--write`）→
-   复跑 real/gate 闸门与 PTY 双形态。**在此之前，部署位上的 preset 仍是 `includeSubagents: true` 形态**，
-   与票 14 目标态不同。
+1. **票据 14 实现已落地，部署位刷新待批准**。三处 `includeSubagents: false`
+   （`agent.cordis.yml` 的 tool-bootstrap / phase-swap-bash / instruction-hint 三行）+
+   `phase-swap-bash.mjs` 改读配置 + 豁免子代理首步结算前的 `turn/start` 换相守卫；
+   契约测试/冒烟/`gate` 组合闸门 **81/0/0**（唯一豁免 = 部署位滞后）。
+   仓库产物已重生成、`gates/manifest.json` 已同步；**部署位上的 preset 仍是
+   `includeSubagents: true` 形态**（逐文件 3 个 stale：`cordis.patch.yml` /
+   `phase-swap-bash.mjs` / `source-manifest.json`）。后续刷新流程：用户批准后
+   `node scripts/sync-agent-presets.mjs --profile tui-dev|tui-team --write`，再复跑
+   `--composition real` 闸门与 PTY 双形态。**注意**：票据 12 的
+   `deploy-preset-carrier-cli.mjs` 是一次性迁移工具（tui-team 已存在即拒绝覆盖），
+   不能用于增量刷新——见 `evidence/14-subagent-bootstrap-root-fix.md` §5。
 2. **stable 通道迁移未做**：`dsh-runtime/stable` + `tui` 仍为 0.1.5（自包含树）＋旧目录载体
    `~/.dsh/.agent-presets/minimal-plus`；按节奏政策在下一个 stable 窗口单独走一次升级。
 3. **会话迁移未全量**：1571 个会话仍为旧格式（resume/写开时惰性迁移）；218 个既存不可读会话
@@ -239,7 +243,7 @@
 | 11 基线重采 | `evidence/11-real-model-baseline-recapture.md` + `evidence/11-{gate-012,t3-green}.json` |
 | 12 收口部署 | `evidence/12-closeout-verification-and-deployment.md` + `evidence/12-*` |
 | 13 本文 | 本文；`README.md`、`docs/deployment.md`、计划/spec/票面/`CONTEXT.md` 回填；`evidence/13-static-layer.txt`（静态层 as-run 日志） |
-| 14 未实现 | 票面 14（裁决 `f8a6f72`）；实现后证据将落 `evidence/14-*` |
+| 14 已实现（未提交） | 票面 14（裁决 `f8a6f72`）；实现证据 `evidence/14-*`（含部署位只读 dry-run 与待批准刷新路径） |
 | 计划/spec | `docs/dsh-v0.1.7-rc.1-upgrade-plan.md`（§6 迁移清单、§7 程序、§8 未验证清单）、`docs/dsh-v0.1.7-rc.1-upgrade-spec.md` |
 | 闸门报告 | `experiments/regression-gate/`（含 0.1.7 窗口的 `results-2026-09-25*.json`、`t3-2026-09-25T*` 归档） |
 
@@ -248,4 +252,4 @@
 - 票据 01–12 与本轮计划/spec/ADR/preset 对齐改动：已提交到本地 `main`，共 19 个提交领先
   `origin/main`（`86da02f..fdec617`），**未 push**。
 - 票据 13（本文 + README/deployment 节奏政策 + 计划/spec/票面/CONTEXT.md 回填 + `evidence/13-static-layer.txt`）：**未提交**，等待用户审阅确认。
-- 票据 14：未实现；实现与重新部署应单独提交。
+- 票据 14（preset 真源三处 `includeSubagents: false` + phase-swap 读配置/换相守卫 + 契约测试/冒烟/闸门/产物 + `evidence/14-*`）：**未提交**；部署位刷新（`sync-agent-presets --profile … --write`）待用户批准后单独提交。

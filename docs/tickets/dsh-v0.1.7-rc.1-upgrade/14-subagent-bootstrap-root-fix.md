@@ -10,15 +10,15 @@
 
 **Blocked by:** 04 — 宿主升级与两个工作 Profile 到位；07 — Preset 载体迁移（改动落在 0.1.7 生成形态上）
 
-**Status:** ready-for-agent
+**Status:** implemented（仓库真源 + 产物 + gate 组合闸门；部署位仍是旧 `includeSubagents: true` 形态、real/PTY 未跑——留待用户批准部署刷新，见证据 §5）
 
 **施工图:** `docs/dsh-v0.1.7-rc.1-upgrade-spec.md`（Implementation Decisions：子代理锚定）；升级计划 §1.1、§3.6、§6 P1 行
 
-- [ ] 三处 `includeSubagents` 语义统一为 `false`；phase-swap-bash 不再硬编码
-- [ ] 契约测试更新：子代理首轮全量、主会话首轮仍锚定、phase-swap 与 section 过滤一致
-- [ ] 冒烟断言：子代理 ROUND1 全量、主会话 ROUND1 仍 `[bash, str_replace_editor]`
-- [ ] 与 07 生成的新 preset 形态一致，产物指纹含本改动
-- [ ] 闸门全绿；expectations 工具面变化按行级 diff + 理由登记
-- [ ] 证据归档到本票
+- [x] 三处 `includeSubagents` 语义统一为 `false`；phase-swap-bash 不再硬编码
+- [x] 契约测试更新：子代理首轮全量、主会话首轮仍锚定、phase-swap 与 section 过滤一致
+- [x] 冒烟断言：子代理 ROUND1 全量、主会话 ROUND1 仍 `[bash, str_replace_editor]`
+- [x] 与 07 生成的新 preset 形态一致，产物指纹含本改动
+- [x] 闸门全绿（`--tier 0,1,2 --composition gate` **81/0/0**；唯一豁免 = 部署位滞后，real/PTY 随部署刷新后复跑）；expectations 工具面变化按行级 diff + 理由登记
+- [x] 证据归档到本票：`evidence/14-subagent-bootstrap-root-fix.md`
 
 **范围外（本票不做）:** 主会话首轮锚定语义调整；子代理 pre-promotion note（方案 B）；部署位真实写入（12）；preset 瘦身/退役评估（§3.6）。

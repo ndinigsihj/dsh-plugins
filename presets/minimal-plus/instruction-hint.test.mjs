@@ -56,6 +56,24 @@ test("promoted：注入一次 hint，未 promote 不注入", async () => {
   assert.deepEqual(hintKinds(second), ["user"], "同一会话只注入一次");
 });
 
+test("子代理豁免锚定：首轮即 promoted 注入 hint；主会话仍等 promotion", async () => {
+  const bootState = applyPlugin(boot());
+  bootState.root.provide("fs", fakeFs(new Set(["/work/proj/.git", "/work/proj/AGENTS.md"])));
+  const main = makeAgent(bootState, "sess-main");
+  main.session.header.cwd = "/work/proj";
+  const sub = makeAgent(bootState, "sess-sub");
+  sub.session.header = { cwd: "/work/proj", delegationDepth: 1 };
+
+  // 主会话未 promote：不注入
+  assert.deepEqual(hintKinds(await runPreStep(bootState, main, baseDecision())), ["user"]);
+  // 子代理首轮即 promoted：第一次 pre-step 就注入，且只注入一次
+  assert.deepEqual(hintKinds(await runPreStep(bootState, sub, baseDecision())), ["user", "instruction-hint"]);
+  assert.deepEqual(hintKinds(await runPreStep(bootState, sub, baseDecision())), ["user"]);
+  // 主会话 promotion 后照旧注入（既有语义不变）
+  await fireToolCall(bootState, main.session);
+  assert.deepEqual(hintKinds(await runPreStep(bootState, main, baseDecision())), ["user", "instruction-hint"]);
+});
+
 test("注入消息形状：role/content/source/原文措辞", async () => {
   const bootState = applyPlugin(boot());
   bootState.root.provide("fs", fakeFs(new Set(["/work/proj/.git", "/work/proj/AGENTS.md"])));

@@ -5,6 +5,7 @@
  */
 import { join } from "node:path";
 import { readJson, run, tailLines } from "../gate-helpers.mjs";
+import { resolveToolsRef } from "../profile-expectations.mjs";
 import { DEGRADE_SMOKE, PRESET, REPO_ROOT, SEEDED_RUN, SMOKE_BOOT } from "../paths.mjs";
 
 /** seeded 预览探针的 id 白名单：红线断言被删掉时闸门必须变红。 */
@@ -43,11 +44,22 @@ function jsonField(text, label) {
  * （期望面见 gates/expectations.json）。
  */
 export function assertPresetSmoke(t, config, report) {
-  const expected = readJson(join(REPO_ROOT, "gates", "expectations.json"))?.presets?.[PRESET];
+  const expectations = readJson(join(REPO_ROOT, "gates", "expectations.json"));
+  const expected = expectations?.presets?.[PRESET];
+  // 子代理 R1 期望（票据 14）：expectations 里只登记 basedOn 引用，不复制工具名。
+  let expectedSubagentTools;
+  try {
+    expectedSubagentTools = resolveToolsRef(expectations, `presets.${PRESET}.subagentRound1`);
+  } catch {
+    expectedSubagentTools = undefined;
+  }
+  const expectedSubagent = expectations?.presets?.[PRESET]?.subagentRound1;
   const smoke = run("node", [SMOKE_BOOT], { cwd: REPO_ROOT, env: config.env });
   const r1 = jsonField(smoke.stdout, "ROUND1 catalog:");
   const r2 = jsonField(smoke.stdout, "ROUND2 catalog:");
   const preStep2 = jsonField(smoke.stdout, "ROUND2 pre-step sources:");
+  const subR1 = jsonField(smoke.stdout, "ROUND1 subagent catalog:");
+  const subPre1 = jsonField(smoke.stdout, "ROUND1 subagent pre-step sources:");
   const roster = jsonField(smoke.stdout, "ROSTER preset:");
   // 装载面证据（票 12）：real 模式装载部署位 bundle，普通模式装载入库产物。
   const bundleLine = smoke.stdout.split("\n").find((line) => line.startsWith("SMOKE bundle:")) ?? "";
@@ -84,7 +96,36 @@ export function assertPresetSmoke(t, config, report) {
       : `tools=${String(r2Tools.length)} missing=${JSON.stringify(r2Diff.missing)} unexpected=${JSON.stringify(r2Diff.unexpected)} bashParamsMissing=${JSON.stringify(r2BashMissing)} preStepMissing=${JSON.stringify(r2SourcesMissing)}`,
     { preset: PRESET },
   );
-  report.smoke = { preset: roster, bundle: bundleLine, r1Tools, toolCount: r2Tools.length, tools: r2Tools, preStepSources: r2Sources };
+
+  // 子代理首轮（票据 14 方案 A）：豁免锚定 → 全量目录；bash 仍 persistent（首步结算后
+  // 才换沙箱）；pre-step 注入与主会话 promotion 后同面（目录/sections/注入三处一致）。
+  const subR1Tools = subR1?.tools ?? [];
+  const subDiff =
+    expectedSubagentTools === undefined
+      ? { missing: ["<expectations.presets.minimal-plus.subagentRound1>"], unexpected: [] }
+      : setDiff(expectedSubagentTools, subR1Tools);
+  const subBashBad = (subR1?.bashParams ?? []).filter((param) => (expectedSubagent?.bashParamsExcludes ?? []).includes(param));
+  const subSources = subPre1 ?? [];
+  const subSourcesMissing = (expected?.round2?.preStepSources ?? []).filter((source) => !subSources.includes(source));
+  const subExempt =
+    smoke.status === 0 && subDiff.missing.length === 0 && subDiff.unexpected.length === 0 && subBashBad.length === 0 && subSourcesMissing.length === 0;
+  t[subExempt ? "pass" : "fail"](
+    "smoke.subagent-exempt-first-turn",
+    subR1 === undefined
+      ? `exit ${String(smoke.status)} no ROUND1 subagent catalog`
+      : `exit ${String(smoke.status)} tools=${String(subR1Tools.length)} missing=${JSON.stringify(subDiff.missing)} unexpected=${JSON.stringify(subDiff.unexpected)} bashStillAnchored=${String(subBashBad.length === 0)} preStepMissing=${JSON.stringify(subSourcesMissing)}`,
+    { stderr: tailLines(smoke.stderr, 4) },
+  );
+  report.smoke = {
+    preset: roster,
+    bundle: bundleLine,
+    r1Tools,
+    toolCount: r2Tools.length,
+    tools: r2Tools,
+    preStepSources: r2Sources,
+    subagentR1Tools: subR1Tools,
+    subagentR1Sources: subSources,
+  };
 }
 
 /** ⑤ 降级路径冒烟（缺 bootstrap 工具 → fail-open 全量目录）。degrade 需要可改坏的真源，固定走仓库

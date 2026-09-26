@@ -11,6 +11,8 @@
 #           真源，real 组合模式的部署位是 bundle、不传此值——主冒烟改由 SMOKE_PRESET_BUNDLE
 #           装载部署位那一份）
 #         SMOKE_SESSION_ROOT=<dir>（沿透给 smoke-boot；闸门落临时 home）
+# 本脚本对 smoke-driver 置 SMOKE_EXPECT_FAIL_OPEN=1：主会话 R1 期望 fail-open 全量目录
+# （正常冒烟断言锚定对 [bash, str_replace_editor]）。
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -31,7 +33,7 @@ perl -0pi -e 's/bootstrapTools: \[bash, str_replace_editor\]/bootstrapTools: [ba
 echo "=== degrade composition ($PRESET) bootstrapTools ==="
 grep -n "bootstrapTools" "$ROOT/$PRESET/agent.cordis.yml"
 
-OUT="$(SMOKE_PRESET="$PRESET" SMOKE_PRESET_ROOT="$ROOT" node "presets/$PRESET/smoke-boot.mjs" 2>&1)"
+OUT="$(SMOKE_PRESET="$PRESET" SMOKE_PRESET_ROOT="$ROOT" SMOKE_EXPECT_FAIL_OPEN=1 node "presets/$PRESET/smoke-boot.mjs" 2>&1)"
 echo "$OUT"
 
 # 断言：R1 目录是全量（fail-open），且 warn 出现，且两轮冒烟仍通过（脚本 exit 0）

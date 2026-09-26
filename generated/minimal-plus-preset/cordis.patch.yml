@@ -57,12 +57,15 @@
           # 与 Minimal 完全一致：首轮只对模型暴露 Minimal 锚定对（persistent bash +
           # str_replace_editor），promotion 后放行完整目录。必须保持 FIRST（waterfall 逆序
           # 应用 + prepend:true 的最外层变换纪律，照抄 tool-bootstrap.mjs 头注释）。
+          # 2026-09-26 票据 14（方案 A）：includeSubagents: false —— 子代理（delegationDepth > 0）
+          # 豁免首轮锚定、首轮即全量目录（避免把「本轮没有 read_image」误判成「工具不存在」）；
+          # 主会话首轮锚定不变。
           - id: tool-bootstrap
             name: '@dsh-plugins/minimal-plus-preset/tool-bootstrap.mjs'
             config:
               bootstrapTools: [bash, str_replace_editor]
               promoteOn: tool-call
-              includeSubagents: true
+              includeSubagents: false
               suppressedContextSources: [agent-instructions, skill-catalog]
 
           # ── phase-swap-bash ─────────────────────────────────────────────────────────
@@ -71,10 +74,14 @@
           # 的 ctx 调 tools.register()，注册进该 agent 的 scope layer，shadow 掉全局 persistent
           # bash，其他 session/子代理不受影响；swap 失败 warn once + 保持 persistent bash。
           # 插件单一来源：repo presets/minimal-plus/phase-swap-bash.mjs（本 preset 版本化）。
+          # 2026-09-26 票据 14：includeSubagents: false 与 tool-bootstrap 统一（此前插件内硬编码
+          # true，会出现「子代理目录已全量但 tool:* 指引段/tool 目录仍按锚定过滤」的不一致）；
+          # 子代理首轮仍走 persistent bash，首步结算后才换沙箱（首轮锚定对之外的语义保留）。
           - id: phase-swap-bash
             name: '@dsh-plugins/minimal-plus-preset/phase-swap-bash.mjs'
             config:
               enableRunInBackground: true
+              includeSubagents: false
 
           # ── identity ────────────────────────────────────────────────────────────────
           # Minimal persona（正文与 Minimal 基线一致，只是改用 rc.1 的 `prefix` 键）：`complete`
@@ -93,11 +100,13 @@
           # Minimal 基底的 instruction-hint（保留）：promotion 后每会话注入一次短提示——
           # "这些指令文件存在；行动前先读它们"——模型按需自行用 fs 工具读取。
           # 与宿主 base 的 agent-instructions digest 并存（C 组实测双源无冲突；hint 略冗余但无害）。
+          # 2026-09-26 票据 14：includeSubagents: false 与 tool-bootstrap / phase-swap-bash 统一，
+          # 子代理首轮即 promoted（全量目录 + tool:* sections + hint），主会话仍是二轮注入。
           - id: instruction-hint
             name: '@dsh-plugins/minimal-plus-preset/instruction-hint.mjs'
             config:
               promoteOn: tool-call
-              includeSubagents: true
+              includeSubagents: false
 
           # ── shell ───────────────────────────────────────────────────────────────────
           - id: tool-bash

@@ -1,0 +1,28 @@
+sync-agent-presets: minimal-plus (bundle @dsh-plugins/minimal-plus-preset) → /Users/vito/.dsh/profiles/tui-dev/preset-bundles/minimal-plus-preset (dry-run)
+  compaction-epoch.mjs     repo:ok   target:STALE  sha256=35b1b7342a17
+  cordis.patch.yml         repo:ok   target:STALE  sha256=30b1b622bd14
+  custom-bash.mjs          repo:ok   target:ok     sha256=8422b4acd6f8
+  instruction-hint.mjs     repo:ok   target:ok     sha256=4a2a26cb74ee
+  package.json             repo:ok   target:ok     sha256=e478937e5eb6
+  phase-swap-bash.mjs      repo:ok   target:STALE  sha256=b0bf21084487
+  plugin-teardown.mjs      repo:ok   target:ok     sha256=f3f49a4933eb
+  skill-search.mjs         repo:ok   target:ok     sha256=25eb10fa9d2b
+  source-manifest.json     repo:ok   target:STALE  sha256=8267a29be348
+  tool-bootstrap.mjs       repo:ok   target:ok     sha256=e3e05e677289
+sync-agent-presets: profile tui-dev bundles selection: selected
+sync-agent-presets: dry-run — target differs; nothing written (rerun with --write to deploy)
+exit=1
+sync-agent-presets: minimal-plus (bundle @dsh-plugins/minimal-plus-preset) → /Users/vito/.dsh/profiles/tui-team/preset-bundles/minimal-plus-preset (dry-run)
+  compaction-epoch.mjs     repo:ok   target:STALE  sha256=35b1b7342a17
+  cordis.patch.yml         repo:ok   target:STALE  sha256=30b1b622bd14
+  custom-bash.mjs          repo:ok   target:ok     sha256=8422b4acd6f8
+  instruction-hint.mjs     repo:ok   target:ok     sha256=4a2a26cb74ee
+  package.json             repo:ok   target:ok     sha256=e478937e5eb6
+  phase-swap-bash.mjs      repo:ok   target:STALE  sha256=b0bf21084487
+  plugin-teardown.mjs      repo:ok   target:ok     sha256=f3f49a4933eb
+  skill-search.mjs         repo:ok   target:ok     sha256=25eb10fa9d2b
+  source-manifest.json     repo:ok   target:STALE  sha256=8267a29be348
+  tool-bootstrap.mjs       repo:ok   target:ok     sha256=e3e05e677289
+sync-agent-presets: profile tui-team bundles selection: selected
+sync-agent-presets: dry-run — target differs; nothing written (rerun with --write to deploy)
+exit=1

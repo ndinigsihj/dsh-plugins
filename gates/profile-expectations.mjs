@@ -61,7 +61,7 @@ export function applyToolChanges(tools, changes) {
 }
 
 /** 解析 `basedOn` 引用：数组、`{tools}` 节点，或另一个带 `basedOn` 的 profile 节点。 */
-function resolveToolsRef(expectations, ref) {
+export function resolveToolsRef(expectations, ref) {
   const node = ref
     .split(".")
     .reduce((value, key) => (value === null || typeof value !== "object" ? undefined : value[key]), expectations);

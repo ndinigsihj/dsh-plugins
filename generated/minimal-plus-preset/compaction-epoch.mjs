@@ -22,6 +22,16 @@
  * sessions.
  */
 
+/**
+ * Whether this session is an anchor-exempt subagent: `delegationDepth > 0` and
+ * the caller has not opted into `includeSubagents`. Shared by all three preset
+ * plugins (tool-bootstrap / phase-swap-bash / instruction-hint) so the
+ * exemption predicate cannot drift between them.
+ */
+export function isAnchorExemptSubagent(session, includeSubagents) {
+  return includeSubagents !== true && (session.header?.delegationDepth ?? 0) > 0
+}
+
 /** Build one epoch-aware promotion tracker. */
 export function createEpochPromotion(promoteEvents, options = {}) {
   const includeSubagents = options.includeSubagents === true
@@ -63,7 +73,7 @@ export function createEpochPromotion(promoteEvents, options = {}) {
       if (session === undefined) return { boundary: -1, promoted: true }
       // By default subagents keep the full catalog from their very first
       // request; includeSubagents makes them follow the normal bootstrap phase.
-      if (!includeSubagents && (session.header?.delegationDepth ?? 0) > 0) return { boundary: -1, promoted: true }
+      if (isAnchorExemptSubagent(session, includeSubagents)) return { boundary: -1, promoted: true }
       return state.get(session.id) ?? scan(session)
     },
     /** Incremental feed: call on every `session/event`. */

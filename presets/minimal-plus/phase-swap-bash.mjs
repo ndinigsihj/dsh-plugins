@@ -36,9 +36,15 @@
  *
  * 失败降级：swap 抛错 → warn once + 保持 persistent bash（目录全开但无提权），
  * 绝不 brick 会话。
+ *
+ * 子代理相位（票据 14 方案 A）：`includeSubagents: false`（默认）时子代理豁免首轮锚定，
+ * promotion 状态自始为 promoted——`tool:*` 指引段与工具目录口径一致（均全量），但
+ * 首个 `turn/start`（排在首次请求装配之前）不得换相：豁免锚定的子代理在首步结算前保持
+ * persistent bash，`step/end` 后才换沙箱；冷恢复且日志已有结算 step 的子代理仍在
+ * `turn/start` 换相。`includeSubagents: true` 时子代理跟随主会话的锚定周期。
  */
 
-import { createEpochPromotion } from './compaction-epoch.mjs'
+import { createEpochPromotion, isAnchorExemptSubagent } from './compaction-epoch.mjs'
 import * as sandboxBash from '@deepseek-ai/dsh-tool-bash'
 import { disposeSafely } from './plugin-teardown.mjs'
 
@@ -53,12 +59,31 @@ export const name = 'phase-swap-bash'
 export const inject = []
 
 /** Config keys this plugin accepts. */
-const ALLOWED_KEYS = new Set(['enableRunInBackground', 'timeoutMs', 'backendType', 'maxOutputChars'])
+const ALLOWED_KEYS = new Set(['enableRunInBackground', 'timeoutMs', 'backendType', 'maxOutputChars', 'includeSubagents'])
 
 function optionalBoolean(value, field) {
   if (value === undefined) return undefined
   if (typeof value !== 'boolean') throw new TypeError(`${name}: ${field} must be a boolean`)
   return value
+}
+
+/**
+ * 会话日志里是否存在 compaction 边界之后已结算的 step（判「已完成首步」）。
+ * 豁免锚定的子代理冷恢复时用它决定 `turn/start` 是否立即换相；见 file 头「子代理相位」。
+ */
+function hasSettledStep(session) {
+  let boundary = -1
+  let settled = false
+  for (const event of session.snapshotEvents()) {
+    const seq = event.seq ?? 0
+    if (event.type === 'compaction/end') {
+      boundary = seq
+      settled = false
+      continue
+    }
+    if (event.type === 'step/end' && seq > boundary) settled = true
+  }
+  return settled
 }
 
 /** Register the per-session swap. */
@@ -74,6 +99,10 @@ export function apply(ctx, config) {
     )
   }
   const enableRunInBackground = optionalBoolean(source.enableRunInBackground, 'enableRunInBackground')
+  // 与 tool-bootstrap / instruction-hint 同一配置语义（票据 14 方案 A）：false（默认）
+  // = 子代理豁免首轮锚定，目录/sections/promotion 三处口径一致；true = 子代理跟随主会话
+  // 的锚定周期。此前这里硬编码 true，会让「目录已全量但 tool:* 指引段仍被过滤」。
+  const includeSubagents = optionalBoolean(source.includeSubagents, 'includeSubagents') === true
   const swapConfig = {
     ...(enableRunInBackground !== undefined ? { enableRunInBackground } : {}),
     ...(source.timeoutMs !== undefined ? { timeoutMs: source.timeoutMs } : {}),
@@ -83,7 +112,7 @@ export function apply(ctx, config) {
 
   // Same epoch-aware promotion tracker as tool-bootstrap, so compaction falls
   // back to the controlled phase and only a NEW durable tool/call re-promotes.
-  const promotion = createEpochPromotion(['tool/call'], { includeSubagents: true })
+  const promotion = createEpochPromotion(['tool/call'], { includeSubagents })
   ctx.on('session/event', (session, event) => promotion.observe(session, event))
 
   // 首轮净化：tool-bootstrap 只裁剪 assembled.tools（函数清单），但各工具插件注册的
@@ -198,6 +227,11 @@ export function apply(ctx, config) {
     // 已产出的参数换到新 schema 上（finding 12-2 原形）。
     if (event.type !== 'step/end' && event.type !== 'turn/start') return
     if (openSteps.has(session.id) || swapDisposers.has(session.id)) return
+    // 豁免锚定的子代理首步结算前跳过 turn/start：首次请求必须仍按 persistent schema
+    // 装配（首轮锚定对之外的相位语义），step/end 才是它的首个换相点；已有结算 step 的
+    // 冷恢复子代理不跳过（豁免子代理没有 tool/call 这个 promotion 信号，不能沿用 H5
+    // 主会话的 promotion 冷扫描口径，见 compaction-epoch 的豁免分支）。
+    if (event.type === 'turn/start' && isAnchorExemptSubagent(session, includeSubagents) && !hasSettledStep(session)) return
     const agent = ctx.get('agents')?.get(session.id)
     if (agent === undefined) return
     // 冷启动/resume：promotion.status() 冷扫描 session 日志，恢复会话在首个

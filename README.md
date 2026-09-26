@@ -166,6 +166,11 @@ hub 侧的 `fleet-client` / `memory-sink`、worker 侧的 `remote-server` 挂载
 - 行为不变：persona（`prefix` 正文键 + `complete` + `includeRuntimeContext: false`）、恒禁 `tool-bash`、
   `phase-swap-bash` 二轮提权、`tool-subagent` 的 `modelSelectionSettings: true`、`instruction-hint` /
   `skill-search` 等行都逐行进了生成产物（断言见 `scripts/agent-preset-bundle.test.mjs` 与 T1 冒烟）。
+- 子代理锚定（2026-09-26 票据 14，方案 A）：`delegationDepth > 0` 的子代理豁免首轮锚定——首轮即全量
+  工具目录、`tool:*` 指引段不过滤、`instruction-hint` 立即注入；主会话仍首轮锚定对 + 二轮放行。
+  子代理首轮 bash 仍 persistent，首步结算后换沙箱（三处 `includeSubagents` 统一 `false`，
+  `phase-swap-bash` 读配置不硬编码；断言见 `phase-swap-bash-subagent.test.mjs` 与 T1
+  `smoke.subagent-exempt-first-turn`）。
 - 按 ADR-0003 只声明与 `dsh-base` 的差异：不重复 base 已有的挂载行。
 - `modelSelectionSettings` 需要宿主作用域挂载 `subagent-model-selection-settings`：**凡是
   可能挂载本 preset 的 profile 都必须有这一行**，否则挂载即失败（`tool-subagent:

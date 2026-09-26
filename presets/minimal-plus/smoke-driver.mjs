@@ -4,6 +4,8 @@
  * 在 headless 组合里创建 agent 并挂载 minimal-plus preset，然后：
  *   R1. system-prompt/assemble → 首轮可见目录（应为 {bash persistent, str_replace_editor}）
  *   R1. agent/pre-step → 首轮注入（应无 agent-instructions / skill-catalog）
+ *   子代理（delegationDepth > 0，票据 14 方案 A）：首轮即全量目录、tool:* sections 不过滤、
+ *   turn/start（真实 loop 首次请求前的落盘事件）不提前换 bash——首轮仍 persistent bash。
  *   ↳  append step/start + tool/call（promotion）→ 断言目录未变；tool/result + step/end
  *      （step 结算，同步注册）后 R2 assembly 才看到沙箱 bash（finding 12-2 多调用残留：
  *      换 schema 只发生在 step/end / turn/start，step 中途的装配不得换）
@@ -48,6 +50,9 @@ async function run(ctx) {
   if (agents === undefined || agentPresets === undefined || defaultModel === undefined) {
     throw new Error("smoke: missing agents/agentPresets/agentDefaultModel services");
   }
+  // 降级冒烟（scripts/degrade-smoke.sh）故意注入缺失的 bootstrap 工具：主会话 R1 走
+  // fail-open 全量目录，由该脚本显式置位；正常冒烟断言锚定对。
+  const expectFailOpen = process.env.SMOKE_EXPECT_FAIL_OPEN === "1";
   const selection = defaultModel.currentSelection();
   const presetName = process.env.SMOKE_PRESET ?? "minimal-plus";
   // 载体断言（票据 07）：0.1.7 声明行真的进了 roster，且展示名来自 preset.yml。
@@ -60,16 +65,21 @@ async function run(ctx) {
   if (typeof rosterEntry.name !== "string" || rosterEntry.name.length === 0) throw new Error(`smoke: preset ${presetName} has no display name`);
   console.log("ROSTER preset:", JSON.stringify(rosterEntry));
   console.log(`SMOKE preset: ${presetName}`);
-  const { agent } = await agents.create({
-    sessionId: SessionId(`session-smoke-${randomUUID()}`),
-    meta: { cwd: process.cwd() },
-    agentOptions: { provider: selection.provider, model: selection.model },
-    setup: async (agentCtx) => {
-      installModelSelection(agentCtx, { current: selection, assembled: undefined });
-      await agentPresets.mount(agentCtx, presetName);
-    },
-  });
-  await agent.whenIdle();
+  /** 建一个挂载该 preset 的 agent；子代理通过 meta.delegationDepth 区分。 */
+  const createAgent = async (sessionId, meta) => {
+    const created = await agents.create({
+      sessionId: SessionId(sessionId),
+      meta,
+      agentOptions: { provider: selection.provider, model: selection.model },
+      setup: async (agentCtx) => {
+        installModelSelection(agentCtx, { current: selection, assembled: undefined });
+        await agentPresets.mount(agentCtx, presetName);
+      },
+    });
+    await created.agent.whenIdle();
+    return created.agent;
+  };
+  const agent = await createAgent(`session-smoke-${randomUUID()}`, { cwd: process.cwd() });
 
   const context = { agent, scope: agent, signal: new AbortController().signal };
 
@@ -81,8 +91,11 @@ async function run(ctx) {
   const r1 = await agent.ctx.systemPrompt.assemble(context);
   const s1 = summary(r1);
   console.log("ROUND1 catalog:", JSON.stringify(s1));
-  assert.ok(s1.tools.includes("bash"), "R1 must expose bash");
-  assert.ok(s1.tools.includes("str_replace_editor"), "R1 must expose str_replace_editor");
+  if (expectFailOpen) {
+    assert.ok(s1.tools.includes("web_search"), "fail-open R1 must expose the full catalog");
+  } else {
+    assert.deepEqual(s1.tools, ["bash", "str_replace_editor"], "R1 main session must stay anchored to the Minimal pair");
+  }
   assert.ok(!s1.bashParams.includes("sandbox_permissions"), "R1 persistent bash must not expose sandbox_permissions");
 
   // R1 pre-step（注入）
@@ -95,6 +108,33 @@ async function run(ctx) {
   console.log("ROUND1 pre-step sources:", JSON.stringify(r1Sources));
   assert.ok(!r1Sources.includes("agent-instructions"), "R1 must not inject agent-instructions");
   assert.ok(!r1Sources.includes("skill-catalog"), "R1 must not inject skill-catalog");
+
+  // ── 子代理（delegationDepth > 0，票据 14 方案 A）：豁免首轮锚定 ──────────────
+  // 首轮即全量目录，且 tool:* 指引 sections 不被过滤；但 turn/start（真实 loop 在首次
+  // 请求前落盘）不得提前换相——首轮仍是 persistent bash，首步结算后才换沙箱。
+  const subAgent = await createAgent(`session-smoke-sub-${randomUUID()}`, { cwd: process.cwd(), delegationDepth: 1 });
+  const subContext = { agent: subAgent, scope: subAgent, signal: new AbortController().signal };
+  subAgent.session.append("turn/start", { turn: 1 });
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const subR1 = summary(await subAgent.ctx.systemPrompt.assemble(subContext));
+  console.log("ROUND1 subagent catalog:", JSON.stringify(subR1));
+  assert.ok(subR1.tools.includes("read"), "subagent R1 must expose read (full catalog)");
+  assert.ok(subR1.tools.includes("read_image"), "subagent R1 must expose read_image (full catalog)");
+  assert.ok(
+    !subR1.bashParams.includes("sandbox_permissions"),
+    "subagent R1 must keep persistent bash: the first request precedes the first settled step",
+  );
+
+  const subR1Pre = await subAgent.dispatch.waterfall(
+    "agent/pre-step",
+    { agent: subAgent, messages: [], signal: subContext.signal },
+    () => Promise.resolve({ kind: "enter", messages: [] }),
+  );
+  const subR1Sources = (subR1Pre.messages ?? []).map((m) => m.source?.kind);
+  console.log("ROUND1 subagent pre-step sources:", JSON.stringify(subR1Sources));
+  assert.ok(subR1Sources.includes("agent-instructions"), "subagent R1 must resume agent-instructions (promoted)");
+  assert.ok(subR1Sources.includes("skill-catalog"), "subagent R1 must resume skill-catalog (promoted)");
+  assert.ok(subR1Sources.includes("instruction-hint"), "subagent R1 must inject instruction-hint (promoted)");
 
   // 首个 durable tool/call（promotion）→ step 结算（step/end）时同步 swap（finding 12-2
   // 多调用残留：一个 step 可携带多条调用，只有 step/end 之后才是安全的换 schema 点，
@@ -154,6 +194,8 @@ async function run(ctx) {
   assert.ok(s2.bashParams.includes("sandbox_permissions"), "R2 sandbox bash must expose sandbox_permissions");
   assert.ok(s2.tools.includes("skill_search"), "R2 must expose skill_search (skill-search row)");
   assert.ok(s2.tools.includes("skill_load"), "R2 must expose skill_load (skill-search row)");
+  // 子代理 R1 与主会话 promotion 后的全量面逐项一致（票据 14：豁免只去掉锚定过滤）。
+  assert.deepEqual(subR1.tools, s2.tools, "subagent R1 must expose the same full catalog as a promoted main session");
 
   // R2 pre-step（注入恢复）
   const r2Pre = await agent.dispatch.waterfall(
