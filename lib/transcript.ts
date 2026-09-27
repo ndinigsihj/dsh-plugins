@@ -276,9 +276,14 @@ export class TranscriptModel {
           });
         const joined = text || reasoning;
         if (joined === "" && imageLabels.length === 0) break;
-        // Injected context (runtime snapshots, reminders) is plugin-sourced;
-        // render it dim, distinct from a human user message.
-        if (data.source?.kind === "plugin") {
+        // Injected context (runtime snapshots, reminders, memory digests) is
+        // machine-sourced; render it dim, distinct from a human user message.
+        // dsh 0.1.7 uses producer-owned source kinds (`agent-instructions`,
+        // `skill-catalog`, `plugin:<producer>`, …) instead of the retired bare
+        // `plugin`, so every non-`user` source is a context row. A future
+        // non-`user` kind that represents a remote human (relay/telegram)
+        // would need an explicit allowlist here.
+        if (data.source?.kind !== undefined && data.source.kind !== "user") {
           this.pushRow({ kind: "context", text: joined, seq: event.seq });
         } else {
           this.pushRow({
