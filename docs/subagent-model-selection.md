@@ -198,7 +198,7 @@ experiments/subagent-model-selection/run-route-probe.sh
 | `experiments/subagent-model-selection/allowed-routes.mjs` | T3 / 探针侧的允许路由集合单一来源（`--print-config` 供脚本预置 profile；生产真相仍是两个 profile 条目，需同步） |
 | `~/.dsh/profiles/tui-dev/cordis.patch.yml` | 生产部署基线：开启 + 允许路由 |
 | `~/.dsh/profiles/headless/cordis.patch.yml` | 测量基线：关闭 + 同一集合 |
-| `~/.dsh/settings.yaml` | 旧用户层文档（0.1.7 只导入一次；当前无 `subagent-model-selection:` 段） |
+| `~/.dsh/settings.yaml` | 旧用户层文档（0.1.7：宿主启动时只要文件在场就消费并改名 `.imported`、只导入当前 profile；当前无 `subagent-model-selection:` 段） |
 | `experiments/subagent-model-selection/probe.mjs` / `probe.patch.yml` / `run.sh` | 行为探针（16 项语义检查）；patch 不再携带集合，profile 层由 `allowed-routes.mjs` 预置 |
 | `experiments/subagent-model-selection/route-probe.mjs` / `route-probe.patch.yml` / `run-route-probe.sh` | 路由工具调用探针（扩缩集合复用） |
 | `gates/t3/run.mjs`、`gates/manifest.json` | 真实模型层接线与基线引用（`t3.baseline` / `t3.tolerance`） |

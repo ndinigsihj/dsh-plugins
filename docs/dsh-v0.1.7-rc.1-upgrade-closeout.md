@@ -7,6 +7,10 @@
 > 关联：`docs/dsh-v0.1.7-rc.1-upgrade-spec.md`（范围与决策）、`docs/dsh-v0.1.7-rc.1-upgrade-plan.md`（计划与逐票回填）、
 > `docs/tickets/dsh-v0.1.7-rc.1-upgrade/01..14-*.md`（票据）与 `evidence/`（证据）、
 > `README.md`（宿主升级节奏、闸门口径）、`docs/deployment.md`（发布/部署侧）。
+>
+> **2026-09-27 回填**：本文件收口后的两项跟随处置见 §7.1 第 5/6 项——stable 与 dev 共用 home 的
+> `settings.yaml` 跨代冲突（已按方案 A 解耦）、以及挂载进 tui-dev/tui-team 的兄弟仓库
+> （dsh-endless）的 0.1.7 适配（含 V4 源 kind）；§4.1 的设置行与 §4.2 的事件行已按实测修正。
 
 本文的目标：把升级后的真实状态一次写清，下一个维护者不必重新调研。
 「官方证实 / 本仓库实测 / 未验证」在文中分开标注。
@@ -89,7 +93,7 @@
 | 会话日志 **V4**；无批量迁移工具、无 dry-run；写开发布 v4 后继且源文件保留；**不支持降级读** | 冷备（含 `attachments/`）＋ 旧宿主还原演练 → 首次启 0.1.7 → **按需惰性迁移**（B 口径）：8 个代表会话写开 8/8 绿，其余 1571 个留清单待 resume 时迁移；218 个不可读会话经旧宿主对照确认为既存盲区；坏文件「跳过并登记」 | 票据 03/04/10；`evidence/10-*` |
 | 会话历史/生命周期/沙箱接口异步化；`snapshotEvents` 等弃用 | C0 核实 rc.1 三个同步方法**签名逐字未变**（仅 `@deprecated`）→ 存量调用保留、**不迁移**、禁止新增；票据 05 deferred | `evidence/02-preflight-signatures.txt` |
 | Agent 预设改由插件组合包声明与安装；旧目录预设不再加载 | 真源留仓库，生成自包含 bundle（`generated/minimal-plus-preset/`，10 文件）＋ profile 选择；同步/部署工具默认 dry-run；三层一致性链（真源↔产物↔清单↔部署位） | 票据 07/12；`evidence/07-*`、`12-*` |
-| 设置改存 Profile 插件配置；旧 `settings.yaml` 仅导入一次 | 升级前备份并记录 sha（票据 03/04）；导入行为由 C0 附带核实（3 条改名映射）；`--dump-config` 与设置读回一致 | `evidence/03-*`、`12-dump-tui-*.yml` |
+| 设置改存 Profile 插件配置；旧 `settings.yaml` 仅导入一次 | 升级前备份并记录 sha（票据 03/04）；导入行为由 C0 附带核实（3 条改名映射）；`--dump-config` 与设置读回一致。**2026-09-27 修正**：导入不是"全局一次性"——宿主每次启动只要 `~/.dsh/settings.yaml` 存在，就把它改名为 `.imported` 并把各段导入**当前 profile** 的插件配置（`dsh-settings` 的 `importLegacyDocument`）；0.1.5 stable 通道与 dev 共用 home 时会被打断，处置见 §7.1-5 | `evidence/03-*`、`12-dump-tui-*.yml`；`dsh-settings/lib/index.js:339-362` |
 | 官方 DeepSeek 适配器仅用 Messages API，移除 `protocol`/旧根地址 | profile/settings 审计：无 `protocol`、无旧根地址覆盖；真实路由一次 `tool_call → tool_result(completed) → final` 验证 | `evidence/06-adapter-and-spill-config-audit.txt`、`06-real-model-tool-call.txt` |
 | 工具结果 token 预算；`spill-policy.maxInlineBytes → maxInlineTokens` | 0.1.7 通知拼写未变；`maxInlineTokens` 生效后超长结果收敛为定位符通知，TUI 渲染保持 `⤓ full result <locator>`；补单测 | `evidence/06-spill-render.txt`、`lib/spill-notice.test.ts` |
 | 宿主钉版与会话格式断言随宿主换代 | `gates/manifest.json` 改 `hostVersion: 0.1.7-rc.1`、`sessionFormatVersion: 4`；两条断言零豁免绿 | `evidence/04-host-pin.txt`、`12-gate-real.json` |
@@ -100,7 +104,8 @@
 | 官方变更 | 本仓库处置 | 证据 |
 | --- | --- | --- |
 | PTC 独立进程、包名 `ptc-runtime`、执行器改 `workflow-ptc` | 隔离组合激活正常；仓库无旧包名/旧服务名引用 | `evidence/06-ptc-activation.txt` |
-| `agent/session-start` → 异步串行 `agent/created` | 核对完成、无需改码：`agents.create()` 在启动发布后 resolve、不发起模型请求；失败走 TUI 诊断路径 | `evidence/06-startup-wait.txt` |
+| `agent/session-start` → 异步串行 `agent/created` | 本仓库自有代码核对完成、无需改码：`agents.create()` 在启动发布后 resolve、不发起模型请求；失败走 TUI 诊断路径。**2026-09-27 补充**：该结论只覆盖本仓库自有代码——挂载进 tui-dev/tui-team 的兄弟仓库 dsh-endless 依赖旧事件名（digest 注入与启动补蒸静默失效），已在其仓库改注册 `agent/created` 并端到端复测通过，见 §7.1-6 | `evidence/06-startup-wait.txt`；dsh-endless `docs/v0.1.7-rc.1-upgrade-assessment.md` |
+| 会话格式 V4 拒绝裸 `kind:"plugin"` 源，要求 producer-owned `plugin:<producer>` | 本仓库自有代码不产生带源消息；兄弟仓库 dsh-endless 的注入消息源已改 `plugin:endless/inject`（否则 V4 落盘报 `format v4 message requires a producer-owned source kind`）；自研 TUI 的注入行判断同步放宽为「非 `user` 源即 context 行」（`lib/transcript.ts`） | dsh-endless `docs/v0.1.7-rc.1-upgrade-assessment.md`；`lib/transcript.ts` |
 | 插件依赖运行时解析、支持运行时卸载 | `skill-search` / `custom-bash` / `phase-swap-bash` 注册随插件 fiber 注销；phase-swap per-agent shadow 无残留 | `evidence/06-remaining-compat-surfaces.md` §3.4 |
 | Team 模式 `spawn_teammate`，`subagent`/`subagent_fork` 不再提供 | `tui-team` 单独 Profile；B1.5 实测（非"未测"）：Team 开启下 `subagent` + `list_subagent_models` 与 6 个 Team 工具**并存**；工具面按 profile 分账 | 票据 08/09 |
 | 委派路由能力不对称（`subagent` 有允许路由选择、Team 无路由字段） | ADR-0001 边界收窄为"非 Team profile 的 `subagent` 委派"；T3 探针 a14 改名 `a14-whitelist-route-compliance`（为允许路由集合背书） | `docs/subagent-model-selection.md`；`evidence/11-*` |
@@ -178,6 +183,23 @@
 4. **部署位与仓库的窗口口径**：`--allow-stale-deployment` 已移出调用链；后续任何 preset 真源改动
    （含票 14）都必须重新走部署 + 闸门，不能只改仓库。票 14 已按此执行：真源改 → 产物重生成 →
    `sync-agent-presets --profile … --write` → 零豁免 gate/real + PTY 双形态。
+5. **stable 与 dev 共用 home 的 `settings.yaml` 跨代冲突（2026-09-27 处置）**：0.1.7 宿主每次启动
+   都会把 `~/.dsh/settings.yaml` 改名 `.imported` 并只导入当前 profile 的插件配置；而 1mdsh
+   （0.1.5 stable，profile `tui`）实时读该文件，故任何 0.1.7 启动后 stable 丢模型/供应商配置。
+   已按方案 A 解耦：`~/.dsh/profiles/tui/cordis.patch.yml` 增加顶层
+   `- id: settings / config.path: /Users/vito/.dsh/settings.stable.yaml`（原文备份 `.bak-20260927-140302`），
+   stable 改读私有副本（`tui-stable --dump-config` exit 0 验证）。**stable 通道迁 0.1.7 时须删除该覆盖**
+   （0.1.7 的设置实现换为 profile 插件配置）；`~/.dsh/settings.yaml.imported` 保留为母本。
+   附带影响：任何假定 `~/.dsh/settings.yaml` 在场的工具/流程（如 README 的 T3 行、允许路由探针）
+   在文件被消费后需先从 `.imported` 恢复，或改读 profile 配置。
+6. **挂载兄弟仓库的 0.1.7 适配（2026-09-27 闭环）**：tui-dev/tui-team 以绝对路径挂载
+   `/Users/vito/data/dev/dsh-endless` dev 树；宿主两处破坏性变更（`agent/session-start` →
+   `agent/created`、V4 拒绝裸 `plugin` 源）在本轮审计中未覆盖该面，导致 tui-dev 下 digest 注入
+   静默失效、随后落盘被 V4 准入拒绝（`UNKNOWN: format v4 message requires a producer-owned source kind`）。
+   已在 dsh-endless 完成适配（事件改注册 + 消息源改 `plugin:endless/inject`/`plugin:endless/distill`
+   + 依赖代际升 0.1.7-rc.1，提交 `1381e89`）并经真实 TUI 复测通过；自研 TUI 的注入行渲染判断同步修正
+   （`lib/transcript.ts`：非 `user` 源即 context 行）。证据：dsh-endless
+   `docs/v0.1.7-rc.1-upgrade-assessment.md`。
 
 ### 7.2 未验证清单（计划 §8 余项，不得当作结论）
 
