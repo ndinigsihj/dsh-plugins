@@ -390,6 +390,9 @@ interface ProjectionValues {
     };
     roundsStarted: number;
   } | null;
+  /** Session title (dsh-session-title's `title` wire unit): the same value the
+   * harness's own session listing serves zero-I/O from the projection cache. */
+  title?: string;
   /** This plugin's own preview unit: whole conversation shape for /resume
    * previews, served from the projection-cache cold ladder without a full
    * log read. */
@@ -406,6 +409,25 @@ interface TuiPreviewValue {
   lastTime: number | null;
   firstPrompt: string | null;
   lastPrompt: string | null;
+}
+
+/** One local row for the /resume and /sessions lists, before its title is
+ * necessarily known: the listed record plus the projection-cache answer.
+ * `title` undefined means the background backfill (or an explicit cold-read
+ * command) still has to answer for that row. */
+interface SessionCandidate {
+  record: {
+    header: { id: string; cwd?: string; createdAt?: number; origin?: string };
+    live: boolean;
+    persisted: boolean;
+  };
+  title?: string;
+}
+
+/** Non-empty title from a projection snapshot, or undefined. */
+function projectionTitle(snapshot: { values?: ProjectionValues } | undefined): string | undefined {
+  const title = snapshot?.values?.title;
+  return typeof title === "string" && title.trim() !== "" ? title : undefined;
 }
 
 /** Reasoning-effort metadata of one route (dsh-llm LlmModelReasoningInfo slice). */
@@ -624,6 +646,9 @@ interface CoreServices {
       signal?: AbortSignal,
     ): Promise<
       Array<{
+        /** Corpus identity of this result (absent only on carriers older than
+         * the 0.1.7 wire shape; callers then fall back to input order). */
+        sessionId?: string;
         status: "fulfilled" | "rejected";
         reason?: unknown;
         value?: { session?: unknown; title?: { title?: string } };
@@ -648,7 +673,7 @@ interface CoreServices {
     }): Promise<PreviewLogWindow & { target?: { type: string; seq?: number; data?: unknown } }>;
   };
   sessionProjections?: {
-    snapshot(session: unknown): { values: ProjectionValues };
+    snapshot(session: unknown, keys?: readonly string[]): { values: ProjectionValues };
     register(definition: {
       key: string;
       stateVersion: number;
@@ -660,8 +685,17 @@ interface CoreServices {
   };
   /** Persisted projection checkpoints (mounted by the tui profile patch).
    * rc.1 shape: the caller supplies the complete log (read via sessionQuery);
-   * the service only seeds folds + refreshes the cache row. */
+   * the service only seeds folds + refreshes the cache row. The two listing
+   * faces are the 0.1.7 zero-I/O reads — `title` in particular comes straight
+   * from the stored rows, no log read. */
   sessionProjectionCache?: {
+    /** Stored rows bound to the listed header's lifecycle, or undefined. */
+    cachedSnapshot?(
+      meta: unknown,
+      keys?: readonly string[],
+    ): { values: ProjectionValues } | undefined;
+    /** Predecessor-format checkpoint title (pre-migration rows only). */
+    cachedPredecessorTitle?(meta: unknown): { values: ProjectionValues } | undefined;
     coldSnapshot(
       meta: { id: string; version: number; createdAt: number; isSeeded: boolean },
       inheritedEventCount: number,
@@ -767,7 +801,6 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
   const userQuestions = ctx.get<CoreServices["userQuestions"]>("userQuestions");
   const commands = ctx.get<CoreServices["commands"]>("commands");
   const sessionQuery = ctx.get<CoreServices["sessionQuery"]>("sessionQuery");
-  const sessionProjections = ctx.get<CoreServices["sessionProjections"]>("sessionProjections");
   const permissionPresets = ctx.get<CoreServices["permissionPresets"]>("permissionPresets");
   const tokenMeter = ctx.get<CoreServices["tokenMeter"]>("tokenMeter");
   const subagents = ctx.get<CoreServices["subagents"]>("subagents");
@@ -792,7 +825,16 @@ function resolveServices(ctx: CordisContext): CoreServices | undefined {
     userQuestions,
     commands,
     sessionQuery,
-    sessionProjections,
+    // Optional services may mount after this plugin activates (the projection
+    // cache opens its storage domain asynchronously), so they resolve at use
+    // time instead of freezing an activation-time snapshot. The preview unit
+    // registration immediately after resolveServices uses this getter too.
+    get sessionProjections() {
+      return ctx.get<CoreServices["sessionProjections"]>("sessionProjections");
+    },
+    get sessionProjectionCache() {
+      return ctx.get<CoreServices["sessionProjectionCache"]>("sessionProjectionCache");
+    },
     permissionPresets,
     tokenMeter,
     subagents,
@@ -1159,7 +1201,10 @@ async function run(
         argumentHint: "<id>",
         getArgumentCompletions: async () => {
           try {
-            const { items } = await loadSessionItems();
+            // Keystroke path: projection-cache titles only; rows without one
+            // are omitted rather than folding a log per session here.
+            const { candidates } = await loadSessionCandidates();
+            const { items } = buildSessionItems(candidates);
             return items.slice(0, 10).map((i) => ({
               value: i.value,
               label: i.label,
@@ -2740,23 +2785,26 @@ async function run(
   }
 
   /**
-   * Load picker rows for THIS workspace's sessions. Labels come from the
-   * harness's title snapshots (readTitleSnapshots) instead of full-log reads:
-   * the old path called readSession per session (complete decode + replay
-   * validation) just to find the first user message — seconds per multi-MB
-   * log. Cross-project resume stays available via `/resume <id>`.
+   * Fast tier of the picker rows for THIS workspace's sessions: list the
+   * corpus, keep the local top-level records, and answer titles from the live
+   * projections or the durable projection cache. Those are the harness's
+   * zero-I/O listing faces (the ones dsh-session-reference and
+   * dsh-api-session-controller use); no log is read here.
+   *
+   * Folding a title off the log costs the whole log plus, for pre-0.1.7
+   * artifacts, a format migration on every read — measured at ~27s for this
+   * workspace's 232 local sessions, which used to be the /resume wait. Rows
+   * the cache cannot answer stay `title: undefined` and the interactive
+   * callers backfill them in the background
+   * ({@link hydrateSessionCandidates}).
    */
-  async function loadSessionItems(): Promise<{
-    items: Array<{ value: string; label: string; description: string }>;
+  async function loadSessionCandidates(): Promise<{
+    candidates: SessionCandidate[];
     totalRecords: number;
     localRecords: number;
-    hiddenUntitled: number;
-    hiddenOlder: number;
   }> {
     const query = services.sessionQuery;
-    if (query === undefined) {
-      return { items: [], totalRecords: 0, localRecords: 0, hiddenUntitled: 0, hiddenOlder: 0 };
-    }
+    if (query === undefined) return { candidates: [], totalRecords: 0, localRecords: 0 };
     const records = await query.listSessions();
     // Scope to the current workspace: sessions persist keyed by cwd, and a
     // global newest-first list mostly shows other projects' logs. Subagent
@@ -2767,49 +2815,100 @@ async function run(
     const local = records.filter(
       (rec) => rec.header.cwd === cwd && rec.header.origin !== "subagent",
     );
-    // Untitled shells (a boot that never got a message) are dropped BEFORE the
-    // recency cut: slicing first let an empty boot occupy a slot while pushing
-    // real sessions out of the window.
-    const snapshots = await query.readTitleSnapshots(local.map((rec) => rec.header.id));
+    const candidates = local.map((record) => ({ record, title: cachedSessionTitle(record) }));
+    return { candidates, totalRecords: records.length, localRecords: local.length };
+  }
+
+  /** Projection-cache title for one listed record: live rows answer from the
+   * live registry cut (the title a rename just committed is visible), cold
+   * rows from the checkpoint the projection cache wrote when they went cold,
+   * with the predecessor-format row as the pre-migration fallback. Best-effort
+   * like dsh-api-session-controller's listing read: one bad row must not take
+   * the whole picker down. */
+  function cachedSessionTitle(record: SessionCandidate["record"]): string | undefined {
+    try {
+      const live = services.agents.get(record.header.id);
+      if (live !== undefined) {
+        return projectionTitle(services.sessionProjections?.snapshot(live.session, ["title"]));
+      }
+      const cache = services.sessionProjectionCache;
+      if (cache === undefined) return undefined;
+      const current = cache.cachedSnapshot?.(record.header, ["title"]);
+      return projectionTitle(current) ?? projectionTitle(cache.cachedPredecessorTitle?.(record.header));
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Build picker rows from candidates, in listing order (newest first, no
+   * recency cap — design D1=B). Rows whose title no source can answer are
+   * omitted entirely rather than labeled by id: an id wall is not a usable
+   * listing, and the backfill only ever turns its own pending rows into real
+   * titles (never into placeholders). `titles` is the background backfill's
+   * answer; without it only the projection-cache rows show. `hiddenUntitled`
+   * counts the omitted rows (empty shells once the backfill has run).
+   */
+  function buildSessionItems(
+    candidates: SessionCandidate[],
+    titles?: ReadonlyMap<string, string | undefined>,
+  ): { items: Array<{ value: string; label: string; description: string }>; hiddenUntitled: number } {
+    const items: Array<{ value: string; label: string; description: string }> = [];
     let hiddenUntitled = 0;
-    const titled: Array<{ rec: (typeof records)[number]; title: string }> = [];
-    for (let i = 0; i < local.length; i += 1) {
-      const rec = local[i];
-      if (rec === undefined) continue;
-      const snap = snapshots[i];
-      const title = snap?.status === "fulfilled" ? snap.value?.title?.title : undefined;
+    for (const candidate of candidates) {
+      const { record } = candidate;
+      const title = titles?.get(record.header.id) ?? candidate.title;
       if (title === undefined || title.trim() === "") {
         hiddenUntitled += 1;
         continue;
       }
-      titled.push({ rec, title });
-    }
-    // No recency cap (design D1=B): titled+local is already the filtered set,
-    // the picker filters by text, and the cleanup path (/rm) owns bloat.
-    const items: Array<{ value: string; label: string; description: string }> = [];
-    for (const { rec, title } of titled) {
-      const state = rec.live ? "live" : rec.persisted ? "persisted" : "missing";
-      const when = relativeTime(rec.header.createdAt);
-      const marker = rec.header.id === agent.id ? " (current)" : "";
+      const state = record.live ? "live" : record.persisted ? "persisted" : "missing";
+      const when = relativeTime(record.header.createdAt);
+      const marker = record.header.id === agent.id ? " (current)" : "";
       items.push({
-        value: rec.header.id,
+        value: record.header.id,
         label: truncate(title, 60),
         description: `${when} · ${state}${marker}`,
       });
     }
-    return {
-      items,
-      totalRecords: records.length,
-      localRecords: local.length,
-      hiddenUntitled,
-      hiddenOlder: 0,
-    };
+    return { items, hiddenUntitled };
+  }
+
+  /**
+   * Background title backfill for the pending candidates: ONE batched
+   * readTitleSnapshots call folds every cold log (including the old-format
+   * migrations) with the harness's bounded concurrency, instead of the picker
+   * waiting on it. The signal aborts the batch when the picker closes early;
+   * callers keep their current rows in that case.
+   */
+  async function hydrateSessionCandidates(
+    candidates: SessionCandidate[],
+    signal?: AbortSignal,
+  ): Promise<Map<string, string | undefined>> {
+    const titles = new Map<string, string | undefined>();
+    const pending = candidates.filter((c) => c.title === undefined).map((c) => c.record.header.id);
+    const query = services.sessionQuery;
+    if (query === undefined || pending.length === 0) return titles;
+    const snapshots = await query.readTitleSnapshots(pending, signal);
+    for (let i = 0; i < pending.length; i += 1) {
+      const snapshot = snapshots[i];
+      if (snapshot === undefined) continue;
+      // 0.1.7 carries the corpus id; older carriers only guarantee input order.
+      const id = snapshot.sessionId ?? pending[i];
+      if (id === undefined) continue;
+      const title = snapshot.status === "fulfilled" ? snapshot.value?.title?.title : undefined;
+      titles.set(id, typeof title === "string" && title.trim() !== "" ? title : undefined);
+    }
+    return titles;
   }
 
   async function listSessions(): Promise<void> {
     try {
-      const { items, totalRecords, localRecords, hiddenUntitled, hiddenOlder } =
-        await loadSessionItems();
+      const { candidates, totalRecords, localRecords } = await loadSessionCandidates();
+      // /sessions is a one-shot listing with no incremental UI: keep its old
+      // exact output by awaiting the same backfill /resume runs in background.
+      const titles = await hydrateSessionCandidates(candidates);
+      const { items, hiddenUntitled } = buildSessionItems(candidates, titles);
       if (items.length === 0) {
         app.appendCommandOutput(
           `No titled sessions in this workspace` +
@@ -2818,9 +2917,7 @@ async function run(
         );
         return;
       }
-      const hiddenNote =
-        (hiddenUntitled > 0 ? ` · ${hiddenUntitled} untitled hidden` : "") +
-        (hiddenOlder > 0 ? ` · ${hiddenOlder} older hidden` : "");
+      const hiddenNote = hiddenUntitled > 0 ? ` · ${hiddenUntitled} untitled hidden` : "";
       const lines = items.map((item, i) => `${String(i + 1).padStart(2)}. ${item.label} [${item.description}]`);
       app.appendCommandOutput(
         `Sessions in ${basename(process.cwd())} (${localRecords}` +
@@ -3045,15 +3142,26 @@ async function run(
     // No id: open the interactive picker (search + Up/Down + Enter).
     try {
       app.showNotice("Loading sessions…");
-      const { items, totalRecords, hiddenUntitled } = await loadSessionItems();
-      if (items.length === 0) {
+      const { candidates, totalRecords } = await loadSessionCandidates();
+      if (candidates.length === 0) {
         app.showNotice(
-          `No titled sessions here (${hiddenUntitled} untitled hidden · ${totalRecords} elsewhere) — /resume <id> works cross-project.`,
+          `No sessions here (${totalRecords} in other workspaces) — /resume <id> works cross-project.`,
         );
         return;
       }
-      const picked = await app.pickSession(items, {
+      // Fast paint: only rows with an immediately available title render.
+      // The picker then backfills the rest in the background and inserts them
+      // in listing order (empty shells never appear); the batch aborts when
+      // the user picks or closes the picker.
+      const fast = buildSessionItems(candidates);
+      const pending = candidates.length - fast.items.length;
+      const picked = await app.pickSession(fast.items, {
         onRequestDelete: (id) => deleteSessionFlow(id),
+        loading: pending > 0 ? `Loading ${pending} more title${pending === 1 ? "" : "s"}…` : undefined,
+        hydrate: async (signal) => {
+          const titles = await hydrateSessionCandidates(candidates, signal);
+          return buildSessionItems(candidates, titles).items;
+        },
       });
       if (picked === null) {
         app.showNotice("Resume cancelled.");

@@ -1073,6 +1073,11 @@ class SessionPicker implements Component {
   private previewValue = "";
   private query = "";
   private items: SessionPickItem[];
+  /** One dim line under the search field (background backfill progress). */
+  private status = "";
+  /** Values the user deleted with Ctrl+D while this picker was open; a
+   * background `setItems` refresh must never resurrect them. */
+  private readonly deleted = new Set<string>();
   private select!: SelectList;
   private index = 0;
   private count = 0;
@@ -1124,6 +1129,7 @@ class SessionPicker implements Component {
       if (item !== null && this.onRequestDelete !== undefined) {
         void this.onRequestDelete(item.value).then((deleted) => {
           if (!deleted) return;
+          this.deleted.add(item.value);
           this.items = this.items.filter((i) => i.value !== item.value);
           this.previewCache.delete(item.value);
           this.applyFilter();
@@ -1143,7 +1149,9 @@ class SessionPicker implements Component {
   }
 
   render(width: number): string[] {
-    const lines = [...this.queryText.render(width), ...this.select.render(width)];
+    const lines = [...this.queryText.render(width)];
+    if (this.status !== "") lines.push(this.p.dim(`  ${sanitizeDisplay(this.status)}`));
+    lines.push(...this.select.render(width));
     if (this.previewValue !== "") {
       lines.push("");
       lines.push(...this.previewText.render(width));
@@ -1167,19 +1175,46 @@ class SessionPicker implements Component {
     return select;
   }
 
-  private applyFilter(): void {
+  /** Rows matching the current search text, in listing order. */
+  private filteredItems(): SessionPickItem[] {
     const q = this.query.toLowerCase();
-    const filtered =
-      q === ""
-        ? this.items
-        : this.items.filter(
-            (i) => i.label.toLowerCase().includes(q) || i.value.toLowerCase().includes(q),
-          );
+    return q === ""
+      ? this.items
+      : this.items.filter(
+          (i) => i.label.toLowerCase().includes(q) || i.value.toLowerCase().includes(q),
+        );
+  }
+
+  private applyFilter(): void {
+    const filtered = this.filteredItems();
     this.select = this.buildSelect(filtered);
     this.count = filtered.length;
     this.index = 0;
     this.refreshHeader();
     this.schedulePreview();
+    this.requestRender?.();
+  }
+
+  /**
+   * Replace the candidate rows in place. Used by the /resume background title
+   * backfill: the query survives, the highlighted session stays highlighted
+   * when it survived, and a row deleted meanwhile stays deleted.
+   */
+  setItems(items: SessionPickItem[]): void {
+    const selected = this.select.getSelectedItem()?.value;
+    this.items = items.filter((item) => !this.deleted.has(item.value));
+    this.applyFilter();
+    if (selected === undefined) return;
+    const at = this.filteredItems().findIndex((item) => item.value === selected);
+    if (at < 0) return;
+    this.index = at;
+    this.select.setSelectedIndex(at);
+    this.schedulePreview();
+  }
+
+  /** Set (or clear) the dim progress line under the search field. */
+  setStatus(text: string): void {
+    this.status = text;
     this.requestRender?.();
   }
 
@@ -2571,25 +2606,48 @@ export class TuiApp {
   }
 
   /** Pick one session from the list, or null on cancel. The optional delete
-   * hook enables Ctrl+D on the highlighted row (docs/session-list-delete-design.md). */
+   * hook enables Ctrl+D on the highlighted row (docs/session-list-delete-design.md);
+   * `loading` shows a dim progress line while the optional hydrate hook runs
+   * after the picker is on screen and replaces the rows when the background
+   * title backfill settles. The hydrate signal aborts as soon as the picker
+   * closes (pick or cancel), so a slow batch stops with it. */
   pickSession(
     sessions: SessionPickItem[],
-    hooks?: { onRequestDelete?: (value: string) => Promise<boolean> },
+    hooks?: {
+      onRequestDelete?: (value: string) => Promise<boolean>;
+      loading?: string;
+      hydrate?: (signal: AbortSignal) => Promise<SessionPickItem[] | null>;
+    },
   ): Promise<string | null> {
     return new Promise((resolve) => {
       const picker = new SessionPicker(this.p, sessions, this.options.sessionPreview);
       picker.requestRender = () => this.render();
       if (hooks?.onRequestDelete !== undefined) picker.onRequestDelete = hooks.onRequestDelete;
-      picker.onPick = (value) => {
+      if (hooks?.loading !== undefined) picker.setStatus(hooks.loading);
+      const abort = new AbortController();
+      const close = (value: string | null) => {
+        abort.abort();
         this.tui.hideOverlay();
         resolve(value);
       };
-      picker.onCancel = () => {
-        this.tui.hideOverlay();
-        resolve(null);
-      };
+      picker.onPick = (value) => close(value);
+      picker.onCancel = () => close(null);
       this.tui.showOverlay(picker, { anchor: "center", margin: 1 });
       this.tui.setFocus(picker);
+      if (hooks?.hydrate !== undefined) {
+        void hooks
+          .hydrate(abort.signal)
+          .then((items) => {
+            if (items === null || abort.signal.aborted) return;
+            picker.setItems(items);
+            picker.setStatus("");
+          })
+          .catch(() => {
+            // Backfill is best-effort: on abort or failure the fast rows stay,
+            // and the stale progress line is cleared rather than left lying.
+            picker.setStatus("");
+          });
+      }
     });
   }
 

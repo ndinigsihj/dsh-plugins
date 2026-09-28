@@ -226,6 +226,96 @@ test("选择器流程：可被按键驱动并返回选中值", async () => {
   }
 });
 
+test("选择器后台补齐：hydrate 原地替换标签、按 value 保留选中、关闭即中止", async () => {
+  const h = makeApp();
+  try {
+    h.app.start();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let seen: AbortSignal | undefined;
+    const picked = h.app.pickSession(
+      [
+        { value: "sess-a", label: "alpha" },
+        { value: "sess-b", label: "beta" },
+      ],
+      {
+        loading: "Loading 1 more title…",
+        hydrate: async (signal) => {
+          seen = signal;
+          await gate;
+          return [
+            { value: "sess-a", label: "alpha-2" },
+            { value: "sess-b", label: "beta-2" },
+          ];
+        },
+      },
+    );
+    h.app.tuiHandle.renderNow(true);
+    assert.ok(
+      plain(h.terminal.text).includes("Loading 1 more title…"),
+      "补齐期间应显示进度提示",
+    );
+    h.terminal.send("\x1b[B"); // down → sess-b
+    release();
+    await new Promise((resolve) => setImmediate(resolve));
+    h.app.tuiHandle.renderNow(true);
+    const frame = plain(h.terminal.text);
+    assert.ok(frame.includes("alpha-2") && frame.includes("beta-2"), "后台标题应替换候选标签");
+    // 清掉的提示只不在当前屏幕上；累积输出里仍有旧帧的文本。
+    const screen = plain(
+      ((h.app.tuiHandle as unknown as { previousScreen?: string[] }).previousScreen ?? []).join("\n"),
+    );
+    assert.ok(!screen.includes("Loading 1 more title…"), "补齐完成后应清掉进度提示");
+    h.terminal.send("\r");
+    assert.equal(await picked, "sess-b", "替换列表后选中项应按 value 保留");
+    assert.equal(seen?.aborted, true, "picker 关闭应中止后台补齐");
+  } finally {
+    h.dispose();
+  }
+});
+
+test("选择器后台补齐：Ctrl+D 删除的行不会被 setItems 带回", async () => {
+  const h = makeApp();
+  try {
+    h.app.start();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const picked = h.app.pickSession(
+      [
+        { value: "sess-a", label: "alpha" },
+        { value: "sess-b", label: "beta" },
+      ],
+      {
+        onRequestDelete: async () => true,
+        hydrate: async () => {
+          await gate;
+          return [
+            { value: "sess-a", label: "alpha-2" },
+            { value: "sess-b", label: "beta-2" },
+          ];
+        },
+      },
+    );
+    h.app.tuiHandle.renderNow(true);
+    h.terminal.send("\x04"); // ctrl+d on sess-a
+    await new Promise((resolve) => setImmediate(resolve));
+    release();
+    await new Promise((resolve) => setImmediate(resolve));
+    h.app.tuiHandle.renderNow(true);
+    const frame = plain(h.terminal.text);
+    assert.ok(!frame.includes("alpha-2"), "已删除的行不应被后台补齐带回");
+    assert.ok(frame.includes("beta-2"), "其余行应更新为后台标题");
+    h.terminal.send("\x1b"); // escape closes
+    assert.equal(await picked, null);
+  } finally {
+    h.dispose();
+  }
+});
+
 test("退出路径：写出终端恢复契约", async () => {
   const h = makeApp();
   try {
