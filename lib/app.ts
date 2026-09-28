@@ -81,7 +81,7 @@ export interface ApprovalRequest {
 
 export interface RunningSubagent {
   id: string;
-  mode: "one-shot" | "continuable";
+  mode: "one-shot" | "continuable" | "unknown";
   label?: string;
 }
 
@@ -1678,6 +1678,22 @@ export function formatGoalLine(p: Palette, goal: GoalSummary, width: number): st
     `${p.fg(style.mark, style.color)} ${sanitizeDisplay(goal.objective)} ` +
     p.dim(`· round ${goal.roundsStarted}/${goal.maxGoalRounds}${tag}`);
   return truncateToWidth(text, Math.max(20, width));
+}
+
+/** Pick the running children for the ambient gauge out of `listChildren`'s
+ * durable catalog. 0.1.7 dropped the old live `activity` field from those rows,
+ * so each child's live state is resolved by the caller (the agent registry's
+ * `status`). Pure, so the join is unit-testable. */
+export function selectRunningSubagents(
+  children: ReadonlyArray<RunningSubagent>,
+  isRunning: (id: string) => boolean,
+): RunningSubagent[] {
+  const running: RunningSubagent[] = [];
+  for (const child of children) {
+    if (!isRunning(child.id)) continue;
+    running.push({ id: child.id, mode: child.mode, label: child.label });
+  }
+  return running;
 }
 
 /** @-prefix token before the cursor: `@query`, or an unterminated quoted

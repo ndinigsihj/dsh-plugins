@@ -18,7 +18,7 @@ import type { ImageAttachmentRef } from "@deepseek-ai/dsh-attachment";
 import { SessionId, SessionLogOffset } from "@deepseek-ai/dsh-session";
 import { z as zod } from "zod";
 import { visibleWidth } from "@earendil-works/pi-tui";
-import { TuiApp, formatTokens, type AgentSurface, type AutocompleteCommand, type GoalSummary, type RunningJob } from "./app.ts";
+import { TuiApp, formatTokens, selectRunningSubagents, type AgentSurface, type AutocompleteCommand, type GoalSummary, type RunningJob } from "./app.ts";
 import { createPalette } from "./palette.ts";
 import { sanitizeDisplay } from "./sanitize.ts";
 import { readPreviewLog, type PreviewLogWindow } from "./session-preview-log.ts";
@@ -553,6 +553,8 @@ function agentSurface(agent: {
 interface CoreServices {
   agents: {
     create(options: unknown): Promise<{ agent: Agent }>;
+    /** Live registry lookup (dsh-agent `get`): the gauge's per-child check. */
+    get(id: string): Agent | undefined;
     resume(options: {
       resumeSessionId: unknown;
       agentOptions?: unknown;
@@ -679,11 +681,18 @@ interface CoreServices {
     measure(session: unknown): { totalTokens: number };
   };
   subagents?: {
+    /** 0.1.7 answers the durable `subagentCatalog` rows only — the old live
+     * `activity` field is gone, so the caller joins registry status itself. */
     listChildren(
       parentSessionId: string,
       signal?: AbortSignal,
     ): Promise<
-      Array<{ id: string; activity: "running" | "inactive"; mode: "one-shot" | "continuable"; label?: string }>
+      Array<{
+        id: string;
+        createdAt?: number;
+        mode: "one-shot" | "continuable" | "unknown";
+        label?: string;
+      }>
     >;
   };
   /** Background-job registry (base-mounted); list is owner-fenced + sync. */
@@ -3679,10 +3688,11 @@ async function run(
     app.setContextOccupancy({ pct, usedTokens: used, windowTokens });
   }
 
-  // Running-subagent summary under the status line. Event-triggered refresh:
-  // child state lives in projection-backed runtime data (listChildren), but
-  // waiting on a fixed poll lags starts/finishes by up to the interval — so
-  // every lifecycle-relevant session event triggers an immediate re-read.
+  // Running-subagent summary under the status line. 0.1.7 listChildren returns
+  // the durable child catalog without live `activity`, so every refresh joins
+  // it with the agent registry's status. Event-triggered: waiting on a fixed
+  // poll lags starts/finishes by up to the interval — so every
+  // lifecycle-relevant session event (and child status flip) re-reads.
   function refreshSubagents(): void {
     const subs = services.subagents;
     if (subs === undefined) return;
@@ -3691,9 +3701,10 @@ async function run(
       .listChildren(agent.id)
       .then((children) => {
         if (generation !== subagentRefreshGeneration) return; // stale response
-        const running = children
-          .filter((c) => c.activity === "running")
-          .map((c) => ({ id: c.id, mode: c.mode, label: c.label }));
+        const running = selectRunningSubagents(
+          children,
+          (id) => services.agents.get(id)?.status === "running",
+        );
         app.setSubagents(running);
       })
       .catch(() => {
@@ -3805,11 +3816,16 @@ async function run(
   // getter so writing it throws and kills the wire loop — ride surfaceStatus.
   // The subscription is unscoped, so it also sees subagent status flips; only
   // the adopted root agent may drive the status bar (dsh-agent injects
-  // `payload.agent`, while older emitters may omit it — accept those).
+  // `payload.agent`, while older emitters may omit it — accept those). A child
+  // flip refreshes the subagent gauge instead: it is the only signal while the
+  // root session itself stays quiet.
   const disposeStatus = ctx.on(
     "agent/status",
     (payload: { status?: "idle" | "running"; agent?: { id?: unknown } }) => {
-      if (payload.agent !== undefined && payload.agent.id !== agent.id) return;
+      if (payload.agent !== undefined && payload.agent.id !== agent.id) {
+        if (payload.status === "idle" || payload.status === "running") refreshSubagents();
+        return;
+      }
       if (payload.status !== "idle" && payload.status !== "running") return;
       app.setStatus(payload.status);
       surfaceStatus = payload.status;

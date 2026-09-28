@@ -13,7 +13,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { basename } from "node:path";
 import { visibleWidth, type TUI } from "@earendil-works/pi-tui";
-import { TuiApp, type AgentSurface } from "./app.ts";
+import { TuiApp, selectRunningSubagents, type AgentSurface } from "./app.ts";
 import { FakeTerminal } from "./testing/fake-terminal.ts";
 import type { ToolPresenters } from "./transcript.ts";
 
@@ -269,6 +269,44 @@ test("复制：远程会话下拖选释放把 OSC 52 写入终端", () => {
   } finally {
     if (previous === undefined) delete process.env.SSH_CONNECTION;
     else process.env.SSH_CONNECTION = previous;
+    h.dispose();
+  }
+});
+
+test("子代理 gauge：0.1.7 catalog 行按 live status 过滤，空列表隐藏该行", () => {
+  const children = [
+    { id: "child-a", mode: "continuable" as const, label: "watcher" },
+    { id: "child-b", mode: "one-shot" as const },
+    { id: "child-c", mode: "unknown" as const },
+  ];
+  // 0.1.7 的行没有 activity：只有 live registry 命中的子代理算运行中。
+  assert.deepEqual(
+    selectRunningSubagents(children, (id) => id === "child-a" || id === "child-c"),
+    [
+      { id: "child-a", mode: "continuable", label: "watcher" },
+      { id: "child-c", mode: "unknown", label: undefined },
+    ],
+  );
+  assert.deepEqual(selectRunningSubagents(children, () => false), []);
+
+  const h = makeApp();
+  try {
+    h.app.start();
+    const shown = h.terminal.mark();
+    h.app.setSubagents(selectRunningSubagents(children, (id) => id === "child-a"));
+    h.app.tuiHandle.renderNow(true);
+    const frame = plain(h.terminal.writtenSince(shown));
+    assert.ok(frame.includes("◉ subagents ×1"), `应渲染运行中子代理摘要，实际:\n${frame}`);
+    assert.ok(frame.includes("watcher"), "摘要应带最新子代理 label");
+
+    const cleared = h.terminal.mark();
+    h.app.setSubagents([]);
+    h.app.tuiHandle.renderNow(true);
+    assert.ok(
+      !plain(h.terminal.writtenSince(cleared)).includes("◉ subagents"),
+      "空列表应隐藏该行",
+    );
+  } finally {
     h.dispose();
   }
 });
