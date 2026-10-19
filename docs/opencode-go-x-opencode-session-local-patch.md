@@ -19,7 +19,7 @@ INVALID_REQUEST: 400: {"type":"MissingSessionID","message":"Error from provider 
 不采用 settings.yaml 静态 header（OpenCode session 应是动态的、随 dsh 会话变化），而是在 `dsh-llm-pi-ai` 适配器请求构造处加动态 header：
 
 - 当请求带 `options.sessionId`
-- 且 provider 为 `opencode` / `opencode-go`，或 baseURL 含 `opencode.ai`
+- 且 model 的 baseURL 含 `opencode.ai`（**2026-09-29 修正：只看 baseURL**，不再看 provider 名）
 - 则把 `String(options.sessionId)` 作为 `x-opencode-session` 发出去
 
 dsh 会话 ID 的格式不统一：既可能是 `session-<uuid>`，也可能是裸 `<uuid>`（取决于创建路径/是否 resume）。header 只要求稳定且不透明，因此**原样透传 dsh session id，不做格式假设、不加前缀**。
@@ -41,12 +41,11 @@ dsh 会话 ID 的格式不统一：既可能是 `session-<uuid>`，也可能是�
 在 `const iterator = toStreamChunks(...)` 前插入：
 
 ```js
-const opencodeSessionHeader =
-    (options.sessionId !== void 0 &&
-    (model.provider === "opencode" || model.provider === "opencode-go" || model.baseUrl.includes("opencode.ai")))
-        ? { "x-opencode-session": String(options.sessionId) }
-        : {};
+const opencodeSessionHeader = options.sessionId !== void 0 && String(model.baseUrl ?? "").includes("opencode.ai") ? { "x-opencode-session": String(options.sessionId) } : {};
 ```
+
+（2026-09-29 起实际落地形态：单行、只看 `baseURL`；与 commandcode 补丁共存时
+`headers: requestHeaders({ ...profile.headers, ...opencodeSessionHeader, ...commandCodeSessionHeader })`。）
 
 并把传给 pi-ai 的 headers 从：
 
