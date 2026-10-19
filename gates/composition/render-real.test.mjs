@@ -76,12 +76,23 @@ test("stripLegacyPresetRow: 摘掉旧目录 preset 行并保留后续条目", ()
   assert.equal(stripLegacyPresetRow("- insert:\n    - id: a\n      name: '@x'\n"), "- insert:\n    - id: a\n      name: '@x'\n");
 });
 
-test("collectModuleNames: 只收带 id 的条目名，config 里的同名键不算", () => {
+test("collectModuleNames: 只收带 id 的条目名，config 子树（含同名 {id,name} 数据）不算", () => {
   const names = collectModuleNames([
     { insert: [{ id: "a", name: "./a.mjs" }, { id: "b", name: "@scope/pkg" }] },
     { id: "c", name: "@scope/other", config: { name: "not-a-module" } },
+    // 回归（2026-10-19）：llm-pi-ai 的模型定义是 config 数据，name 是展示名，
+    // 旧实现把 "DeepSeek V4.1 Flash" 当模块名解析 → real 闸门前置假红、发版被挡。
+    {
+      id: "llm-pi-ai",
+      name: "@deepseek-ai/dsh-llm-pi-ai",
+      config: {
+        providers: {
+          commandcode: { models: [{ id: "deepseek/deepseek-v4.1-flash", name: "DeepSeek V4.1 Flash" }] },
+        },
+      },
+    },
   ]);
-  assert.deepEqual(names, ["./a.mjs", "@scope/pkg", "@scope/other"]);
+  assert.deepEqual(names, ["./a.mjs", "@scope/pkg", "@scope/other", "@deepseek-ai/dsh-llm-pi-ai"]);
 });
 
 test("resolveRepoRoots: 默认本 checkout + 相邻 checkout，env 覆盖优先", () => {

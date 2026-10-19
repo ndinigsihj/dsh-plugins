@@ -111,7 +111,15 @@ export function stripLegacyPresetRow(text) {
   return kept.join("\n");
 }
 
-/** 收集 patch 条目里的插件名（`id` + `name` 是条目身份；config 里的同名键不算）。 */
+/**
+ * 收集 patch 条目里的插件名（`id` + `name` 是条目身份；config 里的同名键不算）。
+ *
+ * patch 文本里的条目只出现在顶层数组或其 `insert:` 列表里；`config` 是插件自己的
+ * 数据面（如 `llm-pi-ai` 的 `providers.*.models[].{id,name}` 模型定义、preset 的
+ * `config.plugins[]` 声明），里面的 `{id,name}` 不是模块名——递归进去会把
+ * "DeepSeek V4.1 Flash" 这类展示名当成包名解析而假红。修正与注释口径一致：
+ * 不下钻 `config` 子树；分组（`insert` + `id`）的行在组合期才进 config，文本面不变。
+ */
 export function collectModuleNames(entries) {
   const names = [];
   const walk = (node) => {
@@ -121,7 +129,8 @@ export function collectModuleNames(entries) {
     }
     if (node === null || typeof node !== "object") return;
     if (typeof node.name === "string" && node.id !== undefined) names.push(node.name);
-    for (const value of Object.values(node)) {
+    for (const [key, value] of Object.entries(node)) {
+      if (key === "config") continue;
       if (value !== null && typeof value === "object") walk(value);
     }
   };
