@@ -75,8 +75,13 @@ node --check "<dsh 安装目录>/node_modules/@deepseek-ai/dsh/node_modules/@dee
 | signer | `/home/signer/.npm-global/lib/node_modules/@deepseek-ai/dsh` | v3 hub + signer v3 worker | `systemctl --user restart hub.service dsh-worker.service` |
 | mac-mini | `/Users/vito/miniconda/envs/dsh/lib/node_modules/@deepseek-ai/dsh` | v3 worker | `launchctl kickstart -k gui/$(id -u)/com.dsh-relay.worker` |
 | git | `/home/aisenz/.nvm/versions/node/v24.19.0/lib/node_modules/@deepseek-ai/dsh` | v3 worker（若 remote-agent/v2 再启用也同安装） | `systemctl --user restart dsh-worker.service` |
+| dsh-runtime/stable（2026-10-19，本机 1mdsh） | `~/data/dev/dsh-runtime/stable/node_modules/@deepseek-ai/dsh-llm-pi-ai/lib/index.js` | stable 通道 TUI（`tui-stable`） | 重启 TUI |
 
 > 以上四台都已确认 `settings.yaml` 含 `llm-pi-ai.providers.opencode-go` 且 `.credentials.yaml` 有 `OPENCODE_GO_API_KEY`，所以统一打补丁。各台升级 dsh 包后需要按“升级/重装后重打补丁步骤”逐台重打。
+>
+> **2026-10-19 追加**：stable 运行时（`dsh-runtime/stable`）随 0.1.7-rc.1 迁移一并打上本补丁（含 commandcode 补丁），
+> 与全局 v24 的补丁文件**逐字节相同**（sha256 `bd66963d…`）；stable 侧 profile 不含静态 session header，
+> 两个 header 均由适配器动态生成。执行记录见 `docs/tickets/dsh-v0.1.7-rc.1-stable-migration/`。
 
 ## 升级/重装后重打补丁步骤
 

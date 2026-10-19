@@ -175,8 +175,12 @@
    tui-team 已存在即拒绝覆盖，不能用于增量刷新）。复验：`--composition gate` **81/0/0**、
    `--composition real` **85/0/0**（均零豁免）、PTY `tui-dev` / `tui-team` 各 **16/16**。
    证据 `evidence/14-subagent-bootstrap-root-fix.md`。
-2. **stable 通道迁移未做**：`dsh-runtime/stable` + `tui` 仍为 0.1.5（自包含树）＋旧目录载体
-   `~/.dsh/.agent-presets/minimal-plus`；按节奏政策在下一个 stable 窗口单独走一次升级。
+2. ~~**stable 通道迁移未做**~~ **已闭环（2026-10-19）**：`dsh-runtime/stable` 升到 `0.1.7-rc.1`
+   （自包含重装、扁平镜像 0 补/顶层 277、farm 重链 234 条 dangling=0）；`tui` profile 换 0.1.7 形态
+   （摘 `settings` 覆盖行与 `agent-presets` 旧行、settings 内容落 profile 配置、preset 换 bundle 载体）；
+   `dsh-llm-pi-ai` 的动态 header 补丁同步移植（与全局补丁文件逐字节相同）。验收：stable PTY 冒烟 3/3、
+   real 闸门 85/0/0、六处解析面全 `0.1.7-rc.1`。执行记录与证据
+   `docs/tickets/dsh-v0.1.7-rc.1-stable-migration/`。
 3. **会话迁移未全量**：1571 个会话仍为旧格式（resume/写开时惰性迁移）；218 个既存不可读会话
    （72 个 descriptor-v2 + 146 个 v0 结构问题）与 7 个非 canonical 变体文件按「跳过并登记」保留；
    清单在 `evidence/10-result/{10-still-old-format.tsv,10-skip-list.tsv}`。
@@ -189,7 +193,8 @@
    已按方案 A 解耦：`~/.dsh/profiles/tui/cordis.patch.yml` 增加顶层
    `- id: settings / config.path: /Users/vito/.dsh/settings.stable.yaml`（原文备份 `.bak-20260927-140302`），
    stable 改读私有副本（`tui-stable --dump-config` exit 0 验证）。**stable 通道迁 0.1.7 时须删除该覆盖**
-   （0.1.7 的设置实现换为 profile 插件配置）；`~/.dsh/settings.yaml.imported` 保留为母本。
+   （0.1.7 的设置实现换为 profile 插件配置；**2026-10-19 已随 stable 迁 0.1.7 删除该覆盖行**，
+   设置内容搬进 profile 配置）；`~/.dsh/settings.yaml.imported` 保留为母本。
    附带影响：任何假定 `~/.dsh/settings.yaml` 在场的工具/流程（如 README 的 T3 行、允许路由探针）
    在文件被消费后需先从 `.imported` 恢复，或改读 profile 配置。
 6. **挂载兄弟仓库的 0.1.7 适配（2026-09-27 闭环）**：tui-dev/tui-team 以绝对路径挂载

@@ -78,8 +78,11 @@ tag 版本，开发窗口显示工作树版本。
    **dry-run** 出计划（逐文件核对 `generated/minimal-plus-preset/` ↔ `tui-dev`/`tui-team` 的
    `preset-bundles/` 并报告旧目录 preset 行是否需要摘除）；release 路径跑 `--check`，部署位
    缺席/滞后即退出 1；真实写入用 `--write`（显式、需用户批准）。默认 dry-run 的退出码 0 只表示
-   「计划可执行」，不代表部署位已就绪。stable 通道迁到 0.1.7 之前仍是 0.1.5 目录形态
-   （`~/.dsh/.agent-presets/minimal-plus` 只服务 stable）。
+   「计划可执行」，不代表部署位已就绪。**2026-10-19 起 stable 通道已迁 0.1.7**：宿主
+   `dsh-runtime/stable` = 0.1.7-rc.1，`tui` profile 改用 bundle 载体
+   （`~/.dsh/profiles/tui/preset-bundles/minimal-plus-preset`）；旧目录
+   `~/.dsh/.agent-presets/minimal-plus` 仅作回滚保留、0.1.7 不再读取
+   （执行记录见 `docs/tickets/dsh-v0.1.7-rc.1-stable-migration/`）。
 6. 打印结果行：`stable = ~/dev/dsh-plugins-stable @ v<version>`；提示运行中的 TUI 需退出重启（或 /resume 重进）才吃到新代码。
 
 宿主升级节奏（政策入口）：政策正文以 `README.md`「宿主升级节奏」为准；本次 0.1.7-rc.1 升级的执行

@@ -109,7 +109,7 @@ grep -n "commandCodeSessionHeader\|commandCodeSessionId\|resolveSessionCwd" <路
 |---|---|---|
 | 全局 v22.22.1 | `~/.nvm/versions/node/v22.22.1/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-llm-pi-ai/lib/index.js` | 与 v24 路径 **同一 inode（硬链接）**，改一份即两份 |
 | 全局 v24.21.0 | `~/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-llm-pi-ai/lib/index.js` | 同上 |
-| dsh-runtime/stable（1mdsh） | `~/data/dev/dsh-runtime/stable/node_modules/@deepseek-ai/dsh-llm-pi-ai/lib/index.js` | **未打**（连 opencode 补丁也缺，见票据 04） |
+| dsh-runtime/stable（1mdsh） | `~/data/dev/dsh-runtime/stable/node_modules/@deepseek-ai/dsh-llm-pi-ai/lib/index.js` | **2026-10-19 已打**（随 stable 通道迁 0.1.7-rc.1；与全局补丁文件逐字节相同，两处 sha256 均为 `bd66963d…`） |
 
 关联 profile 改动（2026-09-29）：`~/.dsh/profiles/tui-dev/cordis.patch.yml` 删除 `commandcode` / `cc` 两处各 2 行静态 header（共 4 行），改由本补丁独家生成。
 
