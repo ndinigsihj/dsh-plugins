@@ -113,6 +113,42 @@ export interface AutocompleteCommand {
     | Promise<Array<{ value: string; label: string; description?: string }> | null>;
 }
 
+/** Minimal user-invocable skill summary the / menu needs (dsh-skill summary slice). */
+export interface SkillCommandSummary {
+  name: string;
+  description?: string;
+  invocation: { userInvocable: boolean };
+}
+
+/**
+ * Merge user-invocable skills into an existing /-menu catalog, in place: the
+ * pi-tui editor holds the array by reference and re-filters it on every
+ * keystroke, so a later merge shows up without rebuilding the app. A name a
+ * real command already claimed wins; non-user-invocable skills stay out.
+ *
+ * @param catalog - the working catalog to extend.
+ * @param skills - discovered skill summaries.
+ * @returns the same catalog instance, for call-site convenience.
+ */
+export function mergeSkillCommands(
+  catalog: AutocompleteCommand[],
+  skills: ReadonlyArray<SkillCommandSummary>,
+): AutocompleteCommand[] {
+  const known = new Set(catalog.map((c) => c.name));
+  for (const skill of skills) {
+    if (!skill.invocation.userInvocable || known.has(skill.name)) continue;
+    known.add(skill.name);
+    catalog.push({
+      name: skill.name,
+      description:
+        skill.description === undefined
+          ? "Skill"
+          : `Skill · ${truncateToWidth(skill.description, 100)}`,
+    });
+  }
+  return catalog;
+}
+
 export interface TuiAppOptions {
   agent: AgentSurface;
   modelLabel: string;

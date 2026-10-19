@@ -13,7 +13,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { basename } from "node:path";
 import { visibleWidth, type TUI } from "@earendil-works/pi-tui";
-import { TuiApp, selectRunningSubagents, type AgentSurface } from "./app.ts";
+import { TuiApp, selectRunningSubagents, mergeSkillCommands, type AgentSurface } from "./app.ts";
 import { FakeTerminal } from "./testing/fake-terminal.ts";
 import type { ToolPresenters } from "./transcript.ts";
 
@@ -399,4 +399,34 @@ test("子代理 gauge：0.1.7 catalog 行按 live status 过滤，空列表隐�
   } finally {
     h.dispose();
   }
+});
+
+test("/ 菜单补齐：user-invocable skill 原地并入，重名命令优先、非用户技能不进", () => {
+  const catalog = [
+    { name: "resume", description: "builtin" },
+    { name: "help", description: "builtin help" },
+  ];
+  const merged = mergeSkillCommands(catalog, [
+    { name: "grade-assignment", description: "作业评分", invocation: { userInvocable: true } },
+    { name: "resume", description: "shadow", invocation: { userInvocable: true } },
+    { name: "model-only-skill", invocation: { userInvocable: false } },
+  ]);
+  assert.equal(merged, catalog, "必须原地合并（editor 按引用读同一数组）");
+  assert.deepEqual(
+    merged.map((c) => c.name),
+    ["resume", "help", "grade-assignment"],
+  );
+  assert.equal(merged[0]!.description, "builtin", "重名命令的描述不被技能覆盖");
+  assert.ok(merged[2]!.description?.startsWith("Skill ·"), "技能条目标注 Skill 前缀");
+  assert.ok(merged[2]!.description?.includes("作业评分"), "技能条目带原始描述");
+  assert.ok(
+    !merged.some((c) => c.name === "model-only-skill"),
+    "非 user-invocable 的 skill 不进菜单",
+  );
+
+  // 重复刷新幂等：同名技能不会重复入列。
+  mergeSkillCommands(merged, [
+    { name: "grade-assignment", description: "作业评分", invocation: { userInvocable: true } },
+  ]);
+  assert.equal(merged.filter((c) => c.name === "grade-assignment").length, 1);
 });

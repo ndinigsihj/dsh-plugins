@@ -18,7 +18,7 @@ import type { ImageAttachmentRef } from "@deepseek-ai/dsh-attachment";
 import { SessionId, SessionLogOffset } from "@deepseek-ai/dsh-session";
 import { z as zod } from "zod";
 import { visibleWidth } from "@earendil-works/pi-tui";
-import { TuiApp, formatTokens, selectRunningSubagents, type AgentSurface, type AutocompleteCommand, type GoalSummary, type RunningJob } from "./app.ts";
+import { TuiApp, formatTokens, mergeSkillCommands, selectRunningSubagents, type AgentSurface, type AutocompleteCommand, type GoalSummary, type RunningJob, type SkillCommandSummary } from "./app.ts";
 import { createPalette } from "./palette.ts";
 import { sanitizeDisplay } from "./sanitize.ts";
 import { readPreviewLog, type PreviewLogWindow } from "./session-preview-log.ts";
@@ -1288,6 +1288,31 @@ async function run(
     return out;
   }
 
+  /**
+   * Merge this workspace's user-invocable skills into the / menu. Same lookup
+   * shape as the /name forwarding below (cwd selects the project roots, scope
+   * selects the viewing agent's layers); without them only user-level skills
+   * answer. The pi-tui editor holds the catalog array by reference and filters
+   * it per keystroke, so pushing here shows up in the next menu without
+   * rebuilding the app. Best-effort: a discovery failure leaves the command
+   * list intact, and a name already claimed by a real command wins.
+   */
+  async function refreshSkillCommands(catalog: AutocompleteCommand[]): Promise<void> {
+    const skills = ctx.get<{
+      list(opts?: { cwd?: string; scope?: unknown }): Promise<SkillCommandSummary[]>;
+    }>("skills");
+    if (skills === undefined) return;
+    try {
+      const entries = await skills.list({
+        cwd: agent.session.header?.cwd ?? process.cwd(),
+        scope: agent,
+      });
+      mergeSkillCommands(catalog, entries);
+    } catch {
+      /* menu enrichment is best-effort */
+    }
+  }
+
   // Terminal command catalog.
   if (services.commands !== undefined) {
     services.commands.register({
@@ -1492,6 +1517,10 @@ async function run(
     });
   }
 
+  // Working /-menu catalog: the registered commands + this TUI's local list,
+  // enriched in the background with the workspace's user-invocable skills.
+  const commandCatalog = autocompleteCommands();
+
   const app = new TuiApp({
     agent: agentSurface(agent),
     modelLabel: `${liveRoute.provider}/${liveRoute.model}`,
@@ -1565,7 +1594,7 @@ async function run(
       void doRewindPicker();
     },
     onExit: () => stopAndExit(),
-    autocomplete: { commands: autocompleteCommands() },
+    autocomplete: { commands: commandCatalog },
     fileCompletions:
       services.fileReferences === undefined
         ? undefined
@@ -1787,6 +1816,9 @@ async function run(
     updateContextPressure();
     refreshSubagents();
     refreshGoal();
+    // A new session may run in another workspace (relay switch, /new with a
+    // different root): re-merge its project skills into the / menu.
+    void refreshSkillCommands(commandCatalog);
   }
 
   /** /new — fresh session in-process: create + rebind, keep this terminal.
@@ -3513,7 +3545,10 @@ async function run(
     // forward it there instead of reporting an unknown command.
     async function tryForwardUserSkill(candidate: string): Promise<boolean> {
       const skills = ctx.get<{
-        list(opts?: unknown): Promise<Array<{ name: string; invocation: { userInvocable: boolean } }>>;
+        list(opts?: {
+          cwd?: string;
+          scope?: unknown;
+        }): Promise<Array<{ name: string; invocation: { userInvocable: boolean } }>>;
       }>("skills");
       if (skills === undefined) return false;
       const first = candidate.split(/\s+/)[0];
@@ -3521,7 +3556,15 @@ async function run(
       const token = first.slice(1);
       if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(token)) return false;
       try {
-        const entries = await skills.list();
+        // Same lookup shape as dsh-tool-skill: cwd selects the project roots
+        // (<project>/.dsh/skills, <project>/.agents/skills) and scope selects
+        // the viewing agent's runtime layers. Without them only user-level
+        // skills answer, so a project skill gesture looked like an unknown
+        // command.
+        const entries = await skills.list({
+          cwd: agent.session.header?.cwd ?? process.cwd(),
+          scope: agent,
+        });
         if (!entries.some((s) => s.name === token && s.invocation.userInvocable)) return false;
       } catch {
         return false;
@@ -3950,6 +3993,7 @@ async function run(
   });
 
     app.start();
+    void refreshSkillCommands(commandCatalog);
   }
 
 export { Config, apply, inject, name };
